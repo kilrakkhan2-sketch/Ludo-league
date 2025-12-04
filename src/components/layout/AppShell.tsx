@@ -40,10 +40,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "../ui/input";
-import { useUser } from "@/firebase";
+import { useUser, useDoc } from "@/firebase";
 import { getAuth, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import type { UserProfile } from "@/types";
+import { Skeleton } from "../ui/skeleton";
 
 
 const navItems = [
@@ -53,11 +55,12 @@ const navItems = [
   { href: "/friends", icon: Users, label: "Friends" },
   { href: "/wallet", icon: Wallet, label: "Wallet" },
   { href: "/kyc", icon: ShieldCheck, label: "KYC Verification" },
-  { href: "/admin/dashboard", icon: Shield, label: "Admin Panel" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user, loading } = useUser();
+  const { user, loading: userLoading } = useUser();
+  const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
+
   const router = useRouter();
   const { toast } = useToast();
 
@@ -79,6 +82,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   };
 
+  const isAdmin = profile && profile.role !== 'user';
+  const loading = userLoading || profileLoading;
 
   return (
     <SidebarProvider>
@@ -103,15 +108,27 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
+            {loading ? (
+                <div className="p-2">
+                    <Skeleton className="h-8 w-full" />
+                </div>
+            ) : isAdmin && (
+                 <SidebarMenuItem>
+                    <SidebarMenuButton href="/admin/dashboard" tooltip="Admin Panel">
+                      <Shield />
+                      <span>Admin Panel</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
           {loading ? (
              <div className="flex items-center gap-2 p-2">
-                <div className="h-8 w-8 rounded-full bg-muted animate-pulse"></div>
+                <Skeleton className="h-8 w-8 rounded-full" />
                 <div className="flex-grow group-data-[collapsible=icon]:hidden space-y-1">
-                    <div className="h-4 w-24 bg-muted rounded-md animate-pulse"></div>
-                    <div className="h-3 w-32 bg-muted rounded-md animate-pulse"></div>
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-32" />
                 </div>
             </div>
           ) : user ? (
@@ -123,13 +140,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage
-                      src={user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`}
+                      src={user.photoURL || profile?.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`}
                       data-ai-hint="person portrait"
                     />
-                    <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                    <AvatarFallback>{profile?.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}</AvatarFallback>
                   </Avatar>
                   <div className="text-left overflow-hidden group-data-[collapsible=icon]:hidden">
-                    <p className="font-medium truncate">{user.displayName || 'User'}</p>
+                    <p className="font-medium truncate">{profile?.displayName || user.email || 'User'}</p>
                     <p className="text-xs text-muted-foreground truncate">
                       {user.email}
                     </p>
@@ -139,7 +156,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <DropdownMenuContent className="w-56 mb-2" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.displayName || 'User'}</p>
+                    <p className="text-sm font-medium leading-none">{profile?.displayName || user.email || 'User'}</p>
                     <p className="text-xs leading-none text-muted-foreground">
                       {user.email}
                     </p>

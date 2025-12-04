@@ -17,15 +17,11 @@ import {
 import {
   LayoutGrid,
   Wallet,
-  Trophy,
-  ShieldCheck,
   User,
   LogOut,
-  Swords,
   Search,
   Users,
   Settings,
-  Star,
   Shield,
   Package,
   ArrowLeft,
@@ -44,25 +40,28 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "../ui/input";
-import { useUser } from "@/firebase";
+import { useUser, useDoc } from "@/firebase";
 import { getAuth, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import type { UserProfile } from "@/types";
+import { Skeleton } from "../ui/skeleton";
 
 
-const navItems = [
-  { href: "/admin/dashboard", icon: LayoutGrid, label: "Dashboard" },
-  { href: "/admin/users", icon: Users, label: "Users" },
-  { href: "/admin/matches", icon: Package, label: "Matches" },
-  { href: "/admin/deposits", icon: Banknote, label: "Deposits" },
-  { href: "/admin/withdrawals", icon: Wallet, label: "Withdrawals" },
-  { href: "/admin/results", icon: ClipboardList, label: "Results" },
-  { href: "/admin/manage-admins", icon: ShieldCheck, label: "Manage Admins" },
-  { href: "/admin/settings", icon: Settings, label: "Settings" },
+const allNavItems = [
+  { href: "/admin/dashboard", icon: LayoutGrid, label: "Dashboard", roles: ['superadmin', 'deposit_admin', 'match_admin'] },
+  { href: "/admin/users", icon: Users, label: "Users", roles: ['superadmin'] },
+  { href: "/admin/matches", icon: Package, label: "Matches", roles: ['superadmin', 'match_admin'] },
+  { href: "/admin/deposits", icon: Banknote, label: "Deposits", roles: ['superadmin', 'deposit_admin'] },
+  { href: "/admin/withdrawals", icon: Wallet, label: "Withdrawals", roles: ['superadmin', 'deposit_admin'] },
+  { href: "/admin/results", icon: ClipboardList, label: "Results", roles: ['superadmin', 'match_admin'] },
+  { href: "/admin/manage-admins", icon: Shield, label: "Manage Admins", roles: ['superadmin'] },
+  { href: "/admin/settings", icon: Settings, label: "Settings", roles: ['superadmin'] },
 ];
 
 export function AdminShell({ children }: { children: ReactNode }) {
-  const { user, loading } = useUser();
+  const { user, loading: userLoading } = useUser();
+  const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
   const router = useRouter();
   const { toast } = useToast();
 
@@ -84,6 +83,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
     }
   };
 
+  const loading = userLoading || profileLoading;
+  const userRole = profile?.role;
+
+  const navItems = allNavItems.filter(item => userRole && item.roles.includes(userRole));
 
   return (
     <SidebarProvider>
@@ -100,14 +103,24 @@ export function AdminShell({ children }: { children: ReactNode }) {
             </div>
           </SidebarHeader>
           <SidebarMenu>
-            {navItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton href={item.href} tooltip={item.label}>
-                  <item.icon />
-                  <span>{item.label}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+            {loading ? (
+                <div className="p-2 space-y-2">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                </div>
+            ) : (
+                <>
+                    {navItems.map((item) => (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton href={item.href} tooltip={item.label}>
+                          <item.icon />
+                          <span>{item.label}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                </>
+            )}
              <SidebarMenuItem>
                 <SidebarMenuButton href="/dashboard" className="mt-4 text-muted-foreground hover:text-foreground">
                   <ArrowLeft />
@@ -119,10 +132,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <SidebarFooter>
           {loading ? (
              <div className="flex items-center gap-2 p-2">
-                <div className="h-8 w-8 rounded-full bg-muted animate-pulse"></div>
+                <Skeleton className="h-8 w-8 rounded-full" />
                 <div className="flex-grow group-data-[collapsible=icon]:hidden space-y-1">
-                    <div className="h-4 w-24 bg-muted rounded-md animate-pulse"></div>
-                    <div className="h-3 w-32 bg-muted rounded-md animate-pulse"></div>
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-32" />
                 </div>
             </div>
           ) : user ? (
@@ -137,10 +150,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
                       src={user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`}
                       data-ai-hint="person portrait"
                     />
-                    <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                    <AvatarFallback>{profile?.displayName?.charAt(0) || user.email?.charAt(0) || 'A'}</AvatarFallback>
                   </Avatar>
                   <div className="text-left overflow-hidden group-data-[collapsible=icon]:hidden">
-                    <p className="font-medium truncate">{user.displayName || 'Admin User'}</p>
+                    <p className="font-medium truncate">{profile?.displayName || 'Admin User'}</p>
                     <p className="text-xs text-muted-foreground truncate">
                       {user.email}
                     </p>
@@ -150,7 +163,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
               <DropdownMenuContent className="w-56 mb-2" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.displayName || 'Admin User'}</p>
+                    <p className="text-sm font-medium leading-none">{profile?.displayName || 'Admin User'}</p>
                     <p className="text-xs leading-none text-muted-foreground">
                       {user.email}
                     </p>
