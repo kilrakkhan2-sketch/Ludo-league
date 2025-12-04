@@ -1,70 +1,128 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.approveDeposit = void 0;
+exports.onMatchResultUpdate = exports.onWithdrawalStatusChange = exports.onDepositStatusChange = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+// Initialize Firebase Admin SDK
 admin.initializeApp();
 const db = admin.firestore();
-exports.approveDeposit = functions.https.onCall(async (data, context) => {
-    // 1. Authentication & Authorization
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
-    }
-    // Check if the user is an admin (you'll need to have a way to identify admins)
-    // For this example, we'''ll assume there'''s a custom claim `isAdmin`.
-    const isAdmin = context.auth.token.isAdmin === true;
-    if (!isAdmin) {
-        throw new functions.https.HttpsError("permission-denied", "Only admins can approve deposits.");
-    }
-    const { depositId } = data;
-    if (!depositId || typeof depositId !== "string") {
-        throw new functions.https.HttpsError("invalid-argument", "The function must be called with a valid 'depositId'.");
-    }
-    const depositRef = db.collection("deposit-requests").doc(depositId);
-    try {
-        // 2. Run as a transaction to ensure atomicity
-        await db.runTransaction(async (transaction) => {
-            const depositDoc = await transaction.get(depositRef);
-            if (!depositDoc.exists) {
-                throw new functions.https.HttpsError("not-found", "Deposit request not found.");
-            }
-            const depositData = depositDoc.data();
-            if (!depositData || depositData.status !== "pending") {
-                throw new functions.https.HttpsError("failed-precondition", "Deposit is not pending or data is missing.");
-            }
-            const { userId, amount } = depositData;
-            if (!userId || typeof amount !== "number" || amount <= 0) {
-                throw new functions.https.HttpsError("failed-precondition", "Invalid user ID or amount in deposit request.");
-            }
-            const userRef = db.collection("users").doc(userId);
-            // 3. Atomically update the user'''s balance
-            transaction.update(userRef, {
-                balance: admin.firestore.FieldValue.increment(amount),
-            });
-            // 4. Update the deposit request status
-            transaction.update(depositRef, {
-                status: "approved",
-                processedAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
-            // 5. Create a transaction record for the user
-            const transactionRef = userRef.collection("transactions").doc();
-            transaction.set(transactionRef, {
-                amount,
-                type: "deposit",
-                description: "Deposit approved by admin",
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                status: "completed",
-                depositId: depositId,
-            });
-        });
-        return { success: true, message: "Deposit approved successfully." };
-    }
-    catch (error) {
-        console.error("Error approving deposit:", error);
-        if (error instanceof functions.https.HttpsError) {
-            throw error;
+// --------- DEPOSIT FUNCTION --------- //
+exports.onDepositStatusChange = functions.firestore
+    .document("deposits/{depositId}")
+    .onUpdate(async (change, context) => {
+    const beforeData = change.before.data();
+    const afterData = change.after.data();
+    if (beforeData.status !== "approved" && afterData.status === "approved") {
+        const { userId, amount } = afterData;
+        if (!userId || !amount) {
+            functions.logger.error("Missing data in deposit doc", { id: context.params.depositId });
+            return;
         }
-        throw new functions.https.HttpsError("internal", "An internal error occurred while approving the deposit.");
+        const userRef = db.collection("users").doc(userId);
+        const transactionRef = db.collection("transactions").doc();
+        try {
+            await db.runTransaction(async (t) => {
+                var _a;
+                const userDoc = await t.get(userRef);
+                if (!userDoc.exists)
+                    throw new Error(`User ${userId} not found.`);
+                const currentBalance = ((_a = userDoc.data()) === null || _a === void 0 ? void 0 : _a.balance) || 0;
+                const newBalance = currentBalance + amount;
+                t.update(userRef, { balance: newBalance });
+                t.set(transactionRef, {
+                    userId, amount, type: "deposit", description: "Deposit approved",
+                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    relatedId: context.params.depositId, balanceAfter: newBalance,
+                });
+            });
+            functions.logger.info(`Deposit processed for user ${userId}.`);
+        }
+        catch (error) {
+            functions.logger.error(`Error processing deposit for ${userId}:`, error);
+            await change.after.ref.update({ status: "failed", error: error.message });
+        }
+    }
+});
+// --------- WITHDRAWAL FUNCTION --------- //
+exports.onWithdrawalStatusChange = functions.firestore
+    .document("withdrawals/{withdrawalId}")
+    .onUpdate(async (change, context) => {
+    const beforeData = change.before.data();
+    const afterData = change.after.data();
+    if (beforeData.status !== "approved" && afterData.status === "approved") {
+        const { userId, amount } = afterData;
+        if (!userId || !amount) {
+            functions.logger.error("Missing data in withdrawal doc", { id: context.params.withdrawalId });
+            return;
+        }
+        const userRef = db.collection("users").doc(userId);
+        const transactionRef = db.collection("transactions").doc();
+        try {
+            await db.runTransaction(async (t) => {
+                var _a;
+                const userDoc = await t.get(userRef);
+                if (!userDoc.exists)
+                    throw new Error(`User ${userId} not found.`);
+                const currentBalance = ((_a = userDoc.data()) === null || _a === void 0 ? void 0 : _a.balance) || 0;
+                if (currentBalance < amount)
+                    throw new Error("Insufficient balance.");
+                const newBalance = currentBalance - amount;
+                t.update(userRef, { balance: newBalance });
+                t.set(transactionRef, {
+                    userId, amount, type: "withdrawal", description: "Withdrawal approved",
+                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    relatedId: context.params.withdrawalId, balanceAfter: newBalance,
+                });
+            });
+            functions.logger.info(`Withdrawal processed for user ${userId}.`);
+        }
+        catch (error) {
+            functions.logger.error(`Error processing withdrawal for ${userId}:`, error);
+            await change.after.ref.update({ status: "failed", error: error.message });
+        }
+    }
+});
+// --------- MATCH RESULT FUNCTION --------- //
+exports.onMatchResultUpdate = functions.firestore
+    .document("matches/{matchId}")
+    .onUpdate(async (change, context) => {
+    const beforeData = change.before.data();
+    const afterData = change.after.data();
+    // Check if a winner has been declared for the first time
+    if (!beforeData.winnerId && afterData.winnerId) {
+        const { winnerId, prizeAmount } = afterData;
+        const matchId = context.params.matchId;
+        if (!winnerId || !prizeAmount || prizeAmount <= 0) {
+            functions.logger.error("Missing or invalid winnerId/prizeAmount", { id: matchId });
+            return;
+        }
+        const winnerRef = db.collection("users").doc(winnerId);
+        const transactionRef = db.collection("transactions").doc();
+        try {
+            await db.runTransaction(async (t) => {
+                var _a;
+                const winnerDoc = await t.get(winnerRef);
+                if (!winnerDoc.exists)
+                    throw new Error(`Winner user ${winnerId} not found.`);
+                const currentBalance = ((_a = winnerDoc.data()) === null || _a === void 0 ? void 0 : _a.balance) || 0;
+                const newBalance = currentBalance + prizeAmount;
+                t.update(winnerRef, { balance: newBalance });
+                t.set(transactionRef, {
+                    userId: winnerId, amount: prizeAmount, type: "match_win",
+                    description: "Winnings from match",
+                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    relatedId: matchId, balanceAfter: newBalance,
+                });
+            });
+            // Optionally update the match status to "completed"
+            await change.after.ref.update({ status: "completed" });
+            functions.logger.info(`Match winnings processed for user ${winnerId}.`);
+        }
+        catch (error) {
+            functions.logger.error(`Error processing match result for ${matchId}:`, error);
+            // Optionally revert winnerId or set match status to "error"
+            await change.after.ref.update({ status: "error", error: error.message });
+        }
     }
 });
 //# sourceMappingURL=index.js.map
