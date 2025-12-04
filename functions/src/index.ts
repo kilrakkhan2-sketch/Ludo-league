@@ -14,14 +14,15 @@ export const approveDeposit = functions.https.onCall(async (data, context) => {
       "The function must be called while authenticated."
     );
   }
+  const approverUid = context.auth.uid;
 
-  // Check if the user is an admin (you'll need to have a way to identify admins)
-  // For this example, we'''ll assume there'''s a custom claim `isAdmin`.
-  const isAdmin = context.auth.token.isAdmin === true;
-  if (!isAdmin) {
-    throw new functions.https.HttpsError(
+  // Check if the user is an admin
+  const userDoc = await db.collection("users").doc(approverUid).get();
+  const userRole = userDoc.data()?.role;
+  if (userRole !== 'superadmin' && userRole !== 'deposit_admin') {
+     throw new functions.https.HttpsError(
       "permission-denied",
-      "Only admins can approve deposits."
+      "Only deposit admins or superadmins can approve deposits."
     );
   }
 
@@ -62,15 +63,16 @@ export const approveDeposit = functions.https.onCall(async (data, context) => {
 
       const userRef = db.collection("users").doc(userId);
 
-      // 3. Atomically update the user'''s balance
+      // 3. Atomically update the user's balance
       transaction.update(userRef, {
-        balance: admin.firestore.FieldValue.increment(amount),
+        walletBalance: admin.firestore.FieldValue.increment(amount),
       });
 
-      // 4. Update the deposit request status
+      // 4. Update the deposit request status and record who approved it
       transaction.update(depositRef, {
         status: "approved",
         processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        processedBy: approverUid, // Record the UID of the admin
       });
 
       // 5. Create a transaction record for the user
@@ -81,7 +83,7 @@ export const approveDeposit = functions.https.onCall(async (data, context) => {
         description: "Deposit approved by admin",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         status: "completed",
-        depositId: depositId,
+        relatedId: depositId,
       });
     });
 
@@ -97,4 +99,3 @@ export const approveDeposit = functions.https.onCall(async (data, context) => {
     );
   }
 });
-

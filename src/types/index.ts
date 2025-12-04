@@ -36,6 +36,7 @@ export type Match = {
       screenshotUrl: string;
       submittedAt: any;
   }[];
+  winnerDeclaredBy?: string;
 };
 
 export type Transaction = {
@@ -62,6 +63,7 @@ export type DepositRequest = {
   status: "pending" | "approved" | "rejected";
   createdAt: any; // Can be server timestamp
   processedAt?: any;
+  processedBy?: string; // UID of the admin who processed it
 };
 
 export type WithdrawalRequest = {

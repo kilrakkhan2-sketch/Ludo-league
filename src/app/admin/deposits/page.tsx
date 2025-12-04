@@ -17,59 +17,84 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, CheckCircle, XCircle } from 'lucide-react';
 import Image from 'next/image';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { useUser } from '@/firebase';
 
 const getStatusVariant = (status: string) => {
   switch (status) {
-    case 'pending': return 'yellow';
-    case 'approved': return 'green';
-    case 'rejected': return 'red';
-    default: return 'secondary';
+    case 'pending': return 'secondary';
+    case 'approved': return 'default';
+    case 'rejected': return 'destructive';
+    default: return 'outline';
   }
 };
 
 export default function AdminDepositsPage() {
-  const { firestore, functions } = useFirebase();
+  const { firestore, app } = useFirebase();
+  const { user: adminUser } = useUser();
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState('pending');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: deposits, loading: depositsLoading, reload: reloadDeposits } = useCollection<DepositRequest>('deposit-requests', {
-    where: ['status', '==', statusFilter],
     orderBy: ['createdAt', 'desc'],
+    where: ['status', '==', statusFilter]
   });
 
-  const userIds = useMemo(() => deposits.map(d => d.userId).filter(id => !!id), [deposits]);
-  const { data: users, loading: usersLoading } = useCollection<UserProfile>('users', { where: ['__name__', 'in', userIds.length > 0 ? userIds : ['_']] });
+  const allUserIdsInView = useMemo(() => {
+    const ids = new Set<string>();
+    deposits.forEach(d => {
+        ids.add(d.userId);
+        if (d.processedBy) {
+            ids.add(d.processedBy);
+        }
+    });
+    return Array.from(ids);
+  }, [deposits]);
+
+  const { data: users, loading: usersLoading } = useCollection<UserProfile>('users', { 
+    where: ['uid', 'in', allUserIdsInView.length > 0 ? allUserIdsInView : ['_']] 
+  });
 
   const usersMap = useMemo(() => {
     const map = new Map<string, UserProfile>();
-    users.forEach(user => map.set(user.id, user));
+    users.forEach(user => map.set(user.uid, user));
     return map;
   }, [users]);
 
+
  const handleApproveDeposit = async (deposit: DepositRequest) => {
-    if (!functions) return;
+    if (!app) return;
     setIsSubmitting(true);
     try {
+      const functions = getFunctions(app);
       const approveDeposit = httpsCallable(functions, 'approveDeposit');
-      await approveDeposit({ depositId: deposit.id });
-      toast({ title: 'Success', description: 'Deposit has been approved.' });
-      reloadDeposits();
-    } catch (error) {
+      const result = await approveDeposit({ depositId: deposit.id });
+
+      if((result.data as any).success) {
+        toast({ title: 'Success', description: 'Deposit has been approved.' });
+        reloadDeposits();
+      } else {
+         throw new Error((result.data as any).message || 'The cloud function failed.');
+      }
+    } catch (error: any) {
       console.error('Error approving deposit:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not approve deposit.' });
+      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not approve deposit.' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleRejectDeposit = async (deposit: DepositRequest) => {
-    if (!firestore) return;
+    if (!firestore || !adminUser) return;
     setIsSubmitting(true);
     try {
       const depositRef = doc(firestore, 'deposit-requests', deposit.id);
       const batch = writeBatch(firestore);
-      batch.update(depositRef, { status: 'rejected', processedAt: Timestamp.now() });
+      batch.update(depositRef, { 
+          status: 'rejected', 
+          processedAt: Timestamp.now(),
+          processedBy: adminUser.uid,
+        });
       await batch.commit();
       toast({ title: 'Success', description: 'Deposit has been rejected.' });
       reloadDeposits();
@@ -102,22 +127,25 @@ export default function AdminDepositsPage() {
                   <TableHead>User</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Date</TableHead>
+                  {statusFilter !== 'pending' && <TableHead>Processed By</TableHead>}
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {(depositsLoading || usersLoading) ? (
-                  <TableRow><TableCell colSpan={5} className="text-center">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center">Loading...</TableCell></TableRow>
                 ) : deposits.length === 0 ? (
-                   <TableRow><TableCell colSpan={5} className="text-center">No {statusFilter} deposits found.</TableCell></TableRow>
+                   <TableRow><TableCell colSpan={6} className="text-center">No {statusFilter} deposits found.</TableCell></TableRow>
                 ) : deposits.map(deposit => {
                   const user = usersMap.get(deposit.userId);
+                  const processor = deposit.processedBy ? usersMap.get(deposit.processedBy) : null;
                   return (
                     <TableRow key={deposit.id}>
                       <TableCell>{user?.displayName || 'Unknown'}</TableCell>
                       <TableCell className="font-medium">₹{deposit.amount.toLocaleString()}</TableCell>
                       <TableCell>{deposit.createdAt ? format((deposit.createdAt as Timestamp).toDate(), 'dd MMM yyyy, HH:mm') : 'N/A'}</TableCell>
+                      {statusFilter !== 'pending' && <TableCell>{processor?.displayName || 'N/A'}</TableCell>}
                       <TableCell><Badge variant={getStatusVariant(deposit.status)}>{deposit.status}</Badge></TableCell>
                       <TableCell className="text-right">
                           <Dialog>
