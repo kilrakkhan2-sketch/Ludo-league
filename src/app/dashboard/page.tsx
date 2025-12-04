@@ -97,7 +97,7 @@ const MatchCard = ({ match }: { match: Match }) => (
 export default function DashboardPage() {
   const { user } = useUser();
   const { data: myMatches, loading: myMatchesLoading } = useCollection<Match>('matches', {
-    where: user ? ['players', 'array-contains', user.uid] : undefined,
+    where: user?.uid ? ['players', 'array-contains', user.uid] : undefined,
   });
   const { data: openMatches, loading: openMatchesLoading, hasMore: hasMoreOpen, loadMore: loadMoreOpen } = useCollection<Match>('matches', {
     where: ['status', '==', 'open'],
