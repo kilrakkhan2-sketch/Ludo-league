@@ -4,15 +4,9 @@
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useUser, useDoc } from "@/firebase";
-import { useEffect, useState } from "react";
-import {
-    getFirestore,
-    collection,
-    getCountFromServer,
-} from "firebase/firestore";
-import { DollarSign, Users, Package, CreditCard, Wallet } from "lucide-react";
+import { useUser, useDoc, useCollectionCount } from "@/firebase";
 import type { UserProfile } from "@/types";
+import { DollarSign, Users, Package, CreditCard, Wallet } from "lucide-react";
 
 type StatCardProps = {
     title: string;
@@ -62,53 +56,12 @@ export default function AdminDashboardPage() {
     const { user, loading: userLoading } = useUser();
     const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
 
-    const [stats, setStats] = useState({
-        totalRevenue: { value: '₹0', change: '+0.0% from last month' },
-        totalUsers: { value: '0', change: '+0.0% from last month' },
-        totalMatches: { value: '0', change: '+0.0% from last month' },
-        pendingDeposits: { value: '0', change: '' },
-        pendingWithdrawals: { value: '0', change: '' },
-    });
-    const [loadingStats, setLoadingStats] = useState(true);
-
-    useEffect(() => {
-        const fetchStats = async () => {
-            if (user) {
-                try {
-                    const db = getFirestore();
-                    
-                    const fetchCollectionCount = async (collectionName: string) => {
-                        const coll = collection(db, collectionName);
-                        const snapshot = await getCountFromServer(coll);
-                        return snapshot.data().count;
-                    };
-                    
-                    const totalUsers = await fetchCollectionCount("users");
-                    const totalMatches = await fetchCollectionCount("matches");
-                    const pendingDeposits = await fetchCollectionCount("deposit-requests");
-                    const pendingWithdrawals = await fetchCollectionCount("withdrawal-requests");
-
-
-                    setStats(prevStats => ({
-                        ...prevStats,
-                        totalUsers: { ...prevStats.totalUsers, value: totalUsers.toString() },
-                        totalMatches: { ...prevStats.totalMatches, value: totalMatches.toString() },
-                        pendingDeposits: { ...prevStats.pendingDeposits, value: pendingDeposits.toString() },
-                        pendingWithdrawals: { ...prevStats.pendingWithdrawals, value: pendingWithdrawals.toString() },
-                    }));
-                } catch (error) {
-                    console.error("Error fetching stats: ", error);
-                }
-            }
-            setLoadingStats(false);
-        };
-
-        if (!userLoading && !profileLoading) {
-            fetchStats();
-        }
-    }, [user, userLoading, profileLoading]);
-
-    const loading = userLoading || profileLoading || loadingStats;
+    const { count: totalUsers, loading: usersLoading } = useCollectionCount("users");
+    const { count: totalMatches, loading: matchesLoading } = useCollectionCount("matches");
+    const { count: pendingDeposits, loading: depositsLoading } = useCollectionCount("deposit-requests");
+    const { count: pendingWithdrawals, loading: withdrawalsLoading } = useCollectionCount("withdrawal-requests");
+    
+    const loading = userLoading || profileLoading || usersLoading || matchesLoading || depositsLoading || withdrawalsLoading;
     const userRole = profile?.role;
     
     const isSuperAdmin = userRole === 'superadmin';
@@ -118,40 +71,40 @@ export default function AdminDashboardPage() {
     const statsData = [
         {
             title: "Total Revenue",
-            value: stats.totalRevenue.value,
-            change: stats.totalRevenue.change,
+            value: `₹${profile?.walletBalance?.toLocaleString() || 0}`,
+            change: "Admin wallet balance",
             icon: DollarSign,
             to: "/admin/deposits",
-            isVisible: isSuperAdmin || isDepositAdmin
+            isVisible: isSuperAdmin
         },
         {
             title: "Pending Deposits",
-            value: stats.pendingDeposits.value,
-            change: stats.pendingDeposits.change,
+            value: pendingDeposits.toString(),
+            change: "",
             icon: CreditCard,
             to: "/admin/deposits",
             isVisible: isSuperAdmin || isDepositAdmin
         },
         {
             title: "Pending Withdrawals",
-            value: stats.pendingWithdrawals.value,
-            change: stats.pendingWithdrawals.change,
+            value: pendingWithdrawals.toString(),
+            change: "",
             icon: Wallet,
             to: "/admin/withdrawals",
             isVisible: isSuperAdmin || isDepositAdmin
         },
         {
             title: "Total Users",
-            value: stats.totalUsers.value,
-            change: stats.totalUsers.change,
+            value: totalUsers.toString(),
+            change: "+0.0% from last month",
             icon: Users,
             to: "/admin/users",
             isVisible: isSuperAdmin
         },
         {
             title: "Total Matches",
-            value: stats.totalMatches.value,
-            change: stats.totalMatches.change,
+            value: totalMatches.toString(),
+            change: "+0.0% from last month",
             icon: Package,
             to: "/admin/matches",
             isVisible: isSuperAdmin || isMatchAdmin

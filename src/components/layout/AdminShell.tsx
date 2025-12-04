@@ -51,11 +51,11 @@ import { Skeleton } from "../ui/skeleton";
 const allNavItems = [
   { href: "/admin/dashboard", icon: LayoutGrid, label: "Dashboard", roles: ['superadmin', 'deposit_admin', 'match_admin'] },
   { href: "/admin/users", icon: Users, label: "Users", roles: ['superadmin'] },
+  { href: "/admin/manage-admins", icon: Shield, label: "Manage Admins", roles: ['superadmin'] },
   { href: "/admin/matches", icon: Package, label: "Matches", roles: ['superadmin', 'match_admin'] },
+  { href: "/admin/results", icon: ClipboardList, label: "Results", roles: ['superadmin', 'match_admin'] },
   { href: "/admin/deposits", icon: Banknote, label: "Deposits", roles: ['superadmin', 'deposit_admin'] },
   { href: "/admin/withdrawals", icon: Wallet, label: "Withdrawals", roles: ['superadmin', 'deposit_admin'] },
-  { href: "/admin/results", icon: ClipboardList, label: "Results", roles: ['superadmin', 'match_admin'] },
-  { href: "/admin/manage-admins", icon: Shield, label: "Manage Admins", roles: ['superadmin'] },
   { href: "/admin/settings", icon: Settings, label: "Settings", roles: ['superadmin'] },
 ];
 
@@ -86,7 +86,22 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const loading = userLoading || profileLoading;
   const userRole = profile?.role;
 
-  const navItems = allNavItems.filter(item => userRole && item.roles.includes(userRole));
+  const navItems = allNavItems.filter(item => {
+      if (!userRole) return false;
+      if (item.roles.includes(userRole)) {
+          // Superadmin sees all their designated items
+          if (userRole === 'superadmin') return true;
+          // Deposit admin only sees dashboard, deposits, and withdrawals
+          if (userRole === 'deposit_admin') {
+              return item.label === 'Dashboard' || item.label === 'Deposits' || item.label === 'Withdrawals';
+          }
+          // Match admin only sees dashboard, matches, and results
+          if (userRole === 'match_admin') {
+              return item.label === 'Dashboard' || item.label === 'Matches' || item.label === 'Results';
+          }
+      }
+      return false;
+  });
 
   return (
     <SidebarProvider>
