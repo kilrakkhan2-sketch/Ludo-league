@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useCollection, useUser } from '@/firebase';
-import { doc, writeBatch, Timestamp, collection, getDoc, query, where, getDocs } from 'firebase/firestore';
+import { useState, useMemo, useEffect } from 'react';
+import { useCollection, useUser, useDoc } from '@/firebase';
+import { doc, writeBatch, Timestamp, collection, getDoc, query, where, getDocs, runTransaction } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import type { WithdrawalRequest, UserProfile } from '@/types';
 import { format } from 'date-fns';
@@ -48,9 +48,11 @@ const getStatusVariant = (status: string) => {
 export default function AdminWithdrawalsPage() {
   const { firestore } = useFirebase();
   const { user: adminUser } = useUser();
+  const { data: adminProfile } = useDoc<UserProfile>(adminUser ? `users/${adminUser.uid}`: '');
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState('pending');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<WithdrawalRequest | null>(null);
 
   const { data: requests, loading, reload: reloadRequests } = useCollection<WithdrawalRequest>('withdrawal-requests', {
     where: ['status', '==', statusFilter],
@@ -79,73 +81,80 @@ export default function AdminWithdrawalsPage() {
   }, [usersData]);
 
   const handleProcessRequest = async (request: WithdrawalRequest, action: 'approve' | 'reject') => {
-    if (!firestore || !adminUser) {
+    if (!firestore || !adminUser || !adminProfile) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not process request. Admin not found.' });
       return;
     }
     setIsSubmitting(true);
     
     try {
-        const batch = writeBatch(firestore);
-        const adminRef = doc(firestore, 'users', adminUser.uid);
-        const requestRef = doc(firestore, 'withdrawal-requests', request.id);
-        const userRef = doc(firestore, 'users', request.userId);
-        
-        const userTransactionQuery = query(collection(firestore, `users/${request.userId}/transactions`), where('relatedId', '==', request.id));
-        const userTransactionsSnapshot = await getDocs(userTransactionQuery);
-        const userTransactionRef = userTransactionsSnapshot.docs[0]?.ref;
+        await runTransaction(firestore, async (transaction) => {
+            const adminRef = doc(firestore, 'users', adminUser.uid);
+            const requestRef = doc(firestore, 'withdrawal-requests', request.id);
+            const userRef = doc(firestore, 'users', request.userId);
 
-        if (action === 'approve') {
-            const adminDoc = await getDoc(adminRef);
-            const adminProfile = adminDoc.data() as UserProfile;
-
-            if ((adminProfile.walletBalance || 0) < request.amount) {
-                throw new Error("You have insufficient balance to approve this withdrawal.");
-            }
-
-            batch.update(requestRef, {
-                status: 'approved',
-                processedAt: Timestamp.now(),
-                processedBy: adminUser.uid,
-            });
-
-            if(userTransactionRef) {
-                batch.update(userTransactionRef, { status: 'completed' });
-            }
-
-            const newAdminBalance = (adminProfile.walletBalance || 0) - request.amount;
-            batch.update(adminRef, { walletBalance: newAdminBalance });
-
-            const adminTransactionRef = doc(collection(firestore, `users/${adminUser.uid}/transactions`));
-            batch.set(adminTransactionRef, {
-                amount: -request.amount,
-                type: 'withdrawal',
-                status: 'completed',
-                description: `Approved withdrawal for ${request.userName}`,
-                relatedId: request.id,
-                createdAt: Timestamp.now(),
-            });
-
-        } else { // 'reject'
-            batch.update(requestRef, {
-                status: 'rejected',
-                processedAt: Timestamp.now(),
-                processedBy: adminUser.uid,
-            });
-
-            const userDoc = await getDoc(userRef);
-            const userProfile = userDoc.data() as UserProfile;
-            const newUserBalance = (userProfile.walletBalance || 0) + request.amount;
-            batch.update(userRef, { walletBalance: newUserBalance });
+            const adminDoc = await transaction.get(adminRef);
+            const adminData = adminDoc.data() as UserProfile;
             
-            if(userTransactionRef) {
-                batch.update(userTransactionRef, { status: 'failed', description: 'Withdrawal request rejected by admin.' });
-            }
-        }
+            // Find the original user transaction to update its status
+            const userTransactionQuery = query(collection(firestore, `users/${request.userId}/transactions`), where('relatedId', '==', request.id));
+            const userTransactionsSnapshot = await getDocs(userTransactionQuery);
+            const userTransactionRef = userTransactionsSnapshot.docs[0]?.ref;
 
-        await batch.commit();
+            if (action === 'approve') {
+                if ((adminData.walletBalance || 0) < request.amount) {
+                    throw new Error("You have insufficient balance to approve this withdrawal.");
+                }
+
+                transaction.update(requestRef, {
+                    status: 'approved',
+                    processedAt: Timestamp.now(),
+                    processedBy: adminUser.uid,
+                });
+
+                if (userTransactionRef) {
+                    transaction.update(userTransactionRef, { status: 'completed' });
+                }
+
+                // Deduct amount from admin's wallet
+                const newAdminBalance = (adminData.walletBalance || 0) - request.amount;
+                transaction.update(adminRef, { walletBalance: newAdminBalance });
+
+                // Create a transaction record for the admin
+                const adminTransactionRef = doc(collection(firestore, `users/${adminUser.uid}/transactions`));
+                transaction.set(adminTransactionRef, {
+                    amount: -request.amount,
+                    type: 'withdrawal',
+                    status: 'completed',
+                    description: `Approved withdrawal for ${request.userName}`,
+                    relatedId: request.id,
+                    createdAt: Timestamp.now(),
+                    userName: adminData.name,
+                    userEmail: adminData.email,
+                });
+
+            } else { // 'reject'
+                transaction.update(requestRef, {
+                    status: 'rejected',
+                    processedAt: Timestamp.now(),
+                    processedBy: adminUser.uid,
+                });
+                
+                // Refund the amount to the user's wallet
+                const userDoc = await transaction.get(userRef);
+                const userProfile = userDoc.data() as UserProfile;
+                const newUserBalance = (userProfile.walletBalance || 0) + request.amount;
+                transaction.update(userRef, { walletBalance: newUserBalance });
+                
+                if (userTransactionRef) {
+                    transaction.update(userTransactionRef, { status: 'failed', description: 'Withdrawal request rejected by admin.' });
+                }
+            }
+        });
+
         toast({ title: 'Success', description: `Request has been ${action}ed.` });
         reloadRequests();
+        setSelectedRequest(null);
     } catch (error: any) {
         console.error("Error processing withdrawal:", error);
         toast({ variant: 'destructive', title: 'Processing Error', description: error.message || 'Could not process the request.' });
@@ -203,24 +212,9 @@ export default function AdminWithdrawalsPage() {
                     <TableCell><Badge variant={getStatusVariant(req.status)}>{req.status}</Badge></TableCell>
                     <TableCell className="text-right space-x-2">
                         {statusFilter === 'pending' && (
-                        <Dialog>
-                            <DialogTrigger asChild>
-                                <Button size="sm">Process</Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Process Withdrawal</DialogTitle>
-                                    <DialogDescription>
-                                    You are about to process a withdrawal of <span className="font-bold">₹{req.amount}</span> for {req.userName}.
-                                    Ensure funds are transferred externally before approving. This action is irreversible.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <DialogFooter>
-                                    <Button size="sm" variant="destructive" onClick={() => handleProcessRequest(req, 'reject')} disabled={isSubmitting}><XCircle className="h-4 w-4 mr-2"/>Reject</Button>
-                                    <Button size="sm" onClick={() => handleProcessRequest(req, 'approve')} disabled={isSubmitting}><CheckCircle className="h-4 w-4 mr-2"/>Approve</Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
+                        <DialogTrigger asChild>
+                            <Button size="sm" onClick={() => setSelectedRequest(req)}>Process</Button>
+                        </DialogTrigger>
                         )}
                     </TableCell>
                     </TableRow>
@@ -234,6 +228,26 @@ export default function AdminWithdrawalsPage() {
             </CardContent>
         </Card>
         </div>
+        <Dialog open={!!selectedRequest} onOpenChange={(isOpen) => !isOpen && setSelectedRequest(null)}>
+            {selectedRequest && (
+                 <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Process Withdrawal</DialogTitle>
+                        <DialogDescription>
+                        You are about to process a withdrawal of <span className="font-bold">₹{selectedRequest.amount}</span> for {selectedRequest.userName}.
+                        Ensure funds are transferred externally before approving. This action is irreversible. Approving will deduct ₹{selectedRequest.amount} from your admin wallet.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button size="sm" variant="outline" onClick={() => setSelectedRequest(null)}>Cancel</Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleProcessRequest(selectedRequest, 'reject')} disabled={isSubmitting}><XCircle className="h-4 w-4 mr-2"/>Reject</Button>
+                        <Button size="sm" onClick={() => handleProcessRequest(selectedRequest, 'approve')} disabled={isSubmitting || (adminProfile?.walletBalance || 0) < selectedRequest.amount}><CheckCircle className="h-4 w-4 mr-2"/>Approve</Button>
+                    </DialogFooter>
+                </DialogContent>
+            )}
+        </Dialog>
     </AdminShell>
   );
 }
+
+    

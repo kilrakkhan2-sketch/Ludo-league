@@ -23,10 +23,12 @@ service cloud.firestore {
     // Users Collection
     match /users/{userId} {
       allow read: if request.auth != null;
+      // Allow user to create their own doc.
       allow create: if request.auth.uid == userId;
-      // User can update their own profile, Superadmin can update anyone's profile (e.g. wallet balance)
+      // Allow user to update their own profile, or superadmin to update anyone's profile (e.g. wallet balance for other admins)
       allow update: if request.auth.uid == userId || isSuperAdmin();
-      allow delete: if isSuperAdmin(); // Only superadmin can delete users
+      // Only superadmin can delete users
+      allow delete: if isSuperAdmin();
 
       match /transactions/{transactionId} {
         // User can only access their own transactions. Admins can see all via collection group query.
@@ -56,10 +58,10 @@ service cloud.firestore {
 
     // Withdrawal Requests Collection
     match /withdrawal-requests/{withdrawalId} {
-        allow read: if isDepositAdmin() || isSuperAdmin(); // Admins can see all requests
-        allow create: if request.auth != null; // Users can create their own requests
-        // An admin can update the status. The user initiating the request is in the resource data.
-        allow update: if isDepositAdmin() || isSuperAdmin(); 
+        // Deposit Admins and SuperAdmins can read/update all requests.
+        allow read, update: if isDepositAdmin(); 
+        // Users can create their own requests
+        allow create: if request.auth != null; 
     }
 
     // All transactions collection group for admin panel
@@ -74,3 +76,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

@@ -23,25 +23,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCollection } from "@/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { useCollection, useUser } from "@/firebase";
+import { doc, updateDoc, writeBatch } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
-
-type UserProfile = {
-  id: string;
-  name: string;
-  email: string;
-  role: 'superadmin' | 'deposit_admin' | 'match_admin' | 'user';
-}
+import type { UserProfile } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
+import { Banknote } from "lucide-react";
 
 export default function ManageAdminsPage() {
   const { data: users, loading } = useCollection<UserProfile>('users');
+  const { user: currentUser } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [amount, setAmount] = useState('');
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     if (!firestore) return;
@@ -65,6 +69,44 @@ export default function ManageAdminsPage() {
         errorEmitter.emit('permission-error', permissionError);
       });
   };
+
+  const handleUpdateBalance = async () => {
+    if (!firestore || !selectedUser || !currentUser) return;
+    const numericAmount = parseFloat(amount);
+    if(isNaN(numericAmount)) {
+        toast({ variant: 'destructive', title: 'Invalid amount' });
+        return;
+    }
+
+    const userRef = doc(firestore, "users", selectedUser.id);
+    const superAdminRef = doc(firestore, "users", currentUser.uid);
+
+    try {
+        const batch = writeBatch(firestore);
+        
+        batch.update(userRef, { walletBalance: numericAmount });
+
+        // Optional: Log this as a transaction for the superadmin
+        const transactionRef = doc(collection(firestore, `users/${currentUser.uid}/transactions`));
+        batch.set(transactionRef, {
+            amount: 0,
+            type: 'admin_action',
+            description: `Set balance for ${selectedUser.name} to ₹${numericAmount}`,
+            createdAt: new Date(),
+            status: 'completed',
+        });
+
+        await batch.commit();
+
+        toast({ title: 'Balance Updated', description: `${selectedUser.name}'s balance has been set to ₹${numericAmount}.` });
+        setSelectedUser(null);
+        setAmount('');
+    } catch (error) {
+        console.error(error);
+        toast({ variant: 'destructive', title: 'Update failed' });
+    }
+
+  }
   
   const getRoleBadgeVariant = (role: UserProfile['role']) => {
     switch (role) {
@@ -82,12 +124,12 @@ export default function ManageAdminsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold font-headline">Manage Admins</h1>
+      <h1 className="text-3xl font-bold font-headline">Manage Admins & Users</h1>
       <Card>
         <CardHeader>
-          <CardTitle>User Roles</CardTitle>
+          <CardTitle>User Roles & Balances</CardTitle>
           <CardDescription>
-            Assign admin roles to users.
+            Assign roles and manage wallet balances for all users.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -97,8 +139,10 @@ export default function ManageAdminsPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Wallet Balance</TableHead>
                   <TableHead>Current Role</TableHead>
-                  <TableHead className="w-[200px]">Change Role</TableHead>
+                  <TableHead>Change Role</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -106,6 +150,7 @@ export default function ManageAdminsPage() {
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell>{user.email}</TableCell>
+                    <TableCell>₹{user.walletBalance?.toLocaleString() || 0}</TableCell>
                     <TableCell>
                         <Badge variant={getRoleBadgeVariant(user.role)}>
                             {user.role}
@@ -117,7 +162,7 @@ export default function ManageAdminsPage() {
                         onValueChange={(newRole) => handleRoleChange(user.id, newRole)}
                         disabled={user.role === 'superadmin'}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Select a role" />
                         </SelectTrigger>
                         <SelectContent>
@@ -128,6 +173,14 @@ export default function ManageAdminsPage() {
                         </SelectContent>
                       </Select>
                     </TableCell>
+                     <TableCell className="text-right">
+                        <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" onClick={() => setSelectedUser(user)}>
+                                <Banknote className="mr-2 h-4 w-4"/>
+                                Set Balance
+                            </Button>
+                        </DialogTrigger>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -135,6 +188,33 @@ export default function ManageAdminsPage() {
           )}
         </CardContent>
       </Card>
+      
+      <DialogContent>
+        <DialogHeader>
+            <DialogTitle>Update Wallet Balance</DialogTitle>
+            <DialogDescription>
+                Manually set the wallet balance for {selectedUser?.name}. This action is logged.
+            </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+            <div className="space-y-2">
+                <Label htmlFor="balance-amount">New Balance Amount (₹)</Label>
+                <Input 
+                    id="balance-amount" 
+                    type="number" 
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder={`Current: ₹${selectedUser?.walletBalance || 0}`}
+                />
+            </div>
+        </div>
+        <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedUser(null)}>Cancel</Button>
+            <Button onClick={handleUpdateBalance}>Update Balance</Button>
+        </DialogFooter>
+      </DialogContent>
     </div>
   );
 }
+
+    
