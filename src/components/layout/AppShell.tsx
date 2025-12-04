@@ -24,6 +24,7 @@ import {
   Users,
   Settings,
   Star,
+  Shield,
 } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -46,6 +47,7 @@ const navItems = [
   { href: "/friends", icon: Users, label: "Friends" },
   { href: "/wallet", icon: Wallet, label: "Wallet" },
   { href: "/kyc", icon: ShieldCheck, label: "KYC Verification" },
+  { href: "/admin/dashboard", icon: Shield, label: "Admin Panel" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
