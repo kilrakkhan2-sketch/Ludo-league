@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useDoc } from "@/firebase";
 import { useFirestore } from "@/firebase/provider";
 import { doc, setDoc } from "firebase/firestore";
@@ -28,6 +27,9 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useEffect } from "react";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type AppSettings = {
   id: string;
@@ -35,7 +37,7 @@ type AppSettings = {
 }
 
 const formSchema = z.object({
-  upiId: z.string().min(1, 'UPI ID is required'),
+  upiId: z.string().min(3, 'UPI ID must be at least 3 characters long').regex(/@/, 'Please enter a valid UPI ID'),
 });
 
 export default function AdminSettingsPage() {
@@ -51,35 +53,36 @@ export default function AdminSettingsPage() {
   });
 
   useEffect(() => {
-    if (settings) {
-      form.reset({ upiId: settings.upiId || '' });
+    if (settings?.upiId) {
+      form.reset({ upiId: settings.upiId });
     }
   }, [settings, form]);
 
 
   const onSubmit = async (values: z.infer<typeof formSchema>>) => {
     if (!firestore) return;
-    try {
-      const settingsRef = doc(firestore, "settings", "payment");
-      await setDoc(settingsRef, values, { merge: true });
-      toast({
-        title: "Success",
-        description: `Settings updated successfully.`,
-      });
-    } catch (error) {
-      console.error("Error updating settings: ", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update settings.",
-      });
-    }
+    const settingsRef = doc(firestore, "settings", "payment");
+    setDoc(settingsRef, values, { merge: true })
+        .then(() => {
+            toast({
+                title: "Success",
+                description: `Settings updated successfully.`,
+            });
+        })
+        .catch((serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: settingsRef.path,
+                operation: 'update',
+                requestResourceData: values,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
   };
 
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold font-headline">Site Settings</h1>
-      <Card>
+      <Card className="max-w-2xl">
        <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardHeader>
@@ -89,7 +92,12 @@ export default function AdminSettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? <p>Loading settings...</p> : (
+            {loading ? (
+                <div className="space-y-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-10 w-full" />
+                </div>
+            ) : (
                <FormField
                 control={form.control}
                 name="upiId"
@@ -105,7 +113,7 @@ export default function AdminSettingsPage() {
               />
             )}
           </CardContent>
-          <CardFooter>
+          <CardFooter className="border-t pt-6">
             <Button type="submit" disabled={form.formState.isSubmitting || loading}>
                 {form.formState.isSubmitting ? "Saving..." : "Save Settings"}
             </Button>
@@ -116,4 +124,3 @@ export default function AdminSettingsPage() {
     </div>
   );
 }
-

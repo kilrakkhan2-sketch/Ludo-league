@@ -22,7 +22,6 @@ import {
   Swords,
   Shield,
   LogOut,
-  UserCircle,
   FileCheck,
   CreditCard,
   ShieldAlert,
@@ -52,7 +51,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const { user } = useUser();
   const { data: userProfile, loading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
 
-  const navItems = allNavItems.filter(item => userProfile && item.roles.includes(userProfile.role));
+  const navItems = userProfile ? allNavItems.filter(item => item.roles.includes(userProfile.role)) : [];
 
   return (
     <SidebarProvider>
