@@ -104,9 +104,9 @@ export default function DashboardPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="low">Low (1-50)</SelectItem>
-                  <SelectItem value="medium">Medium (51-200)</SelectItem>
-                  <SelectItem value="high">High (201+)</SelectItem>
+                  <SelectItem value="low">Low (₹1-50)</SelectItem>
+                  <SelectItem value="medium">Medium (₹51-200)</SelectItem>
+                  <SelectItem value="high">High (₹201+)</SelectItem>
                 </SelectContent>
               </Select>
               <Select>
@@ -132,7 +132,7 @@ export default function DashboardPage() {
                 <CardDescription>
                   Entry Fee:{" "}
                   <span className="font-bold text-primary">
-                    {match.entryFee} credits
+                    ₹{match.entryFee}
                   </span>
                 </CardDescription>
               </CardHeader>
@@ -169,7 +169,7 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between items-center bg-muted/50 py-3">
-                 <p className="text-lg font-bold">Prize: {match.prize} credits</p>
+                 <p className="text-lg font-bold">Prize: ₹{match.prize}</p>
                 <div className="flex gap-2">
                    <Button asChild variant="secondary" size="icon">
                     <Link href={`/match/${match.id}`}>

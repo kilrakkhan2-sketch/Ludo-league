@@ -47,11 +47,11 @@ export default function CreateTournamentPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="prize-pool">Total Prize Pool (credits)</Label>
+                <Label htmlFor="prize-pool">Total Prize Pool (₹)</Label>
                 <Input id="prize-pool" type="number" placeholder="e.g., 10000" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="entry-fee">Entry Fee (credits)</Label>
+                <Label htmlFor="entry-fee">Entry Fee (₹)</Label>
                 <Input id="entry-fee" type="number" placeholder="e.g., 100" />
               </div>
             </div>

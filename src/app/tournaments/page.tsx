@@ -86,14 +86,14 @@ export default function TournamentsPage() {
               <CardHeader>
                 <CardTitle>{tournament.name}</CardTitle>
                 <CardDescription>
-                  Entry Fee: {tournament.entryFee} credits
+                  Entry Fee: ₹{tournament.entryFee}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Award className="h-5 w-5 text-primary" />
                   <span className="font-semibold text-foreground">
-                    Prize Pool: {tournament.prizePool} credits
+                    Prize Pool: ₹{tournament.prizePool}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">

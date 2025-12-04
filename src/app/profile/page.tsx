@@ -36,10 +36,10 @@ const stats = [
 ];
 
 const matchHistory = [
-  { id: 1, mode: "Classic", result: "Win", prize: "+90", opponent: "DiceMaster", date: "2h ago" },
-  { id: 2, mode: "Quick", result: "Loss", prize: "-50", opponent: "Strategist", date: "5h ago" },
-  { id: 3, mode: "Master", result: "Win", prize: "+180", opponent: "LuckyStriker", date: "1d ago" },
-  { id: 4, mode: "Classic", result: "Win", prize: "+35", opponent: "RookieSlayer", date: "2d ago" },
+  { id: 1, mode: "Classic", result: "Win", prize: "+₹90", opponent: "DiceMaster", date: "2h ago" },
+  { id: 2, mode: "Quick", result: "Loss", prize: "-₹50", opponent: "Strategist", date: "5h ago" },
+  { id: 3, mode: "Master", result: "Win", prize: "+₹180", opponent: "LuckyStriker", date: "1d ago" },
+  { id: 4, mode: "Classic", result: "Win", prize: "+₹35", opponent: "RookieSlayer", date: "2d ago" },
 ];
 
 export default function ProfilePage() {

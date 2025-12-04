@@ -39,7 +39,7 @@ export default function CreateMatchPage() {
               <Input id="match-name" placeholder="e.g., Quick Game" />
             </div>
             <div className="space-y-2">
-              <Label>Entry Fee (credits)</Label>
+              <Label>Entry Fee (₹)</Label>
               <RadioGroup defaultValue="50" className="flex gap-4 pt-2">
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="10" id="fee-10" />

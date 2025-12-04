@@ -46,7 +46,7 @@ export default function MatchLobbyPage({ params }: { params: { matchId: string }
             <CardHeader>
               <CardTitle>{match.name}</CardTitle>
               <CardDescription>
-                Entry: <span className="font-bold text-primary">{match.entryFee} credits</span> | Prize: <span className="font-bold text-success">{match.prize} credits</span>
+                Entry: <span className="font-bold text-primary">₹{match.entryFee}</span> | Prize: <span className="font-bold text-success">₹{match.prize}</span>
               </CardDescription>
             </CardHeader>
             <CardContent>

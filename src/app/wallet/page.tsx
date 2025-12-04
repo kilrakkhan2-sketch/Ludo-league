@@ -88,14 +88,13 @@ export default function WalletPage() {
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
               <CardTitle>Current Balance</CardTitle>
-              <CardDescription>Available credits for playing</CardDescription>
+              <CardDescription>Available balance for playing</CardDescription>
             </div>
             <WalletIcon className="h-8 w-8 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <p className="text-5xl font-bold">
-              1,250{" "}
-              <span className="text-2xl text-muted-foreground">credits</span>
+              ₹1,250{" "}
             </p>
           </CardContent>
           <CardFooter className="flex flex-col sm:flex-row gap-4">
@@ -114,7 +113,7 @@ export default function WalletPage() {
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                    <div className="space-y-2">
-                      <Label htmlFor="amount">Amount</Label>
+                      <Label htmlFor="amount">Amount (₹)</Label>
                       <Input id="amount" type="number" placeholder="Min amount: 100" />
                    </div>
                    <div className="space-y-2 text-center bg-muted p-4 rounded-md">
@@ -158,7 +157,7 @@ export default function WalletPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Amount (credits)</TableHead>
+                  <TableHead className="text-right">Amount (₹)</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
