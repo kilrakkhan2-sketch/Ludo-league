@@ -101,7 +101,7 @@ export default function MyMatchesPage() {
   });
 
   const Skeletons = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <MatchCardSkeleton />
         <MatchCardSkeleton />
         <MatchCardSkeleton />
@@ -111,7 +111,7 @@ export default function MyMatchesPage() {
   return (
     <AppShell>
       <div className="flex flex-col gap-8">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold font-headline">My Matches</h1>
             <p className="text-muted-foreground">
@@ -122,7 +122,7 @@ export default function MyMatchesPage() {
 
         {loading && matches.length === 0 ? <Skeletons /> : matches.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {matches.map((match) => (
                 <MatchCard key={match.id} match={match} />
               ))}

@@ -34,12 +34,12 @@ const MatchPageSkeleton = () => (
         <div className="container mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
                  <Card>
-                    <CardHeader className="flex flex-col md:flex-row md:items-start md:justify-between">
+                    <CardHeader className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
                          <div>
                             <Skeleton className="h-8 w-64 mb-2" />
                             <Skeleton className="h-4 w-40" />
                         </div>
-                        <div className="mt-4 md:mt-0 flex items-center gap-4">
+                        <div className="mt-4 sm:mt-0 flex items-center gap-4">
                             <Skeleton className="h-6 w-16" />
                             <Skeleton className="h-8 w-24" />
                         </div>
@@ -53,7 +53,7 @@ const MatchPageSkeleton = () => (
                         </div>
                          <div>
                             <Skeleton className="h-6 w-48 mb-4" />
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                <Skeleton className="h-12 w-full" />
                                <Skeleton className="h-12 w-full" />
                             </div>
@@ -204,12 +204,12 @@ export default function MatchPage({ params }: { params: { id: string } }) {
         <div className="container mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
                 <Card>
-                    <CardHeader className="flex flex-col md:flex-row md:items-start md:justify-between">
+                    <CardHeader className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
                         <div>
                             <CardTitle className="text-3xl font-headline">{match.title}</CardTitle>
                             <CardDescription>Created by {creatorProfile?.displayName || '...'}</CardDescription>
                         </div>
-                        <div className="mt-4 md:mt-0 flex items-center gap-4">
+                        <div className="mt-4 sm:mt-0 flex items-center gap-4">
                            <Badge variant={match.status === 'open' ? 'secondary' : match.status === 'ongoing' ? 'default' : 'destructive'} className="capitalize">{match.status}</Badge>
                            <div className="flex items-center gap-1.5">
                                 <Trophy className="h-6 w-6 text-yellow-500" />
@@ -237,7 +237,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
 
                         <div>
                             <h3 className="font-bold mb-4">Players ({match.players.length}/{match.maxPlayers})</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                 {players.map(p => (
                                     <div key={p.id} className="flex items-center gap-3 p-2 border rounded-lg bg-background">
                                         <Avatar className="h-10 w-10">
