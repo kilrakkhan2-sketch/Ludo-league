@@ -56,10 +56,11 @@ service cloud.firestore {
       // --- User Transactions (Subcollection) ---
       match /transactions/{transactionId} {
         // Users can read their own transactions.
-        allow read: if isOwner(userId);
+        // Superadmins can read all transactions (covered by collection group rule).
+        allow read: if isOwner(userId) || isSuperAdmin();
         // Users can create their own transactions (e.g. entry fee, withdrawal request).
         // Admins also create transactions (e.g. deposit approval).
-        allow create: if isOwner(userId) || isDepositAdmin();
+        allow create: if isOwner(userId) || isDepositAdmin() || isSuperAdmin();
         // No updates or deletes to maintain a clear history.
         allow update, delete: if false;
       }
@@ -77,9 +78,9 @@ service cloud.firestore {
       // Any signed-in user can create a match if they exist in the users collection.
       allow create: if isSignedIn() && isExistingUser(request.auth.uid);
       // Only the match creator, a match admin, or superadmin can update a match.
-      allow update: if isSignedIn() && (resource.data.creatorId == request.auth.uid || isMatchAdmin());
+      allow update: if isSignedIn() && (resource.data.creatorId == request.auth.uid || isMatchAdmin() || isSuperAdmin());
       // Only match admins or superadmins can delete a match.
-      allow delete: if isMatchAdmin();
+      allow delete: if isMatchAdmin() || isSuperAdmin();
 
       // --- Match Chat Messages (Subcollection) ---
        match /messages/{messageId} {
