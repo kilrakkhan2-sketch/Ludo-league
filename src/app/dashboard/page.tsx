@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Users, Eye } from "lucide-react";
+import { Users, Eye, Trophy } from "lucide-react";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 
@@ -80,20 +80,13 @@ const fullMatches = [
 
 const MatchCard = ({ match }: { match: (typeof openMatches)[0] }) => (
   <Card className="flex flex-col hover:shadow-lg transition-shadow">
-    <CardHeader>
-      <CardTitle>{match.name}</CardTitle>
-      <CardDescription>
-        Entry Fee:{" "}
-        <span className="font-bold text-primary">₹{match.entryFee}</span>
-      </CardDescription>
-    </CardHeader>
-    <CardContent className="flex-grow">
-      <div className="flex justify-between items-center text-sm">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Users className="h-4 w-4" />
-          <span>
-            {match.players} / {match.maxPlayers} Players
-          </span>
+    <CardHeader className="p-4">
+       <div className="flex justify-between items-start">
+        <div>
+            <CardTitle className="text-lg">{match.name}</CardTitle>
+            <CardDescription>
+                Entry: <span className="font-bold text-primary">₹{match.entryFee}</span>
+            </CardDescription>
         </div>
         <Badge
           variant={
@@ -102,10 +95,12 @@ const MatchCard = ({ match }: { match: (typeof openMatches)[0] }) => (
         >
           {match.status}
         </Badge>
-      </div>
-      <div className="flex items-center mt-4 -space-x-2">
+       </div>
+    </CardHeader>
+    <CardContent className="p-4 pt-0 flex-grow">
+      <div className="flex items-center -space-x-2 mb-2">
         {Array.from({ length: match.players }).map((_, i) => (
-          <Avatar key={i} className="h-8 w-8 border-2 border-background">
+          <Avatar key={i} className="h-6 w-6 border-2 border-background">
             <AvatarImage
               src={`https://picsum.photos/seed/player${match.id}-${i}/40/40`}
             />
@@ -113,18 +108,19 @@ const MatchCard = ({ match }: { match: (typeof openMatches)[0] }) => (
           </Avatar>
         ))}
       </div>
+      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+          <Users className="h-4 w-4" />
+          <span>
+            {match.players} / {match.maxPlayers} Players
+          </span>
+        </div>
     </CardContent>
-    <CardFooter className="flex justify-between items-center bg-muted/50 py-3">
-      <p className="text-lg font-bold">Prize: ₹{match.prize}</p>
-      <div className="flex gap-2">
-        <Button asChild variant="secondary" size="icon">
-          <Link href={`/match/${match.id}`}>
-            <Eye className="h-4 w-4" />
-            <span className="sr-only">View Match</span>
-          </Link>
-        </Button>
-        <Button disabled={match.players === match.maxPlayers}>Join</Button>
+    <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-4">
+      <div className="flex items-center gap-1.5">
+        <Trophy className="h-5 w-5 text-yellow-500" />
+        <p className="text-lg font-bold">₹{match.prize}</p>
       </div>
+      <Button disabled={match.players === match.maxPlayers}>Join</Button>
     </CardFooter>
   </Card>
 );
@@ -152,7 +148,7 @@ export default function DashboardPage() {
                 <p className="text-muted-foreground">Your active games. You can have a maximum of 3 active matches.</p>
             </div>
             {myMatches.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     {myMatches.map((match) => (
                         <MatchCard key={match.id} match={match} />
                     ))}
@@ -173,7 +169,7 @@ export default function DashboardPage() {
                 <p className="text-muted-foreground">Available matches you can join right now.</p>
             </div>
              {openMatches.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     {openMatches.map((match) => (
                         <MatchCard key={match.id} match={match} />
                     ))}
@@ -194,7 +190,7 @@ export default function DashboardPage() {
                 <p className="text-muted-foreground">Matches that are already full or in progress.</p>
             </div>
             {fullMatches.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 opacity-70">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 opacity-70">
                     {fullMatches.map((match) => (
                     <MatchCard key={match.id} match={match} />
                     ))}
