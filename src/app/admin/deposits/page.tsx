@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, CheckCircle, XCircle } from 'lucide-react';
 import Image from 'next/image';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const getStatusVariant = (status: string) => {
   switch (status) {
@@ -27,7 +28,7 @@ const getStatusVariant = (status: string) => {
 };
 
 export default function AdminDepositsPage() {
-  const { firestore } = useFirebase();
+  const { firestore, functions } = useFirebase();
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState('pending');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,8 +38,8 @@ export default function AdminDepositsPage() {
     orderBy: ['createdAt', 'desc'],
   });
 
-  const userIds = useMemo(() => deposits.map(d => d.userId), [deposits]);
-  const { data: users, loading: usersLoading } = useCollection<UserProfile>('users', { where: ['uid', 'in', userIds] });
+  const userIds = useMemo(() => deposits.map(d => d.userId).filter(id => !!id), [deposits]);
+  const { data: users, loading: usersLoading } = useCollection<UserProfile>('users', { where: ['__name__', 'in', userIds.length > 0 ? userIds : ['_']] });
 
   const usersMap = useMemo(() => {
     const map = new Map<string, UserProfile>();
@@ -46,45 +47,39 @@ export default function AdminDepositsPage() {
     return map;
   }, [users]);
 
-  const handleUpdateStatus = async (deposit: DepositRequest, newStatus: 'approved' | 'rejected') => {
-    if (!firestore || !deposit.userId || !deposit.amount) return;
+ const handleApproveDeposit = async (deposit: DepositRequest) => {
+    if (!functions) return;
     setIsSubmitting(true);
     try {
-      const batch = writeBatch(firestore);
-      const depositRef = doc(firestore, 'deposit-requests', deposit.id);
-      
-      batch.update(depositRef, { status: newStatus, processedAt: Timestamp.now() });
-
-      if (newStatus === 'approved') {
-        const userRef = doc(firestore, 'users', deposit.userId);
-        const transactionRef = doc(firestore, `users/${deposit.userId}/transactions`, `deposit_${deposit.id}`);
-
-        // Note: A Cloud Function should be used for this logic to be secure and atomic.
-        // The function would trigger on the creation of the transaction document.
-        const userDoc = usersMap.get(deposit.userId);
-        const newBalance = (userDoc?.balance || 0) + deposit.amount;
-        batch.update(userRef, { balance: newBalance });
-
-        batch.set(transactionRef, {
-          amount: deposit.amount,
-          type: 'deposit',
-          description: 'Manual deposit approval by admin',
-          createdAt: Timestamp.now(),
-          status: 'completed'
-        });
-      }
-
-      await batch.commit();
-      toast({ title: 'Success', description: `Deposit has been ${newStatus}.` });
+      const approveDeposit = httpsCallable(functions, 'approveDeposit');
+      await approveDeposit({ depositId: deposit.id });
+      toast({ title: 'Success', description: 'Deposit has been approved.' });
       reloadDeposits();
     } catch (error) {
-      console.error('Error updating deposit status:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not update deposit status.' });
+      console.error('Error approving deposit:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not approve deposit.' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleRejectDeposit = async (deposit: DepositRequest) => {
+    if (!firestore) return;
+    setIsSubmitting(true);
+    try {
+      const depositRef = doc(firestore, 'deposit-requests', deposit.id);
+      const batch = writeBatch(firestore);
+      batch.update(depositRef, { status: 'rejected', processedAt: Timestamp.now() });
+      await batch.commit();
+      toast({ title: 'Success', description: 'Deposit has been rejected.' });
+      reloadDeposits();
+    } catch (error) {
+      console.error('Error rejecting deposit:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not reject deposit.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   return (
     <AdminShell>
       <div className="space-y-6">
@@ -142,8 +137,8 @@ export default function AdminDepositsPage() {
                                   </div>
                                   {deposit.status === 'pending' && (
                                       <DialogFooter className="pt-4">
-                                          <Button variant="destructive" onClick={() => handleUpdateStatus(deposit, 'rejected')} disabled={isSubmitting}><XCircle className="h-4 w-4 mr-2"/>Reject</Button>
-                                          <Button onClick={() => handleUpdateStatus(deposit, 'approved')} disabled={isSubmitting}><CheckCircle className="h-4 w-4 mr-2"/>Approve</Button>
+                                          <Button variant="destructive" onClick={() => handleRejectDeposit(deposit)} disabled={isSubmitting}><XCircle className="h-4 w-4 mr-2"/>Reject</Button>
+                                          <Button onClick={() => handleApproveDeposit(deposit)} disabled={isSubmitting}><CheckCircle className="h-4 w-4 mr-2"/>Approve</Button>
                                       </DialogFooter>
                                   )}
                               </DialogContent>
