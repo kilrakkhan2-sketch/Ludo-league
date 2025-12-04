@@ -179,7 +179,7 @@ export default function WalletPage() {
           <CardHeader>
             <CardTitle>Transaction History</CardTitle>
             <CardDescription>Your recent wallet activity.</CardDescription>
-          </Header>
+          </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
