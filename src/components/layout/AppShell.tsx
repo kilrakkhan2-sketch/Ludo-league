@@ -38,6 +38,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "../ui/input";
+import { useUser } from "@/firebase";
+import { getAuth, signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
+
 
 const navItems = [
   { href: "/dashboard", icon: LayoutGrid, label: "Dashboard" },
@@ -51,6 +56,29 @@ const navItems = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const { user, loading } = useUser();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    const auth = getAuth();
+    try {
+      await signOut(auth);
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+      });
+      router.push('/login');
+    } catch (error) {
+       toast({
+        variant: "destructive",
+        title: "Logout Failed",
+        description: "Could not log you out. Please try again.",
+      });
+    }
+  };
+
+
   return (
     <SidebarProvider>
       <Sidebar>
@@ -79,58 +107,70 @@ export function AppShell({ children }: { children: ReactNode }) {
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="justify-start w-full gap-2 p-2 h-auto"
-              >
-                <Avatar className="h-8 w-8">
-                  <AvatarImage
-                    src="https://picsum.photos/seed/user-avatar/100/100"
-                    data-ai-hint="person portrait"
-                  />
-                  <AvatarFallback>JD</AvatarFallback>
-                </Avatar>
-                <div className="text-left overflow-hidden group-data-[collapsible=icon]:hidden">
-                  <p className="font-medium truncate">John Doe</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    john.doe@email.com
-                  </p>
+          {loading ? (
+             <div className="flex items-center gap-2 p-2">
+                <div className="h-8 w-8 rounded-full bg-muted animate-pulse"></div>
+                <div className="flex-grow group-data-[collapsible=icon]:hidden space-y-1">
+                    <div className="h-4 w-24 bg-muted rounded-md animate-pulse"></div>
+                    <div className="h-3 w-32 bg-muted rounded-md animate-pulse"></div>
                 </div>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56 mb-2" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">John Doe</p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    john.doe@email.com
-                  </p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                 <Link href="/profile">
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                 <Link href="/settings">
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/login">
+            </div>
+          ) : user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="justify-start w-full gap-2 p-2 h-auto"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`}
+                      data-ai-hint="person portrait"
+                    />
+                    <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                  </Avatar>
+                  <div className="text-left overflow-hidden group-data-[collapsible=icon]:hidden">
+                    <p className="font-medium truncate">{user.displayName || 'User'}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {user.email}
+                    </p>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56 mb-2" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{user.displayName || 'User'}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                   <Link href="/profile">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                   <Link href="/settings">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+             <Button asChild className="w-full">
+                <Link href="/login">Login / Sign Up</Link>
+             </Button>
+          )}
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>

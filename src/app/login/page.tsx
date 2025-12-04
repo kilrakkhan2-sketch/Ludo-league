@@ -24,8 +24,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { useFirebase } from '@/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useAuth } from '@/firebase';
 
 const formSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -33,7 +33,7 @@ const formSchema = z.object({
 });
 
 export default function LoginPage() {
-  const { auth } = useFirebase();
+  const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -45,16 +45,7 @@ export default function LoginPage() {
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-     if (!auth) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Firebase not initialized. Please try again later.',
-      });
-      return;
-    }
-
+  const onSubmit = async (values: z.infer<typeof formSchema>>) => {
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
       toast({
@@ -65,7 +56,7 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error('Sign in error:', error);
       let errorMessage = 'Invalid email or password.';
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         errorMessage = 'Invalid email or password. Please check your credentials.';
       } else if(error.code === 'auth/too-many-requests') {
         errorMessage = 'Too many failed login attempts. Please try again later.';
@@ -131,8 +122,8 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full">
-                Sign In
+              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? "Signing In..." : "Sign In"}
               </Button>
             </form>
           </Form>
