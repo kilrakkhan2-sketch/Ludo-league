@@ -11,6 +11,7 @@ import {
   limit,
   orderBy,
   startAfter,
+  collectionGroup
 } from "firebase/firestore";
 import { useFirestore } from "../provider";
 
@@ -26,6 +27,7 @@ interface UseCollectionOptions {
   };
   limit?: number;
   startAfter?: any;
+  isCollectionGroup?: boolean;
 }
 
 
@@ -36,7 +38,14 @@ export function useCollection<T>(path: string, options?: UseCollectionOptions) {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    let q: Query<DocumentData> = collection(db, path);
+    // If a filter value is empty/null and we're not explicitly allowing it, don't run the query.
+    // This is to prevent queries from running before user data is loaded, for example.
+    if (options?.filter && !options.filter.value) {
+      setLoading(false);
+      return;
+    }
+
+    let q: Query<DocumentData> = options?.isCollectionGroup ? collectionGroup(db, path) : collection(db, path);
     
     if (options?.filter) {
         q = query(q, where(options.filter.field, options.filter.operator, options.filter.value));
@@ -50,7 +59,6 @@ export function useCollection<T>(path: string, options?: UseCollectionOptions) {
     if (options?.limit) {
         q = query(q, limit(options.limit));
     }
-
 
     const unsubscribe = onSnapshot(q, 
       (snapshot) => {

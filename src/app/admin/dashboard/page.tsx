@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { useCollection } from "@/firebase";
+import { useCollection } from "@/firebase/firestore/use-collection";
 import type { UserProfile, Match, DepositRequest, Transaction } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -62,7 +62,7 @@ export default function AdminDashboardPage() {
   const { data: users, loading: usersLoading } = useCollection<UserProfile>('users');
   const { data: activeMatches, loading: matchesLoading } = useCollection<Match>('matches', { filter: { field: 'status', operator: '==', value: 'ongoing' } });
   const { data: pendingDeposits, loading: depositsLoading } = useCollection<DepositRequest>('deposit-requests', { filter: { field: 'status', operator: '==', value: 'pending' } });
-  const { data: transactions, loading: transactionsLoading } = useCollection<Transaction>('transactions', { sort: { field: 'createdAt', direction: 'desc' }, limit: 5 });
+  const { data: transactions, loading: transactionsLoading } = useCollection<Transaction>('transactions', { sort: { field: 'createdAt', direction: 'desc' }, limit: 5, isCollectionGroup: true });
   const { data: pendingVerifications, loading: verificationsLoading } = useCollection<Match>('matches', { filter: { field: 'status', operator: '==', value: 'verification' } });
 
   const totalRevenue = transactions
@@ -148,9 +148,9 @@ export default function AdminDashboardPage() {
                                 </TableCell>
                                 <TableCell><Badge variant="outline">{tx.type}</Badge></TableCell>
                                  <TableCell>
-                                    {tx.createdAt ? format(new Date(tx.createdAt), 'dd MMM yyyy') : 'N/A'}
+                                    {tx.createdAt ? format(new Date(tx.createdAt.seconds * 1000), 'dd MMM yyyy') : 'N/A'}
                                 </TableCell>
-                                <TableCell className={`text-right ${tx.amount > 0 ? 'text-success' : 'text-destructive'}`}>
+                                <TableCell className={`text-right ${tx.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
                                     {tx.amount > 0 ? '+' : ''}₹{tx.amount.toLocaleString()}
                                 </TableCell>
                             </TableRow>
@@ -209,5 +209,3 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
-
-    
