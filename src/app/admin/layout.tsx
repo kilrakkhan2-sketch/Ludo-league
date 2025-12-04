@@ -13,6 +13,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
+  SidebarMenuSkeleton,
 } from "@/components/ui/sidebar";
 import {
   LayoutGrid,
@@ -70,9 +71,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <SidebarMenu>
             {loading ? (
                 <>
-                 <SidebarMenuItem><div className="h-8 w-full bg-muted rounded-md animate-pulse"></div></SidebarMenuItem>
-                 <SidebarMenuItem><div className="h-8 w-full bg-muted rounded-md animate-pulse"></div></SidebarMenuItem>
-                 <SidebarMenuItem><div className="h-8 w-full bg-muted rounded-md animate-pulse"></div></SidebarMenuItem>
+                 <SidebarMenuItem><SidebarMenuSkeleton showIcon /></SidebarMenuItem>
+                 <SidebarMenuItem><SidebarMenuSkeleton showIcon /></SidebarMenuItem>
+                 <SidebarMenuItem><SidebarMenuSkeleton showIcon /></SidebarMenuItem>
+                 <SidebarMenuItem><SidebarMenuSkeleton showIcon /></SidebarMenuItem>
                 </>
             ) : navItems.map((item) => (
               <SidebarMenuItem key={item.href}>
