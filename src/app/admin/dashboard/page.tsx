@@ -4,9 +4,10 @@
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useUser, useDoc, useCollectionCount } from "@/firebase";
-import type { UserProfile } from "@/types";
-import { DollarSign, Users, Package, CreditCard, Wallet } from "lucide-react";
+import { useUser, useDoc } from "@/firebase";
+import { useCollection } from "@/firebase/firestore/use-collection";
+import type { UserProfile, DepositRequest, WithdrawalRequest, Match } from "@/types";
+import { DollarSign, Users, Package, CreditCard, Wallet, Hourglass, CheckCircle } from "lucide-react";
 
 type StatCardProps = {
     title: string;
@@ -56,12 +57,13 @@ export default function AdminDashboardPage() {
     const { user, loading: userLoading } = useUser();
     const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
 
-    const { count: totalUsers, loading: usersLoading } = useCollectionCount("users");
-    const { count: totalMatches, loading: matchesLoading } = useCollectionCount("matches");
-    const { count: pendingDeposits, loading: depositsLoading } = useCollectionCount("deposit-requests");
-    const { count: pendingWithdrawals, loading: withdrawalsLoading } = useCollectionCount("withdrawal-requests");
+    const { data: allUsers, loading: usersLoading } = useCollection<UserProfile>("users", { isCollectionGroup: true });
+    const { data: allMatches, loading: matchesLoading } = useCollection<Match>("matches", { isCollectionGroup: true });
+    const { data: pendingDeposits, loading: depositsLoading } = useCollection<DepositRequest>("deposit-requests", { where: ['status', '==', 'pending'] });
+    const { data: pendingWithdrawals, loading: withdrawalsLoading } = useCollection<WithdrawalRequest>("withdrawal-requests", { where: ['status', '==', 'pending'] });
+    const { data: matchesForVerification, loading: verificationLoading } = useCollection<Match>("matches", { where: ['status', '==', 'verification'] });
     
-    const loading = userLoading || profileLoading || usersLoading || matchesLoading || depositsLoading || withdrawalsLoading;
+    const loading = userLoading || profileLoading || usersLoading || matchesLoading || depositsLoading || withdrawalsLoading || verificationLoading;
     const userRole = profile?.role;
     
     const isSuperAdmin = userRole === 'superadmin';
@@ -70,42 +72,57 @@ export default function AdminDashboardPage() {
 
     const statsData = [
         {
-            title: "Total Revenue",
+            title: "Your Admin Wallet",
             value: `₹${profile?.walletBalance?.toLocaleString() || 0}`,
-            change: "Admin wallet balance",
+            change: "Balance to fulfill withdrawals",
+            icon: DollarSign,
+            isVisible: isDepositAdmin && !isSuperAdmin
+        },
+        {
+            title: "Total Revenue (Superadmin)",
+            value: `₹${profile?.walletBalance?.toLocaleString() || 0}`,
+            change: "Superadmin wallet balance",
             icon: DollarSign,
             to: "/admin/deposits",
             isVisible: isSuperAdmin
         },
         {
             title: "Pending Deposits",
-            value: pendingDeposits.toString(),
-            change: "",
+            value: pendingDeposits.length.toString(),
+            change: "Require manual verification",
             icon: CreditCard,
             to: "/admin/deposits",
             isVisible: isSuperAdmin || isDepositAdmin
         },
         {
             title: "Pending Withdrawals",
-            value: pendingWithdrawals.toString(),
-            change: "",
+            value: pendingWithdrawals.length.toString(),
+            change: "Require manual payment",
             icon: Wallet,
             to: "/admin/withdrawals",
             isVisible: isSuperAdmin || isDepositAdmin
         },
         {
             title: "Total Users",
-            value: totalUsers.toString(),
-            change: "+0.0% from last month",
+            value: allUsers.length.toString(),
+            change: "All registered users",
             icon: Users,
             to: "/admin/users",
             isVisible: isSuperAdmin
         },
         {
-            title: "Total Matches",
-            value: totalMatches.toString(),
-            change: "+0.0% from last month",
+            title: "Total Matches Played",
+            value: allMatches.length.toString(),
+            change: "All matches on the platform",
             icon: Package,
+            to: "/admin/matches",
+            isVisible: isSuperAdmin || isMatchAdmin
+        },
+        {
+            title: "Matches for Verification",
+            value: matchesForVerification.length.toString(),
+            change: "Require winner declaration",
+            icon: Hourglass,
             to: "/admin/matches",
             isVisible: isSuperAdmin || isMatchAdmin
         },
@@ -114,7 +131,7 @@ export default function AdminDashboardPage() {
     return (
         <div className="space-y-4">
             <h1 className="text-2xl font-bold">Dashboard</h1>
-            <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {statsData.map((stat, index) => (
                     <StatCard
                         key={index}
