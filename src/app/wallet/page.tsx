@@ -1,3 +1,6 @@
+
+'use client'
+
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +40,13 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useDoc } from "@/firebase";
+import { useToast } from "@/hooks/use-toast";
+
+type AppSettings = {
+  id: string;
+  upiId?: string;
+}
 
 const transactions = [
   {
@@ -77,7 +87,21 @@ const transactions = [
 ];
 
 export default function WalletPage() {
-  const upiId = "ludoleague@exampleupi";
+  const { data: settings, loading: settingsLoading } = useDoc<AppSettings>('settings/payment');
+  const { toast } = useToast();
+  
+  const upiId = settings?.upiId || "loading...";
+
+  const handleCopy = () => {
+    if (upiId && upiId !== "loading...") {
+      navigator.clipboard.writeText(upiId);
+      toast({
+        title: "Copied!",
+        description: "UPI ID copied to clipboard.",
+      });
+    }
+  };
+
 
   return (
     <AppShell>
@@ -119,8 +143,12 @@ export default function WalletPage() {
                    <div className="space-y-2 text-center bg-muted p-4 rounded-md">
                       <Label>Pay using UPI</Label>
                       <div className="flex items-center justify-center gap-2">
-                        <p className="text-sm font-semibold text-primary">{upiId}</p>
-                        <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(upiId)}>
+                        {settingsLoading ? (
+                             <div className="h-5 w-48 bg-background rounded-md animate-pulse" />
+                        ): (
+                            <p className="text-sm font-semibold text-primary">{upiId}</p>
+                        )}
+                        <Button variant="ghost" size="icon" onClick={handleCopy} disabled={settingsLoading}>
                           <Copy className="h-4 w-4" />
                         </Button>
                       </div>
@@ -151,7 +179,7 @@ export default function WalletPage() {
           <CardHeader>
             <CardTitle>Transaction History</CardTitle>
             <CardDescription>Your recent wallet activity.</CardDescription>
-          </CardHeader>
+          </Header>
           <CardContent>
             <Table>
               <TableHeader>

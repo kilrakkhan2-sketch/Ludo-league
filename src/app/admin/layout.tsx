@@ -25,6 +25,7 @@ import {
   FileCheck,
   CreditCard,
   ShieldAlert,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ const allNavItems = [
   { href: "/admin/withdrawals", icon: CreditCard, label: "Withdrawals", roles: ['superadmin', 'deposit_admin'] },
   { href: "/admin/matches", icon: Swords, label: "Matches", roles: ['superadmin', 'match_admin'] },
   { href: "/admin/results", icon: FileCheck, label: "Results Verification", roles: ['superadmin', 'match_admin'] },
+  { href: "/admin/settings", icon: Settings, label: "Site Settings", roles: ['superadmin'] },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

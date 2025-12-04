@@ -90,6 +90,14 @@
             "createdAt": { "type": "string", "format": "date-time" }
         },
         "required": ["userId", "amount", "transactionId", "screenshotURL", "status", "createdAt"]
+    },
+    "AppSettings": {
+        "title": "App Settings",
+        "description": "Global settings for the application.",
+        "type": "object",
+        "properties": {
+            "upiId": { "type": "string", "description": "The UPI ID for deposits." }
+        }
     }
   },
   "auth": {
@@ -111,6 +119,10 @@
     "/deposit-requests/{depositId}": {
         "schema": { "$ref": "#/entities/DepositRequest" },
         "description": "Stores all deposit requests for admin verification."
+    },
+    "/settings/payment": {
+        "schema": { "$ref": "#/entities/AppSettings" },
+        "description": "Stores app-wide payment settings like UPI ID."
     }
   }
 }
