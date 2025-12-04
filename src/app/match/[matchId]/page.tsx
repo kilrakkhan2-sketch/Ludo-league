@@ -39,8 +39,8 @@ const messages = [
 export default function MatchLobbyPage({ params }: { params: { matchId: string } }) {
   return (
     <AppShell>
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
           {/* Match Info */}
           <Card>
             <CardHeader>
@@ -82,7 +82,7 @@ export default function MatchLobbyPage({ params }: { params: { matchId: string }
                             <AvatarFallback>{message.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                       )}
-                      <div className={`rounded-lg p-3 max-w-xs ${message.userId === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      <div className={`rounded-lg p-3 max-w-[75%] ${message.userId === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                         <p className="text-sm">{message.text}</p>
                         <p className="text-xs text-right opacity-70 mt-1">{message.timestamp}</p>
                       </div>

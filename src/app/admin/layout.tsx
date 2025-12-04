@@ -44,7 +44,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <div className="p-2 bg-primary rounded-lg">
                 <Shield className="text-primary-foreground" />
               </div>
-              <h1 className="text-xl font-bold font-headline text-primary">
+              <h1 className="text-xl font-bold font-headline text-primary group-data-[collapsible=icon]:hidden">
                 Admin Panel
               </h1>
             </Link>
@@ -52,7 +52,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <SidebarMenu>
             {navItems.map((item) => (
               <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton asChild tooltip={item.label}>
                   <Link href={item.href}>
                     <item.icon />
                     <span>{item.label}</span>
@@ -63,18 +63,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
-          <Button variant="ghost" className="w-full justify-start gap-2 p-2" asChild>
+          <Button variant="ghost" className="w-full justify-start gap-2 p-2" asChild tooltip="Exit Admin Panel">
             <Link href="/dashboard">
                 <LogOut className="rotate-180"/>
-                <span>Exit Admin Panel</span>
+                <span className="group-data-[collapsible=icon]:hidden">Exit Admin Panel</span>
             </Link>
           </Button>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="flex items-center justify-between p-4 bg-card border-b md:justify-start">
+        <header className="flex items-center justify-between p-4 bg-card border-b">
           <SidebarTrigger />
-          <h2 className="text-lg font-semibold ml-4">LudoLeague Admin</h2>
         </header>
         <main className="flex-1 p-4 lg:p-6 bg-muted/40">{children}</main>
       </SidebarInset>

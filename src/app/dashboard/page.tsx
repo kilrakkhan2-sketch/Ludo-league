@@ -96,7 +96,7 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <Input placeholder="Search by match name..." />
               <Select>
                 <SelectTrigger>
@@ -124,7 +124,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {matches.map((match) => (
             <Card key={match.id} className="flex flex-col hover:shadow-lg transition-shadow">
               <CardHeader>
@@ -174,6 +174,7 @@ export default function DashboardPage() {
                    <Button asChild variant="secondary" size="icon">
                     <Link href={`/match/${match.id}`}>
                       <Eye className="h-4 w-4" />
+                      <span className="sr-only">View Match</span>
                     </Link>
                   </Button>
                   <Button disabled={match.players === match.maxPlayers}>

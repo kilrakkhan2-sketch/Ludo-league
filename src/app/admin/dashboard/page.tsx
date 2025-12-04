@@ -91,7 +91,7 @@ export default function AdminDashboardPage() {
     <div className="space-y-6">
       <h1 className="text-3xl font-bold font-headline">Admin Dashboard</h1>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <Card key={stat.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -108,8 +108,8 @@ export default function AdminDashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-7">
+        <Card className="xl:col-span-4">
            <CardHeader className="flex flex-row items-center">
             <div className="grid gap-2">
               <CardTitle>Recent Transactions</CardTitle>
@@ -129,6 +129,7 @@ export default function AdminDashboardPage() {
                 <TableHeader>
                     <TableRow>
                         <TableHead>User</TableHead>
+                        <TableHead className="hidden sm:table-cell">Type</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -137,8 +138,9 @@ export default function AdminDashboardPage() {
                         <TableRow key={tx.email}>
                             <TableCell>
                                 <div className="font-medium">{tx.user}</div>
-                                <div className="text-sm text-muted-foreground">{tx.email}</div>
+                                <div className="hidden text-sm text-muted-foreground md:inline">{tx.email}</div>
                             </TableCell>
+                            <TableCell className="hidden sm:table-cell">{tx.type}</TableCell>
                             <TableCell className="text-right">{tx.amount}</TableCell>
                         </TableRow>
                     ))}
@@ -146,7 +148,7 @@ export default function AdminDashboardPage() {
             </Table>
           </CardContent>
         </Card>
-        <Card className="col-span-3">
+        <Card className="lg:col-span-1 xl:col-span-3">
           <CardHeader>
             <CardTitle>Pending Result Verifications</CardTitle>
             <CardDescription>

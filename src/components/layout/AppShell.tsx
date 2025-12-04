@@ -68,7 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <SidebarMenu>
             {navItems.map((item) => (
               <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton asChild tooltip={item.label}>
                   <Link href={item.href}>
                     <item.icon />
                     <span>{item.label}</span>
@@ -92,7 +92,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   />
                   <AvatarFallback>JD</AvatarFallback>
                 </Avatar>
-                <div className="text-left overflow-hidden">
+                <div className="text-left overflow-hidden group-data-[collapsible=icon]:hidden">
                   <p className="font-medium truncate">John Doe</p>
                   <p className="text-xs text-muted-foreground truncate">
                     john.doe@email.com
@@ -141,7 +141,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Input placeholder="Search..." className="pl-9" />
           </div>
         </header>
-        <main className="flex-1 p-4 lg:p-6">{children}</main>
+        <main className="flex-1 p-4 lg:p-6 bg-muted/40">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );
