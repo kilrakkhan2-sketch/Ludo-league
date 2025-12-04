@@ -6,13 +6,26 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   ArrowDownLeft,
   ArrowUpRight,
   Download,
   Upload,
   Wallet as WalletIcon,
+  Copy
 } from "lucide-react";
 import {
   Table,
@@ -64,6 +77,8 @@ const transactions = [
 ];
 
 export default function WalletPage() {
+  const upiId = "ludoleague@exampleupi";
+
   return (
     <AppShell>
       <div className="space-y-6">
@@ -82,15 +97,55 @@ export default function WalletPage() {
               1,250{" "}
               <span className="text-2xl text-muted-foreground">credits</span>
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 mt-6">
-              <Button className="flex-1">
-                <Upload className="mr-2 h-4 w-4" /> Deposit
-              </Button>
-              <Button variant="secondary" className="flex-1">
-                <Download className="mr-2 h-4 w-4" /> Withdraw
-              </Button>
-            </div>
           </CardContent>
+          <CardFooter className="flex flex-col sm:flex-row gap-4">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button className="flex-1">
+                  <Upload className="mr-2 h-4 w-4" /> Deposit
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Deposit Funds</DialogTitle>
+                  <DialogDescription>
+                    Complete the payment and submit the details for verification.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                   <div className="space-y-2">
+                      <Label htmlFor="amount">Amount</Label>
+                      <Input id="amount" type="number" placeholder="Min amount: 100" />
+                   </div>
+                   <div className="space-y-2 text-center bg-muted p-4 rounded-md">
+                      <Label>Pay using UPI</Label>
+                      <div className="flex items-center justify-center gap-2">
+                        <p className="text-sm font-semibold text-primary">{upiId}</p>
+                        <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(upiId)}>
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Scan QR or copy UPI ID</p>
+                   </div>
+                   <div className="space-y-2">
+                      <Label htmlFor="transactionId">Transaction ID / UPI Reference No.</Label>
+                      <Input id="transactionId" placeholder="Enter your transaction ID" />
+                   </div>
+                   <div className="space-y-2">
+                      <Label htmlFor="screenshot">Upload Screenshot</Label>
+                      <Input id="screenshot" type="file" />
+                   </div>
+                </div>
+                <DialogFooter>
+                  <Button type="submit" className="w-full">Submit Deposit Request</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Button variant="secondary" className="flex-1">
+              <Download className="mr-2 h-4 w-4" /> Withdraw
+            </Button>
+          </CardFooter>
         </Card>
 
         <Card>
@@ -103,7 +158,7 @@ export default function WalletPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Amount (credits)</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>

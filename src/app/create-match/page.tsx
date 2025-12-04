@@ -35,47 +35,64 @@ export default function CreateMatchPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="match-name">Match Name</Label>
-              <Input id="match-name" placeholder="e.g., Weekend Rumble" />
+              <Label htmlFor="match-name">Match Title</Label>
+              <Input id="match-name" placeholder="e.g., Quick Game" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="entry-fee">Entry Fee (credits)</Label>
-              <Input id="entry-fee" type="number" placeholder="e.g., 50" />
-            </div>
-            <div className="space-y-2">
-              <Label>Number of Players</Label>
-              <RadioGroup defaultValue="4" className="flex gap-4 pt-2">
+              <Label>Entry Fee (credits)</Label>
+              <RadioGroup defaultValue="50" className="flex gap-4 pt-2">
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="2" id="players-2" />
-                  <Label htmlFor="players-2" className="font-normal">2 Players</Label>
+                  <RadioGroupItem value="10" id="fee-10" />
+                  <Label htmlFor="fee-10" className="font-normal">10</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="4" id="players-4" />
-                  <Label htmlFor="players-4" className="font-normal">4 Players</Label>
+                  <RadioGroupItem value="50" id="fee-50" />
+                  <Label htmlFor="fee-50" className="font-normal">50</Label>
+                </div>
+                 <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="100" id="fee-100" />
+                  <Label htmlFor="fee-100" className="font-normal">100</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="custom" id="fee-custom" />
+                  <Label htmlFor="fee-custom" className="font-normal">Custom</Label>
                 </div>
               </RadioGroup>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="game-mode">Game Mode</Label>
-              <Select defaultValue="classic">
-                <SelectTrigger id="game-mode">
-                  <SelectValue placeholder="Select a game mode" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="classic">Classic</SelectItem>
-                  <SelectItem value="quick">Quick Mode</SelectItem>
-                  <SelectItem value="master">Master Mode</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>Max Players</Label>
+              <RadioGroup defaultValue="4" className="flex gap-4 pt-2">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="2" id="players-2" />
+                  <Label htmlFor="players-2" className="font-normal">2</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="3" id="players-3" />
+                  <Label htmlFor="players-3" className="font-normal">3</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="4" id="players-4" />
+                  <Label htmlFor="players-4" className="font-normal">4</Label>
+                </div>
+              </RadioGroup>
             </div>
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <Label htmlFor="private-match" className="flex flex-col gap-1">
-                <span>Private Match</span>
-                <span className="font-normal text-sm text-muted-foreground">
-                  Only players with a link can join.
-                </span>
-              </Label>
-              <Switch id="private-match" />
+             <div className="space-y-2">
+              <Label>Privacy</Label>
+              <RadioGroup defaultValue="public" className="flex gap-4 pt-2">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="public" id="privacy-public" />
+                  <Label htmlFor="privacy-public" className="font-normal">Public</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="private" id="privacy-private" />
+                  <Label htmlFor="privacy-private" className="font-normal">Private</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="room-code">Ludo King Room Code</Label>
+                <Input id="room-code" placeholder="Enter 6-character code from Ludo King" />
+                <p className="text-xs text-muted-foreground">You must create a room in the Ludo King app first.</p>
             </div>
             <Button type="submit" size="lg" className="w-full">
               Create Match

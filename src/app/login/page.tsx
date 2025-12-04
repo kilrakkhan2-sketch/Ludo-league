@@ -23,16 +23,16 @@ export default function LoginPage() {
           </Link>
           <CardTitle className="text-3xl font-headline">LudoLeague</CardTitle>
           <CardDescription>
-            Welcome back! Please sign in to continue.
+            Sign in to your account
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email or Phone</Label>
               <Input
                 id="email"
-                type="email"
+                type="text"
                 placeholder="m@example.com"
                 required
               />

@@ -29,8 +29,8 @@ export default function SignupPage() {
         <CardContent>
           <form className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input id="username" type="text" placeholder="JohnDoe" required />
+              <Label htmlFor="full-name">Full Name</Label>
+              <Input id="full-name" type="text" placeholder="John Doe" required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -42,11 +42,24 @@ export default function SignupPage() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="Your phone number"
+                required
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" required />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirm Password</Label>
+              <Input id="confirm-password" type="password" required />
+            </div>
             <Button type="submit" className="w-full" asChild>
-              <Link href="/dashboard">Sign Up</Link>
+              <Link href="/dashboard">Create Account</Link>
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
