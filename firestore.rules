@@ -1,85 +1,51 @@
 
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isUser(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function isAdmin() {
-        return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-
-    function isPlayer(matchId) {
-        return isSignedIn() && get(/databases/$(database)/documents/matches/$(matchId)).data.players.hasAny([request.auth.uid]);
-    }
-
     // Users Collection
     match /users/{userId} {
-      allow read, write: if isUser(userId) || isAdmin();
-      allow create: if isSignedIn();
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+      
+      // Admin can read all users
+      allow read: if getUserRole() == 'admin';
+      
+      match /private/{document=**} {
+        allow read, write: if request.auth.uid == userId;
+      }
     }
-
-    // Settings Collection
-    match /settings/{docId} {
-        allow read: if isSignedIn();
-        allow write: if isAdmin();
-    }
-
-    // Deposit Requests Collection
-    match /deposit-requests/{depositId} {
-        allow read, update: if isAdmin();
-        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-        allow list: if isAdmin();
-    }
-
-    // Transactions Collection (as a subcollection and collection group)
-    match /users/{userId}/transactions/{transactionId} {
-      allow read, create: if isUser(userId) || isAdmin();
-    }
-
-    match /{path=**}/transactions/{transactionId} {
-        allow read: if isAdmin();
-    }
-
+    
     // Matches Collection
     match /matches/{matchId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.creatorId == request.auth.uid;
-
-      allow update: if isSignedIn() && (
-        (request.resource.data.players.hasAny([request.auth.uid]) == false && 
-         resource.data.players.size() < resource.data.maxPlayers &&
-         resource.data.status == 'open' &&
-         request.resource.data.players.size() == resource.data.players.size() + 1
-        ) ||
-        (resource.data.creatorId == request.auth.uid && 
-         resource.data.status == 'open' &&
-         request.resource.data.status == 'ongoing' &&
-         resource.data.players.size() == resource.data.maxPlayers
-        ) || 
-        (isPlayer(matchId) &&
-         resource.data.status == 'ongoing' &&
-         request.resource.data.status == 'verification' &&
-         request.resource.data.results.size() > resource.data.results.size()
-        ) ||
-        (isAdmin() && 
-            (request.resource.data.status == 'completed' || 
-             request.resource.data.status == 'cancelled')
-        )
-      );
-
-      match /messages/{messageId} {
-        allow read: if isPlayer(matchId);
-        allow create: if isPlayer(matchId) && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && 
+        (resource.data.creatorId == request.auth.uid || 
+         getUserRole() == 'admin');
+      allow delete: if getUserRole() == 'admin';
+      
+      // Players can update their ready status
+      match /players/{playerId} {
+        allow update: if request.auth.uid == playerId;
       }
+    }
+    
+    // Transactions Collection
+    match /transactions/{transactionId} {
+      allow read: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || 
+         getUserRole() == 'admin');
+      allow create: if request.auth != null;
+      allow update: if getUserRole() == 'admin';
+    }
+    
+    // Admin Functions
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    function isAdmin() {
+      return getUserRole() == 'admin';
     }
   }
 }

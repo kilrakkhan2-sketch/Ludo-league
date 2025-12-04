@@ -99,7 +99,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     }
 
     return query(q, ...constraints);
-  }, [db, path, JSON.stringify(options)]);
+  }, [db, path, options?.isCollectionGroup, options?.limit, JSON.stringify(options?.orderBy), JSON.stringify(options?.where)]);
 
   const loadInitial = useCallback(async () => {
     if ((options?.where && (!options.where[2] && !Array.isArray(options.where[0]))) || !db) {
@@ -119,7 +119,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
       console.error(err);
       dispatch({ type: 'error', payload: err });
     }
-  }, [buildQuery, db, options?.limit, options?.where]);
+  }, [buildQuery, db, options?.limit, JSON.stringify(options?.where)]);
   
   useEffect(() => {
     loadInitial();
