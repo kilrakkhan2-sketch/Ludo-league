@@ -1,80 +1,107 @@
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper Functions
-    function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-    }
-    
+    // --- Helper Functions ---
     function isSuperAdmin() {
-      return getUserRole() == 'superadmin';
+      return getUserData(request.auth.uid).role == 'superadmin';
     }
 
     function isDepositAdmin() {
-        return getUserRole() == 'deposit_admin' || isSuperAdmin();
+      let role = getUserData(request.auth.uid).role;
+      return role == 'deposit_admin' || role == 'superadmin';
     }
     
     function isMatchAdmin() {
-        return getUserRole() == 'match_admin' || isSuperAdmin();
+      let role = getUserData(request.auth.uid).role;
+      return role == 'match_admin' || role == 'superadmin';
     }
 
-    // Users Collection
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+
+    // --- User Profiles ---
     match /users/{userId} {
-      allow read: if request.auth != null;
-      // Allow user to create their own doc.
-      allow create: if request.auth.uid == userId;
-      // Allow user to update their own profile, or superadmin to update anyone's profile (e.g. wallet balance for other admins)
-      allow update: if request.auth.uid == userId || isSuperAdmin();
-      // Only superadmin can delete users
+      // Allow any signed-in user to read profile data.
+      allow read: if isSignedIn();
+      
+      // Allow a user to create their own document, but not set a role or balance.
+      allow create: if isOwner(userId) 
+                    && request.resource.data.role == 'user'
+                    && request.resource.data.walletBalance == 0;
+      
+      // Allow a user to update their own data, but not their role or balance.
+      // Superadmin can update anything.
+      allow update: if (isOwner(userId) && !('role' in request.resource.data) && !('walletBalance' in request.resource.data))
+                    || isSuperAdmin();
+
+      // Only superadmin can delete users.
       allow delete: if isSuperAdmin();
 
+      // --- User Transactions (Subcollection) ---
       match /transactions/{transactionId} {
-        // User can only access their own transactions. Admins can see all via collection group query.
-        allow read, write: if request.auth.uid == userId;
+        // Users can read and create their own transactions.
+        // No updates or deletes to maintain a clear history.
+        allow read, create: if isOwner(userId);
+        allow update, delete: if false;
       }
     }
     
-    // Matches Collection
+    // --- Matches ---
     match /matches/{matchId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null && 
-        (resource.data.creatorId == request.auth.uid || isMatchAdmin());
+      // Any signed-in user can view matches.
+      allow read: if isSignedIn();
+      // Any signed-in user can create a match.
+      allow create: if isSignedIn();
+      // Only the match creator or a match admin/superadmin can update a match.
+      allow update: if isSignedIn() && (resource.data.creatorId == request.auth.uid || isMatchAdmin());
+      // Only match admins or superadmins can delete a match.
       allow delete: if isMatchAdmin();
 
+      // --- Match Chat Messages (Subcollection) ---
        match /messages/{messageId} {
-        allow read: if request.auth != null && request.auth.uid in resource.data.players;
-        allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+        // Only players in the match can read messages.
+        allow read: if isSignedIn() && request.auth.uid in resource.data.players;
+        // Only players in the match can create messages.
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       }
     }
     
-    // Deposit Requests Collection
+    // --- Deposit Requests ---
     match /deposit-requests/{depositId} {
-        allow read, create: if request.auth != null;
-        allow update: if isDepositAdmin(); // Only deposit admins or superadmins can approve/reject
+        // Users can create and read their own requests.
+        // Deposit/Super admins can read all requests.
+        allow read: if isSignedIn() && (isOwner(resource.data.userId) || isDepositAdmin());
+        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
+        // Only deposit admins or superadmins can approve/reject by updating.
+        allow update: if isDepositAdmin(); 
     }
 
-    // Withdrawal Requests Collection
+    // --- Withdrawal Requests ---
     match /withdrawal-requests/{withdrawalId} {
-        // Deposit Admins and SuperAdmins can read/update all requests.
+        // Deposit/Super admins can read/update all requests.
         allow read, update: if isDepositAdmin(); 
-        // Users can create their own requests
-        allow create: if request.auth != null; 
+        // Users can create their own requests.
+        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
     }
 
-    // All transactions collection group for admin panel
-    match /{path=**}/transactions/{transactionId} {
-      allow read: if isSuperAdmin();
-    }
-
-    // Settings Collection
-    match /settings/{settingId} {
-        allow read: if request.auth != null;
+    // --- Settings ---
+    match /settings/payment {
+        // Any signed-in user can read the payment settings (e.g., to see the UPI ID).
+        allow read: if isSignedIn();
+        // Only superadmins can write/change the payment settings.
         allow write: if isSuperAdmin();
     }
   }
 }
-
-    
