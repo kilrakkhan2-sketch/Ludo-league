@@ -21,14 +21,13 @@ import {
   Users,
   Wallet,
   Swords,
-  Activity,
   ArrowUpRight,
   DollarSign,
   CircleDashed,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { useCollection } from "@/firebase/firestore/use-collection";
+import { useCollection } from "@/firebase";
 import type { UserProfile, Match, DepositRequest, Transaction } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -60,21 +59,21 @@ const StatCard = ({ title, value, change, icon: Icon, loading }: { title: string
 
 export default function AdminDashboardPage() {
   const { data: users, loading: usersLoading } = useCollection<UserProfile>('users');
-  const { data: activeMatches, loading: matchesLoading } = useCollection<Match>('matches', { filter: { field: 'status', operator: '==', value: 'ongoing' } });
-  const { data: pendingDeposits, loading: depositsLoading } = useCollection<DepositRequest>('deposit-requests', { filter: { field: 'status', operator: '==', value: 'pending' } });
-  const { data: transactions, loading: transactionsLoading } = useCollection<Transaction>('transactions', { sort: { field: 'createdAt', direction: 'desc' }, limit: 5, isCollectionGroup: true });
-  const { data: pendingVerifications, loading: verificationsLoading } = useCollection<Match>('matches', { filter: { field: 'status', operator: '==', value: 'verification' } });
+  const { data: activeMatches, loading: matchesLoading } = useCollection<Match>('matches', { where: ['status', '==', 'ongoing'] });
+  const { data: pendingDeposits, loading: depositsLoading } = useCollection<DepositRequest>('deposit-requests', { where: ['status', '==', 'pending'] });
+  const { data: transactions, loading: transactionsLoading } = useCollection<Transaction>('transactions', { orderBy: ['createdAt', 'desc'], limit: 5, isCollectionGroup: true });
+  const { data: pendingVerifications, loading: verificationsLoading } = useCollection<Match>('matches', { where: ['status', '==', 'verification'] });
 
-  const totalRevenue = transactions
-    .filter(tx => tx.type === 'entry_fee')
-    .reduce((acc, tx) => acc + tx.amount, 0);
+  const { data: revenueData, loading: revenueLoading } = useCollection<Transaction>('transactions', { where: ['type', '==', 'entry_fee'], isCollectionGroup: true });
+
+  const totalRevenue = revenueData.reduce((acc, tx) => acc + tx.amount, 0);
 
   const stats = [
     {
       title: "Total Revenue",
-      value: `₹${(totalRevenue * -1).toLocaleString()}`, // entry fees are negative
+      value: `₹${totalRevenue.toLocaleString()}`,
       icon: DollarSign,
-      loading: transactionsLoading,
+      loading: revenueLoading,
     },
     {
       title: "Active Matches",
@@ -148,7 +147,7 @@ export default function AdminDashboardPage() {
                                 </TableCell>
                                 <TableCell><Badge variant="outline">{tx.type}</Badge></TableCell>
                                  <TableCell>
-                                    {tx.createdAt ? format(new Date(tx.createdAt.seconds * 1000), 'dd MMM yyyy') : 'N/A'}
+                                    {tx.createdAt?.seconds ? format(new Date(tx.createdAt.seconds * 1000), 'dd MMM yyyy') : 'N/A'}
                                 </TableCell>
                                 <TableCell className={`text-right ${tx.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
                                     {tx.amount > 0 ? '+' : ''}₹{tx.amount.toLocaleString()}

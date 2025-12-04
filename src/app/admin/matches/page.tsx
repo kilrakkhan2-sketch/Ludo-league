@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 const statusColors: { [key in Match['status']]: string } = {
@@ -43,17 +44,32 @@ const statusColors: { [key in Match['status']]: string } = {
 
 
 export default function AdminMatchesPage() {
-  const { data: matches, loading } = useCollection<Match>('matches', { sort: { field: 'createdAt', direction: 'desc' }});
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<Match['status'] | 'all'>('all');
+  
+  const queryOptions = {
+    orderBy: ['createdAt', 'desc'] as [string, "asc" | "desc"],
+    limit: 15,
+    where: statusFilter !== 'all' ? ['status', '==', statusFilter] as const : undefined,
+  };
+  
+  const { data: matches, loading, hasMore, loadMore } = useCollection<Match>('matches', queryOptions);
 
   const filteredMatches = matches
-    .filter(match => statusFilter === 'all' || match.status === statusFilter)
     .filter(match => 
         match.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         match.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         match.creatorId.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+  const TableSkeleton = () => (
+    <div className="space-y-2">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -87,7 +103,7 @@ export default function AdminMatchesPage() {
           </div>
         </CardHeader>
         <CardContent>
-           {loading ? <p>Loading matches...</p> : (
+           {loading && filteredMatches.length === 0 ? <TableSkeleton /> : (
              <Table>
                 <TableHeader>
                     <TableRow>
@@ -113,7 +129,7 @@ export default function AdminMatchesPage() {
                             </TableCell>
                             <TableCell>₹{match.entryFee}</TableCell>
                             <TableCell>{match.players.length} / {match.maxPlayers}</TableCell>
-                            <TableCell>{format(new Date(match.createdAt), 'dd MMM, yyyy')}</TableCell>
+                            <TableCell>{match.createdAt?.seconds ? format(new Date(match.createdAt.seconds * 1000), 'dd MMM, yyyy') : 'N/A'}</TableCell>
                             <TableCell>
                                 <Button asChild variant="outline" size="sm">
                                     <Link href={`/match/${match.id}`}>View</Link>
@@ -130,6 +146,13 @@ export default function AdminMatchesPage() {
                 </TableBody>
             </Table>
            )}
+          {hasMore && (
+            <div className="pt-4 flex justify-center">
+              <Button onClick={loadMore} disabled={loading}>
+                {loading ? 'Loading...' : 'Load More'}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

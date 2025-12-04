@@ -1,5 +1,4 @@
 
-
 export type UserProfile = {
   id: string;
   uid: string;
@@ -23,36 +22,37 @@ export type Match = {
   roomCode?: string;
   status: "open" | "ongoing" | "completed" | "cancelled" | "verification";
   players: string[];
-  createdAt: string; // ISO 8601 date string
+  createdAt: any; // Can be server timestamp
   resultScreenshotURL?: string;
   winnerId?: string;
+  prizePool?: number;
 };
 
 export type Transaction = {
   id: string;
   userId: string;
-  userName?: string;
-  userEmail?: string;
+  userName?: string; // Denormalized for easier display
+  userEmail?: string; // Denormalized for easier display
   type: "deposit" | "withdrawal" | "entry_fee" | "prize";
   amount: number;
   status: "pending" | "completed" | "failed";
-  createdAt: string; // ISO 8601 date string
+  createdAt: any; // Can be server timestamp
   relatedId?: string; // e.g., matchId or depositId
 };
 
 export type DepositRequest = {
   id: string;
   userId: string;
+  userName: string; // Denormalized for easier display
+  userEmail: string; // Denormalized for easier display
   amount: number;
   transactionId: string;
   screenshotURL: string;
   status: "pending" | "approved" | "rejected";
-  createdAt: string; // ISO 8601 date string
+  createdAt: any; // Can be server timestamp
 };
 
 export type AppSettings = {
   id: string;
   upiId?: string;
 };
-
-    

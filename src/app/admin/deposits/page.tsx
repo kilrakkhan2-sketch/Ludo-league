@@ -18,22 +18,22 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useCollection } from "@/firebase";
+import { useCollection, useUser } from "@/firebase";
 import { useFirestore } from "@/firebase/provider";
-import { doc, writeBatch } from "firebase/firestore";
-import type { DepositRequest } from "@/types";
+import { doc, writeBatch, serverTimestamp, getDoc, runTransaction } from "firebase/firestore";
+import type { DepositRequest, UserProfile } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import Link from "next/link";
 import { useState } from "react";
-import { Check, X } from "lucide-react";
+import { Check, X, Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminDepositsPage() {
-  const { data: pending, loading: pendingLoading } = useCollection<DepositRequest>('deposit-requests', { filter: { field: 'status', operator: '==', value: 'pending' }, sort: { field: 'createdAt', direction: 'asc' } });
-  const { data: approved, loading: approvedLoading } = useCollection<DepositRequest>('deposit-requests', { filter: { field: 'status', operator: '==', value: 'approved' }, sort: { field: 'createdAt', direction: 'desc' }, limit: 5 });
+  const { data: pending, loading: pendingLoading, hasMore: hasMorePending, loadMore: loadMorePending } = useCollection<DepositRequest>('deposit-requests', { where: ['status', '==', 'pending'], orderBy: ['createdAt', 'asc'], limit: 10 });
+  const { data: approved, loading: approvedLoading, hasMore: hasMoreApproved, loadMore: loadMoreApproved } = useCollection<DepositRequest>('deposit-requests', { where: ['status', '==', 'approved'], orderBy: ['createdAt', 'desc'], limit: 5 });
   const firestore = useFirestore();
   const { toast } = useToast();
   const [updating, setUpdating] = useState<Record<string, boolean>>({});
@@ -43,54 +43,49 @@ export default function AdminDepositsPage() {
 
     setUpdating(prev => ({...prev, [deposit.id]: true}));
     
-    const batch = writeBatch(firestore);
-
-    // 1. Update the deposit request status
-    const depositRef = doc(firestore, 'deposit-requests', deposit.id);
-    batch.update(depositRef, { status: newStatus });
-
-    // 2. If approved, update user balance and create a transaction
-    if (newStatus === 'approved') {
-      const userRef = doc(firestore, 'users', deposit.userId);
-      const transactionRef = doc(firestore, `users/${deposit.userId}/transactions`, `deposit_${deposit.id}`);
-
-      // We need to get the current user balance first to increment it.
-      // Firestore security rules prevent reading and writing to the same doc in a batch from client,
-      // so this needs to be done with a transaction or cloud function in a real high-security app.
-      // For this app, we will assume an admin function would handle this atomically.
-      // Since we can't get() in a batch, we'll use a Cloud Function for the atomic update in a real scenario.
-      // Here, we'll simulate by creating a transaction and letting a function handle the balance.
-      // For the sake of client-side only: THIS IS NOT ATOMIC AND UNSAFE IN PRODUCTION.
-      // A cloud function is the correct approach.
-      
-      // Let's just create the transaction and update the status.
-      // A backend function should listen to transaction creations of type 'deposit' and update balance.
-      
-      batch.set(transactionRef, {
-        userId: deposit.userId,
-        type: 'deposit',
-        amount: deposit.amount,
-        status: 'completed',
-        createdAt: new Date().toISOString(),
-        relatedId: deposit.id,
-      });
-
-      // A Cloud Function would then execute:
-      // const userDoc = await transaction.get(userRef);
-      // const newBalance = userDoc.data().walletBalance + deposit.amount;
-      // transaction.update(userRef, { walletBalance: newBalance });
-    }
-
     try {
-      await batch.commit();
+      if (newStatus === 'approved') {
+        // Use a transaction for atomic update
+        await runTransaction(firestore, async (transaction) => {
+          const userRef = doc(firestore, 'users', deposit.userId);
+          const depositRef = doc(firestore, 'deposit-requests', deposit.id);
+          const transactionRef = doc(firestore, `users/${deposit.userId}/transactions`, `deposit_${deposit.id}`);
+
+          const userDoc = await transaction.get(userRef);
+          if (!userDoc.exists()) {
+            throw "User not found!";
+          }
+
+          const newBalance = userDoc.data().walletBalance + deposit.amount;
+          
+          transaction.update(userRef, { walletBalance: newBalance });
+          transaction.update(depositRef, { status: newStatus });
+          transaction.set(transactionRef, {
+            userId: deposit.userId,
+            userName: userDoc.data().name,
+            userEmail: userDoc.data().email,
+            type: 'deposit',
+            amount: deposit.amount,
+            status: 'completed',
+            createdAt: serverTimestamp(),
+            relatedId: deposit.id,
+          });
+        });
+      } else { // For rejection, a simple batch write is fine
+        const batch = writeBatch(firestore);
+        const depositRef = doc(firestore, 'deposit-requests', deposit.id);
+        batch.update(depositRef, { status: newStatus });
+        await batch.commit();
+      }
+
       toast({
         title: "Success",
         description: `Deposit request has been ${newStatus}.`,
       });
-    } catch (serverError) {
+    } catch (serverError: any) {
         console.error(serverError);
         const permissionError = new FirestorePermissionError({
-          path: depositRef.path,
+          path: `/deposit-requests/${deposit.id}`,
           operation: 'update',
           requestResourceData: { status: newStatus },
         });
@@ -99,6 +94,14 @@ export default function AdminDepositsPage() {
         setUpdating(prev => ({...prev, [deposit.id]: false}));
     }
   };
+  
+  const TableSkeleton = () => (
+    <div className="space-y-2">
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+    </div>
+  )
 
   return (
     <div className="space-y-6">
@@ -107,16 +110,16 @@ export default function AdminDepositsPage() {
         <CardHeader>
           <CardTitle>Pending Deposits</CardTitle>
           <CardDescription>
-            Verify and approve or reject deposit requests. Approving a request will create a transaction record. The user's balance should be updated by a backend function for atomicity.
+            Verify and approve or reject deposit requests. Approving a request will automatically update the user's balance and create a transaction.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {pendingLoading ? <p>Loading pending requests...</p> : (
+          {pendingLoading && pending.length === 0 ? <TableSkeleton /> : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>User ID</TableHead>
+                  <TableHead>User</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Transaction ID</TableHead>
                   <TableHead>Screenshot</TableHead>
@@ -126,10 +129,13 @@ export default function AdminDepositsPage() {
               <TableBody>
                 {pending.length > 0 ? pending.map(req => (
                   <TableRow key={req.id}>
-                    <TableCell>{format(new Date(req.createdAt), 'dd MMM yyyy, HH:mm')}</TableCell>
-                    <TableCell className="font-mono text-xs">{req.userId}</TableCell>
+                    <TableCell>{req.createdAt?.seconds ? format(new Date(req.createdAt.seconds * 1000), 'dd MMM yyyy, HH:mm') : 'Just now'}</TableCell>
+                    <TableCell>
+                        <div>{req.userName}</div>
+                        <div className="text-xs text-muted-foreground font-mono">{req.userId}</div>
+                    </TableCell>
                     <TableCell className="font-semibold">₹{req.amount.toLocaleString()}</TableCell>
-                    <TableCell>{req.transactionId}</TableCell>
+                    <TableCell className="font-mono text-xs">{req.transactionId}</TableCell>
                     <TableCell>
                       <Button variant="link" asChild className="p-0 h-auto">
                         <Link href={req.screenshotURL} target="_blank" rel="noopener noreferrer">View</Link>
@@ -143,7 +149,7 @@ export default function AdminDepositsPage() {
                           onClick={() => handleUpdateRequest(req, 'approved')}
                           disabled={updating[req.id]}
                         >
-                          <Check className="h-4 w-4" />
+                          {updating[req.id] ? <Loader2 className="h-4 w-4 animate-spin"/> : <Check className="h-4 w-4" />}
                        </Button>
                         <Button 
                           variant="outline" 
@@ -152,7 +158,7 @@ export default function AdminDepositsPage() {
                           onClick={() => handleUpdateRequest(req, 'rejected')}
                           disabled={updating[req.id]}
                         >
-                          <X className="h-4 w-4" />
+                          {updating[req.id] ? <Loader2 className="h-4 w-4 animate-spin"/> : <X className="h-4 w-4" />}
                        </Button>
                     </TableCell>
                   </TableRow>
@@ -164,6 +170,13 @@ export default function AdminDepositsPage() {
               </TableBody>
             </Table>
           )}
+          {hasMorePending && (
+             <div className="pt-4 flex justify-center">
+                <Button onClick={loadMorePending} disabled={pendingLoading}>
+                    {pendingLoading ? 'Loading...' : 'Load More'}
+                </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
       
@@ -172,26 +185,36 @@ export default function AdminDepositsPage() {
           <CardTitle>Recent Approved Deposits</CardTitle>
         </CardHeader>
         <CardContent>
-           {approvedLoading ? <p>Loading history...</p> : (
+           {approvedLoading && approved.length === 0 ? <TableSkeleton /> : (
             <Table>
                 <TableHeader>
                     <TableRow>
                         <TableHead>Date</TableHead>
-                        <TableHead>User ID</TableHead>
+                        <TableHead>User</TableHead>
                         <TableHead>Amount</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {approved.map(req => (
                         <TableRow key={req.id}>
-                             <TableCell>{format(new Date(req.createdAt), 'dd MMM yyyy')}</TableCell>
-                             <TableCell className="font-mono text-xs">{req.userId}</TableCell>
+                             <TableCell>{req.createdAt?.seconds ? format(new Date(req.createdAt.seconds * 1000), 'dd MMM yyyy') : 'Just now'}</TableCell>
+                             <TableCell>
+                                <div>{req.userName}</div>
+                                <div className="text-xs text-muted-foreground">{req.userEmail}</div>
+                            </TableCell>
                              <TableCell>₹{req.amount.toLocaleString()}</TableCell>
                         </TableRow>
                     ))}
                 </TableBody>
             </Table>
            )}
+            {hasMoreApproved && (
+                <div className="pt-4 flex justify-center">
+                    <Button onClick={loadMoreApproved} disabled={approvedLoading}>
+                        {approvedLoading ? 'Loading...' : 'Load More'}
+                    </Button>
+                </div>
+            )}
         </CardContent>
       </Card>
     </div>

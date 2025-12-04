@@ -13,12 +13,30 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Users, Eye, Trophy, PlusCircle } from "lucide-react";
+import { Users, Trophy, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
-import { useCollection } from "@/firebase/firestore/use-collection";
-import { useUser } from "@/firebase";
+import { useCollection, useUser } from "@/firebase";
 import type { Match } from "@/types";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const MatchCardSkeleton = () => (
+    <Card>
+        <CardHeader className="p-4">
+            <Skeleton className="h-5 w-3/4 mb-2" />
+            <Skeleton className="h-4 w-1/2" />
+        </CardHeader>
+        <CardContent className="p-4 pt-0">
+            <Skeleton className="h-6 w-1/4 mb-2" />
+            <Skeleton className="h-5 w-1/2" />
+        </CardContent>
+        <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-4">
+            <Skeleton className="h-6 w-1/4" />
+            <Skeleton className="h-10 w-20" />
+        </CardFooter>
+    </Card>
+);
+
 
 const MatchCard = ({ match }: { match: Match }) => (
   <Card className="flex flex-col hover:shadow-lg transition-shadow">
@@ -49,6 +67,11 @@ const MatchCard = ({ match }: { match: Match }) => (
             <AvatarFallback>P{i + 1}</AvatarFallback>
           </Avatar>
         ))}
+         {Array.from({ length: Math.max(0, match.maxPlayers - match.players.length) }).map((_, i) => (
+            <Avatar key={`empty-${i}`} className="h-6 w-6 border-2 border-background bg-muted">
+                <AvatarFallback>?</AvatarFallback>
+            </Avatar>
+        ))}
       </div>
       <div className="flex items-center gap-2 text-muted-foreground text-sm">
         <Users className="h-4 w-4" />
@@ -60,10 +83,12 @@ const MatchCard = ({ match }: { match: Match }) => (
     <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-4">
       <div className="flex items-center gap-1.5">
         <Trophy className="h-5 w-5 text-yellow-500" />
-        <p className="text-lg font-bold">₹{match.prizePool}</p>
+        <p className="text-lg font-bold">₹{match.prizePool || match.entryFee * match.players.length * 0.9}</p>
       </div>
-      <Button disabled={match.players.length === match.maxPlayers || match.status !== 'open'}>
-        Join
+       <Button asChild disabled={match.players.length === match.maxPlayers || match.status !== 'open'}>
+         <Link href={`/match/${match.id}`}>
+            {match.status === 'open' ? 'Join' : 'View'}
+         </Link>
       </Button>
     </CardFooter>
   </Card>
@@ -72,16 +97,26 @@ const MatchCard = ({ match }: { match: Match }) => (
 export default function DashboardPage() {
   const { user } = useUser();
   const { data: myMatches, loading: myMatchesLoading } = useCollection<Match>('matches', {
-    filter: { field: 'players', operator: 'array-contains', value: user?.uid || '' },
+    where: user ? ['players', 'array-contains', user.uid] : undefined,
   });
-  const { data: openMatches, loading: openMatchesLoading } = useCollection<Match>('matches', {
-    filter: { field: 'status', operator: '==', value: 'open' },
+  const { data: openMatches, loading: openMatchesLoading, hasMore: hasMoreOpen, loadMore: loadMoreOpen } = useCollection<Match>('matches', {
+    where: ['status', '==', 'open'],
+    orderBy: ['createdAt', 'desc'],
     limit: 6
   });
-  const { data: fullMatches, loading: fullMatchesLoading } = useCollection<Match>('matches', {
-      filter: { field: 'status', operator: 'in', value: ['full', 'ongoing'] },
+  const { data: fullMatches, loading: fullMatchesLoading, hasMore: hasMoreFull, loadMore: loadMoreFull } = useCollection<Match>('matches', {
+      where: ['status', 'in', ['ongoing', 'completed', 'verification']],
+      orderBy: ['createdAt', 'desc'],
       limit: 3
   })
+
+  const Skeletons = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <MatchCardSkeleton />
+        <MatchCardSkeleton />
+        <MatchCardSkeleton />
+    </div>
+  )
 
 
   return (
@@ -110,7 +145,7 @@ export default function DashboardPage() {
               Your active games. You can have a maximum of 3 active matches.
             </p>
           </div>
-          {myMatchesLoading ? <p>Loading...</p> : myMatches.length > 0 ? (
+          {myMatchesLoading ? <Skeletons /> : myMatches.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {myMatches.map((match) => (
                 <MatchCard key={match.id} match={match} />
@@ -129,18 +164,30 @@ export default function DashboardPage() {
 
         {/* Open Matches Section */}
         <div className="space-y-4">
-          <div>
-            <h2 className="text-2xl font-bold font-headline">Open Matches</h2>
-            <p className="text-muted-foreground">
-              Available matches you can join right now.
-            </p>
-          </div>
-          {openMatchesLoading ? <p>Loading...</p> : openMatches.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {openMatches.map((match) => (
-                <MatchCard key={match.id} match={match} />
-              ))}
+          <div className="flex justify-between items-center">
+            <div>
+                <h2 className="text-2xl font-bold font-headline">Open Matches</h2>
+                <p className="text-muted-foreground">
+                Available matches you can join right now.
+                </p>
             </div>
+             <Button variant="link" asChild><Link href="/matches/open">View All</Link></Button>
+          </div>
+          {openMatchesLoading && openMatches.length === 0 ? <Skeletons /> : openMatches.length > 0 ? (
+            <>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {openMatches.map((match) => (
+                    <MatchCard key={match.id} match={match} />
+                ))}
+                </div>
+                {hasMoreOpen && (
+                    <div className="flex justify-center">
+                        <Button onClick={loadMoreOpen} disabled={openMatchesLoading}>
+                            {openMatchesLoading ? "Loading..." : "Load More"}
+                        </Button>
+                    </div>
+                )}
+            </>
           ) : (
             <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg">
               <p className="text-muted-foreground">
@@ -155,20 +202,29 @@ export default function DashboardPage() {
         {/* Full Matches Section */}
         <div className="space-y-4">
           <div>
-            <h2 className="text-2xl font-bold font-headline">Full & Ongoing Matches</h2>
+            <h2 className="text-2xl font-bold font-headline">Ongoing & Recent Matches</h2>
             <p className="text-muted-foreground">
-              Matches that are already full or in progress.
+              Matches that are already in progress or just finished.
             </p>
           </div>
-          {fullMatchesLoading ? <p>Loading...</p> : fullMatches.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 opacity-70">
-              {fullMatches.map((match) => (
-                <MatchCard key={match.id} match={match} />
-              ))}
-            </div>
+          {fullMatchesLoading && fullMatches.length === 0 ? <Skeletons /> : fullMatches.length > 0 ? (
+            <>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 opacity-80">
+                {fullMatches.map((match) => (
+                    <MatchCard key={match.id} match={match} />
+                ))}
+                </div>
+                {hasMoreFull && (
+                     <div className="flex justify-center">
+                        <Button onClick={loadMoreFull} disabled={fullMatchesLoading} variant="secondary">
+                            {fullMatchesLoading ? "Loading..." : "Load More"}
+                        </Button>
+                    </div>
+                )}
+            </>
           ) : (
             <p className="text-muted-foreground text-center py-8">
-              No full matches right now.
+              No ongoing or recent matches right now.
             </p>
           )}
         </div>
