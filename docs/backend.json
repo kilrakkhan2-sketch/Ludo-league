@@ -113,6 +113,21 @@
         "properties": {
             "upiId": { "type": "string", "description": "The UPI ID for deposits." }
         }
+    },
+    "KycRequest": {
+      "title": "KYC Request",
+      "description": "A user's request for KYC verification.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "documentType": { "type": "string" },
+        "documentNumber": { "type": "string" },
+        "documentUrl": { "type": "string", "format": "uri" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "fullName", "documentType", "documentNumber", "documentUrl", "status", "createdAt"]
     }
   },
   "auth": {
@@ -142,6 +157,10 @@
     "/settings/payment": {
         "schema": { "$ref": "#/entities/AppSettings" },
         "description": "Stores app-wide payment settings like UPI ID."
+    },
+    "/kyc-requests/{kycId}": {
+      "schema": { "$ref": "#/entities/KycRequest" },
+      "description": "Stores all KYC requests for admin verification."
     }
   }
 }

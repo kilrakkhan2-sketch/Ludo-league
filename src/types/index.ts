@@ -91,3 +91,16 @@ export type Message = {
     text: string;
     createdAt: any;
 }
+
+export type KycRequest = {
+  id: string;
+  userId: string;
+  fullName: string;
+  documentType: string;
+  documentNumber: string;
+  documentUrl: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: any;
+  processedAt?: any;
+  processedBy?: string;
+}
