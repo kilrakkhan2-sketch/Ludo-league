@@ -44,8 +44,8 @@ export default function AdminUsersPage() {
   return (
     <AdminShell>
         <div>
-            <h1 class="text-3xl font-bold font-headline">All Users</h1>
-            <p class="text-muted-foreground">A complete list of all registered users on the platform.</p>
+            <h1 className="text-3xl font-bold font-headline">All Users</h1>
+            <p className="text-muted-foreground">A complete list of all registered users on the platform.</p>
         </div>
       <Table>
         <TableHeader>
@@ -81,14 +81,14 @@ export default function AdminUsersPage() {
                 {user.createdAt?.seconds ? format(new Date(user.createdAt.seconds * 1000), 'dd MMM yyyy') : 'N/A'}
               </TableCell>
               <TableCell className="text-right font-semibold">
-                ₹{user.balance?.toLocaleString() || 0}
+                ₹{user.walletBalance?.toLocaleString() || 0}
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
       {hasMore && (
-        <div className="flex justify-center">
+        <div className="flex justify-center mt-4">
             <Button onClick={loadMore} disabled={loading}>
                 {loading ? "Loading..." : "Load More"}
             </Button>

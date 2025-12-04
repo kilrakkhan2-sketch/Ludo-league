@@ -36,8 +36,8 @@ export default function AdminTransactionsPage() {
   return (
     <AdminShell>
         <div>
-            <h1 class="text-3xl font-bold font-headline">All Transactions</h1>
-            <p class="text-muted-foreground">A complete history of all transactions on the platform.</p>
+            <h1 className="text-3xl font-bold font-headline">All Transactions</h1>
+            <p className="text-muted-foreground">A complete history of all transactions on the platform.</p>
         </div>
       <Table>
         <TableHeader>
@@ -75,7 +75,7 @@ export default function AdminTransactionsPage() {
         </TableBody>
       </Table>
       {hasMore && (
-        <div className="flex justify-center">
+        <div className="flex justify-center mt-4">
             <Button onClick={loadMore} disabled={loading}>
                 {loading ? "Loading..." : "Load More"}
             </Button>
