@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Filter, Users } from "lucide-react";
+import { Filter, Users, Eye } from "lucide-react";
 import Link from "next/link";
 
 const matches = [
@@ -169,10 +169,17 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between items-center bg-muted/50 py-3">
-                <p className="text-lg font-bold">Prize: {match.prize} credits</p>
-                <Button disabled={match.players === match.maxPlayers}>
-                  Join
-                </Button>
+                 <p className="text-lg font-bold">Prize: {match.prize} credits</p>
+                <div className="flex gap-2">
+                   <Button asChild variant="secondary" size="icon">
+                    <Link href={`/match/${match.id}`}>
+                      <Eye className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button disabled={match.players === match.maxPlayers}>
+                    Join
+                  </Button>
+                </div>
               </CardFooter>
             </Card>
           ))}
