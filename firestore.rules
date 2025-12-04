@@ -30,19 +30,23 @@ service cloud.firestore {
     function getUserData(userId) {
       return get(/databases/$(database)/documents/users/$(userId)).data;
     }
+    
+    function isExistingUser(userId) {
+        return exists(/databases/$(database)/documents/users/$(userId));
+    }
 
     // --- User Profiles ---
     match /users/{userId} {
-      // Allow any signed-in user to read profile data.
+      // Allow any signed-in user to read public profile data.
       allow read: if isSignedIn();
       
-      // Allow a user to create their own document, but not set a role or balance.
+      // Allow a user to create their own document on signup, but not set a role or balance.
       allow create: if isOwner(userId) 
                     && request.resource.data.role == 'user'
                     && request.resource.data.walletBalance == 0;
       
       // Allow a user to update their own data, but not their role or balance.
-      // Superadmin can update anything.
+      // Superadmin can update anything for any user.
       allow update: if (isOwner(userId) && !('role' in request.resource.data) && !('walletBalance' in request.resource.data))
                     || isSuperAdmin();
 
@@ -51,49 +55,59 @@ service cloud.firestore {
 
       // --- User Transactions (Subcollection) ---
       match /transactions/{transactionId} {
-        // Users can read and create their own transactions.
+        // Users can read their own transactions.
+        allow read: if isOwner(userId);
+        // Users can create their own transactions (e.g. entry fee, withdrawal request).
+        // Admins also create transactions (e.g. deposit approval).
+        allow create: if isOwner(userId) || isDepositAdmin();
         // No updates or deletes to maintain a clear history.
-        allow read, create: if isOwner(userId);
         allow update, delete: if false;
       }
+    }
+    
+    // Allow superadmin to read all transactions via collection group query
+    match /{path=**}/transactions/{transactionId} {
+        allow read: if isSuperAdmin();
     }
     
     // --- Matches ---
     match /matches/{matchId} {
       // Any signed-in user can view matches.
       allow read: if isSignedIn();
-      // Any signed-in user can create a match.
-      allow create: if isSignedIn();
-      // Only the match creator or a match admin/superadmin can update a match.
+      // Any signed-in user can create a match if they exist in the users collection.
+      allow create: if isSignedIn() && isExistingUser(request.auth.uid);
+      // Only the match creator, a match admin, or superadmin can update a match.
       allow update: if isSignedIn() && (resource.data.creatorId == request.auth.uid || isMatchAdmin());
       // Only match admins or superadmins can delete a match.
       allow delete: if isMatchAdmin();
 
       // --- Match Chat Messages (Subcollection) ---
        match /messages/{messageId} {
-        // Only players in the match can read messages.
-        allow read: if isSignedIn() && request.auth.uid in resource.data.players;
-        // Only players in the match can create messages.
-        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        // Only players in the match can read/write messages.
+        allow read, write: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
       }
     }
     
     // --- Deposit Requests ---
     match /deposit-requests/{depositId} {
-        // Users can create and read their own requests.
+        // Users can read their own requests.
         // Deposit/Super admins can read all requests.
         allow read: if isSignedIn() && (isOwner(resource.data.userId) || isDepositAdmin());
+        // A user can create their own deposit request.
         allow create: if isSignedIn() && isOwner(request.resource.data.userId);
         // Only deposit admins or superadmins can approve/reject by updating.
         allow update: if isDepositAdmin(); 
+        allow delete: if isSuperAdmin();
     }
 
     // --- Withdrawal Requests ---
     match /withdrawal-requests/{withdrawalId} {
-        // Deposit/Super admins can read/update all requests.
-        allow read, update: if isDepositAdmin(); 
-        // Users can create their own requests.
+        // Users can create their own requests and read them.
         allow create: if isSignedIn() && isOwner(request.resource.data.userId);
+        allow read: if isSignedIn() && (isOwner(resource.data.userId) || isDepositAdmin());
+        // Deposit/Super admins can read/update all requests.
+        allow update: if isDepositAdmin();
+        allow delete: if isSuperAdmin();
     }
 
     // --- Settings ---
