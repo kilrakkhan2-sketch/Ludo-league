@@ -1,0 +1,111 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's public and private profile data.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The user's unique ID from Firebase Auth."
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The user's phone number."
+        },
+        "username": {
+            "type": "string",
+            "description": "The user's unique username."
+        },
+        "photoURL": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the user's profile picture."
+        },
+        "walletBalance": {
+            "type": "number",
+            "description": "The user's current wallet balance."
+        },
+        "isVerified": {
+            "type": "boolean",
+            "description": "KYC verification status."
+        }
+      },
+      "required": ["uid", "name", "email"]
+    },
+    "Match": {
+        "title": "Match",
+        "description": "Represents a Ludo match created by a user.",
+        "type": "object",
+        "properties": {
+            "creatorId": { "type": "string" },
+            "title": { "type": "string" },
+            "entryFee": { "type": "number" },
+            "maxPlayers": { "type": "number" },
+            "privacy": { "type": "string", "enum": ["public", "private"] },
+            "roomCode": { "type": "string" },
+            "status": { "type": "string", "enum": ["open", "ongoing", "completed", "cancelled", "verification"] },
+            "players": { "type": "array", "items": { "type": "string" } },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["creatorId", "title", "entryFee", "maxPlayers", "privacy", "status", "players", "createdAt"]
+    },
+    "Transaction": {
+        "title": "Transaction",
+        "description": "Represents a wallet transaction.",
+        "type": "object",
+        "properties": {
+            "userId": { "type": "string" },
+            "type": { "type": "string", "enum": ["deposit", "withdrawal", "entry_fee", "prize"] },
+            "amount": { "type": "number" },
+            "status": { "type": "string", "enum": ["pending", "completed", "failed"] },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["userId", "type", "amount", "status", "createdAt"]
+    },
+    "DepositRequest": {
+        "title": "Deposit Request",
+        "description": "A user's request to deposit funds.",
+        "type": "object",
+        "properties": {
+            "userId": { "type": "string" },
+            "amount": { "type": "number" },
+            "transactionId": { "type": "string" },
+            "screenshotURL": { "type": "string", "format": "uri" },
+            "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["userId", "amount", "transactionId", "screenshotURL", "status", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": ["email", "phone"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+        "schema": { "$ref": "#/entities/UserProfile" },
+        "description": "Stores user profile information."
+    },
+    "/matches/{matchId}": {
+        "schema": { "$ref": "#/entities/Match" },
+        "description": "Stores all created matches."
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+        "schema": { "$ref": "#/entities/Transaction" },
+        "description": "Stores a user's wallet transactions."
+    },
+    "/deposit-requests/{depositId}": {
+        "schema": { "$ref": "#/entities/DepositRequest" },
+        "description": "Stores all deposit requests for admin verification."
+    }
+  }
+}
