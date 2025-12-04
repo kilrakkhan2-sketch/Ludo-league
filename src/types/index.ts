@@ -1,4 +1,5 @@
 
+
 export type UserProfile = {
   id: string;
   uid: string;
@@ -23,6 +24,8 @@ export type Match = {
   status: "open" | "ongoing" | "completed" | "cancelled" | "verification";
   players: string[];
   createdAt: string; // ISO 8601 date string
+  resultScreenshotURL?: string;
+  winnerId?: string;
 };
 
 export type Transaction = {
@@ -34,6 +37,7 @@ export type Transaction = {
   amount: number;
   status: "pending" | "completed" | "failed";
   createdAt: string; // ISO 8601 date string
+  relatedId?: string; // e.g., matchId or depositId
 };
 
 export type DepositRequest = {
