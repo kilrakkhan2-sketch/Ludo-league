@@ -72,6 +72,9 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
   const [state, dispatch] = useReducer(stateReducer, createInitialState<T>());
 
   const buildQuery = useCallback((startAfterDoc: QueryDocumentSnapshot<DocumentData> | null = null) => {
+    if (!path || !db) {
+        return null;
+    }
     let q: Query<DocumentData> = options?.isCollectionGroup ? collectionGroup(db, path) : collection(db, path);
     const constraints: QueryConstraint[] = [];
 
@@ -102,14 +105,14 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
   }, [db, path, options?.isCollectionGroup, options?.limit, JSON.stringify(options?.orderBy), JSON.stringify(options?.where)]);
 
   const loadInitial = useCallback(async () => {
-    if ((options?.where && (!options.where[2] && !Array.isArray(options.where[0]))) || !db) {
+    const q = buildQuery();
+    if (!q || (options?.where && (!options.where[2] && !Array.isArray(options.where[0])))) {
        dispatch({ type: 'data', payload: [], lastDoc: null, hasMore: false });
        return;
     }
     dispatch({ type: 'loading' });
 
     try {
-      const q = buildQuery();
       const snapshot = await getDocs(q);
       const result: T[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
       const lastVisible = snapshot.docs[snapshot.docs.length - 1];
@@ -119,7 +122,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
       console.error(err);
       dispatch({ type: 'error', payload: err });
     }
-  }, [buildQuery, db, options?.limit, JSON.stringify(options?.where)]);
+  }, [buildQuery, options?.limit, JSON.stringify(options?.where)]);
   
   useEffect(() => {
     loadInitial();
@@ -133,6 +136,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
 
     try {
         const q = buildQuery(state.lastDoc);
+        if (!q) return;
         const snapshot = await getDocs(q);
         const result: T[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
         const lastVisible = snapshot.docs[snapshot.docs.length - 1];

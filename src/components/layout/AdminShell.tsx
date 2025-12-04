@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -47,7 +47,6 @@ import { useToast } from "@/hooks/use-toast";
 import type { UserProfile } from "@/types";
 import { Skeleton } from "../ui/skeleton";
 
-
 const allNavItems = [
   { href: "/admin/dashboard", icon: LayoutGrid, label: "Dashboard", roles: ['superadmin', 'deposit_admin', 'match_admin'] },
   { href: "/admin/users", icon: Users, label: "Users", roles: ['superadmin'] },
@@ -60,10 +59,23 @@ const allNavItems = [
 ];
 
 export function AdminShell({ children }: { children: ReactNode }) {
-  const { user, loading: userLoading } = useUser();
+  const { user, loading: userLoading, claims } = useUser();
   const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
   const router = useRouter();
   const { toast } = useToast();
+
+  const isAdmin = claims?.role && ['superadmin', 'deposit_admin', 'match_admin'].includes(claims.role);
+
+  useEffect(() => {
+    if (!userLoading && !isAdmin) {
+      router.push('/login');
+      toast({
+        variant: 'destructive',
+        title: 'Unauthorized',
+        description: 'You do not have permission to access this page.',
+      });
+    }
+  }, [userLoading, isAdmin, router, toast]);
 
   const handleLogout = async () => {
     const auth = getAuth();
@@ -84,24 +96,20 @@ export function AdminShell({ children }: { children: ReactNode }) {
   };
 
   const loading = userLoading || profileLoading;
-  const userRole = profile?.role;
+  const userRole = claims?.role;
 
   const navItems = allNavItems.filter(item => {
       if (!userRole) return false;
-      if (item.roles.includes(userRole)) {
-          // Superadmin sees all their designated items
-          if (userRole === 'superadmin') return true;
-          // Deposit admin only sees dashboard, deposits, and withdrawals
-          if (userRole === 'deposit_admin') {
-              return item.label === 'Dashboard' || item.label === 'Deposits' || item.label === 'Withdrawals';
-          }
-          // Match admin only sees dashboard, matches, and results
-          if (userRole === 'match_admin') {
-              return item.label === 'Dashboard' || item.label === 'Matches' || item.label === 'Results';
-          }
-      }
-      return false;
+      return item.roles.includes(userRole);
   });
+
+  if (userLoading || !isAdmin) {
+    return (
+        <div className="flex h-screen items-center justify-center">
+            <p>Loading...</p>
+        </div>
+    );
+  }
 
   return (
     <SidebarProvider>

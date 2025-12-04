@@ -71,7 +71,7 @@ export default function KycPage() {
         await uploadBytes(docRef, docFile);
         const documentUrl = await getDownloadURL(docRef);
 
-        await addDoc(collection(firestore, 'kyc-requests'), {
+        await addDoc(collection(firestore, 'kyc'), {
             userId: user.uid,
             fullName,
             documentType: docType,
@@ -124,7 +124,7 @@ export default function KycPage() {
             <AlertDescription className="text-success/80">
               Your identity has been successfully verified. You now have access
               to all features, including higher withdrawal limits.
-            </AlertDescription>
+            </Aler tDescription>
           </Alert>
         ) : (
           <Card>

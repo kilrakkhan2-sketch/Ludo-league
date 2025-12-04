@@ -51,7 +51,8 @@ export default function DepositPageContent() {
       await uploadBytes(screenshotRef, screenshot);
       const screenshotUrl = await getDownloadURL(screenshotRef);
 
-      await addDoc(collection(firestore, 'deposit-requests'), {
+      // Corrected: Use the 'deposits' collection instead of 'deposit-requests'
+      await addDoc(collection(firestore, 'deposits'), {
         userId: user.uid,
         amount: parseInt(amount, 10),
         transactionId,
