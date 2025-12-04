@@ -41,6 +41,12 @@
       "description": "KYC verification card image",
       "imageUrl": "https://images.unsplash.com/photo-1635231152740-dcfba853f33d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxpZGVudGlmaWNhdGlvbiUyMGNhcmR8ZW58MHx8fHwxNzY0ODE5Mzk2fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "identification card"
+    },
+    {
+      "id": "profile_banner",
+      "description": "User profile banner image",
+      "imageUrl": "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGJhbm5lcnxlbnwwfHx8fDE3NjQ4MjAwMDB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract banner"
     }
   ]
 }

@@ -21,6 +21,9 @@ import {
   LogOut,
   Swords,
   Search,
+  Users,
+  Settings,
+  Star,
 } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -38,7 +41,9 @@ import { Input } from "../ui/input";
 const navItems = [
   { href: "/dashboard", icon: LayoutGrid, label: "Dashboard" },
   { href: "/create-match", icon: PlusCircle, label: "Create Match" },
+  { href: "/leaderboard", icon: Star, label: "Leaderboard" },
   { href: "/tournaments", icon: Trophy, label: "Tournaments" },
+  { href: "/friends", icon: Users, label: "Friends" },
   { href: "/wallet", icon: Wallet, label: "Wallet" },
   { href: "/kyc", icon: ShieldCheck, label: "KYC Verification" },
 ];
@@ -103,9 +108,17 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+              <DropdownMenuItem asChild>
+                 <Link href="/profile">
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Profile</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                 <Link href="/settings">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
