@@ -56,10 +56,10 @@ service cloud.firestore {
 
     // Withdrawal Requests Collection
     match /withdrawal-requests/{withdrawalId} {
-        allow read: if isDepositAdmin(); // Admins can see all requests
+        allow read: if isDepositAdmin() || isSuperAdmin(); // Admins can see all requests
         allow create: if request.auth != null; // Users can create their own requests
         // An admin can update the status. The user initiating the request is in the resource data.
-        allow update: if isDepositAdmin(); 
+        allow update: if isDepositAdmin() || isSuperAdmin(); 
     }
 
     // All transactions collection group for admin panel
