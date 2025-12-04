@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCollection, useUser } from "@/firebase";
-import { doc, updateDoc, writeBatch } from "firebase/firestore";
+import { doc, updateDoc, writeBatch, collection } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +46,7 @@ export default function ManageAdminsPage() {
 
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [amount, setAmount] = useState('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     if (!firestore) return;
@@ -99,7 +100,7 @@ export default function ManageAdminsPage() {
         await batch.commit();
 
         toast({ title: 'Balance Updated', description: `${selectedUser.name}'s balance has been set to ₹${numericAmount}.` });
-        setSelectedUser(null);
+        setIsDialogOpen(false);
         setAmount('');
     } catch (error) {
         console.error(error);
@@ -123,98 +124,98 @@ export default function ManageAdminsPage() {
 
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold font-headline">Manage Admins & Users</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>User Roles & Balances</CardTitle>
-          <CardDescription>
-            Assign roles and manage wallet balances for all users.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? <p>Loading users...</p> : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Wallet Balance</TableHead>
-                  <TableHead>Current Role</TableHead>
-                  <TableHead>Change Role</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map(user => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>₹{user.walletBalance?.toLocaleString() || 0}</TableCell>
-                    <TableCell>
-                        <Badge variant={getRoleBadgeVariant(user.role)}>
-                            {user.role}
-                        </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Select 
-                        defaultValue={user.role}
-                        onValueChange={(newRole) => handleRoleChange(user.id, newRole)}
-                        disabled={user.role === 'superadmin'}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Select a role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="user">User</SelectItem>
-                          <SelectItem value="deposit_admin">Deposit Admin</SelectItem>
-                          <SelectItem value="match_admin">Match Admin</SelectItem>
-                          <SelectItem value="superadmin">Super Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                     <TableCell className="text-right">
-                        <DialogTrigger asChild>
-                            <Button variant="outline" size="sm" onClick={() => setSelectedUser(user)}>
-                                <Banknote className="mr-2 h-4 w-4"/>
-                                Set Balance
-                            </Button>
-                        </DialogTrigger>
-                    </TableCell>
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold font-headline">Manage Admins & Users</h1>
+        <Card>
+          <CardHeader>
+            <CardTitle>User Roles & Balances</CardTitle>
+            <CardDescription>
+              Assign roles and manage wallet balances for all users.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? <p>Loading users...</p> : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Wallet Balance</TableHead>
+                    <TableHead>Current Role</TableHead>
+                    <TableHead>Change Role</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-      
-      <DialogContent>
-        <DialogHeader>
-            <DialogTitle>Update Wallet Balance</DialogTitle>
-            <DialogDescription>
-                Manually set the wallet balance for {selectedUser?.name}. This action is logged.
-            </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-            <div className="space-y-2">
-                <Label htmlFor="balance-amount">New Balance Amount (₹)</Label>
-                <Input 
-                    id="balance-amount" 
-                    type="number" 
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder={`Current: ₹${selectedUser?.walletBalance || 0}`}
-                />
-            </div>
-        </div>
-        <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedUser(null)}>Cancel</Button>
-            <Button onClick={handleUpdateBalance}>Update Balance</Button>
-        </DialogFooter>
-      </DialogContent>
-    </div>
+                </TableHeader>
+                <TableBody>
+                  {users.map(user => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>₹{user.walletBalance?.toLocaleString() || 0}</TableCell>
+                      <TableCell>
+                          <Badge variant={getRoleBadgeVariant(user.role)}>
+                              {user.role}
+                          </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Select 
+                          defaultValue={user.role}
+                          onValueChange={(newRole) => handleRoleChange(user.id, newRole)}
+                          disabled={user.role === 'superadmin' && user.id !== currentUser?.uid}
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Select a role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="user">User</SelectItem>
+                            <SelectItem value="deposit_admin">Deposit Admin</SelectItem>
+                            <SelectItem value="match_admin">Match Admin</SelectItem>
+                            <SelectItem value="superadmin">Super Admin</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="text-right">
+                          <DialogTrigger asChild>
+                              <Button variant="outline" size="sm" onClick={() => setSelectedUser(user)}>
+                                  <Banknote className="mr-2 h-4 w-4"/>
+                                  Set Balance
+                              </Button>
+                          </DialogTrigger>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+        
+        <DialogContent>
+          <DialogHeader>
+              <DialogTitle>Update Wallet Balance</DialogTitle>
+              <DialogDescription>
+                  Manually set the wallet balance for {selectedUser?.name}. This action is logged.
+              </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                  <Label htmlFor="balance-amount">New Balance Amount (₹)</Label>
+                  <Input 
+                      id="balance-amount" 
+                      type="number" 
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder={`Current: ₹${selectedUser?.walletBalance || 0}`}
+                  />
+              </div>
+          </div>
+          <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleUpdateBalance}>Update Balance</Button>
+          </DialogFooter>
+        </DialogContent>
+      </div>
+    </Dialog>
   );
 }
-
-    
