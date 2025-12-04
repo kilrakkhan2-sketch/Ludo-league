@@ -1,3 +1,6 @@
+
+'use client';
+
 import {
   Card,
   CardContent,
@@ -25,86 +28,81 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useCollection } from "@/firebase";
+import type { UserProfile, Match, DepositRequest, Transaction } from "@/types";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
 
-const stats = [
-  {
-    title: "Total Revenue",
-    value: "₹45,231.89",
-    change: "+20.1% from last month",
-    icon: DollarSign,
-  },
-  {
-    title: "Active Matches",
-    value: "+23",
-    change: "+180.1% from last month",
-    icon: Swords,
-  },
-  {
-    title: "Pending Deposits",
-    value: "+12",
-    change: "+19% from last month",
-    icon: Wallet,
-  },
-  {
-    title: "Total Users",
-    value: "+573",
-    change: "+201 since last hour",
-    icon: Users,
-  },
-];
 
-const recentTransactions = [
-    {
-        user: "Olivia Martin",
-        email: "olivia.martin@email.com",
-        amount: "+₹1,999.00",
-        type: "Deposit"
-    },
-     {
-        user: "Jackson Lee",
-        email: "jackson.lee@email.com",
-        amount: "+₹39.00",
-        type: "Deposit"
-    },
-     {
-        user: "Isabella Nguyen",
-        email: "isabella.nguyen@email.com",
-        amount: "-₹299.00",
-        type: "Withdrawal"
-    },
-      {
-        user: "William Kim",
-        email: "will@email.com",
-        amount: "+₹99.00",
-        type: "Deposit"
-    },
-      {
-        user: "Sofia Davis",
-        email: "sofia.davis@email.com",
-        amount: "+₹39.00",
-        type: "Deposit"
-    },
-]
+const StatCard = ({ title, value, change, icon: Icon, loading }: { title: string, value: string, change?: string, icon: React.ElementType, loading: boolean }) => (
+    <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+            {title}
+            </CardTitle>
+            <Icon className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+            {loading ? (
+                <>
+                    <Skeleton className="h-8 w-24 mb-1" />
+                    <Skeleton className="h-4 w-40" />
+                </>
+            ) : (
+                <>
+                    <div className="text-2xl font-bold">{value}</div>
+                    {change && <p className="text-xs text-muted-foreground">{change}</p>}
+                </>
+            )}
+        </CardContent>
+    </Card>
+)
 
 export default function AdminDashboardPage() {
+  const { data: users, loading: usersLoading } = useCollection<UserProfile>('users');
+  const { data: activeMatches, loading: matchesLoading } = useCollection<Match>('matches', { filter: { field: 'status', operator: '==', value: 'ongoing' } });
+  const { data: pendingDeposits, loading: depositsLoading } = useCollection<DepositRequest>('deposit-requests', { filter: { field: 'status', operator: '==', value: 'pending' } });
+  const { data: transactions, loading: transactionsLoading } = useCollection<Transaction>('transactions', { sort: { field: 'createdAt', direction: 'desc' }, limit: 5 });
+  const { data: pendingVerifications, loading: verificationsLoading } = useCollection<Match>('matches', { filter: { field: 'status', operator: '==', value: 'verification' } });
+
+  const totalRevenue = transactions
+    .filter(tx => tx.type === 'entry_fee')
+    .reduce((acc, tx) => acc + tx.amount, 0);
+
+  const stats = [
+    {
+      title: "Total Revenue",
+      value: `₹${(totalRevenue * -1).toLocaleString()}`, // entry fees are negative
+      icon: DollarSign,
+      loading: transactionsLoading,
+    },
+    {
+      title: "Active Matches",
+      value: `${activeMatches.length}`,
+      icon: Swords,
+      loading: matchesLoading,
+    },
+    {
+      title: "Pending Deposits",
+      value: `${pendingDeposits.length}`,
+      icon: Wallet,
+      loading: depositsLoading,
+    },
+    {
+      title: "Total Users",
+      value: `${users.length}`,
+      icon: Users,
+      loading: usersLoading,
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold font-headline">Admin Dashboard</h1>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {stat.title}
-              </CardTitle>
-              <stat.icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">{stat.change}</p>
-            </CardContent>
-          </Card>
+          <StatCard key={stat.title} {...stat} />
         ))}
       </div>
 
@@ -114,7 +112,7 @@ export default function AdminDashboardPage() {
             <div className="grid gap-2">
               <CardTitle>Recent Transactions</CardTitle>
               <CardDescription>
-                Recent deposits and withdrawals.
+                The last 5 transactions across the platform.
               </CardDescription>
             </div>
             <Button asChild size="sm" className="ml-auto gap-1">
@@ -125,27 +123,41 @@ export default function AdminDashboardPage() {
             </Button>
           </CardHeader>
           <CardContent>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>User</TableHead>
-                        <TableHead className="hidden sm:table-cell">Type</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {recentTransactions.map(tx => (
-                        <TableRow key={tx.email}>
-                            <TableCell>
-                                <div className="font-medium">{tx.user}</div>
-                                <div className="hidden text-sm text-muted-foreground md:inline">{tx.email}</div>
-                            </TableCell>
-                            <TableCell className="hidden sm:table-cell">{tx.type}</TableCell>
-                            <TableCell className="text-right">{tx.amount}</TableCell>
+             {transactionsLoading ? (
+                 <div className="space-y-2">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                 </div>
+             ) : (
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>User</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+                    </TableHeader>
+                    <TableBody>
+                        {transactions.map(tx => (
+                            <TableRow key={tx.id}>
+                                <TableCell>
+                                    <div className="font-medium">{tx.userName || tx.userId.substring(0,6)}</div>
+                                    <div className="hidden text-sm text-muted-foreground md:inline">{tx.userEmail}</div>
+                                </TableCell>
+                                <TableCell><Badge variant="outline">{tx.type}</Badge></TableCell>
+                                 <TableCell>
+                                    {tx.createdAt ? format(new Date(tx.createdAt), 'dd MMM yyyy') : 'N/A'}
+                                </TableCell>
+                                <TableCell className={`text-right ${tx.amount > 0 ? 'text-success' : 'text-destructive'}`}>
+                                    {tx.amount > 0 ? '+' : ''}₹{tx.amount.toLocaleString()}
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+             )}
           </CardContent>
         </Card>
         <Card className="lg:col-span-1 xl:col-span-3">
@@ -156,25 +168,46 @@ export default function AdminDashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-             <div className="flex items-center">
-                <CircleDashed className="h-9 w-9 text-muted-foreground" />
-                <div className="ml-4 space-y-1">
-                    <p className="text-sm font-medium leading-none">LUDO456</p>
-                    <p className="text-sm text-muted-foreground">4 players submitted results. Conflict detected.</p>
+             {verificationsLoading ? (
+                 <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                        <Skeleton className="h-9 w-9 rounded-full" />
+                        <div className="space-y-1">
+                            <Skeleton className="h-4 w-20" />
+                            <Skeleton className="h-4 w-48" />
+                        </div>
+                    </div>
+                     <div className="flex items-center gap-4">
+                        <Skeleton className="h-9 w-9 rounded-full" />
+                        <div className="space-y-1">
+                            <Skeleton className="h-4 w-20" />
+                            <Skeleton className="h-4 w-48" />
+                        </div>
+                    </div>
+                 </div>
+             ) : pendingVerifications.length > 0 ? (
+                pendingVerifications.map(match => (
+                    <div className="flex items-center" key={match.id}>
+                        <CircleDashed className="h-9 w-9 text-muted-foreground" />
+                        <div className="ml-4 space-y-1">
+                            <p className="text-sm font-medium leading-none">{match.title}</p>
+                            <p className="text-sm text-muted-foreground">{match.players.length} players. Status: {match.status}</p>
+                        </div>
+                        <Button variant="outline" size="sm" className="ml-auto" asChild>
+                            <Link href={`/admin/results/${match.id}`}>Verify</Link>
+                        </Button>
+                    </div>
+                ))
+             ) : (
+                <div className="text-center text-sm text-muted-foreground py-4">
+                    No pending verifications.
                 </div>
-                <Button variant="outline" size="sm" className="ml-auto">Verify</Button>
-             </div>
-             <div className="flex items-center">
-                <CircleDashed className="h-9 w-9 text-muted-foreground" />
-                <div className="ml-4 space-y-1">
-                    <p className="text-sm font-medium leading-none">QUICK99</p>
-                    <p className="text-sm text-muted-foreground">3/4 players submitted. 1 pending.</p>
-                </div>
-                <Button variant="outline" size="sm" className="ml-auto">Verify</Button>
-             </div>
+             )}
           </CardContent>
         </Card>
       </div>
     </div>
   );
 }
+
+    
