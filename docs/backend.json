@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -91,6 +92,20 @@
         },
         "required": ["userId", "amount", "transactionId", "screenshotURL", "status", "createdAt"]
     },
+    "WithdrawalRequest": {
+        "title": "Withdrawal Request",
+        "description": "A user's request to withdraw funds.",
+        "type": "object",
+        "properties": {
+            "userId": { "type": "string" },
+            "amount": { "type": "number" },
+            "method": { "type": "string" },
+            "details": { "type": "string" },
+            "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["userId", "amount", "method", "details", "status", "createdAt"]
+    },
     "AppSettings": {
         "title": "App Settings",
         "description": "Global settings for the application.",
@@ -119,6 +134,10 @@
     "/deposit-requests/{depositId}": {
         "schema": { "$ref": "#/entities/DepositRequest" },
         "description": "Stores all deposit requests for admin verification."
+    },
+    "/withdrawal-requests/{withdrawalId}": {
+        "schema": { "$ref": "#/entities/WithdrawalRequest" },
+        "description": "Stores all withdrawal requests for admin verification."
     },
     "/settings/payment": {
         "schema": { "$ref": "#/entities/AppSettings" },

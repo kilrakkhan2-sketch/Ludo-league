@@ -1,5 +1,5 @@
 
-'use client'
+'use client';
 
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter
+  DialogFooter,
+  DialogClose
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +29,6 @@ import {
   Download,
   Upload,
   Wallet as WalletIcon,
-  Copy
 } from "lucide-react";
 import {
   Table,
@@ -40,68 +40,97 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useDoc } from "@/firebase";
+import { useUser, useDoc, useCollection } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
-
-type AppSettings = {
-  id: string;
-  upiId?: string;
-}
-
-const transactions = [
-  {
-    id: "txn_1",
-    type: "Deposit",
-    amount: 500,
-    date: "2024-07-20",
-    status: "Completed",
-  },
-  {
-    id: "txn_2",
-    type: "Entry Fee",
-    amount: -50,
-    date: "2024-07-20",
-    status: "Completed",
-  },
-  {
-    id: "txn_3",
-    type: "Win Prize",
-    amount: 190,
-    date: "2024-07-19",
-    status: "Completed",
-  },
-  {
-    id: "txn_4",
-    type: "Withdrawal",
-    amount: -200,
-    date: "2024-07-18",
-    status: "Pending",
-  },
-  {
-    id: "txn_5",
-    type: "Deposit",
-    amount: 100,
-    date: "2024-07-17",
-    status: "Completed",
-  },
-];
+import { UserProfile, Transaction, AppSettings, WithdrawalRequest } from "@/types";
+import { format } from "date-fns";
+import { useFirebase } from "@/firebase/provider";
+import { addDoc, collection, runTransaction, doc, Timestamp } from "firebase/firestore";
+import { useRouter } from "next/navigation";
+import React, { useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function WalletPage() {
-  const { data: settings, loading: settingsLoading } = useDoc<AppSettings>('settings/payment');
+  const { user, loading: userLoading } = useUser();
+  const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
+  const { data: transactions, loading: transactionsLoading } = useCollection<Transaction>(user ? `users/${user.uid}/transactions` : '', { orderBy: ['createdAt', 'desc'], limit: 10 });
+  const { firestore } = useFirebase();
   const { toast } = useToast();
-  
-  const upiId = settings?.upiId || "loading...";
+  const router = useRouter();
 
-  const handleCopy = () => {
-    if (upiId && upiId !== "loading...") {
-      navigator.clipboard.writeText(upiId);
-      toast({
-        title: "Copied!",
-        description: "UPI ID copied to clipboard.",
+  const [withdrawalAmount, setWithdrawalAmount] = useState('');
+  const [withdrawalMethod, setWithdrawalMethod] = useState('upi');
+  const [withdrawalDetails, setWithdrawalDetails] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleRequestWithdrawal = async () => {
+    if (!firestore || !user || !profile) return;
+    const amount = parseFloat(withdrawalAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Please enter a valid amount.' });
+      return;
+    }
+    if (amount > (profile.walletBalance || 0)) {
+      toast({ variant: 'destructive', title: 'Insufficient Balance', description: 'You cannot withdraw more than your available balance.' });
+      return;
+    }
+    if (!withdrawalDetails) {
+      toast({ variant: 'destructive', title: 'Missing Details', description: 'Please provide your withdrawal details (UPI ID or Bank Account).' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Use a transaction to ensure atomicity
+      await runTransaction(firestore, async (transaction) => {
+        const userRef = doc(firestore, 'users', user.uid);
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists() || (userDoc.data().walletBalance || 0) < amount) {
+          throw new Error('Insufficient balance.');
+        }
+
+        // Deduct from user's balance immediately
+        const newBalance = userDoc.data().walletBalance - amount;
+        transaction.update(userRef, { walletBalance: newBalance });
+
+        // Create a withdrawal request for admin approval
+        const withdrawalRef = doc(collection(firestore, 'withdrawal-requests'));
+        transaction.set(withdrawalRef, {
+          userId: user.uid,
+          userName: profile.name,
+          userEmail: profile.email,
+          amount,
+          method: withdrawalMethod,
+          details: withdrawalDetails,
+          status: 'pending',
+          createdAt: Timestamp.now(),
+        });
+        
+        // Create a pending transaction record
+        const transactionRef = doc(collection(firestore, `users/${user.uid}/transactions`));
+        transaction.set(transactionRef, {
+            amount: -amount,
+            type: 'withdrawal',
+            status: 'pending',
+            description: `Withdrawal request to ${withdrawalDetails}`,
+            relatedId: withdrawalRef.id,
+            createdAt: Timestamp.now()
+        });
       });
+
+      toast({ title: 'Withdrawal Request Submitted', description: 'Your request is being processed.' });
+      setWithdrawalAmount('');
+      setWithdrawalDetails('');
+      // Close dialog if it's open - requires state management for dialog
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Request Failed', description: error.message || 'Could not submit withdrawal request.' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+
+  const loading = userLoading || profileLoading || transactionsLoading;
 
   return (
     <AppShell>
@@ -117,61 +146,51 @@ export default function WalletPage() {
             <WalletIcon className="h-8 w-8 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className="text-5xl font-bold">
-              ₹1,250{" "}
-            </p>
+            {loading ? (
+                 <Skeleton className="h-12 w-48" />
+            ): (
+                 <p className="text-5xl font-bold">
+                    ₹{profile?.walletBalance?.toLocaleString() ?? 0}
+                </p>
+            )}
           </CardContent>
           <CardFooter className="flex flex-col sm:flex-row gap-4">
+            <Button className="flex-1" onClick={() => router.push('/add-money')}>
+              <Upload className="mr-2 h-4 w-4" /> Deposit
+            </Button>
             <Dialog>
               <DialogTrigger asChild>
-                <Button className="flex-1">
-                  <Upload className="mr-2 h-4 w-4" /> Deposit
+                <Button variant="secondary" className="flex-1">
+                  <Download className="mr-2 h-4 w-4" /> Withdraw
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
+              <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Deposit Funds</DialogTitle>
+                  <DialogTitle>Request Withdrawal</DialogTitle>
                   <DialogDescription>
-                    Complete the payment and submit the details for verification.
+                    Withdrawal requests are processed within 24 hours.
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                   <div className="space-y-2">
-                      <Label htmlFor="amount">Amount (₹)</Label>
-                      <Input id="amount" type="number" placeholder="Min amount: 100" />
-                   </div>
-                   <div className="space-y-2 text-center bg-muted p-4 rounded-md">
-                      <Label>Pay using UPI</Label>
-                      <div className="flex items-center justify-center gap-2">
-                        {settingsLoading ? (
-                             <div className="h-5 w-48 bg-background rounded-md animate-pulse" />
-                        ): (
-                            <p className="text-sm font-semibold text-primary">{upiId}</p>
-                        )}
-                        <Button variant="ghost" size="icon" onClick={handleCopy} disabled={settingsLoading}>
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">Scan QR or copy UPI ID</p>
-                   </div>
-                   <div className="space-y-2">
-                      <Label htmlFor="transactionId">Transaction ID / UPI Reference No.</Label>
-                      <Input id="transactionId" placeholder="Enter your transaction ID" />
-                   </div>
-                   <div className="space-y-2">
-                      <Label htmlFor="screenshot">Upload Screenshot</Label>
-                      <Input id="screenshot" type="file" />
-                   </div>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="withdrawal-amount">Amount (₹)</Label>
+                    <Input id="withdrawal-amount" type="number" placeholder={`Available: ₹${profile?.walletBalance || 0}`} value={withdrawalAmount} onChange={(e) => setWithdrawalAmount(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="withdrawal-details">UPI ID / Bank Account</Label>
+                    <Input id="withdrawal-details" placeholder="e.g., yourname@upi or bank details" value={withdrawalDetails} onChange={(e) => setWithdrawalDetails(e.target.value)} />
+                  </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit" className="w-full">Submit Deposit Request</Button>
+                  <DialogClose asChild>
+                     <Button type="button" variant="outline">Cancel</Button>
+                  </DialogClose>
+                  <Button onClick={handleRequestWithdrawal} disabled={isSubmitting}>
+                    {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-
-            <Button variant="secondary" className="flex-1">
-              <Download className="mr-2 h-4 w-4" /> Withdraw
-            </Button>
           </CardFooter>
         </Card>
 
@@ -185,54 +204,63 @@ export default function WalletPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Amount (₹)</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Amount (₹)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {transactions.map((tx) => (
-                  <TableRow key={tx.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {tx.amount > 0 ? (
-                          <div className="p-1.5 bg-success/20 rounded-full">
-                            <ArrowUpRight className="h-4 w-4 text-success" />
-                          </div>
-                        ) : (
-                          <div className="p-1.5 bg-destructive/20 rounded-full">
-                            <ArrowDownLeft className="h-4 w-4 text-destructive" />
-                          </div>
-                        )}
-                        <span className="font-medium">{tx.type}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        "text-right font-semibold",
-                        tx.amount > 0 ? "text-success" : "text-destructive"
-                      )}
-                    >
-                      {tx.amount > 0 ? "+" : ""}
-                      {tx.amount}
-                    </TableCell>
-                    <TableCell>{tx.date}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={"outline"}
+                {loading ? (
+                    <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center">Loading transactions...</TableCell>
+                    </TableRow>
+                ) : transactions.length > 0 ? (
+                  transactions.map((tx) => (
+                    <TableRow key={tx.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {tx.amount > 0 ? (
+                            <div className="p-1.5 bg-success/20 rounded-full">
+                              <ArrowUpRight className="h-4 w-4 text-success" />
+                            </div>
+                          ) : (
+                            <div className="p-1.5 bg-destructive/20 rounded-full">
+                              <ArrowDownLeft className="h-4 w-4 text-destructive" />
+                            </div>
+                          )}
+                          <span className="font-medium capitalize">{tx.type.replace('_', ' ')}</span>
+                        </div>
+                      </TableCell>
+                       <TableCell>{tx.createdAt ? format(tx.createdAt.toDate(), 'dd MMM yyyy, HH:mm') : 'N/A'}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={"outline"}
+                          className={cn(
+                            "font-medium capitalize",
+                            tx.status === "completed" && "bg-success/20 text-success border-success/20",
+                            tx.status === "pending" && "bg-warning/20 text-warning border-warning/20",
+                            tx.status === "failed" && "bg-destructive/20 text-destructive border-destructive/20"
+                          )}
+                        >
+                          {tx.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell
                         className={cn(
-                          "font-medium",
-                          tx.status === "Completed" &&
-                            "bg-success/20 text-success border-success/20",
-                          tx.status === "Pending" &&
-                            "bg-warning/20 text-warning border-warning/20"
+                          "text-right font-semibold",
+                          tx.amount > 0 ? "text-success" : "text-destructive"
                         )}
                       >
-                        {tx.status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        {tx.amount > 0 ? "+" : ""}
+                        {tx.amount.toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center">No transactions yet.</TableCell>
+                    </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>

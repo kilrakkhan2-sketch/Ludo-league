@@ -2,46 +2,6 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users Collection
-    match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth.uid == userId;
-      allow update: if request.auth.uid == userId || getUserRole() == 'superadmin';
-
-      // Admins can read all users and manage roles
-      allow read: if getUserRole() == 'superadmin' || getUserRole() == 'deposit_admin' || getUserRole() == 'match_admin';
-      
-      match /transactions/{transactionId} {
-        allow read, create, update, delete: if request.auth.uid == userId || getUserRole() == 'superadmin';
-      }
-    }
-    
-    // Matches Collection
-    match /matches/{matchId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null && 
-        (resource.data.creatorId == request.auth.uid || 
-         getUserRole() == 'superadmin' || getUserRole() == 'match_admin');
-      allow delete: if getUserRole() == 'superadmin' || getUserRole() == 'match_admin';
-    }
-    
-    // Deposit Requests Collection
-    match /deposit-requests/{depositId} {
-        allow read, create: if request.auth != null;
-        allow update: if getUserRole() == 'superadmin' || getUserRole() == 'deposit_admin';
-    }
-
-    // All transactions collection group
-    match /{path=**}/transactions/{transactionId} {
-      allow read: if getUserRole() == 'superadmin';
-    }
-
-    // Settings Collection
-    match /settings/{settingId} {
-        allow read: if request.auth != null;
-        allow write: if getUserRole() == 'superadmin';
-    }
     
     // Helper Functions
     function getUserRole() {
@@ -50,6 +10,67 @@ service cloud.firestore {
     
     function isSuperAdmin() {
       return getUserRole() == 'superadmin';
+    }
+
+    function isDepositAdmin() {
+        return getUserRole() == 'deposit_admin' || isSuperAdmin();
+    }
+    
+    function isMatchAdmin() {
+        return getUserRole() == 'match_admin' || isSuperAdmin();
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth.uid == userId;
+      // User can update their own profile, Superadmin can update anyone's profile (e.g. wallet balance)
+      allow update: if request.auth.uid == userId || isSuperAdmin();
+      allow delete: if isSuperAdmin(); // Only superadmin can delete users
+
+      match /transactions/{transactionId} {
+        // User can only access their own transactions. Admins can see all via collection group query.
+        allow read, write: if request.auth.uid == userId;
+      }
+    }
+    
+    // Matches Collection
+    match /matches/{matchId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && 
+        (resource.data.creatorId == request.auth.uid || isMatchAdmin());
+      allow delete: if isMatchAdmin();
+
+       match /messages/{messageId} {
+        allow read: if request.auth != null && request.auth.uid in resource.data.players;
+        allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      }
+    }
+    
+    // Deposit Requests Collection
+    match /deposit-requests/{depositId} {
+        allow read, create: if request.auth != null;
+        allow update: if isDepositAdmin(); // Only deposit admins or superadmins can approve/reject
+    }
+
+    // Withdrawal Requests Collection
+    match /withdrawal-requests/{withdrawalId} {
+        allow read: if isDepositAdmin(); // Admins can see all requests
+        allow create: if request.auth != null; // Users can create their own requests
+        // An admin can update the status. The user initiating the request is in the resource data.
+        allow update: if isDepositAdmin(); 
+    }
+
+    // All transactions collection group for admin panel
+    match /{path=**}/transactions/{transactionId} {
+      allow read: if isSuperAdmin();
+    }
+
+    // Settings Collection
+    match /settings/{settingId} {
+        allow read: if request.auth != null;
+        allow write: if isSuperAdmin();
     }
   }
 }

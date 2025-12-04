@@ -10,6 +10,12 @@ export type UserProfile = {
   walletBalance: number;
   isVerified: boolean;
   role: 'superadmin' | 'deposit_admin' | 'match_admin' | 'user';
+  createdAt?: any;
+  rating?: number;
+  xp?: number;
+  rank?: number;
+  bannerUrl?: string;
+  displayName?: string;
 };
 
 export type Match = {
@@ -19,13 +25,17 @@ export type Match = {
   entryFee: number;
   maxPlayers: number;
   privacy: "public" | "private";
-  roomCode?: string;
+  ludoKingCode?: string;
   status: "open" | "ongoing" | "completed" | "cancelled" | "verification";
   players: string[];
   createdAt: any; // Can be server timestamp
-  resultScreenshotURL?: string;
   winnerId?: string;
   prizePool?: number;
+  results?: {
+      userId: string;
+      screenshotUrl: string;
+      submittedAt: any;
+  }[];
 };
 
 export type Transaction = {
@@ -38,6 +48,7 @@ export type Transaction = {
   status: "pending" | "completed" | "failed";
   createdAt: any; // Can be server timestamp
   relatedId?: string; // e.g., matchId or depositId
+  description?: string;
 };
 
 export type DepositRequest = {
@@ -47,12 +58,34 @@ export type DepositRequest = {
   userEmail: string; // Denormalized for easier display
   amount: number;
   transactionId: string;
-  screenshotURL: string;
+  screenshotUrl: string;
   status: "pending" | "approved" | "rejected";
   createdAt: any; // Can be server timestamp
+  processedAt?: any;
 };
+
+export type WithdrawalRequest = {
+    id: string;
+    userId: string;
+    userName: string;
+    userEmail: string;
+    amount: number;
+    method: string;
+    details: string; // e.g., UPI ID or bank account info
+    status: 'pending' | 'approved' | 'rejected';
+    createdAt: any;
+    processedAt?: any;
+    processedBy?: string; // UID of the admin who processed it
+}
 
 export type AppSettings = {
   id: string;
   upiId?: string;
 };
+
+export type Message = {
+    id: string;
+    userId: string;
+    text: string;
+    createdAt: any;
+}
