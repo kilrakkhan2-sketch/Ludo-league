@@ -4,7 +4,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions to check user authentication and roles from their profile
+    // Helper functions to check user authentication and roles from their profile.
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -14,6 +14,7 @@ service cloud.firestore {
     }
 
     function getUserRole(userId) {
+      // Safely access data, returning null if the document or field doesn't exist.
       return get(/databases/$(database)/documents/users/$(userId)).data.role;
     }
 
@@ -35,41 +36,49 @@ service cloud.firestore {
 
     // Rules for User Profiles
     match /users/{userId} {
-      // Any authenticated user can read profile data (for leaderboards, etc.)
+      // Any authenticated user can read public profile data (for leaderboards, match player lists, etc.).
       allow read: if isAuthenticated();
       
-      // A user can create their own profile with default values.
+      // A user can create their own profile with specific default values upon signup.
       allow create: if isOwner(userId) 
                       && request.resource.data.uid == userId
+                      && request.resource.data.name is string
+                      && request.resource.data.email is string
                       && request.resource.data.role == 'user'
-                      && request.resource.data.walletBalance == 0;
+                      && request.resource.data.walletBalance == 0
+                      && request.resource.data.isVerified == false;
                       
-      // A user can update their own non-critical info.
-      // A superadmin can update any field on any user's profile.
-      allow update: if (isOwner(userId) && !("role" in request.resource.data) && !("walletBalance" in request.resource.data))
+      // A user can update their own non-critical info (name, username, photoURL).
+      // A superadmin can update any field on any user's profile (e.g., role, balance).
+      allow update: if (isOwner(userId) && !("role" in request.resource.data.keys()) && !("walletBalance" in request.resource.data.keys()) && !("isVerified" in request.resource.data.keys()))
                       || isSuperAdmin(request.auth.uid);
                       
       // Deleting users should be handled by a secure backend function, not allowed from the client.
-      allow delete: if false; 
+      allow delete: if isSuperAdmin(request.auth.uid); 
     }
 
     // Rules for Matches
     match /matches/{matchId} {
-      // Any authenticated user can read match data.
+      // Any authenticated user can read match data to see open games.
       allow read: if isAuthenticated();
       
-      // A user can create a match if they are the creator and the initial status is 'open'.
+      // A user can create a match if they are authenticated, are the creator, and the initial status is 'open'.
       allow create: if isAuthenticated() 
                       && request.resource.data.creatorId == request.auth.uid
-                      && request.resource.data.status == 'open';
+                      && request.resource.data.status == 'open'
+                      && request.resource.data.players[0] == request.auth.uid;
 
-      // The creator can update their match only while it's 'open'.
-      // A match admin or superadmin can update a match at any stage (e.g., for verification).
-      allow update: if (resource.data.creatorId == request.auth.uid && resource.data.status == 'open')
-                      || isMatchAdmin(request.auth.uid);
+      // The creator can update their match only while it's 'open' (e.g., change title).
+      // A match admin or superadmin can update a match at any stage (e.g., for verification, cancellation).
+      // A player can join a match by adding themselves to the players list if it's 'open'.
+      allow update: if (get(path("/databases/$(database)/documents/matches/$(matchId)")).data.status == 'open' && request.auth.uid in request.resource.data.players)
+                      || isMatchAdmin(request.auth.uid)
+                      || isSuperAdmin(request.auth.uid);
                       
-      // The creator can only delete a match if it's still 'open'.
-      allow delete: if resource.data.creatorId == request.auth.uid && resource.data.status == 'open';
+      // The creator can only delete a match if it's still 'open' and no one else has joined.
+      // Admins can delete matches if necessary.
+      allow delete: if (resource.data.creatorId == request.auth.uid && resource.data.status == 'open' && resource.data.players.size() == 1)
+                      || isSuperAdmin(request.auth.uid);
     }
 
     // Rules for User Transactions (subcollection of users)
@@ -77,31 +86,36 @@ service cloud.firestore {
         // Only the user themselves or a superadmin can read their transaction history.
         allow read: if isOwner(userId) || isSuperAdmin(request.auth.uid);
         
-        // Transactions must only be created via secure backend functions, not directly by clients.
-        allow create, update, delete: if false; 
+        // Transactions must only be created via secure backend functions to prevent fraud.
+        // We deny all client-side writes.
+        allow write: if false; 
     }
 
     // Rules for Deposit Requests
     match /deposit-requests/{depositId} {
-      // The user who made the request and deposit admins can read it.
-      allow read: if isDepositAdmin(request.auth.uid) || isOwner(resource.data.userId);
+      // The user who made the request and deposit admins/superadmins can read it.
+      allow read: if isDepositAdmin(request.auth.uid) || isOwner(get(path("/databases/$(database)/documents/deposit-requests/$(depositId)")).data.userId);
 
-      // A user can create their own deposit request with 'pending' status.
+      // A user can create their own deposit request. Status must be 'pending'.
       allow create: if isAuthenticated() 
                       && request.resource.data.userId == request.auth.uid
                       && request.resource.data.status == 'pending';
 
-      // Only a deposit admin can update a request (to approve or reject it).
+      // Only a deposit admin or superadmin can update a request (to approve or reject it).
       // The status must be changing from 'pending'.
-      allow update: if isDepositAdmin(request.auth.uid) && resource.data.status == 'pending';
+      allow update: if (isDepositAdmin(request.auth.uid) || isSuperAdmin(request.auth.uid)) && resource.data.status == 'pending';
       
+      // Deposit requests should not be deleted from the client to maintain a record.
       allow delete: if false;
     }
     
     // Rules for App Settings
     match /settings/payment {
-      // Only a superadmin can read or change critical app settings like the UPI ID.
-      allow read, write: if isSuperAdmin(request.auth.uid);
+      // All authenticated users need to read the UPI ID for deposits.
+      allow read: if isAuthenticated();
+      
+      // Only a superadmin can change critical app settings like the UPI ID.
+      allow write: if isSuperAdmin(request.auth.uid);
     }
   }
 }
