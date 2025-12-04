@@ -1,3 +1,4 @@
+
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Filter, Users, Eye } from "lucide-react";
 import Link from "next/link";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const matches = [
   {
@@ -72,7 +74,61 @@ const matches = [
   },
 ];
 
+const MatchCard = ({ match }: { match: (typeof matches)[0] }) => (
+  <Card className="flex flex-col hover:shadow-lg transition-shadow">
+    <CardHeader>
+      <CardTitle>{match.name}</CardTitle>
+      <CardDescription>
+        Entry Fee:{" "}
+        <span className="font-bold text-primary">₹{match.entryFee}</span>
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="flex-grow">
+      <div className="flex justify-between items-center text-sm">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Users className="h-4 w-4" />
+          <span>
+            {match.players} / {match.maxPlayers} Players
+          </span>
+        </div>
+        <Badge
+          variant={
+            match.players === match.maxPlayers ? "destructive" : "secondary"
+          }
+        >
+          {match.players === match.maxPlayers ? "Full" : "Open"}
+        </Badge>
+      </div>
+      <div className="flex items-center mt-4 -space-x-2">
+        {Array.from({ length: match.players }).map((_, i) => (
+          <Avatar key={i} className="h-8 w-8 border-2 border-background">
+            <AvatarImage
+              src={`https://picsum.photos/seed/player${match.id}-${i}/40/40`}
+            />
+            <AvatarFallback>P{i + 1}</AvatarFallback>
+          </Avatar>
+        ))}
+      </div>
+    </CardContent>
+    <CardFooter className="flex justify-between items-center bg-muted/50 py-3">
+      <p className="text-lg font-bold">Prize: ₹{match.prize}</p>
+      <div className="flex gap-2">
+        <Button asChild variant="secondary" size="icon">
+          <Link href={`/match/${match.id}`}>
+            <Eye className="h-4 w-4" />
+            <span className="sr-only">View Match</span>
+          </Link>
+        </Button>
+        <Button disabled={match.players === match.maxPlayers}>Join</Button>
+      </div>
+    </CardFooter>
+  </Card>
+);
+
 export default function DashboardPage() {
+  const openMatches = matches.filter((m) => m.players < m.maxPlayers);
+  const fullMatches = matches.filter((m) => m.players === m.maxPlayers);
+
   return (
     <AppShell>
       <div className="flex flex-col gap-6">
@@ -119,72 +175,53 @@ export default function DashboardPage() {
                   <SelectItem value="4">4 Players</SelectItem>
                 </SelectContent>
               </Select>
-              <Button className="w-full" variant="secondary">Apply Filters</Button>
+              <Button className="w-full" variant="secondary">
+                Apply Filters
+              </Button>
             </div>
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {matches.map((match) => (
-            <Card key={match.id} className="flex flex-col hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle>{match.name}</CardTitle>
-                <CardDescription>
-                  Entry Fee:{" "}
-                  <span className="font-bold text-primary">
-                    ₹{match.entryFee}
-                  </span>
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow">
-                <div className="flex justify-between items-center text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    <span>
-                      {match.players} / {match.maxPlayers} Players
-                    </span>
-                  </div>
-                  <Badge
-                    variant={
-                      match.players === match.maxPlayers
-                        ? "destructive"
-                        : "secondary"
-                    }
-                  >
-                    {match.players === match.maxPlayers ? "Full" : "Open"}
-                  </Badge>
-                </div>
-                <div className="flex items-center mt-4 -space-x-2">
-                  {Array.from({ length: match.players }).map((_, i) => (
-                    <Avatar
-                      key={i}
-                      className="h-8 w-8 border-2 border-background"
-                    >
-                      <AvatarImage
-                        src={`https://picsum.photos/seed/player${match.id}-${i}/40/40`}
-                      />
-                      <AvatarFallback>P{i + 1}</AvatarFallback>
-                    </Avatar>
-                  ))}
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-between items-center bg-muted/50 py-3">
-                 <p className="text-lg font-bold">Prize: ₹{match.prize}</p>
-                <div className="flex gap-2">
-                   <Button asChild variant="secondary" size="icon">
-                    <Link href={`/match/${match.id}`}>
-                      <Eye className="h-4 w-4" />
-                      <span className="sr-only">View Match</span>
-                    </Link>
-                  </Button>
-                  <Button disabled={match.players === match.maxPlayers}>
-                    Join
-                  </Button>
-                </div>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+        <Tabs defaultValue="all">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="all">All Matches ({matches.length})</TabsTrigger>
+            <TabsTrigger value="open">Open ({openMatches.length})</TabsTrigger>
+            <TabsTrigger value="full">Full ({fullMatches.length})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="all" className="mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {matches.map((match) => (
+                <MatchCard key={match.id} match={match} />
+              ))}
+            </div>
+          </TabsContent>
+          <TabsContent value="open" className="mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {openMatches.length > 0 ? (
+                openMatches.map((match) => (
+                  <MatchCard key={match.id} match={match} />
+                ))
+              ) : (
+                <p className="text-muted-foreground col-span-full text-center">
+                  No open matches available. Why not create one?
+                </p>
+              )}
+            </div>
+          </TabsContent>
+          <TabsContent value="full" className="mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {fullMatches.length > 0 ? (
+                 fullMatches.map((match) => (
+                  <MatchCard key={match.id} match={match} />
+                ))
+              ) : (
+                 <p className="text-muted-foreground col-span-full text-center">
+                  No full matches right now.
+                </p>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </AppShell>
   );
