@@ -28,6 +28,8 @@ import { doc, updateDoc } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 type UserProfile = {
   id: string;
@@ -43,23 +45,25 @@ export default function ManageAdminsPage() {
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     if (!firestore) return;
-    try {
-      const userRef = doc(firestore, "users", userId);
-      await updateDoc(userRef, {
-        role: newRole
+    
+    const userRef = doc(firestore, "users", userId);
+    const updatedData = { role: newRole };
+
+    updateDoc(userRef, updatedData)
+      .then(() => {
+        toast({
+          title: "Success",
+          description: `User role updated to ${newRole}.`,
+        });
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'update',
+          requestResourceData: updatedData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-      toast({
-        title: "Success",
-        description: `User role updated to ${newRole}.`,
-      });
-    } catch (error) {
-      console.error("Error updating role: ", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update user role.",
-      });
-    }
   };
   
   const getRoleBadgeVariant = (role: UserProfile['role']) => {
