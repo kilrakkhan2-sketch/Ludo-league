@@ -93,6 +93,7 @@ export default function SignupPage() {
         photoURL: `https://picsum.photos/seed/${user.uid}/200/200`,
         walletBalance: 0,
         isVerified: false,
+        role: 'user', // Default role for new users
       });
 
       toast({

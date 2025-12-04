@@ -1,3 +1,6 @@
+
+'use client'
+
 import type { ReactNode } from "react";
 import {
   Sidebar,
@@ -21,20 +24,33 @@ import {
   UserCircle,
   FileCheck,
   CreditCard,
+  ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useDoc, useUser } from "@/firebase";
 
-const navItems = [
-  { href: "/admin/dashboard", icon: LayoutGrid, label: "Dashboard" },
-  { href: "/admin/users", icon: Users, label: "Users" },
-  { href: "/admin/deposits", icon: Wallet, label: "Deposits" },
-  { href: "/admin/matches", icon: Swords, label: "Matches" },
-  { href: "/admin/results", icon: FileCheck, label: "Results Verification" },
-  { href: "/admin/withdrawals", icon: CreditCard, label: "Withdrawals" },
+type UserProfile = {
+  id: string;
+  role: 'superadmin' | 'deposit_admin' | 'match_admin' | 'user';
+}
+
+const allNavItems = [
+  { href: "/admin/dashboard", icon: LayoutGrid, label: "Dashboard", roles: ['superadmin', 'deposit_admin', 'match_admin'] },
+  { href: "/admin/users", icon: Users, label: "Users", roles: ['superadmin'] },
+  { href: "/admin/manage-admins", icon: ShieldAlert, label: "Manage Admins", roles: ['superadmin'] },
+  { href: "/admin/deposits", icon: Wallet, label: "Deposits", roles: ['superadmin', 'deposit_admin'] },
+  { href: "/admin/withdrawals", icon: CreditCard, label: "Withdrawals", roles: ['superadmin', 'deposit_admin'] },
+  { href: "/admin/matches", icon: Swords, label: "Matches", roles: ['superadmin', 'match_admin'] },
+  { href: "/admin/results", icon: FileCheck, label: "Results Verification", roles: ['superadmin', 'match_admin'] },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
+  const { user } = useUser();
+  const { data: userProfile, loading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
+
+  const navItems = allNavItems.filter(item => userProfile && item.roles.includes(userProfile.role));
+
   return (
     <SidebarProvider>
       <Sidebar>
@@ -50,7 +66,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </Link>
           </SidebarHeader>
           <SidebarMenu>
-            {navItems.map((item) => (
+            {loading ? (
+                <>
+                 <SidebarMenuItem><div className="h-8 w-full bg-muted rounded-md animate-pulse"></div></SidebarMenuItem>
+                 <SidebarMenuItem><div className="h-8 w-full bg-muted rounded-md animate-pulse"></div></SidebarMenuItem>
+                 <SidebarMenuItem><div className="h-8 w-full bg-muted rounded-md animate-pulse"></div></SidebarMenuItem>
+                </>
+            ) : navItems.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton asChild tooltip={item.label}>
                   <Link href={item.href}>

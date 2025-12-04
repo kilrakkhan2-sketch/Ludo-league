@@ -38,9 +38,14 @@
         "isVerified": {
             "type": "boolean",
             "description": "KYC verification status."
+        },
+        "role": {
+            "type": "string",
+            "description": "The user's role in the system.",
+            "enum": ["superadmin", "deposit_admin", "match_admin", "user"]
         }
       },
-      "required": ["uid", "name", "email"]
+      "required": ["uid", "name", "email", "role"]
     },
     "Match": {
         "title": "Match",
