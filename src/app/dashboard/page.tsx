@@ -9,52 +9,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Filter, Users, Eye } from "lucide-react";
+import { Users, Eye } from "lucide-react";
 import Link from "next/link";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 
-const matches = [
-  {
-    id: 1,
-    name: "Beginner's Luck",
-    entryFee: 10,
-    players: 2,
-    maxPlayers: 4,
-    prize: 35,
-  },
-  {
-    id: 2,
-    name: "Pro Arena",
-    entryFee: 100,
-    players: 1,
-    maxPlayers: 2,
-    prize: 180,
-  },
-  {
+const myMatches = [
+   {
     id: 3,
     name: "Weekend Warriors",
     entryFee: 50,
     players: 4,
     maxPlayers: 4,
     prize: 190,
-  },
-  {
-    id: 4,
-    name: "High Rollers Only",
-    entryFee: 500,
-    players: 0,
-    maxPlayers: 2,
-    prize: 950,
+    status: "Ongoing"
   },
   {
     id: 5,
@@ -63,6 +32,28 @@ const matches = [
     players: 3,
     maxPlayers: 4,
     prize: 90,
+    status: "Waiting"
+  },
+]
+
+const openMatches = [
+  {
+    id: 1,
+    name: "Beginner's Luck",
+    entryFee: 10,
+    players: 2,
+    maxPlayers: 4,
+    prize: 35,
+    status: "Open"
+  },
+  {
+    id: 2,
+    name: "Pro Arena",
+    entryFee: 100,
+    players: 1,
+    maxPlayers: 2,
+    prize: 180,
+    status: "Open"
   },
   {
     id: 6,
@@ -71,10 +62,23 @@ const matches = [
     players: 1,
     maxPlayers: 2,
     prize: 38,
+    status: "Open"
   },
 ];
 
-const MatchCard = ({ match }: { match: (typeof matches)[0] }) => (
+const fullMatches = [
+   {
+    id: 4,
+    name: "High Rollers Only",
+    entryFee: 500,
+    players: 2,
+    maxPlayers: 2,
+    prize: 950,
+    status: "Full"
+  },
+]
+
+const MatchCard = ({ match }: { match: (typeof openMatches)[0] }) => (
   <Card className="flex flex-col hover:shadow-lg transition-shadow">
     <CardHeader>
       <CardTitle>{match.name}</CardTitle>
@@ -96,7 +100,7 @@ const MatchCard = ({ match }: { match: (typeof matches)[0] }) => (
             match.players === match.maxPlayers ? "destructive" : "secondary"
           }
         >
-          {match.players === match.maxPlayers ? "Full" : "Open"}
+          {match.status}
         </Badge>
       </div>
       <div className="flex items-center mt-4 -space-x-2">
@@ -126,17 +130,14 @@ const MatchCard = ({ match }: { match: (typeof matches)[0] }) => (
 );
 
 export default function DashboardPage() {
-  const openMatches = matches.filter((m) => m.players < m.maxPlayers);
-  const fullMatches = matches.filter((m) => m.players === m.maxPlayers);
-
   return (
     <AppShell>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-8">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold font-headline">Find a Match</h1>
             <p className="text-muted-foreground">
-              Join an existing match and start playing.
+              Join an existing match or create your own.
             </p>
           </div>
           <Button asChild>
@@ -144,84 +145,67 @@ export default function DashboardPage() {
           </Button>
         </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Filter className="h-5 w-5" />
-              <CardTitle>Filters</CardTitle>
+        {/* My Matches Section */}
+        <div className="space-y-4">
+            <div>
+                <h2 className="text-2xl font-bold font-headline">My Matches</h2>
+                <p className="text-muted-foreground">Your active games. You can have a maximum of 3 active matches.</p>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Input placeholder="Search by match name..." />
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Entry Fee" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="low">Low (₹1-50)</SelectItem>
-                  <SelectItem value="medium">Medium (₹51-200)</SelectItem>
-                  <SelectItem value="high">High (₹201+)</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Players" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Any</SelectItem>
-                  <SelectItem value="2">2 Players</SelectItem>
-                  <SelectItem value="4">4 Players</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button className="w-full" variant="secondary">
-                Apply Filters
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            {myMatches.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {myMatches.map((match) => (
+                        <MatchCard key={match.id} match={match} />
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg">
+                    <p className="text-muted-foreground">You haven't joined or created any matches yet.</p>
+                </div>
+            )}
+        </div>
 
-        <Tabs defaultValue="all">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="all">All Matches ({matches.length})</TabsTrigger>
-            <TabsTrigger value="open">Open ({openMatches.length})</TabsTrigger>
-            <TabsTrigger value="full">Full ({fullMatches.length})</TabsTrigger>
-          </TabsList>
-          <TabsContent value="all" className="mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {matches.map((match) => (
-                <MatchCard key={match.id} match={match} />
-              ))}
+        <Separator />
+
+        {/* Open Matches Section */}
+        <div className="space-y-4">
+            <div>
+                <h2 className="text-2xl font-bold font-headline">Open Matches</h2>
+                <p className="text-muted-foreground">Available matches you can join right now.</p>
             </div>
-          </TabsContent>
-          <TabsContent value="open" className="mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {openMatches.length > 0 ? (
-                openMatches.map((match) => (
-                  <MatchCard key={match.id} match={match} />
-                ))
-              ) : (
-                <p className="text-muted-foreground col-span-full text-center">
-                  No open matches available. Why not create one?
-                </p>
-              )}
+             {openMatches.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {openMatches.map((match) => (
+                        <MatchCard key={match.id} match={match} />
+                    ))}
+                </div>
+             ) : (
+                <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg">
+                    <p className="text-muted-foreground">No open matches available. Why not create one?</p>
+                </div>
+             )}
+        </div>
+        
+        <Separator />
+
+        {/* Full Matches Section */}
+        <div className="space-y-4">
+             <div>
+                <h2 className="text-2xl font-bold font-headline">Full & Ongoing Matches</h2>
+                <p className="text-muted-foreground">Matches that are already full or in progress.</p>
             </div>
-          </TabsContent>
-          <TabsContent value="full" className="mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {fullMatches.length > 0 ? (
-                 fullMatches.map((match) => (
-                  <MatchCard key={match.id} match={match} />
-                ))
-              ) : (
-                 <p className="text-muted-foreground col-span-full text-center">
+            {fullMatches.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 opacity-70">
+                    {fullMatches.map((match) => (
+                    <MatchCard key={match.id} match={match} />
+                    ))}
+                </div>
+            ) : (
+                 <p className="text-muted-foreground text-center py-8">
                   No full matches right now.
                 </p>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
+            )}
+        </div>
+
       </div>
     </AppShell>
   );
