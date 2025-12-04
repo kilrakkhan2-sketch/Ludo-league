@@ -5,13 +5,14 @@ service cloud.firestore {
     // Users Collection
     match /users/{userId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId || getUserRole() == 'superadmin';
+
+      // Admins can read all users and manage roles
+      allow read: if getUserRole() == 'superadmin' || getUserRole() == 'deposit_admin' || getUserRole() == 'match_admin';
       
-      // Admin can read all users
-      allow read: if getUserRole() == 'admin';
-      
-      match /private/{document=**} {
-        allow read, write: if request.auth.uid == userId;
+      match /transactions/{transactionId} {
+        allow read, create, update, delete: if request.auth.uid == userId || getUserRole() == 'superadmin';
       }
     }
     
@@ -21,31 +22,34 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow update: if request.auth != null && 
         (resource.data.creatorId == request.auth.uid || 
-         getUserRole() == 'admin');
-      allow delete: if getUserRole() == 'admin';
-      
-      // Players can update their ready status
-      match /players/{playerId} {
-        allow update: if request.auth.uid == playerId;
-      }
+         getUserRole() == 'superadmin' || getUserRole() == 'match_admin');
+      allow delete: if getUserRole() == 'superadmin' || getUserRole() == 'match_admin';
     }
     
-    // Transactions Collection
-    match /transactions/{transactionId} {
-      allow read: if request.auth != null && 
-        (resource.data.userId == request.auth.uid || 
-         getUserRole() == 'admin');
-      allow create: if request.auth != null;
-      allow update: if getUserRole() == 'admin';
+    // Deposit Requests Collection
+    match /deposit-requests/{depositId} {
+        allow read, create: if request.auth != null;
+        allow update: if getUserRole() == 'superadmin' || getUserRole() == 'deposit_admin';
+    }
+
+    // All transactions collection group
+    match /{path=**}/transactions/{transactionId} {
+      allow read: if getUserRole() == 'superadmin';
+    }
+
+    // Settings Collection
+    match /settings/{settingId} {
+        allow read: if request.auth != null;
+        allow write: if getUserRole() == 'superadmin';
     }
     
-    // Admin Functions
+    // Helper Functions
     function getUserRole() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
     
-    function isAdmin() {
-      return getUserRole() == 'admin';
+    function isSuperAdmin() {
+      return getUserRole() == 'superadmin';
     }
   }
 }
