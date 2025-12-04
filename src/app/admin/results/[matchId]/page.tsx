@@ -12,25 +12,22 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { useFirestore } from "@/firebase/provider";
-import { writeBatch, doc } from "firebase/firestore";
+import { useFirebase } from "@/firebase/provider";
+import { writeBatch, doc, getDocs, collection, query, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { Trophy } from "lucide-react";
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
-
+import { Trophy, AlertCircle } from "lucide-react";
 
 export default function VerifyResultPage() {
     const params = useParams();
     const matchId = params.matchId as string;
-    const { data: match, loading: matchLoading } = useDoc<Match>(`matches/${matchId}`);
+    const { data: match, loading: matchLoading, error } = useDoc<Match>(`matches/${matchId}`);
     const [players, setPlayers] = useState<UserProfile[]>([]);
     const [loadingPlayers, setLoadingPlayers] = useState(true);
     const [selectedWinner, setSelectedWinner] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const firestore = useFirestore();
+    const { firestore } = useFirebase();
     const { toast } = useToast();
     const router = useRouter();
 
@@ -38,138 +35,149 @@ export default function VerifyResultPage() {
         if (match && firestore) {
             const fetchPlayers = async () => {
                 setLoadingPlayers(true);
-                const playerPromises = match.players.map(playerId => 
-                   firestore ? doc(firestore, 'users', playerId) : null
-                );
-                // This part is tricky without getDocs, so we need to fetch them one by one.
-                // In a real app, you might get this data differently.
-                setPlayers([]); // For now, we will just use IDs
+                try {
+                    const q = query(collection(firestore, 'users'), where('uid', 'in', match.players));
+                    const querySnapshot = await getDocs(q);
+                    const playersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
+                    setPlayers(playersData);
+                } catch (error) {
+                    console.error("Error fetching players:", error);
+                    toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch player details.' });
+                }
                 setLoadingPlayers(false);
             };
             fetchPlayers();
         }
-    }, [match, firestore]);
+    }, [match, firestore, toast]);
 
     const handleDeclareWinner = async () => {
         if (!firestore || !match || !selectedWinner) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Missing required data to declare winner.'});
+            toast({ variant: 'destructive', title: 'Error', description: 'Please select a winner.' });
             return;
         }
 
         setIsSubmitting(true);
-        
-        const prizePool = (match.entryFee * match.players.length) * 0.9; // 10% commission
-        
         const batch = writeBatch(firestore);
 
-        // 1. Update match status to 'completed'
         const matchRef = doc(firestore, 'matches', matchId);
         batch.update(matchRef, { status: 'completed', winnerId: selectedWinner });
 
-        // 2. Create prize transaction for the winner
-        const prizeTransactionRef = doc(firestore, `users/${selectedWinner}/transactions`, `prize_${matchId}`);
-        batch.set(prizeTransactionRef, {
-            userId: selectedWinner,
-            type: 'prize',
-            amount: prizePool,
-            status: 'completed',
-            createdAt: new Date().toISOString(),
-            relatedId: matchId,
-            description: `Prize for match: ${match.title}`
-        });
+        const winnerRef = doc(firestore, 'users', selectedWinner);
+        // We should fetch the winner's current balance to update it.
+        // For simplicity here, we're creating a transaction record, 
+        // and a cloud function should handle the balance update atomically.
 
-        // 3. A cloud function should atomically handle updating the winner's walletBalance.
-        // It would be triggered by the creation of the prize transaction.
+        const prizeTransactionRef = doc(collection(firestore, `users/${selectedWinner}/transactions`));
+        batch.set(prizeTransactionRef, {
+            amount: match.prizePool || 0,
+            type: 'prize',
+            description: `Prize for match: ${match.title}`,
+            matchId: matchId,
+            createdAt: new Date(),
+        });
 
         try {
             await batch.commit();
             toast({
                 title: "Winner Declared!",
-                description: `Prize of ₹${prizePool} will be credited to the winner.`,
+                description: `Prize of ₹${match.prizePool} will be credited to the winner.`,
             });
-            router.push('/admin/results');
+            router.push('/admin/matches');
         } catch (serverError) {
-             console.error(serverError);
-             const permissionError = new FirestorePermissionError({
-                path: matchRef.path,
-                operation: 'update',
-                requestResourceData: { status: 'completed' },
-             });
-             errorEmitter.emit('permission-error', permissionError);
+            console.error("Error declaring winner:", serverError);
+            toast({ variant: 'destructive', title: 'Submission Error', description: 'Could not declare the winner.' });
         } finally {
             setIsSubmitting(false);
         }
     };
 
-
-    if (matchLoading) {
-        return <div><Skeleton className="h-48 w-full" /></div>
+    if (matchLoading || loadingPlayers) {
+        return <div className="space-y-4">
+            <Skeleton className="h-12 w-1/2" />
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-64 w-full" />
+        </div>;
     }
 
     if (!match) {
-        return <Card><CardHeader><CardTitle>Match Not Found</CardTitle></CardHeader></Card>
+        return <Card><CardHeader><CardTitle>Match Not Found</CardTitle></CardHeader></Card>;
     }
-    
+
     if (match.status !== 'verification') {
-         return <Card>
-            <CardHeader>
-                <CardTitle>Verification Not Required</CardTitle>
-                <CardDescription>This match is not currently awaiting result verification.</CardDescription>
-            </CardHeader>
-             <CardContent>
-                <p>Current status: <Badge>{match.status}</Badge></p>
-            </CardContent>
-        </Card>
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><AlertCircle className="text-yellow-500" /> Verification Not Required</CardTitle>
+                    <CardDescription>This match is not currently awaiting result verification.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p>Current status: <Badge variant="default">{match.status}</Badge></p>
+                    {match.winnerId && <p>Winner: {players.find(p => p.id === match.winnerId)?.displayName || 'N/A'}</p>}
+                </CardContent>
+                 <CardFooter>
+                    <Button onClick={() => router.push('/admin/matches')}>Back to Matches</Button>
+                </CardFooter>
+            </Card>
+        );
     }
 
     return (
         <div className="space-y-6">
-             <h1 className="text-3xl font-bold font-headline">Verify Match Result</h1>
-            <div className="grid md:grid-cols-2 gap-6">
-                <Card>
+            <h1 className="text-3xl font-bold font-headline">Verify Match Result</h1>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-6">
+                    {match.results?.map((result, index) => {
+                        const player = players.find(p => p.id === result.userId);
+                        return (
+                            <Card key={index}>
+                                <CardHeader>
+                                    <CardTitle>Result from: {player?.displayName || 'Unknown Player'}</CardTitle>
+                                    <CardDescription>User ID: {result.userId}</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Image src={result.screenshotUrl} alt={`Result screenshot from ${player?.displayName}`} width={1920} height={1080} className="rounded-md border" />
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
+                </div>
+
+                <Card className="lg:col-span-1 self-start">
                     <CardHeader>
                         <CardTitle>{match.title}</CardTitle>
-                        <CardDescription>Match ID: {match.id}</CardDescription>
+                        <CardDescription>Match ID: {matchId}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div>
                             <p className="font-semibold">Prize Pool</p>
-                            <p className="text-2xl font-bold text-green-600">₹{(match.entryFee * match.players.length) * 0.90}</p>
-                            <p className="text-xs text-muted-foreground">Entry: ₹{match.entryFee} x {match.players.length} players (with 10% platform fee)</p>
+                            <p className="text-2xl font-bold text-green-600">₹{match.prizePool?.toLocaleString() || '0'}</p>
+                            <p className="text-xs text-muted-foreground">Entry: ₹{match.entryFee} x {match.players.length} players</p>
                         </div>
-                         {match.resultScreenshotURL && (
-                            <div>
-                                <p className="font-semibold mb-2">Result Screenshot</p>
-                                <div className="relative aspect-video w-full rounded-md overflow-hidden border">
-                                    <Image src={match.resultScreenshotURL} alt="Match result screenshot" layout="fill" objectFit="contain" />
-                                </div>
-                            </div>
-                        )}
                         <div>
                             <p className="font-semibold mb-2">Select Winner</p>
                             <RadioGroup onValueChange={setSelectedWinner} value={selectedWinner || undefined}>
                                 <div className="space-y-2">
-                                {match.players.map(playerId => (
-                                    <div key={playerId} className="flex items-center space-x-2 p-3 bg-muted rounded-md">
-                                        <RadioGroupItem value={playerId} id={playerId} />
-                                        <Label htmlFor={playerId} className="font-mono text-sm">{playerId}</Label>
-                                    </div>
-                                ))}
+                                    {players.map(player => (
+                                        <div key={player.id} className="flex items-center space-x-2 p-3 bg-muted rounded-md">
+                                            <RadioGroupItem value={player.id} id={player.id} />
+                                            <Label htmlFor={player.id} className="font-medium">{player.displayName}</Label>
+                                        </div>
+                                    ))}
                                 </div>
                             </RadioGroup>
                         </div>
                     </CardContent>
                     <CardFooter>
-                        <Button 
-                            className="w-full" 
+                        <Button
+                            className="w-full"
                             disabled={!selectedWinner || isSubmitting}
                             onClick={handleDeclareWinner}
                         >
-                            {isSubmitting ? 'Submitting...' : <> <Trophy className="mr-2 h-4 w-4"/> Declare Winner</>}
+                            {isSubmitting ? 'Declaring...' : <><Trophy className="mr-2 h-4 w-4" /> Declare Winner</>}
                         </Button>
                     </CardFooter>
                 </Card>
             </div>
         </div>
-    )
+    );
 }

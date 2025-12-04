@@ -38,7 +38,7 @@ const MatchCardSkeleton = () => (
 );
 
 
-const MatchCard = ({ match }: { match: Match }) => (
+const MatchCard = ({ match, myMatchesCount }: { match: Match, myMatchesCount?: number }) => (
   <Card className="flex flex-col hover:shadow-lg transition-shadow">
     <CardHeader className="p-4">
       <div className="flex justify-between items-start">
@@ -85,7 +85,7 @@ const MatchCard = ({ match }: { match: Match }) => (
         <Trophy className="h-5 w-5 text-yellow-500" />
         <p className="text-lg font-bold">₹{match.prizePool || match.entryFee * match.players.length * 0.9}</p>
       </div>
-       <Button asChild disabled={match.players.length === match.maxPlayers || match.status !== 'open'}>
+       <Button asChild disabled={match.players.length === match.maxPlayers || match.status !== 'open' || (myMatchesCount !== undefined && myMatchesCount >= 3)}>
          <Link href={`/match/${match.id}`}>
             {match.status === 'open' ? 'Join' : 'View'}
          </Link>
@@ -98,6 +98,7 @@ export default function DashboardPage() {
   const { user } = useUser();
   const { data: myMatches, loading: myMatchesLoading } = useCollection<Match>('matches', {
     where: user?.uid ? ['players', 'array-contains', user.uid] : undefined,
+    limit: 3
   });
   const { data: openMatches, loading: openMatchesLoading, hasMore: hasMoreOpen, loadMore: loadMoreOpen } = useCollection<Match>('matches', {
     where: ['status', '==', 'open'],
@@ -139,12 +140,15 @@ export default function DashboardPage() {
 
         {/* My Matches Section */}
         <div className="space-y-4">
-          <div>
-            <h2 className="text-2xl font-bold font-headline">My Matches</h2>
-            <p className="text-muted-foreground">
-              Your active games. You can have a maximum of 3 active matches.
-            </p>
-          </div>
+            <div className="flex justify-between items-center">
+                <div>
+                    <h2 className="text-2xl font-bold font-headline">My Matches</h2>
+                    <p className="text-muted-foreground">
+                    Your active games. You can have a maximum of 3 active matches.
+                    </p>
+                </div>
+                <Button variant="link" asChild><Link href="/matches/my-matches">View All</Link></Button>
+            </div>
           {myMatchesLoading ? <Skeletons /> : myMatches.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {myMatches.map((match) => (
@@ -177,7 +181,7 @@ export default function DashboardPage() {
             <>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {openMatches.map((match) => (
-                    <MatchCard key={match.id} match={match} />
+                    <MatchCard key={match.id} match={match} myMatchesCount={myMatches.length} />
                 ))}
                 </div>
                 {hasMoreOpen && (

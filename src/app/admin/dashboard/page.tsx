@@ -27,46 +27,53 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { useCollection } from "@/firebase";
-import type { UserProfile, Match, DepositRequest, Transaction } from "@/types";
+import { useCollection, useCollectionCount, useCollectionGroup } from "@/firebase";
+import type { Match, DepositRequest, Transaction } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import { useMemo } from "react";
 
 
-const StatCard = ({ title, value, change, icon: Icon, loading }: { title: string, value: string, change?: string, icon: React.ElementType, loading: boolean }) => (
-    <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-            {title}
-            </CardTitle>
-            <Icon className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-            {loading ? (
-                <>
-                    <Skeleton className="h-8 w-24 mb-1" />
-                    <Skeleton className="h-4 w-40" />
-                </>
-            ) : (
-                <>
-                    <div className="text-2xl font-bold">{value}</div>
-                    {change && <p className="text-xs text-muted-foreground">{change}</p>}
-                </>
-            )}
-        </CardContent>
-    </Card>
-)
+const StatCard = ({ title, value, change, icon: Icon, loading, to }: { title: string, value: string, change?: string, icon: React.ElementType, loading: boolean, to?: string }) => {
+    const CardContentWrapper = to ? Link : 'div';
+    return (
+        <Card asChild={!!to} className={to ? 'hover:bg-muted/50 cursor-pointer' : ''}>
+            <CardContentWrapper href={to || ''}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                    {title}
+                    </CardTitle>
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    {loading ? (
+                        <>
+                            <Skeleton className="h-8 w-24 mb-1" />
+                            <Skeleton className="h-4 w-40" />
+                        </>
+                    ) : (
+                        <>
+                            <div className="text-2xl font-bold">{value}</div>
+                            {change && <p className="text-xs text-muted-foreground">{change}</p>}
+                        </>
+                    )}
+                </CardContent>
+            </CardContentWrapper>
+        </Card>
+    )
+}
 
 export default function AdminDashboardPage() {
-  const { data: users, loading: usersLoading } = useCollection<UserProfile>('users');
-  const { data: activeMatches, loading: matchesLoading } = useCollection<Match>('matches', { where: ['status', '==', 'ongoing'] });
-  const { data: pendingDeposits, loading: depositsLoading } = useCollection<DepositRequest>('deposit-requests', { where: ['status', '==', 'pending'] });
-  const { data: transactions, loading: transactionsLoading } = useCollection<Transaction>('transactions', { orderBy: ['createdAt', 'desc'], limit: 5, isCollectionGroup: true });
+  const { count: userCount, loading: usersLoading } = useCollectionCount('users');
+  const { count: activeMatchesCount, loading: matchesLoading } = useCollectionCount('matches', { where: ['status', '==', 'ongoing'] });
+  const { count: pendingDepositsCount, loading: depositsLoading } = useCollectionCount('deposit-requests', { where: ['status', '==', 'pending'] });
+  const { data: transactions, loading: transactionsLoading } = useCollectionGroup<Transaction>('transactions', { orderBy: ['createdAt', 'desc'], limit: 5 });
   const { data: pendingVerifications, loading: verificationsLoading } = useCollection<Match>('matches', { where: ['status', '==', 'verification'] });
+  const { data: revenueData, loading: revenueLoading } = useCollectionGroup<Transaction>('transactions', { where: ['type', '==', 'entry_fee']});
 
-  const { data: revenueData, loading: revenueLoading } = useCollection<Transaction>('transactions', { where: ['type', '==', 'entry_fee'], isCollectionGroup: true });
-
-  const totalRevenue = revenueData.reduce((acc, tx) => acc + tx.amount, 0);
+  const totalRevenue = useMemo(() => {
+    return revenueData.reduce((acc, tx) => acc + tx.amount, 0);
+  }, [revenueData]);
 
   const stats = [
     {
@@ -77,21 +84,23 @@ export default function AdminDashboardPage() {
     },
     {
       title: "Active Matches",
-      value: `${activeMatches.length}`,
+      value: `${activeMatchesCount}`,
       icon: Swords,
       loading: matchesLoading,
     },
     {
       title: "Pending Deposits",
-      value: `${pendingDeposits.length}`,
+      value: `${pendingDepositsCount}`,
       icon: Wallet,
       loading: depositsLoading,
+      to: '/admin/deposits'
     },
     {
       title: "Total Users",
-      value: `${users.length}`,
+      value: `${userCount}`,
       icon: Users,
       loading: usersLoading,
+      to: '/admin/users'
     },
   ];
 
@@ -115,7 +124,7 @@ export default function AdminDashboardPage() {
               </CardDescription>
             </div>
             <Button asChild size="sm" className="ml-auto gap-1">
-              <Link href="/admin/deposits">
+              <Link href="/admin/transactions">
                 View All
                 <ArrowUpRight className="h-4 w-4" />
               </Link>
@@ -149,8 +158,8 @@ export default function AdminDashboardPage() {
                                  <TableCell>
                                     {tx.createdAt?.seconds ? format(new Date(tx.createdAt.seconds * 1000), 'dd MMM yyyy') : 'N/A'}
                                 </TableCell>
-                                <TableCell className={`text-right ${tx.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                    {tx.amount > 0 ? '+' : ''}₹{tx.amount.toLocaleString()}
+                                <TableCell className={`text-right font-semibold ${tx.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                    {tx.amount > 0 ? '+' : ''}₹{Math.abs(tx.amount).toLocaleString()}
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -176,13 +185,6 @@ export default function AdminDashboardPage() {
                             <Skeleton className="h-4 w-48" />
                         </div>
                     </div>
-                     <div className="flex items-center gap-4">
-                        <Skeleton className="h-9 w-9 rounded-full" />
-                        <div className="space-y-1">
-                            <Skeleton className="h-4 w-20" />
-                            <Skeleton className="h-4 w-48" />
-                        </div>
-                    </div>
                  </div>
              ) : pendingVerifications.length > 0 ? (
                 pendingVerifications.map(match => (
@@ -190,7 +192,7 @@ export default function AdminDashboardPage() {
                         <CircleDashed className="h-9 w-9 text-muted-foreground" />
                         <div className="ml-4 space-y-1">
                             <p className="text-sm font-medium leading-none">{match.title}</p>
-                            <p className="text-sm text-muted-foreground">{match.players.length} players. Status: {match.status}</p>
+                            <p className="text-sm text-muted-foreground">{match.players.length} players. Prize: ₹{match.prizePool}</p>
                         </div>
                         <Button variant="outline" size="sm" className="ml-auto" asChild>
                             <Link href={`/admin/results/${match.id}`}>Verify</Link>
@@ -199,7 +201,7 @@ export default function AdminDashboardPage() {
                 ))
              ) : (
                 <div className="text-center text-sm text-muted-foreground py-4">
-                    No pending verifications.
+                    <p>No pending verifications.</p>
                 </div>
              )}
           </CardContent>

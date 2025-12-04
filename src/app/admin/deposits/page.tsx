@@ -1,118 +1,161 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AdminShell } from '@/components/layout/AdminShell';
 import { Button } from '@/components/ui/button';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, writeBatch, Timestamp } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { DepositRequest, UserProfile } from '@/types';
 import { format } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Eye, CheckCircle, XCircle } from 'lucide-react';
+import Image from 'next/image';
+
+const getStatusVariant = (status: string) => {
+  switch (status) {
+    case 'pending': return 'yellow';
+    case 'approved': return 'green';
+    case 'rejected': return 'red';
+    default: return 'secondary';
+  }
+};
 
 export default function AdminDepositsPage() {
   const { firestore } = useFirebase();
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState('pending');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: deposits, loading: depositsLoading, reload: reloadDeposits } = useCollection<DepositRequest>('deposit-requests', {
     where: ['status', '==', statusFilter],
     orderBy: ['createdAt', 'desc'],
   });
 
-  // This is not efficient, but it's the simplest way to get user data for each deposit.
-  // In a real-world app, you'd want to denormalize user data onto the deposit request.
-  const { data: users } = useCollection<UserProfile>('users');
+  const userIds = useMemo(() => deposits.map(d => d.userId), [deposits]);
+  const { data: users, loading: usersLoading } = useCollection<UserProfile>('users', { where: ['uid', 'in', userIds] });
 
-  const handleUpdateStatus = async (id: string, newStatus: 'approved' | 'rejected', userId?: string, amount?: number) => {
-    if (!firestore) return;
+  const usersMap = useMemo(() => {
+    const map = new Map<string, UserProfile>();
+    users.forEach(user => map.set(user.id, user));
+    return map;
+  }, [users]);
+
+  const handleUpdateStatus = async (deposit: DepositRequest, newStatus: 'approved' | 'rejected') => {
+    if (!firestore || !deposit.userId || !deposit.amount) return;
+    setIsSubmitting(true);
     try {
-      const depositRef = doc(firestore, 'deposit-requests', id);
-
-      if (newStatus === 'approved' && userId && amount) {
-        const userRef = doc(firestore, 'users', userId);
-        const batch = writeBatch(firestore);
-        batch.update(depositRef, { status: newStatus });
-        // This is not safe. In a real app, use a Cloud Function to update wallet balances.
-        batch.update(userRef, { walletBalance: (users.find(u => u.id === userId)?.walletBalance || 0) + amount });
-        await batch.commit();
-      } else {
-        await updateDoc(depositRef, { status: newStatus });
-      }
+      const batch = writeBatch(firestore);
+      const depositRef = doc(firestore, 'deposit-requests', deposit.id);
       
+      batch.update(depositRef, { status: newStatus, processedAt: Timestamp.now() });
+
+      if (newStatus === 'approved') {
+        const userRef = doc(firestore, 'users', deposit.userId);
+        const transactionRef = doc(firestore, `users/${deposit.userId}/transactions`, `deposit_${deposit.id}`);
+
+        // Note: A Cloud Function should be used for this logic to be secure and atomic.
+        // The function would trigger on the creation of the transaction document.
+        const userDoc = usersMap.get(deposit.userId);
+        const newBalance = (userDoc?.balance || 0) + deposit.amount;
+        batch.update(userRef, { balance: newBalance });
+
+        batch.set(transactionRef, {
+          amount: deposit.amount,
+          type: 'deposit',
+          description: 'Manual deposit approval by admin',
+          createdAt: Timestamp.now(),
+          status: 'completed'
+        });
+      }
+
+      await batch.commit();
       toast({ title: 'Success', description: `Deposit has been ${newStatus}.` });
       reloadDeposits();
     } catch (error) {
       console.error('Error updating deposit status:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update deposit status.' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
-  const getUserName = (userId: string) => {
-    return users.find(u => u.id === userId)?.name || 'Unknown User';
-  }
 
   return (
     <AdminShell>
       <div className="space-y-6">
         <h1 className="text-3xl font-bold font-headline">Manage Deposits</h1>
-        <div className="flex space-x-2">
-            <Button variant={statusFilter === 'pending' ? 'default' : 'outline'} onClick={() => setStatusFilter('pending')}>Pending</Button>
-            <Button variant={statusFilter === 'approved' ? 'default' : 'outline'} onClick={() => setStatusFilter('approved')}>Approved</Button>
-            <Button variant={statusFilter === 'rejected' ? 'default' : 'outline'} onClick={() => setStatusFilter('rejected')}>Rejected</Button>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {depositsLoading ? (
-              <TableRow><TableCell colSpan={5} className="text-center">Loading...</TableCell></TableRow>
-            ) : deposits.map(deposit => (
-              <TableRow key={deposit.id}>
-                <TableCell>{getUserName(deposit.userId)}</TableCell>
-                <TableCell>₹{deposit.amount}</TableCell>
-                <TableCell>{deposit.createdAt ? format(new Date(deposit.createdAt.seconds * 1000), 'dd MMM yyyy, HH:mm') : 'N/A'}</TableCell>
-                <TableCell><Badge>{deposit.status}</Badge></TableCell>
-                <TableCell className="space-x-2">
-                    <Dialog>
-                        <DialogTrigger asChild><Button variant="outline" size="sm">View</Button></DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Deposit Details</DialogTitle>
-                                <DialogDescription>
-                                    Review the details and screenshot before taking action.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className='space-y-4'>
-                                <p><strong>User:</strong> {getUserName(deposit.userId)}</p>
-                                <p><strong>Amount:</strong> ₹{deposit.amount}</p>
-                                <p><strong>Transaction ID:</strong> {deposit.transactionId}</p>
-                                <img src={deposit.screenshotUrl} alt="Payment Screenshot" className="rounded-md w-full" />
-                                {deposit.status === 'pending' && (
-                                    <div className="flex justify-end space-x-2 pt-4">
-                                        <Button variant="destructive" onClick={() => handleUpdateStatus(deposit.id, 'rejected')}>Reject</Button>
-                                        <Button onClick={() => handleUpdateStatus(deposit.id, 'approved', deposit.userId, deposit.amount)}>Approve</Button>
-                                    </div>
-                                )}
-                            </div>
-                        </DialogContent>
-                    </Dialog>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+                <CardTitle>Deposit Requests</CardTitle>
+                <div className="flex space-x-2">
+                    <Button size="sm" variant={statusFilter === 'pending' ? 'default' : 'outline'} onClick={() => setStatusFilter('pending')}>Pending</Button>
+                    <Button size="sm" variant={statusFilter === 'approved' ? 'default' : 'outline'} onClick={() => setStatusFilter('approved')}>Approved</Button>
+                    <Button size="sm" variant={statusFilter === 'rejected' ? 'default' : 'outline'} onClick={() => setStatusFilter('rejected')}>Rejected</Button>
+                </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(depositsLoading || usersLoading) ? (
+                  <TableRow><TableCell colSpan={5} className="text-center">Loading...</TableCell></TableRow>
+                ) : deposits.length === 0 ? (
+                   <TableRow><TableCell colSpan={5} className="text-center">No {statusFilter} deposits found.</TableCell></TableRow>
+                ) : deposits.map(deposit => {
+                  const user = usersMap.get(deposit.userId);
+                  return (
+                    <TableRow key={deposit.id}>
+                      <TableCell>{user?.displayName || 'Unknown'}</TableCell>
+                      <TableCell className="font-medium">₹{deposit.amount.toLocaleString()}</TableCell>
+                      <TableCell>{deposit.createdAt ? format((deposit.createdAt as Timestamp).toDate(), 'dd MMM yyyy, HH:mm') : 'N/A'}</TableCell>
+                      <TableCell><Badge variant={getStatusVariant(deposit.status)}>{deposit.status}</Badge></TableCell>
+                      <TableCell className="text-right">
+                          <Dialog>
+                              <DialogTrigger asChild><Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button></DialogTrigger>
+                              <DialogContent className="max-w-md">
+                                  <DialogHeader>
+                                      <DialogTitle>Deposit Details</DialogTitle>
+                                      <DialogDescription>Review the details and screenshot before taking action.</DialogDescription>
+                                  </DialogHeader>
+                                  <div className='space-y-4'>
+                                      <p><strong>User:</strong> {user?.displayName} ({user?.email})</p>
+                                      <p><strong>Amount:</strong> <span className="font-bold text-lg">₹{deposit.amount}</span></p>
+                                      <p><strong>Transaction ID:</strong> <span className="font-mono bg-muted p-1 rounded">{deposit.transactionId}</span></p>
+                                       <div className="relative aspect-square w-full rounded-md overflow-hidden border">
+                                            <Image src={deposit.screenshotUrl} alt="Payment Screenshot" layout="fill" objectFit="contain" />
+                                        </div>
+                                  </div>
+                                  {deposit.status === 'pending' && (
+                                      <DialogFooter className="pt-4">
+                                          <Button variant="destructive" onClick={() => handleUpdateStatus(deposit, 'rejected')} disabled={isSubmitting}><XCircle className="h-4 w-4 mr-2"/>Reject</Button>
+                                          <Button onClick={() => handleUpdateStatus(deposit, 'approved')} disabled={isSubmitting}><CheckCircle className="h-4 w-4 mr-2"/>Approve</Button>
+                                      </DialogFooter>
+                                  )}
+                              </DialogContent>
+                          </Dialog>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+           </CardContent>
+        </Card>
       </div>
     </AdminShell>
   );

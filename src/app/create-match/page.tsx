@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase/auth/use-user';
-import { addDoc, collection, doc, runTransaction } from 'firebase/firestore';
+import { addDoc, collection, doc, runTransaction, Timestamp } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
@@ -35,46 +35,65 @@ export default function CreateMatchPage() {
     }
   }
 
-  const handleSubmit = async () => {
-    const finalFee = entryFee === 'custom' ? parseInt(customFee, 10) : parseInt(entryFee, 10);
-
+  const validateForm = (finalFee: number) => {
     if (!title || !finalFee || !ludoKingCode || !user || !firestore) {
       toast({ variant: 'destructive', title: 'Missing Information', description: 'Please fill out all fields.' });
-      return;
+      return false;
     }
     if (ludoKingCode.length !== 6) {
         toast({ variant: 'destructive', title: 'Invalid Ludo King Code', description: 'The code must be 6 characters long.' });
-        return;
+        return false;
     }
+    return true;
+  }
+
+  const createMatchTransaction = async (finalFee: number) => {
+    if (!firestore || !user) return;
+
+    await runTransaction(firestore, async (transaction) => {
+        const userRef = doc(firestore, 'users', user.uid);
+        const userDoc = await transaction.get(userRef);
+
+        if (!userDoc.exists() || userDoc.data().balance < finalFee) {
+            throw new Error('Insufficient balance');
+        }
+
+        const newBalance = userDoc.data().balance - finalFee;
+        transaction.update(userRef, { balance: newBalance });
+
+        const matchRef = doc(collection(firestore, 'matches'));
+        const matchData = {
+            title,
+            entryFee: finalFee,
+            maxPlayers,
+            ludoKingCode,
+            creatorId: user.uid,
+            players: [user.uid],
+            status: 'open',
+            createdAt: Timestamp.now(),
+            prizePool: finalFee * 0.9, // 10% platform fee, initial prize
+        };
+        transaction.set(matchRef, matchData);
+
+        const txRef = doc(collection(firestore, `users/${user.uid}/transactions`));
+        const txData = {
+            matchId: matchRef.id,
+            amount: -finalFee,
+            type: 'entry_fee',
+            description: `Entry fee for "${title}"`,
+            createdAt: Timestamp.now(),
+        };
+        transaction.set(txRef, txData);
+    });
+  }
+
+  const handleSubmit = async () => {
+    const finalFee = entryFee === 'custom' ? parseInt(customFee, 10) : parseInt(entryFee, 10);
+    if (!validateForm(finalFee)) return;
 
     setIsSubmitting(true);
     try {
-        await runTransaction(firestore, async (transaction) => {
-            const userRef = doc(firestore, 'users', user.uid);
-            const userDoc = await transaction.get(userRef);
-            if (!userDoc.exists() || userDoc.data().walletBalance < finalFee) {
-                throw new Error('Insufficient balance');
-            }
-
-            const newBalance = userDoc.data().walletBalance - finalFee;
-            transaction.update(userRef, { walletBalance: newBalance });
-
-            const matchData = {
-                title,
-                entryFee: finalFee,
-                maxPlayers,
-                ludoKingCode,
-                creatorId: user.uid,
-                players: [user.uid],
-                status: 'open',
-                createdAt: new Date(),
-                prizePool: finalFee * maxPlayers * 0.9, // 10% platform fee
-            };
-
-            const matchCollection = collection(firestore, 'matches');
-            transaction.set(doc(matchCollection), matchData);
-        });
-
+        await createMatchTransaction(finalFee);
         toast({ title: 'Match Created!', description: 'Your match is now live and open for others to join.' });
         router.push('/dashboard');
     } catch (error: any) {

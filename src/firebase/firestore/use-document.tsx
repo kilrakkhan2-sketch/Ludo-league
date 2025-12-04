@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect } from 'react';
 import { doc, onSnapshot, DocumentData } from 'firebase/firestore';
@@ -34,6 +33,7 @@ export function useDocument<T>(path: string) {
       }
     );
 
+    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [db, path]);
 

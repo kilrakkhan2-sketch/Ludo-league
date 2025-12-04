@@ -1,3 +1,4 @@
+
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
@@ -7,6 +8,8 @@ import { FirebaseProvider, useFirebase, useFirebaseApp, useAuth, useFirestore } 
 import { FirebaseClientProvider } from './client-provider';
 import { useCollection } from './firestore/use-collection';
 import { useDoc } from './firestore/use-doc';
+import { useCollectionCount } from './firestore/use-collection-count';
+import { useCollectionGroup } from './firestore/use-collection-group';
 
 function initializeFirebase(): { app: FirebaseApp; auth: Auth; firestore: Firestore } {
   if (getApps().length) {
@@ -33,5 +36,7 @@ export {
   useAuth,
   useFirestore,
   useCollection,
-  useDoc
+  useDoc,
+  useCollectionCount,
+  useCollectionGroup
 };

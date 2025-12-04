@@ -1,14 +1,9 @@
 
 'use client';
 
-import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { AdminShell } from "@/components/layout/AdminShell";
+import { useCollection } from "@/firebase";
+import type { UserProfile } from "@/types";
 import {
   Table,
   TableBody,
@@ -17,112 +12,88 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCollection } from "@/firebase";
-import type { UserProfile } from "@/types";
-import { CheckCircle, XCircle, Shield } from "lucide-react";
 
 export default function AdminUsersPage() {
-  const { data: users, loading } = useCollection<UserProfile>('users');
-  const [searchTerm, setSearchTerm] = useState('');
+  const { data: users, loading, hasMore, loadMore } = useCollection<UserProfile>('users', { 
+    orderBy: ['createdAt', 'desc'], 
+    limit: 20,
+  });
 
-  const filteredUsers = users.filter(user => 
-    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.username?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  const getRoleBadgeVariant = (role: UserProfile['role']) => {
-    switch (role) {
-      case 'superadmin':
-        return 'destructive';
-      case 'deposit_admin':
-      case 'match_admin':
-        return 'default';
-      default:
-        return 'secondary';
-    }
-  }
+  const SkeletonRow = () => (
+    <TableRow>
+      <TableCell>
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <div className="space-y-1">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+        </div>
+      </TableCell>
+      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+      <TableCell className="text-right"><Skeleton className="h-5 w-12" /></TableCell>
+    </TableRow>
+  )
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold font-headline">User Management</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>
-            Browse and manage all registered users.
-          </CardDescription>
-          <div className="pt-4">
-             <Input 
-                placeholder="Search by name, email, or username..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm"
-             />
-          </div>
-        </CardHeader>
-        <CardContent>
-           {loading ? (
-             <div className="space-y-2">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-             </div>
-           ) : (
-             <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>User</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead>KYC</TableHead>
-                        <TableHead className="text-right">Wallet Balance</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {filteredUsers.length > 0 ? filteredUsers.map(user => (
-                        <TableRow key={user.id}>
-                            <TableCell>
-                                <div className="font-medium">{user.name}</div>
-                                <div className="text-sm text-muted-foreground">{user.email}</div>
-                            </TableCell>
-                            <TableCell>
-                               <Badge variant={getRoleBadgeVariant(user.role)}>
-                                    {user.role}
-                                </Badge>
-                            </TableCell>
-                            <TableCell>
-                                {user.isVerified ? (
-                                    <Badge variant="outline" className="text-success border-success">
-                                        <CheckCircle className="h-3 w-3 mr-1" />
-                                        Verified
-                                    </Badge>
-                                ) : (
-                                     <Badge variant="outline" className="text-destructive border-destructive">
-                                        <XCircle className="h-3 w-3 mr-1" />
-                                        Not Verified
-                                    </Badge>
-                                )}
-                            </TableCell>
-                            <TableCell className="text-right font-mono">
-                                ₹{user.walletBalance.toLocaleString()}
-                            </TableCell>
-                        </TableRow>
-                    )) : (
-                        <TableRow>
-                            <TableCell colSpan={4} className="text-center h-24">
-                                No users found.
-                            </TableCell>
-                        </TableRow>
-                    )}
-                </TableBody>
-            </Table>
-           )}
-        </CardContent>
-      </Card>
-    </div>
+    <AdminShell>
+        <div>
+            <h1 class="text-3xl font-bold font-headline">All Users</h1>
+            <p class="text-muted-foreground">A complete list of all registered users on the platform.</p>
+        </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>User</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Date Joined</TableHead>
+            <TableHead className="text-right">Balance</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {loading && users.length === 0 ? (
+            <>
+              <SkeletonRow />
+              <SkeletonRow />
+              <SkeletonRow />
+              <SkeletonRow />
+              <SkeletonRow />
+            </>
+          ) : users.map((user) => (
+            <TableRow key={user.uid}>
+              <TableCell>
+                  <div className="flex items-center gap-3">
+                      <Avatar>
+                        <AvatarImage src={user.photoURL || undefined} />
+                        <AvatarFallback>{user.displayName?.[0] || user.email?.[0] || 'U'}</AvatarFallback>
+                      </Avatar>
+                      <div className="font-medium">{user.displayName || '-'}</div>
+                  </div>
+              </TableCell>
+              <TableCell>{user.email}</TableCell>
+              <TableCell>
+                {user.createdAt?.seconds ? format(new Date(user.createdAt.seconds * 1000), 'dd MMM yyyy') : 'N/A'}
+              </TableCell>
+              <TableCell className="text-right font-semibold">
+                ₹{user.balance?.toLocaleString() || 0}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {hasMore && (
+        <div className="flex justify-center">
+            <Button onClick={loadMore} disabled={loading}>
+                {loading ? "Loading..." : "Load More"}
+            </Button>
+        </div>
+      )}
+    </AdminShell>
   );
 }
