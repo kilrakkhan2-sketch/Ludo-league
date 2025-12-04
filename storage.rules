@@ -1,55 +1,75 @@
-
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    
-    function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+
+    // --- Helper Functions --- //
+    // Yah functions niyamon ko saaf aur padhne mein aasan banate hain.
+
+    function isSignedIn() {
+      return request.auth != null;
     }
-    
+
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
-    
-    function isDepositOrSuperAdmin() {
+
+    // User ka role Firestore se laata hai
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    // Alag-alag admin roles ko check karta hai
+    function isSuperAdmin() {
       let role = getUserRole();
-      return role == 'deposit_admin' || role == 'superadmin';
+      return role == 'superadmin';
     }
 
-    // User profile images
-    match /profile-images/{userId}/{imageName} {
-      allow read: if request.auth != null;
-      allow write: if isOwner(userId);
-      allow delete: if false; // Prevent deletion
-    }
-    
-    // Deposit screenshots
-    match /deposit-screenshots/{userId}/{imageName} {
-      allow read: if isOwner(userId) || isDepositOrSuperAdmin();
-      allow write: if isOwner(userId);
-      allow delete: if false;
-    }
-    
-    // Result screenshots
-    match /match-results/{matchId}/{fileName} {
-      // Allow read by players in the match or match/super admins
-      allow read: if request.auth != null && (get(/databases/$(database)/documents/matches/$(matchId)).data.players.hasAny([request.auth.uid]) || getUserRole() == 'match_admin' || getUserRole() == 'superadmin');
-      // Allow write only by players of that match
-      allow write: if request.auth != null && get(/databases/$(database)/documents/matches/$(matchId)).data.players.hasAny([request.auth.uid]);
-      allow delete: if false;
+    function isDepositAdmin() {
+      let role = getUserRole();
+      return role == 'deposit_admin';
     }
 
-    // KYC Documents
+    function isKycAdmin() {
+      let role = getUserRole();
+      return role == 'kyc_admin';
+    }
+
+    // --- Storage Path Rules --- //
+
+    //== PROFILE PICTURES ==//
+    // Path: /profile-pictures/{userId}/<filename>
+    match /profile-pictures/{userId}/{fileName} {
+      // Padhein: Koi bhi user kisi ki bhi profile picture dekh sakta hai.
+      allow read: if true;
+      
+      // Likhein (Upload/Update/Delete): User sirf apni profile picture hi badal sakta hai.
+      allow write: if isSignedIn() && isOwner(userId);
+    }
+
+    //== DEPOSIT SCREENSHOTS ==//
+    // Path: /deposit-screenshots/{userId}/<filename>
+    match /deposit-screenshots/{userId}/{fileName} {
+      // Padhein: User apna screenshot, ya deposit/super admin kisi ka bhi screenshot dekh sakta hai.
+      allow read: if isSignedIn() && (isOwner(userId) || isDepositAdmin() || isSuperAdmin());
+      
+      // Likhein (Upload): User sirf apne liye hi screenshot upload kar sakta hai.
+      allow write: if isSignedIn() && isOwner(userId);
+    }
+
+    //== KYC DOCUMENTS ==//
+    // Path: /kyc-documents/{userId}/<filename>
     match /kyc-documents/{userId}/{fileName} {
-      allow read: if isOwner(userId) || isDepositOrSuperAdmin();
-      allow write: if isOwner(userId);
-      allow delete: if false;
+      // Padhein: User apna document, ya kyc/super admin kisi ka bhi document dekh sakta hai.
+      allow read: if isSignedIn() && (isOwner(userId) || isKycAdmin() || isSuperAdmin());
+      
+      // Likhein (Upload): User sirf apne liye hi document upload kar sakta hai.
+      allow write: if isSignedIn() && isOwner(userId);
     }
-    
-    // Admin uploads
-    match /admin/{fileName} {
-      allow read: if request.auth != null;
-      allow write: if getUserRole() == 'superadmin';
+
+    // Koi bhi anjaan path par access deny karein
+    match /{allPaths=**} {
+        allow read, write: if false;
     }
   }
 }

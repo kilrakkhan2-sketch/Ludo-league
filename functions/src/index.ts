@@ -2,100 +2,82 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
+// Initialize Firebase Admin SDK
 admin.initializeApp();
-
 const db = admin.firestore();
 
-export const approveDeposit = functions.https.onCall(async (data, context) => {
-  // 1. Authentication & Authorization
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      "unauthenticated",
-      "The function must be called while authenticated."
-    );
-  }
-  const approverUid = context.auth.uid;
+/**
+ * Handles the logic when a deposit's status is updated.
+ *
+ * This function is triggered when any document in the 'deposits' collection is updated.
+ * It specifically checks if the 'status' field has been changed to 'approved'.
+ * If it has, it securely updates the user's balance and creates a transaction record.
+ */
+export const onDepositStatusChange = functions.firestore
+  .document("deposits/{depositId}")
+  .onUpdate(async (change, context) => {
+    const beforeData = change.before.data();
+    const afterData = change.after.data();
 
-  // Check if the user is an admin
-  const userDoc = await db.collection("users").doc(approverUid).get();
-  const userRole = userDoc.data()?.role;
-  if (userRole !== 'superadmin' && userRole !== 'deposit_admin') {
-     throw new functions.https.HttpsError(
-      "permission-denied",
-      "Only deposit admins or superadmins can approve deposits."
-    );
-  }
-
-  const { depositId } = data;
-  if (!depositId || typeof depositId !== "string") {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      "The function must be called with a valid 'depositId'."
-    );
-  }
-
-  const depositRef = db.collection("deposit-requests").doc(depositId);
-
-  try {
-    // 2. Run as a transaction to ensure atomicity
-    await db.runTransaction(async (transaction) => {
-      const depositDoc = await transaction.get(depositRef);
-
-      if (!depositDoc.exists) {
-        throw new functions.https.HttpsError("not-found", "Deposit request not found.");
-      }
-
-      const depositData = depositDoc.data();
-      if (!depositData || depositData.status !== "pending") {
-        throw new functions.https.HttpsError(
-          "failed-precondition",
-          "Deposit is not pending or data is missing."
-        );
-      }
-
-      const { userId, amount } = depositData;
-      if (!userId || typeof amount !== "number" || amount <= 0) {
-        throw new functions.https.HttpsError(
-          "failed-precondition",
-          "Invalid user ID or amount in deposit request."
-        );
-      }
-
-      const userRef = db.collection("users").doc(userId);
-
-      // 3. Atomically update the user's balance
-      transaction.update(userRef, {
-        walletBalance: admin.firestore.FieldValue.increment(amount),
-      });
-
-      // 4. Update the deposit request status and record who approved it
-      transaction.update(depositRef, {
-        status: "approved",
-        processedAt: admin.firestore.FieldValue.serverTimestamp(),
-        processedBy: approverUid, // Record the UID of the admin
-      });
-
-      // 5. Create a transaction record for the user
-      const transactionRef = userRef.collection("transactions").doc();
-      transaction.set(transactionRef, {
-        amount,
-        type: "deposit",
-        description: "Deposit approved by admin",
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        status: "completed",
-        relatedId: depositId,
-      });
+    // Log the function execution for debugging
+    functions.logger.info(`Deposit ${context.params.depositId} updated`, {
+      before: beforeData,
+      after: afterData,
     });
 
-    return { success: true, message: "Deposit approved successfully." };
-  } catch (error) {
-    console.error("Error approving deposit:", error);
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
+    // Check if the status was changed from something else to "approved"
+    if (beforeData.status !== "approved" && afterData.status === "approved") {
+      const userId = afterData.userId;
+      const amount = afterData.amount;
+      const depositId = context.params.depositId;
+
+      if (!userId || !amount) {
+        functions.logger.error("Missing userId or amount in deposit document.", {
+          depositId,
+        });
+        return;
+      }
+      
+      const userRef = db.collection("users").doc(userId);
+      const transactionRef = db.collection("transactions").doc(); // Auto-generate ID
+
+      try {
+        // Use a Firestore transaction to ensure atomicity (all or nothing)
+        await db.runTransaction(async (transaction) => {
+          const userDoc = await transaction.get(userRef);
+          if (!userDoc.exists) {
+            throw new Error(`User with ID ${userId} not found.`);
+          }
+
+          const currentBalance = userDoc.data()?.balance || 0;
+          const newBalance = currentBalance + amount;
+
+          // Update user's balance
+          transaction.update(userRef, { balance: newBalance });
+
+          // Create a new transaction record
+          transaction.set(transactionRef, {
+            userId: userId,
+            amount: amount,
+            type: "deposit",
+            description: "Deposit approved",
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            relatedId: depositId, // Link to the original deposit document
+            balanceAfter: newBalance,
+          });
+        });
+
+        functions.logger.info(
+          `Successfully processed deposit for user ${userId}. New balance: ${await (await userRef.get()).data()?.balance}`,
+        );
+      } catch (error) {
+        functions.logger.error(
+          `Error processing deposit for user ${userId}:`,
+          error
+        );
+        // Optional: Revert the status back to "pending" or "failed"
+        await change.after.ref.update({ status: "failed", error: (error as Error).message });
+      }
     }
-    throw new functions.https.HttpsError(
-      "internal",
-      "An internal error occurred while approving the deposit."
-    );
-  }
-});
+  });
+
