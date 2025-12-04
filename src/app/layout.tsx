@@ -7,6 +7,7 @@ import { FirebaseClientProvider } from "@/firebase";
 export const metadata: Metadata = {
   title: "LudoLeague",
   description: "The ultimate platform for competitive Ludo.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -27,6 +28,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap"
           rel="stylesheet"
         />
+        <meta name="theme-color" content="#2563eb" />
       </head>
       <body className={cn("font-body antialiased")}>
         <FirebaseClientProvider>
