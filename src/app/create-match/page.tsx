@@ -1,134 +1,160 @@
 
 'use client';
 
-import { AppShell } from "@/components/layout/AppShell";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useState, useEffect } from "react";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { AppShell } from '@/components/layout/AppShell';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/firebase/auth/use-user';
+import { addDoc, collection, doc, runTransaction } from 'firebase/firestore';
+import { useFirebase } from '@/firebase/provider';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
-const twoPlayerFees = ["50", "100", "200", "500"];
-const multiPlayerFees = ["500", "1000", "2000", "5000"];
+const feeOptions = [10, 50, 100];
 
 export default function CreateMatchPage() {
-  const [maxPlayers, setMaxPlayers] = useState("2");
-  const [entryFee, setEntryFee] = useState("50");
-  const [availableFees, setAvailableFees] = useState(twoPlayerFees);
+  const router = useRouter();
+  const { toast } = useToast();
+  const { firestore } = useFirebase();
+  const { user } = useUser();
 
-  useEffect(() => {
-    if (maxPlayers === "2") {
-      setAvailableFees(twoPlayerFees);
-      // If current fee is not in the new list, reset to the minimum
-      if (!twoPlayerFees.includes(entryFee) && entryFee !== 'custom') {
-        setEntryFee(twoPlayerFees[0]);
-      }
-    } else {
-      setAvailableFees(multiPlayerFees);
-       // If current fee is not in the new list, reset to the minimum
-      if (!multiPlayerFees.includes(entryFee) && entryFee !== 'custom') {
-        setEntryFee(multiPlayerFees[0]);
-      }
+  const [title, setTitle] = useState('');
+  const [entryFee, setEntryFee] = useState('50');
+  const [customFee, setCustomFee] = useState('');
+  const [maxPlayers, setMaxPlayers] = useState(4);
+  const [ludoKingCode, setLudoKingCode] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleFeeChange = (value: string) => {
+    setEntryFee(value);
+    if (value !== 'custom') {
+        setCustomFee('');
     }
-  }, [maxPlayers, entryFee]);
+  }
+
+  const handleSubmit = async () => {
+    const finalFee = entryFee === 'custom' ? parseInt(customFee, 10) : parseInt(entryFee, 10);
+
+    if (!title || !finalFee || !ludoKingCode || !user || !firestore) {
+      toast({ variant: 'destructive', title: 'Missing Information', description: 'Please fill out all fields.' });
+      return;
+    }
+    if (ludoKingCode.length !== 6) {
+        toast({ variant: 'destructive', title: 'Invalid Ludo King Code', description: 'The code must be 6 characters long.' });
+        return;
+    }
+
+    setIsSubmitting(true);
+    try {
+        await runTransaction(firestore, async (transaction) => {
+            const userRef = doc(firestore, 'users', user.uid);
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists() || userDoc.data().walletBalance < finalFee) {
+                throw new Error('Insufficient balance');
+            }
+
+            const newBalance = userDoc.data().walletBalance - finalFee;
+            transaction.update(userRef, { walletBalance: newBalance });
+
+            const matchData = {
+                title,
+                entryFee: finalFee,
+                maxPlayers,
+                ludoKingCode,
+                creatorId: user.uid,
+                players: [user.uid],
+                status: 'open',
+                createdAt: new Date(),
+                prizePool: finalFee * maxPlayers * 0.9, // 10% platform fee
+            };
+
+            const matchCollection = collection(firestore, 'matches');
+            transaction.set(doc(matchCollection), matchData);
+        });
+
+        toast({ title: 'Match Created!', description: 'Your match is now live and open for others to join.' });
+        router.push('/dashboard');
+    } catch (error: any) {
+        console.error('Match creation error:', error);
+        let description = 'Could not create the match. Please try again.';
+        if (error.message === 'Insufficient balance') {
+            description = 'Your wallet balance is not sufficient.'
+        }
+        toast({ variant: 'destructive', title: 'Creation Failed', description });
+    }
+    setIsSubmitting(false);
+  };
 
   return (
     <AppShell>
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 font-headline">
-          Create New Match
-        </h1>
-        <Card>
-          <CardHeader>
-            <CardTitle>Match Settings</CardTitle>
-            <CardDescription>
-              Configure your Ludo match and invite others to play.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="match-name">Match Title</Label>
-              <Input id="match-name" placeholder="e.g., Quick Game" />
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold font-headline mb-4">Create a New Match</h1>
+        <div className="max-w-lg mx-auto bg-card p-6 rounded-lg shadow-md">
+          <div className="space-y-6">
+            <div>
+              <Label htmlFor="title">Match Title</Label>
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g., Weekend Warriors"
+              />
             </div>
-
-            <div className="space-y-2">
-              <Label>Max Players</Label>
-              <RadioGroup 
-                value={maxPlayers} 
-                onValueChange={setMaxPlayers}
-                className="flex gap-4 pt-2"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="2" id="players-2" />
-                  <Label htmlFor="players-2" className="font-normal">2</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="3" id="players-3" />
-                  <Label htmlFor="players-3" className="font-normal">3</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="4" id="players-4" />
-                  <Label htmlFor="players-4" className="font-normal">4</Label>
-                </div>
-              </RadioGroup>
+            <div>
+                <Label>Entry Fee</Label>
+                <RadioGroup value={entryFee} onValueChange={handleFeeChange} className="flex items-center gap-4 mt-2">
+                    {feeOptions.map(fee => (
+                        <Label key={fee} htmlFor={`fee-${fee}`} className="flex items-center gap-2 cursor-pointer border rounded-full px-4 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground">
+                            <RadioGroupItem value={fee.toString()} id={`fee-${fee}`} />
+                            ₹{fee}
+                        </Label>
+                    ))}
+                     <Label htmlFor="fee-custom" className="flex items-center gap-2 cursor-pointer border rounded-full px-4 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground">
+                        <RadioGroupItem value="custom" id="fee-custom" />
+                        Custom
+                    </Label>
+                </RadioGroup>
+                {entryFee === 'custom' && (
+                    <Input
+                        type="number"
+                        value={customFee}
+                        onChange={(e) => setCustomFee(e.target.value)}
+                        placeholder="Enter custom fee"
+                        className="mt-2"
+                    />
+                )}
             </div>
-
-            <div className="space-y-2">
-              <Label>Entry Fee (₹)</Label>
-              <p className="text-xs text-muted-foreground">
-                Minimum fee for {maxPlayers} players is ₹{availableFees[0]}.
-              </p>
-              <RadioGroup 
-                value={entryFee}
-                onValueChange={setEntryFee}
-                className="flex flex-wrap gap-4 pt-2"
-              >
-                {availableFees.map(fee => (
-                  <div key={`fee-${fee}`} className="flex items-center space-x-2">
-                    <RadioGroupItem value={fee} id={`fee-${fee}`} />
-                    <Label htmlFor={`fee-${fee}`} className="font-normal">{fee}</Label>
-                  </div>
-                ))}
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="custom" id="fee-custom" />
-                  <Label htmlFor="fee-custom" className="font-normal">Custom</Label>
-                </div>
-              </RadioGroup>
-              {entryFee === 'custom' && (
-                  <Input type="number" placeholder={`Enter amount (min ₹${availableFees[0]})`} className="mt-2" />
-              )}
+             <div>
+                <Label>Max Players</Label>
+                <RadioGroup value={maxPlayers.toString()} onValueChange={val => setMaxPlayers(parseInt(val))} className="flex items-center gap-4 mt-2">
+                     <Label htmlFor="players-2" className="flex items-center gap-2 cursor-pointer border rounded-full px-4 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground">
+                        <RadioGroupItem value="2" id="players-2" />
+                        2 Players
+                    </Label>
+                    <Label htmlFor="players-4" className="flex items-center gap-2 cursor-pointer border rounded-full px-4 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground">
+                        <RadioGroupItem value="4" id="players-4" />
+                        4 Players
+                    </Label>
+                </RadioGroup>
             </div>
-            
-             <div className="space-y-2">
-              <Label>Privacy</Label>
-              <RadioGroup defaultValue="public" className="flex gap-4 pt-2">
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="public" id="privacy-public" />
-                  <Label htmlFor="privacy-public" className="font-normal">Public</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="private" id="privacy-private" />
-                  <Label htmlFor="privacy-private" className="font-normal">Private</Label>
-                </div>
-              </RadioGroup>
+            <div>
+              <Label htmlFor="ludoKingCode">Ludo King Room Code</Label>
+              <Input
+                id="ludoKingCode"
+                value={ludoKingCode}
+                onChange={(e) => setLudoKingCode(e.target.value.toUpperCase())}
+                placeholder="Enter the 6-character code from Ludo King"
+                maxLength={6}
+              />
             </div>
-            <div className="space-y-2">
-                <Label htmlFor="room-code">Ludo King Room Code</Label>
-                <Input id="room-code" placeholder="Enter 6-character code from Ludo King" />
-                <p className="text-xs text-muted-foreground">You must create a room in the Ludo King app first.</p>
-            </div>
-            <Button type="submit" size="lg" className="w-full">
-              Create Match
+            <Button onClick={handleSubmit} className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating Match...' : 'Create Match & Deduct Fee'}
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </AppShell>
   );

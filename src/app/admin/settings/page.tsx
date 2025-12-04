@@ -59,7 +59,7 @@ export default function AdminSettingsPage() {
   }, [settings, form]);
 
 
-  const onSubmit = async (values: z.infer<typeof formSchema>>) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!firestore) return;
     const settingsRef = doc(firestore, "settings", "payment");
     setDoc(settingsRef, values, { merge: true })

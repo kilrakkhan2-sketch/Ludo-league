@@ -25,7 +25,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 
 const formSchema = z.object({
@@ -79,6 +79,32 @@ export default function LoginPage() {
       });
     }
   };
+
+  const handleGuestLogin = async () => {
+    if (!auth) {
+        toast({
+            variant: 'destructive',
+            title: 'Sign In Failed',
+            description: 'Authentication service not available.',
+        });
+        return;
+    }
+    try {
+      await signInAnonymously(auth);
+      toast({
+        title: 'Signed In!',
+        description: 'Welcome! You are playing as a guest.',
+      });
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Anonymous sign in error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Sign In Failed',
+        description: 'Could not sign in as a guest. Please try again later.',
+      });
+    }
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
@@ -143,6 +169,9 @@ export default function LoginPage() {
             <Link href="/signup" className="text-primary hover:underline">
               Sign up
             </Link>
+          </div>
+          <div className="mt-4 text-center">
+            <Button variant="outline" onClick={handleGuestLogin} className="w-full">Continue as Guest</Button>
           </div>
         </CardContent>
       </Card>

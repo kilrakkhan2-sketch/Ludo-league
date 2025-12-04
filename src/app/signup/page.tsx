@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -19,18 +20,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Swords } from 'lucide-react';
+import { Swords, LogIn } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  updateProfile,
-} from 'firebase/auth';
+import { useFirebase } from '@/firebase/provider';
+import { createUserWithEmailAndPassword, sendEmailVerification, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-import { useFirebase } from '@/firebase';
+import { useState } from 'react';
 
 const formSchema = z
   .object({
@@ -39,6 +37,7 @@ const formSchema = z
     phone: z.string().min(10, 'Phone number must be at least 10 digits'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
     confirmPassword: z.string(),
+    otp: z.string().length(6, 'OTP must be 6 digits'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -49,6 +48,8 @@ export default function SignupPage() {
   const { auth, firestore } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
+  const [otpSent, setOtpSent] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<any>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -58,78 +59,95 @@ export default function SignupPage() {
       phone: '',
       password: '',
       confirmPassword: '',
+      otp: '',
     },
   });
+
+  const handleSendOtp = async () => {
+    if (!auth) return;
+    try {
+      const recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+      });
+      const phoneNumber = `+${form.getValues('phone')}`;
+      const result = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
+      setConfirmationResult(result);
+      setOtpSent(true);
+      toast({ title: 'OTP Sent', description: 'An OTP has been sent to your phone.' });
+    } catch (error) {
+      console.error('OTP error:', error);
+      toast({ variant: 'destructive', title: 'OTP Failed', description: 'Could not send OTP. Please try again.' });
+    }
+  };
+
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!auth || !firestore) {
       toast({
         variant: 'destructive',
-        title: 'Error',
+        title: 'Signup Failed',
         description: 'Firebase not initialized. Please try again later.',
       });
       return;
     }
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        values.email,
-        values.password
-      );
-      const user = userCredential.user;
+        if (!confirmationResult) {
+            toast({ variant: 'destructive', title: 'OTP Verification Failed', description: 'Please send an OTP first.' });
+            return;
+        }
+      const credential = await confirmationResult.confirm(values.otp);
+      const user = credential.user;
 
-      await updateProfile(user, {
-        displayName: values.fullName,
-      });
+      await sendEmailVerification(user);
 
-      // Create user profile in Firestore
       await setDoc(doc(firestore, 'users', user.uid), {
         uid: user.uid,
         name: values.fullName,
         email: values.email,
         phone: values.phone,
-        username: `${values.fullName.split(' ')[0]}${Math.floor(Math.random() * 9000) + 1000}`,
-        photoURL: `https://picsum.photos/seed/${user.uid}/200/200`,
-        walletBalance: 0,
-        isVerified: false,
-        role: 'user', // Default role for new users
+        role: 'user', // Default role
+        walletBalance: 0, // Initial wallet balance
+        isVerified: false, // Email not verified yet
+        createdAt: new Date(),
       });
 
       toast({
         title: 'Account Created!',
-        description: "You've been successfully signed up.",
+        description: 'We have sent a verification link to your email. Please verify to log in.',
       });
 
-      router.push('/dashboard');
+      router.push('/login');
     } catch (error: any) {
-      console.error('Sign up error:', error);
-      let errorMessage = 'An unexpected error occurred. Please try again.';
+      console.error('Signup error:', error);
+      let description = 'An unexpected error occurred. Please try again.';
       if (error.code === 'auth/email-already-in-use') {
-        errorMessage =
-          'This email is already in use. Please try another email or log in.';
+        description = 'This email is already registered. Please sign in instead.';
+      } else if (error.code === 'auth/weak-password') {
+        description = 'The password is too weak. Please choose a stronger password.';
+      } else if (error.code === 'auth/invalid-verification-code') {
+        description = 'The OTP you entered is incorrect. Please try again.';
       }
       toast({
         variant: 'destructive',
-        title: 'Sign Up Failed',
-        description: errorMessage,
+        title: 'Signup Failed',
+        description,
       });
     }
   };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
-      <Card className="w-full max-w-sm">
+      <div id="recaptcha-container"></div>
+      <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <Link href="/" className="flex justify-center mb-4">
             <div className="p-3 bg-primary rounded-lg">
               <Swords className="h-8 w-8 text-primary-foreground" />
             </div>
           </Link>
-          <CardTitle className="text-3xl font-headline">
-            Create an Account
-          </CardTitle>
-          <CardDescription>Join LudoLeague and start winning!</CardDescription>
+          <CardTitle className="text-3xl font-headline">Create an Account</CardTitle>
+          <CardDescription>Join LudoLeague to start playing and winning!</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -169,13 +187,9 @@ export default function SignupPage() {
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone</FormLabel>
+                    <FormLabel>Phone Number</FormLabel>
                     <FormControl>
-                      <Input
-                        type="tel"
-                        placeholder="Your phone number"
-                        {...field}
-                      />
+                      <Input type="tel" placeholder="+91 98765 43210" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -207,8 +221,29 @@ export default function SignupPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full">
-                Create Account
+
+              {otpSent ? (
+                <FormField
+                  control={form.control}
+                  name="otp"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>OTP</FormLabel>
+                      <FormControl>
+                        <Input placeholder="_ _ _ _ _ _" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <Button type="button" className="w-full" onClick={handleSendOtp}>
+                  Send OTP
+                </Button>
+              )}
+
+              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? 'Creating Account...' : 'Create Account'}
               </Button>
             </form>
           </Form>
