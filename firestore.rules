@@ -34,6 +34,12 @@ service cloud.firestore {
       return isSuperAdmin(userId) || isDepositAdmin(userId) || isMatchAdmin(userId);
     }
 
+    // Rules for all transactions across all users (Collection Group)
+    match /{path=**}/transactions/{transactionId} {
+      // Super admins can query across all user transactions for reporting.
+      allow read: if isSuperAdmin(request.auth.uid);
+    }
+
     // Rules for User Profiles
     match /users/{userId} {
       // Any authenticated user can read public profile data (for leaderboards, match player lists, etc.).
@@ -83,8 +89,8 @@ service cloud.firestore {
 
     // Rules for User Transactions (subcollection of users)
     match /users/{userId}/transactions/{transactionId} {
-        // Only the user themselves or a superadmin can read their transaction history.
-        allow read: if isOwner(userId) || isSuperAdmin(request.auth.uid);
+        // Only the user themselves can read their transaction history (admin access is via collection group rule).
+        allow read: if isOwner(userId);
         
         // Transactions must only be created via secure backend functions to prevent fraud.
         // We deny all client-side writes.
@@ -94,7 +100,8 @@ service cloud.firestore {
     // Rules for Deposit Requests
     match /deposit-requests/{depositId} {
       // The user who made the request and deposit admins/superadmins can read it.
-      allow read: if isDepositAdmin(request.auth.uid) || isOwner(get(path("/databases/$(database)/documents/deposit-requests/$(depositId)")).data.userId);
+      // For a user to LIST their requests, the client query MUST include a `where('userId', '==', request.auth.uid)` clause.
+      allow read: if isDepositAdmin(request.auth.uid) || (resource.data != null && resource.data.userId == request.auth.uid);
 
       // A user can create their own deposit request. Status must be 'pending'.
       allow create: if isAuthenticated() 

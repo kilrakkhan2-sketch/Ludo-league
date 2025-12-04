@@ -33,12 +33,14 @@ const formSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
+type LoginFormValues = z.infer<typeof formSchema>;
+
 export default function LoginPage() {
   const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<LoginFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: '',
@@ -46,7 +48,7 @@ export default function LoginPage() {
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>>) => {
+  const onSubmit = async (values: LoginFormValues) => {
     if (!auth) {
         toast({
             variant: 'destructive',

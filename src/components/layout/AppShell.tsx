@@ -18,7 +18,6 @@ import {
   LayoutGrid,
   Wallet,
   Trophy,
-  PlusCircle,
   ShieldCheck,
   User,
   LogOut,
@@ -49,7 +48,6 @@ import { useToast } from "@/hooks/use-toast";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutGrid, label: "Dashboard" },
-  { href: "/create-match", icon: PlusCircle, label: "Create Match" },
   { href: "/leaderboard", icon: Star, label: "Leaderboard" },
   { href: "/tournaments", icon: Trophy, label: "Tournaments" },
   { href: "/friends", icon: Users, label: "Friends" },
