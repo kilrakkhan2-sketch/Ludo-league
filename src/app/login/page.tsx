@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,14 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>>) => {
+    if (!auth) {
+        toast({
+            variant: 'destructive',
+            title: 'Sign In Failed',
+            description: 'Authentication service not available.',
+        });
+        return;
+    }
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
       toast({
