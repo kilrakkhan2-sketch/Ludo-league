@@ -105,11 +105,11 @@ export default function ProfilePage() {
 
   // Calculate stats
   const matchesPlayed = matches.length;
-  const matchesWon = matches.filter(m => m.winnerId === user?.uid).length;
+  const matchesWon = matches.filter((m: Match) => m.winnerId === user?.uid).length;
   const winRate = matchesPlayed > 0 ? Math.round((matchesWon / matchesPlayed) * 100) : 0;
   const totalWinnings = transactions
-    .filter(t => t.type === 'prize')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .filter((t: Transaction) => t.type === 'prize')
+    .reduce((sum: number, t: Transaction) => sum + t.amount, 0);
 
 
   return (
@@ -162,7 +162,7 @@ export default function ProfilePage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {matches.length === 0 && <p className='text-muted-foreground text-center py-8'>No matches played yet.</p>}
-                            {matches.map(match => (
+                            {matches.map((match: Match) => (
                                 <div key={match.id} className='flex items-center justify-between p-4 rounded-lg bg-muted/50'>
                                     <div>
                                         <p className='font-semibold'>{match.title}</p>
@@ -191,7 +191,7 @@ export default function ProfilePage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {transactions.length === 0 && <p className='text-muted-foreground text-center py-8'>No transactions found.</p>}
-                            {transactions.map(tx => (
+                            {transactions.map((tx: Transaction) => (
                                 <div key={tx.id} className='flex items-center justify-between p-4 rounded-lg bg-muted/50'>
                                     <div>
                                         <p className='font-semibold capitalize'>{tx.type.replace(/_/g, ' ')}</p>

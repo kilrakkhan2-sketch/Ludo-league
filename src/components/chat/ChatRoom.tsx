@@ -2,8 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useUser } from '@/firebase/auth/use-user';
+import { useCollection, useDoc, useUser } from '@/firebase';
 import { useFirebase } from '@/firebase/provider';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
@@ -12,7 +11,6 @@ import { Message, UserProfile } from '@/types';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Send } from 'lucide-react';
-import { useDocument } from '@/firebase/firestore/use-document';
 
 interface ChatRoomProps {
   matchId: string;
@@ -20,13 +18,13 @@ interface ChatRoomProps {
 
 export function ChatRoom({ matchId }: ChatRoomProps) {
   const { user, loading: userLoading } = useUser();
-  const { data: profile, loading: profileLoading } = useDocument<UserProfile>(user ? `users/${user.uid}` : undefined);
+  const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : undefined);
   const { firestore } = useFirebase();
   const [newMessage, setNewMessage] = useState('');
 
   const messagesPath = `matches/${matchId}/messages`;
   const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesPath, { orderBy: ['createdAt', 'asc'] });
-  const { data: playerProfiles } = useCollection<UserProfile>('users', { where: ['id', 'in', messages.map(m => m.userId)] });
+  const { data: playerProfiles } = useCollection<UserProfile>('users', { where: ['id', 'in', messages.map((m: Message) => m.userId)] });
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +42,7 @@ export function ChatRoom({ matchId }: ChatRoomProps) {
     }
   };
 
-  const getPlayerProfile = (userId: string) => playerProfiles.find(p => p.id === userId);
+  const getPlayerProfile = (userId: string) => playerProfiles.find((p: UserProfile) => p.id === userId);
 
   return (
     <div className="border rounded-lg p-4 space-y-4">
@@ -53,7 +51,7 @@ export function ChatRoom({ matchId }: ChatRoomProps) {
         {messagesLoading || userLoading || profileLoading ? (
           <p>Loading chat...</p>
         ) : messages.length > 0 ? (
-          messages.map(msg => {
+          messages.map((msg: Message) => {
               const profile = getPlayerProfile(msg.userId);
               const isYou = msg.userId === user?.uid;
               return (

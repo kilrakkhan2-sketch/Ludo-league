@@ -83,7 +83,7 @@ const MatchCard = ({ match, myMatchesCount }: { match: Match, myMatchesCount?: n
         <Trophy className="h-5 w-5 text-yellow-500" />
         <p className="text-lg font-bold">₹{match.prizePool || match.entryFee * match.players.length * 0.9}</p>
       </div>
-       <Button asChild disabled={match.players.length === match.maxPlayers || match.status !== 'open' || (myMatchesCount && myMatchesCount >= 3)}>
+       <Button asChild disabled={match.players.length === match.maxPlayers || match.status !== 'open' || (myMatchesCount !== undefined && myMatchesCount >= 3)}>
          <Link href={`/match/${match.id}`}>
             {match.status === 'open' ? 'Join' : 'View'}
          </Link>
@@ -126,7 +126,7 @@ export default function OpenMatchesPage() {
         ) : matches.length > 0 ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {matches.map((match) => (
+              {matches.map((match: Match) => (
                 <MatchCard key={match.id} match={match} myMatchesCount={myMatches.length} />
               ))}
             </div>

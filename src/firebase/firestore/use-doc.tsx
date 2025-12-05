@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { doc, onSnapshot, DocumentData } from "firebase/firestore";
 import { useFirestore } from "../provider";
 
-export function useDoc<T>(path: string) {
+export function useDoc<T>(path: string | undefined) {
   const db = useFirestore();
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
@@ -12,6 +12,7 @@ export function useDoc<T>(path: string) {
 
   useEffect(() => {
     if (!path) {
+      setData(null);
       setLoading(false);
       return;
     }

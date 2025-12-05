@@ -123,7 +123,7 @@ export default function MyMatchesPage() {
         {loading && matches.length === 0 ? <Skeletons /> : matches.length > 0 ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {matches.map((match) => (
+              {matches.map((match: Match) => (
                 <MatchCard key={match.id} match={match} />
               ))}
             </div>

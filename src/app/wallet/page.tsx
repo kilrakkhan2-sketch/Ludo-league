@@ -215,7 +215,7 @@ export default function WalletPage() {
                         <TableCell colSpan={4} className="h-24 text-center">Loading transactions...</TableCell>
                     </TableRow>
                 ) : transactions.length > 0 ? (
-                  transactions.map((tx) => (
+                  transactions.map((tx: Transaction) => (
                     <TableRow key={tx.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
