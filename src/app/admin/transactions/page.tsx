@@ -57,7 +57,7 @@ export default function AdminTransactionsPage() {
               <SkeletonRow />
               <SkeletonRow />
             </>
-          ) : transactions.map((tx) => (
+          ) : transactions.map((tx: Transaction) => (
             <TableRow key={tx.id}>
               <TableCell>
                 <div className="font-medium">{tx.userName || tx.userId.substring(0, 6)}</div>

@@ -61,7 +61,7 @@ export default function AdminWithdrawalsPage() {
 
   const allUserIdsInView = useMemo(() => {
     const ids = new Set<string>();
-    requests.forEach(r => {
+    requests.forEach((r: WithdrawalRequest) => {
         ids.add(r.userId);
         if (r.processedBy) {
             ids.add(r.processedBy);
@@ -76,7 +76,7 @@ export default function AdminWithdrawalsPage() {
 
   const usersMap = useMemo(() => {
     const map = new Map<string, UserProfile>();
-    usersData.forEach(user => map.set(user.uid, user));
+    usersData.forEach((user: UserProfile) => map.set(user.uid, user));
     return map;
   }, [usersData]);
 
@@ -195,7 +195,7 @@ export default function AdminWithdrawalsPage() {
                 <TableBody>
                 {loading || usersLoading ? (
                     <TableRow><TableCell colSpan={8} className="text-center">Loading...</TableCell></TableRow>
-                ) : requests.length > 0 ? requests.map(req => {
+                ) : requests.length > 0 ? requests.map((req: WithdrawalRequest) => {
                     const user = usersMap.get(req.userId);
                     const processor = req.processedBy ? usersMap.get(req.processedBy) : null;
                     return (

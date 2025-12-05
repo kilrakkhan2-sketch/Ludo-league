@@ -65,7 +65,7 @@ export default function AdminUsersPage() {
               <SkeletonRow />
               <SkeletonRow />
             </>
-          ) : users.map((user) => (
+          ) : users.map((user: UserProfile) => (
             <TableRow key={user.uid}>
               <TableCell>
                   <div className="flex items-center gap-3">
