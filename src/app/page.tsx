@@ -31,7 +31,7 @@ export default function LandingPage() {
       <main className="flex-1 pt-16">
         {/* Hero Section */}
         <section className="relative w-full min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden">
-            <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+            <div className="absolute inset-0 opacity-5"></div>
             <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background"></div>
             <div className="absolute w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse-slow -top-16 -left-16"></div>
             <div className="absolute w-96 h-96 bg-secondary/20 rounded-full blur-3xl animate-pulse-slow-delay bottom-0 -right-16"></div>

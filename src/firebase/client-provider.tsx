@@ -2,13 +2,17 @@
 
 import { ReactNode } from 'react';
 import { FirebaseProvider, initializeFirebase } from './index';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
-const { app, auth, firestore } = initializeFirebase();
+// Initialize Firebase
+const { app, auth, firestore, storage } = initializeFirebase();
 
 export function FirebaseClientProvider({ children }: { children: ReactNode }) {
+
   return (
-    <FirebaseProvider value={{ app, auth, firestore }}>
+    <FirebaseProvider value={{ app, auth, firestore, storage }}>
       {children}
+      <FirebaseErrorListener />
     </FirebaseProvider>
   );
 }
