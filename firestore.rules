@@ -1,10 +1,18 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // --- Helper Functions ---
+
+    // ------------------ Helper Functions ------------------
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isServer() {
+      return request.auth.token.firebase.sign_in_provider == "firebase";
+    }
+
     function isSuperAdmin() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
     }
@@ -13,92 +21,97 @@ service cloud.firestore {
       let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
       return role == 'deposit_admin' || role == 'superadmin';
     }
-    
+
     function isMatchAdmin() {
       let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
       return role == 'match_admin' || role == 'superadmin';
     }
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
-    
-    function isExistingUser(userId) {
-        return exists(/databases/$(database)/documents/users/$(userId));
-    }
-    
-    // --- User Profiles ---
+
+    // ------------------ USERS COLLECTION ------------------
+
     match /users/{userId} {
+      // Cloud Functions get full access. Client access is handled below.
+      allow read, write: if isServer();
+
+      // Client-side rules
       allow read: if isSignedIn();
-      
-      allow create: if isOwner(userId) 
+      allow create: if isOwner(userId)
                     && request.resource.data.role == 'user'
                     && request.resource.data.walletBalance == 0;
-      
-      // Allow user to update their own profile (e.g., name, photoURL)
-      // but NOT their role or walletBalance directly.
-      // Superadmin can update any field.
-      allow update: if (isOwner(userId) && !('role' in request.resource.data.diff(resource.data).affectedKeys()) && !('walletBalance' in request.resource.data.diff(resource.data).affectedKeys()))
-                    || isSuperAdmin();
-
+      allow update: if 
+        (
+          isOwner(userId) &&
+          !('role' in request.resource.data.diff(resource.data).affectedKeys()) &&
+          !('walletBalance' in request.resource.data.diff(resource.data).affectedKeys())
+        )
+        || isSuperAdmin();
       allow delete: if isSuperAdmin();
 
-      // --- User Transactions (Subcollection) ---
+      // -------- User Transactions Subcollection --------
       match /transactions/{transactionId} {
+        // Server access is inherited. Client rules below.
         allow read: if isOwner(userId) || isSuperAdmin();
-        allow create: if isOwner(userId) || isDepositAdmin() || isSuperAdmin();
-        allow update, delete: if false; // Transactions should be immutable
+        allow create: if isOwner(userId) || isDepositAdmin(); // Server can already create
+        allow update, delete: if false;  // Immutable for clients
       }
     }
-    
-    match /{path=**}/transactions/{transactionId} {
-        allow read: if isSuperAdmin();
-    }
-    
-    // --- Matches ---
+
+    // ------------------ MATCHES COLLECTION ------------------
+
     match /matches/{matchId} {
+      // Cloud Functions get full access. Client access is handled below.
+      allow create, update, delete: if isServer();
+
+      // Client-side rules
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && isExistingUser(request.auth.uid);
-      allow update: if isSignedIn() && (resource.data.creatorId == request.auth.uid || isMatchAdmin() || isSuperAdmin());
+      allow create: if isSignedIn();
+      allow update: if isSignedIn()
+        && (resource.data.creatorId == request.auth.uid || isMatchAdmin() || isSuperAdmin());
       allow delete: if isMatchAdmin() || isSuperAdmin();
 
-       match /messages/{messageId} {
-        allow read, write: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
+      // -------- Messages Subcollection --------
+      match /messages/{messageId} {
+        // Server access is inherited.
+        allow read, write: if isSignedIn()
+          && request.auth.uid in resource.data.players;
       }
     }
-    
-    // --- Deposit Requests ---
+
+    // ------------------ DEPOSIT REQUESTS ------------------
+
     match /deposit-requests/{depositId} {
-        allow read: if isSignedIn() && (isOwner(resource.data.userId) || isDepositAdmin());
-        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-        allow update: if isDepositAdmin(); 
-        allow delete: if isSuperAdmin();
+      allow read: if isServer() || (isSignedIn() && (isOwner(resource.data.userId) || isDepositAdmin()));
+      allow create: if isServer() || (isSignedIn() && isOwner(request.resource.data.userId));
+      allow update: if isServer() || isDepositAdmin();
+      allow delete: if isServer() || isSuperAdmin();
     }
 
-    // --- Withdrawal Requests ---
+    // ------------------ WITHDRAWAL REQUESTS ------------------
+
     match /withdrawal-requests/{withdrawalId} {
-        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-        allow read: if isSignedIn() && (isOwner(resource.data.userId) || isDepositAdmin());
-        allow update: if isDepositAdmin();
-        allow delete: if isSuperAdmin();
+       allow read: if isServer() || (isSignedIn() && (isOwner(resource.data.userId) || isDepositAdmin()));
+      allow create: if isServer() || (isSignedIn() && isOwner(request.resource.data.userId));
+      allow update: if isServer() || isDepositAdmin();
+      allow delete: if isServer() || isSuperAdmin();
     }
 
-    // --- KYC Requests ---
+    // ------------------ KYC REQUESTS ------------------
+
     match /kyc-requests/{kycId} {
-        allow read: if isSignedIn() && (isOwner(resource.data.userId) || isSuperAdmin());
-        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-        allow update: if isSuperAdmin();
-        allow delete: if isSuperAdmin();
+      allow read: if isServer() || (isSignedIn() && (isOwner(resource.data.userId) || isSuperAdmin()));
+      allow create: if isServer() || (isSignedIn() && isOwner(request.resource.data.userId));
+      allow update, delete: if isServer() || isSuperAdmin();
     }
 
-    // --- Settings ---
+    // ------------------ SETTINGS DOCUMENT ------------------
+
     match /settings/payment {
-        allow read: if isSignedIn();
-        allow write: if isSuperAdmin();
+      allow read: if isSignedIn();
+      allow write: if isServer() || isSuperAdmin();
     }
   }
 }

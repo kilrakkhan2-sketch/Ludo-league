@@ -1,13 +1,16 @@
-
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
 admin.initializeApp();
 const db = admin.firestore();
 
+// =================================================================
+//  USER & ROLE MANAGEMENT FUNCTIONS
+// =================================================================
+
 export const setSuperAdminRole = functions.https.onCall(async (data, context) => {
   const email = data.email;
-  if (typeof email !== 'string' || email.length === 0) {
+  if (typeof email !== "string" || email.length === 0) {
     throw new functions.https.HttpsError('invalid-argument', 'The function must be called with one argument "email" containing the user email address.');
   }
   try {
@@ -49,6 +52,10 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('internal', 'An error occurred while trying to set the user role.');
   }
 });
+
+// =================================================================
+//  FIRESTORE TRIGGERS (Automated Actions)
+// =================================================================
 
 export const onDepositStatusChange = functions.firestore
   .document("deposit-requests/{depositId}")
@@ -151,7 +158,7 @@ export const onMatchResultUpdate = functions.firestore
                 if (!winnerDoc.exists) {
                     throw new Error(`Winner user ${winnerId} not found.`);
                 }
-                const winnerData = winnerDoc.data();
+                const winnerData = winnerDoc.data()!;
                 const currentBalance = winnerData?.walletBalance || 0;
                 const currentRating = winnerData?.rating || 1000;
                 const currentXp = winnerData?.xp || 0;
@@ -183,7 +190,7 @@ export const onMatchResultUpdate = functions.firestore
                     const loserRef = db.collection("users").doc(loserId);
                     const loserDoc = await t.get(loserRef);
                     if (loserDoc.exists) {
-                        const loserData = loserDoc.data();
+                        const loserData = loserDoc.data()!;
                         const loserRating = loserData?.rating || 1000;
                         const newLoserRating = Math.max(0, loserRating - 5); // Don't go below 0
                         t.update(loserRef, { rating: newLoserRating });
@@ -197,4 +204,100 @@ export const onMatchResultUpdate = functions.firestore
         }
     }
     return null;
+});
+
+
+// =================================================================
+//  🔥 NEW - MATCH CREATION FUNCTION
+// =================================================================
+
+export const createMatch = functions.https.onCall(async (data, context) => {
+    // 1. Authentication Check: User must be logged in.
+    if (!context.auth) {
+        throw new functions.https.HttpsError(
+            "unauthenticated",
+            "You must be logged in to create a match."
+        );
+    }
+
+    // 2. Data Validation: Check for required fields.
+    const { title, entryFee, prizePool } = data;
+    if (!title || typeof title !== "string" || title.length === 0) {
+        throw new functions.https.HttpsError("invalid-argument", "Match title is required.");
+    }
+    if (typeof entryFee !== "number" || entryFee < 0) { // Allow 0 for free matches
+        throw new functions.https.HttpsError("invalid-argument", "A valid entry fee is required.");
+    }
+     if (typeof prizePool !== "number" || prizePool < 0) {
+        throw new functions.https.HttpsError("invalid-argument", "A valid prize pool is required.");
+    }
+
+    const userId = context.auth.uid;
+    const userRef = db.collection("users").doc(userId);
+    const matchRef = db.collection("matches").doc(); // Auto-generate ID for the new match
+    const transactionRef = db.collection(`users/${userId}/transactions`).doc(); // Auto-generate ID for the new transaction
+
+    try {
+        // 3. Firestore Transaction: All operations succeed or all fail.
+        const newMatchId = await db.runTransaction(async (t) => {
+            const userDoc = await t.get(userRef);
+            if (!userDoc.exists) {
+                throw new functions.https.HttpsError("not-found", "User creating the match does not exist.");
+            }
+
+            const userData = userDoc.data()!;
+            const currentBalance = userData.walletBalance || 0;
+
+            // Check if user has enough balance for the entry fee
+            if (currentBalance < entryFee) {
+                throw new functions.https.HttpsError(
+                    "failed-precondition",
+                    "Insufficient wallet balance to create the match."
+                );
+            }
+
+            // Operation A: Deduct entry fee from user's wallet
+            const newBalance = currentBalance - entryFee;
+            t.update(userRef, { walletBalance: newBalance });
+
+            // Operation B: Create a transaction record for the deduction
+            t.set(transactionRef, {
+                amount: -entryFee, // Negative amount for a deduction
+                type: "entry-fee",
+                status: "completed",
+                description: `Entry fee for match: ${title}`,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                relatedId: matchRef.id, // Link this transaction to the match document
+            });
+
+            // Operation C: Create the new match document
+            t.set(matchRef, {
+                title,
+                entryFee,
+                prizePool,
+                creatorId: userId,
+                players: [userId], // The creator is the first player
+                status: "waiting", // Initial status of the match
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            
+            return matchRef.id;
+        });
+
+        // 4. Success Response: Return a success message to the client.
+        return {
+            status: "success",
+            message: "Match created successfully!",
+            matchId: newMatchId,
+        };
+
+    } catch (error) {
+        functions.logger.error(`Failed to create match for user ${userId}:`, error);
+        // Re-throw HTTPS errors to be caught by the client, or wrap other errors.
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        } else {
+            throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the match.");
+        }
+    }
 });
