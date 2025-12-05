@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Swords, Star, TrendingUp, ShieldCheck } from "lucide-react";
+import { Star, TrendingUp, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function LandingPage() {
   return (
@@ -10,7 +11,7 @@ export default function LandingPage() {
       <header className="fixed top-0 left-0 right-0 z-50 px-4 lg:px-6 h-16 flex items-center bg-background/80 backdrop-blur-sm border-b border-border/60">
         <Link href="/" className="flex items-center justify-center gap-2">
           <div className="p-2 bg-gradient-to-r from-primary to-accent rounded-lg shadow-md">
-            <Swords className="h-6 w-6 text-primary-foreground" />
+             <Image src="/logo.svg" alt="LudoLeague Logo" width={24} height={24} className="text-primary-foreground" />
           </div>
           <span className="text-2xl font-bold font-headline bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
             LudoLeague

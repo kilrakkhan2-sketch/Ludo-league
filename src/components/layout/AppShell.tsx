@@ -21,7 +21,6 @@ import {
   ShieldCheck,
   User,
   LogOut,
-  Swords,
   Search,
   Users,
   Settings,
@@ -29,6 +28,7 @@ import {
   Shield,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -93,7 +93,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <SidebarHeader>
             <Link href="/" className="flex items-center gap-2">
               <div className="p-2 bg-primary rounded-lg">
-                <Swords className="text-primary-foreground" />
+                 <Image src="/logo.svg" alt="LudoLeague Logo" width={24} height={24} className="text-primary-foreground" />
               </div>
               <h1 className="text-xl font-bold font-headline text-primary">
                 LudoLeague

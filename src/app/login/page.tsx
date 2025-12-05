@@ -20,7 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Swords } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -111,8 +111,8 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <Link href="/" className="flex justify-center mb-4">
-            <div className="p-3 bg-primary rounded-lg">
-              <Swords className="h-8 w-8 text-primary-foreground" />
+            <div className="p-2 bg-primary rounded-lg">
+               <Image src="/logo.svg" alt="LudoLeague Logo" width={32} height={32} />
             </div>
           </Link>
           <CardTitle className="text-3xl font-headline">LudoLeague</CardTitle>

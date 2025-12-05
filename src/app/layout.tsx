@@ -17,6 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
@@ -27,7 +28,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap"
           rel="stylesheet"
         />
-        <meta name="theme-color" content="#2563eb" />
+        <meta name="theme-color" content="#1E3A8A" />
       </head>
       <body className={cn("font-body antialiased")}>
         <FirebaseClientProvider>

@@ -29,6 +29,7 @@ import {
   ClipboardList
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -118,7 +119,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <SidebarHeader>
             <div className="flex items-center gap-2">
               <div className="p-2 bg-destructive rounded-lg">
-                <Shield className="text-destructive-foreground" />
+                 <Image src="/logo.svg" alt="LudoLeague Admin Logo" width={24} height={24} className="text-destructive-foreground" />
               </div>
               <h1 className="text-xl font-bold font-headline text-destructive">
                 Admin Panel

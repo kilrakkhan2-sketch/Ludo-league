@@ -1,0 +1,3 @@
+This directory is for your static assets like images, logos, and favicons.
+- Place your app's favicon at `public/favicon.ico`.
+- Place your app's logo at `public/logo.svg`.
