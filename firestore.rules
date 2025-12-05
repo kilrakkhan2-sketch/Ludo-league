@@ -35,26 +35,30 @@ service cloud.firestore {
         return exists(/databases/$(database)/documents/users/$(userId));
     }
     
-    function isValidBalance() {
-        // Ensure wallet balance is a number and not negative.
-        return request.resource.data.walletBalance is number 
-          && request.resource.data.walletBalance >= 0;
+    function isValidBalanceUpdate(currentBalance, newBalance) {
+        return newBalance >= 0 && (
+          // Allow admins to set any balance
+          isSuperAdmin() || 
+          // Allow user's balance to decrease (e.g. entry fee)
+          newBalance < currentBalance ||
+          // Allow balance to increase only if it's not the user doing it themselves
+          // (will be handled by a function or admin)
+          !isOwner(request.resource.data.uid)
+        );
     }
 
     // --- User Profiles ---
     match /users/{userId} {
       allow read: if isSignedIn();
       
-      // Allow user to create their own profile on signup.
-      // Must have 'user' role and 0 balance initially.
       allow create: if isOwner(userId) 
                     && request.resource.data.role == 'user'
                     && request.resource.data.walletBalance == 0;
       
       // Allow user to update their own profile (e.g., name, photoURL)
-      // but NOT their role. Balance updates are handled by transactions.
+      // but NOT their role or walletBalance directly.
       // Superadmin can update any field.
-      allow update: if (isOwner(userId) && !('role' in request.resource.data.diff(resource.data).affectedKeys()) && isValidBalance())
+      allow update: if (isOwner(userId) && !('role' in request.resource.data.diff(resource.data).affectedKeys()) && !('walletBalance' in request.resource.data.diff(resource.data).affectedKeys()))
                     || isSuperAdmin();
 
       allow delete: if isSuperAdmin();
@@ -62,14 +66,11 @@ service cloud.firestore {
       // --- User Transactions (Subcollection) ---
       match /transactions/{transactionId} {
         allow read: if isOwner(userId) || isSuperAdmin();
-        // Transactions are created by server-side logic (functions) or validated client-side transactions (like match entry)
-        // Allow create for user or admins for flexibility with client-side tx creation
         allow create: if isOwner(userId) || isDepositAdmin() || isSuperAdmin();
         allow update, delete: if false; // Transactions should be immutable
       }
     }
     
-    // Allow superadmin to read all transactions via collection group query
     match /{path=**}/transactions/{transactionId} {
         allow read: if isSuperAdmin();
     }

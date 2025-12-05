@@ -1,9 +1,9 @@
+
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // --- Helper Functions ---
     function isSignedIn() {
       return request.auth != null;
     }
@@ -11,58 +11,34 @@ service firebase.storage {
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
-
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
+    
     function isSuperAdmin() {
-      return getUserData().role == 'superadmin';
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
     }
 
     function isDepositAdmin() {
-      let userRole = getUserData().role;
+      let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
       return userRole == 'deposit_admin' || userRole == 'superadmin';
     }
     
-    function isKycAdmin() {
-      return isSuperAdmin();
-    }
-
-    // --- Storage Path Rules ---
-
-    //== PROFILE PICTURES ==//
-    // Path: /profile-pictures/{userId}/{fileName}
-    match /profile-pictures/{userId}/{fileName} {
+    match /profile-pictures/{userId}/{allPaths=**} {
       allow read: if true;
       allow write: if isOwner(userId);
     }
 
-    //== DEPOSIT SCREENSHOTS ==//
-    // Path: /deposit-screenshots/{userId}/{fileName}
-    match /deposit-screenshots/{userId}/{fileName} {
+    match /deposit-screenshots/{userId}/{allPaths=**} {
       allow read: if isOwner(userId) || isDepositAdmin();
       allow write: if isOwner(userId);
     }
 
-    //== KYC DOCUMENTS ==//
-    // Path: /kyc-documents/{userId}/{fileName}
-    match /kyc-documents/{userId}/{fileName} {
-      allow read: if isOwner(userId) || isKycAdmin();
+    match /kyc-documents/{userId}/{allPaths=**} {
+      allow read: if isOwner(userId) || isSuperAdmin();
       allow write: if isOwner(userId);
     }
 
-    //== MATCH RESULTS ==//
-    // Path: /match-results/{matchId}/{fileName}
     match /match-results/{matchId}/{fileName} {
         allow read: if isSignedIn();
-        // The user's UID should be part of the filename to verify ownership.
         allow write: if isSignedIn() && request.auth.uid in fileName;
-    }
-
-    // Deny access to all other paths by default.
-    match /{allPaths=**} {
-      allow read, write: if false;
     }
   }
 }
