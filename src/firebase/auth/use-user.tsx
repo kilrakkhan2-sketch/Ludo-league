@@ -1,22 +1,36 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { useEffect, useState } from 'react';
+import { onIdTokenChanged, User } from 'firebase/auth';
 import { useAuth } from '../provider';
 
-export function useUser() {
+interface AuthState {
+  user: User | null;
+  loading: boolean;
+  claims: Record<string, any> | null;
+}
+
+export function useUser(): AuthState {
   const auth = useAuth();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState<AuthState>({
+    user: auth.currentUser,
+    loading: auth.currentUser === null, // Only loading if user is not already available
+    claims: null,
+  });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
+    const unsubscribe = onIdTokenChanged(auth, async (user) => {
+      if (user) {
+        const tokenResult = await user.getIdTokenResult();
+        setState({ user, loading: false, claims: tokenResult.claims });
+      } else {
+        setState({ user: null, loading: false, claims: null });
+      }
     });
 
+    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [auth]);
 
-  return { user, loading };
+  return state;
 }

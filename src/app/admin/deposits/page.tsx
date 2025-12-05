@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import { AdminShell } from '@/components/layout/AdminShell';
 import { Button } from '@/components/ui/button';
-import { useCollection } from '@/firebase/firestore/use-collection';
+import { useCollection } from '@/firebase';
 import { doc, writeBatch, Timestamp } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { DepositRequest, UserProfile } from '@/types';
@@ -42,7 +42,7 @@ export default function AdminDepositsPage() {
 
   const allUserIdsInView = useMemo(() => {
     const ids = new Set<string>();
-    deposits.forEach(d => {
+    deposits.forEach((d: DepositRequest) => {
         ids.add(d.userId);
         if (d.processedBy) {
             ids.add(d.processedBy);
@@ -57,7 +57,7 @@ export default function AdminDepositsPage() {
 
   const usersMap = useMemo(() => {
     const map = new Map<string, UserProfile>();
-    users.forEach(user => map.set(user.uid, user));
+    users.forEach((user: UserProfile) => map.set(user.uid, user));
     return map;
   }, [users]);
 
@@ -137,7 +137,7 @@ export default function AdminDepositsPage() {
                   <TableRow><TableCell colSpan={6} className="text-center">Loading...</TableCell></TableRow>
                 ) : deposits.length === 0 ? (
                    <TableRow><TableCell colSpan={6} className="text-center">No {statusFilter} deposits found.</TableCell></TableRow>
-                ) : deposits.map(deposit => {
+                ) : deposits.map((deposit: DepositRequest) => {
                   const user = usersMap.get(deposit.userId);
                   const processor = deposit.processedBy ? usersMap.get(deposit.processedBy) : null;
                   return (

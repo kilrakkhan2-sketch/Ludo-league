@@ -4,8 +4,8 @@
 import { useState } from 'react';
 import { AdminShell } from '@/components/layout/AdminShell';
 import { Button } from '@/components/ui/button';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { writeBatch, doc } from 'firebase/firestore';
+import { useCollection } from '@/firebase';
+import { writeBatch, doc, collection } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { Match, UserProfile } from '@/types';
 import { format } from 'date-fns';
@@ -36,7 +36,7 @@ export default function AdminMatchesPage() {
 
         const matchRef = doc(firestore, 'matches', match.id);
         const winnerRef = doc(firestore, 'users', selectedWinner);
-        const winnerUser = users.find(u => u.id === selectedWinner);
+        const winnerUser = users.find((u: UserProfile) => u.id === selectedWinner);
 
         if(!winnerUser) throw new Error('Winner user not found');
 
@@ -67,7 +67,7 @@ export default function AdminMatchesPage() {
     }
   };
 
-  const getUserName = (userId: string) => users.find(u => u.id === userId)?.name || 'Unknown';
+  const getUserName = (userId: string) => users.find((u: UserProfile) => u.id === userId)?.name || 'Unknown';
 
   return (
     <AdminShell>
@@ -82,7 +82,7 @@ export default function AdminMatchesPage() {
         <Table>
             <TableHeader><TableRow><TableHead>Title</TableHead><TableHead>Prize</TableHead><TableHead>Date</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
             <TableBody>
-                {matchesLoading ? <TableRow><TableCell colSpan={5}>Loading...</TableCell></TableRow> : matches.map(match => (
+                {matchesLoading ? <TableRow><TableCell colSpan={5}>Loading...</TableCell></TableRow> : matches.map((match: Match) => (
                     <TableRow key={match.id}>
                         <TableCell>{match.title}</TableCell>
                         <TableCell>₹{match.prizePool}</TableCell>
@@ -98,7 +98,7 @@ export default function AdminMatchesPage() {
                                             <DialogDescription>Review screenshots and declare a winner.</DialogDescription>
                                         </DialogHeader>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-                                            {match.results?.map(result => (
+                                            {match.results?.map((result: { userId: string; screenshotUrl: string; }) => (
                                                 <div key={result.userId} className="space-y-2">
                                                     <p className="font-bold">{getUserName(result.userId)}</p>
                                                     <img src={result.screenshotUrl} alt="Result screenshot" className="rounded-md"/>
@@ -109,7 +109,7 @@ export default function AdminMatchesPage() {
                                             <Select onValueChange={setSelectedWinner}>
                                                 <SelectTrigger><SelectValue placeholder="Select Winner" /></SelectTrigger>
                                                 <SelectContent>
-                                                    {match.players.map(pId => (
+                                                    {match.players.map((pId: string) => (
                                                         <SelectItem key={pId} value={pId}>{getUserName(pId)}</SelectItem>
                                                     ))}
                                                 </SelectContent>

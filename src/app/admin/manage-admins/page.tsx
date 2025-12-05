@@ -99,7 +99,7 @@ export default function ManageAdminsPage() {
 
         await batch.commit();
 
-        toast({ title: 'Balance Updated', description: `${selectedUser.name}'s balance has been set to ₹${numericAmount}.` });
+        toast({ title: 'Balance Updated', description: `${selectedUser.name}\'s balance has been set to ₹${numericAmount}.` });
         setIsDialogOpen(false);
         setAmount('');
     } catch (error) {
@@ -148,7 +148,7 @@ export default function ManageAdminsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map(user => (
+                  {users.map((user: UserProfile) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.name}</TableCell>
                       <TableCell>{user.email}</TableCell>

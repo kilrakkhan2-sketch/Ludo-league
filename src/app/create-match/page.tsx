@@ -3,14 +3,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/firebase/auth/use-user';
-import { doc, runTransaction, Timestamp, collection } from 'firebase/firestore';
-import { useFirebase } from '@/firebase/provider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const feeOptions = [10, 50, 100];
@@ -18,8 +16,6 @@ const feeOptions = [10, 50, 100];
 export default function CreateMatchPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { firestore } = useFirebase();
-  const { user } = useUser();
 
   const [title, setTitle] = useState('');
   const [entryFee, setEntryFee] = useState('50');
@@ -34,67 +30,9 @@ export default function CreateMatchPage() {
       setCustomFee('');
     }
   };
-
-  const validateForm = (fee: number) => {
-    if (!title || !ludoKingCode || !user || !firestore) {
-      toast({ variant: 'destructive', title: 'Missing Information', description: 'Please fill out all fields.' });
-      return false;
-    }
-    if (ludoKingCode.length !== 9) {
-      toast({ variant: 'destructive', title: 'Invalid Ludo King Code', description: 'The code must be 9 characters long.' });
-      return false;
-    }
-    if (isNaN(fee) || fee <= 0) {
-      toast({ variant: 'destructive', title: 'Invalid Fee', description: 'Please enter a valid positive number for the entry fee.' });
-      return false;
-    }
-    return true;
-  };
-
-  const createMatchTransaction = async (finalFee: number) => {
-    if (!firestore || !user) return;
-
-    await runTransaction(firestore, async (transaction) => {
-      const userRef = doc(firestore, 'users', user.uid);
-      const userDoc = await transaction.get(userRef);
-
-      if (!userDoc.exists() || (userDoc.data().walletBalance || 0) < finalFee) {
-        throw new Error('Insufficient balance');
-      }
-
-      const newBalance = userDoc.data().walletBalance - finalFee;
-      transaction.update(userRef, { walletBalance: newBalance });
-
-      const matchRef = doc(collection(firestore, 'matches'));
-      const matchData = {
-        title,
-        entryFee: finalFee,
-        maxPlayers,
-        ludoKingCode,
-        creatorId: user.uid,
-        players: [user.uid],
-        status: 'open',
-        createdAt: Timestamp.now(),
-        prizePool: finalFee * 0.9, // 10% platform fee
-      };
-      transaction.set(matchRef, matchData);
-
-      const txRef = doc(collection(firestore, `users/${user.uid}/transactions`));
-      const txData = {
-        matchId: matchRef.id,
-        amount: -finalFee,
-        type: 'entry_fee',
-        description: `Entry fee for "${title}"`,
-        createdAt: Timestamp.now(),
-      };
-      transaction.set(txRef, txData);
-    });
-  };
-
-  const handleSubmit = async () => {
+  
+  const handleCreateMatch = async () => {
     let finalFee: number;
-
-    // === BULLETPROOF NaN CHECK ===
     if (entryFee === 'custom') {
       const parsedCustomFee = parseInt(customFee, 10);
       if (!customFee || isNaN(parsedCustomFee) || parsedCustomFee <= 0) {
@@ -103,29 +41,53 @@ export default function CreateMatchPage() {
           title: 'Invalid Custom Fee',
           description: 'Please enter a valid positive number for the custom entry fee.',
         });
-        return; // STOP EXECUTION HERE
+        return;
       }
       finalFee = parsedCustomFee;
     } else {
       finalFee = parseInt(entryFee, 10);
     }
 
-    if (!validateForm(finalFee)) return;
+    if (!title || !ludoKingCode) {
+      toast({ variant: 'destructive', title: 'Missing Information', description: 'Please fill out all fields.' });
+      return;
+    }
+    
+    if (ludoKingCode.length !== 9) {
+      toast({ variant: 'destructive', title: 'Invalid Ludo King Code', description: 'The code must be 9 characters long.' });
+      return;
+    }
 
     setIsSubmitting(true);
+    
+    const functions = getFunctions();
+    const createMatchCloudFunction = httpsCallable(functions, 'createMatch');
+
     try {
-      await createMatchTransaction(finalFee);
-      toast({ title: 'Match Created!', description: 'Your match is now live and open for others to join.' });
-      router.push('/dashboard');
+      const prizePool = finalFee * (maxPlayers === 2 ? 1.8 : 3.6); // Example prize pool logic
+
+      const result = await createMatchCloudFunction({
+        title,
+        entryFee: finalFee,
+        prizePool,
+        ludoKingCode,
+        maxPlayers,
+      });
+
+      toast({ title: 'Match Created!', description: 'Your match is now live.' });
+      // @ts-ignore
+      router.push(`/match/${result.data.matchId}`);
+
     } catch (error: any) {
-      console.error('Match creation error:', error);
-      let description = 'Could not create the match. Please try again.';
-      if (error.message === 'Insufficient balance') {
-        description = 'Your wallet balance is not sufficient.';
-      }
-      toast({ variant: 'destructive', title: 'Creation Failed', description });
+      console.error("Error creating match:", error);
+      toast({ 
+        variant: 'destructive', 
+        title: 'Creation Failed', 
+        description: error.message || 'An unexpected error occurred.' 
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   return (
@@ -191,7 +153,7 @@ export default function CreateMatchPage() {
                 maxLength={9}
               />
             </div>
-            <Button onClick={handleSubmit} className="w-full" disabled={isSubmitting}>
+            <Button onClick={handleCreateMatch} className="w-full" disabled={isSubmitting}>
               {isSubmitting ? 'Creating Match...' : 'Create Match & Deduct Fee'}
             </Button>
           </div>

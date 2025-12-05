@@ -26,8 +26,8 @@ import Link from "next/link";
 
 export default function AdminResultsPage() {
   const { data: verificationMatches, loading } = useCollection<Match>('matches', { 
-    filter: { field: 'status', operator: '==', value: 'verification' },
-    sort: { field: 'createdAt', direction: 'asc' }
+    where: ['status', '==', 'verification'],
+    orderBy: ['createdAt', 'asc']
   });
 
   return (
@@ -53,7 +53,7 @@ export default function AdminResultsPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {verificationMatches.length > 0 ? verificationMatches.map(match => (
+                    {verificationMatches.length > 0 ? verificationMatches.map((match: Match) => (
                         <TableRow key={match.id}>
                             <TableCell>
                                 <div className="font-medium">{match.title}</div>
@@ -63,7 +63,7 @@ export default function AdminResultsPage() {
                                 ₹{(match.entryFee * match.players.length) * 0.9}
                             </TableCell>
                             <TableCell>{match.players.length} / {match.maxPlayers}</TableCell>
-                            <TableCell>{format(new Date(match.createdAt), 'dd MMM, yyyy HH:mm')}</TableCell>
+                            <TableCell>{format(new Date(match.createdAt.seconds * 1000), 'dd MMM, yyyy HH:mm')}</TableCell>
                             <TableCell className="text-right">
                                 <Button asChild size="sm">
                                     <Link href={`/admin/results/${match.id}`}>Verify Result</Link>

@@ -4,8 +4,7 @@
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useUser, useDoc } from "@/firebase";
-import { useCollection } from "@/firebase/firestore/use-collection";
+import { useUser, useDoc, useCollection } from "@/firebase";
 import type { UserProfile, DepositRequest, WithdrawalRequest, Match } from "@/types";
 import { DollarSign, Users, Package, CreditCard, Wallet, Hourglass, CheckCircle } from "lucide-react";
 
@@ -22,39 +21,44 @@ type StatCardProps = {
 const StatCard = ({ title, value, change, icon: Icon, loading, to, isVisible = true }: StatCardProps) => {
     if (!isVisible) return null;
 
-    const CardContentWrapper = to ? Link : 'div';
-    const wrapperProps = to ? { href: to } : {};
-
-    return (
-        <Card asChild={!!to} className={to ? 'hover:bg-muted/50 cursor-pointer' : ''}>
-            <CardContentWrapper {...wrapperProps}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                        {title}
-                    </CardTitle>
-                    <Icon className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    {loading ? (
-                        <>
-                            <Skeleton className="h-8 w-24 mb-1" />
-                            <Skeleton className="h-4 w-40" />
-                        </>
-                    ) : (
-                        <>
-                            <div className="text-2xl font-bold">{value}</div>
-                            {change && <p className="text-xs text-muted-foreground">{change}</p>}
-                        </>
-                    )}
-                </CardContent>
-            </CardContentWrapper>
-        </Card>
+    const cardContent = (
+        <>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{title}</CardTitle>
+                <Icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                {loading ? (
+                    <>
+                        <Skeleton className="h-8 w-24 mb-1" />
+                        <Skeleton className="h-4 w-40" />
+                    </>
+                ) : (
+                    <>
+                        <div className="text-2xl font-bold">{value}</div>
+                        {change && <p className="text-xs text-muted-foreground">{change}</p>}
+                    </>
+                )}
+            </CardContent>
+        </>
     );
+
+    if (to) {
+        return (
+             <Card className="hover:bg-muted/50">
+                <Link href={to} className="block p-6">
+                    {cardContent}
+                </Link>
+            </Card>
+        );
+    }
+
+    return <Card className="p-6">{cardContent}</Card>;
 };
 
 
 export default function AdminDashboardPage() {
-    const { user, loading: userLoading } = useUser();
+    const { user, loading: userLoading, claims } = useUser();
     const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
 
     const { data: allUsers, loading: usersLoading } = useCollection<UserProfile>("users", { isCollectionGroup: true });
@@ -64,7 +68,7 @@ export default function AdminDashboardPage() {
     const { data: matchesForVerification, loading: verificationLoading } = useCollection<Match>("matches", { where: ['status', '==', 'verification'] });
     
     const loading = userLoading || profileLoading || usersLoading || matchesLoading || depositsLoading || withdrawalsLoading || verificationLoading;
-    const userRole = profile?.role;
+    const userRole = claims?.role;
     
     const isSuperAdmin = userRole === 'superadmin';
     const isDepositAdmin = userRole === 'deposit_admin';
@@ -152,7 +156,7 @@ export default function AdminDashboardPage() {
                 </div>
             )}
 
-            {!loading && !profile?.role && (
+            {!loading && !claims?.role && (
                 <div className="text-center p-8">
                     <p className="text-muted-foreground">You do not have permission to view this page.</p>
                 </div>
