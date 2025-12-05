@@ -35,18 +35,6 @@ service cloud.firestore {
         return exists(/databases/$(database)/documents/users/$(userId));
     }
     
-    function isValidBalanceUpdate(currentBalance, newBalance) {
-        return newBalance >= 0 && (
-          // Allow admins to set any balance
-          isSuperAdmin() || 
-          // Allow user's balance to decrease (e.g. entry fee)
-          newBalance < currentBalance ||
-          // Allow balance to increase only if it's not the user doing it themselves
-          // (will be handled by a function or admin)
-          !isOwner(request.resource.data.uid)
-        );
-    }
-
     // --- User Profiles ---
     match /users/{userId} {
       allow read: if isSignedIn();
