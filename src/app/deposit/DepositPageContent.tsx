@@ -8,11 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useCollection } from '@/firebase/firestore/use-collection';
+import { useDoc } from '@/firebase/firestore/use-doc';
 import { useUser } from '@/firebase/auth/use-user';
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, Timestamp } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import type { AppSettings } from '@/types';
 
 export default function DepositPageContent() {
   const router = useRouter();
@@ -22,8 +23,7 @@ export default function DepositPageContent() {
   const { firestore } = useFirebase();
   const { user } = useUser();
 
-  const { data: paymentSettings, loading: settingsLoading } = useCollection('settings', { where: ['id', '==', 'payment'], limit: 1 });
-  const paymentGateway = paymentSettings.length > 0 ? paymentSettings[0] : null;
+  const { data: paymentSettings, loading: settingsLoading } = useDoc<AppSettings>('settings/payment');
 
   const [transactionId, setTransactionId] = useState('');
   const [screenshot, setScreenshot] = useState<File | null>(null);
@@ -51,14 +51,15 @@ export default function DepositPageContent() {
       await uploadBytes(screenshotRef, screenshot);
       const screenshotUrl = await getDownloadURL(screenshotRef);
 
-      // Corrected: Use the 'deposits' collection instead of 'deposit-requests'
-      await addDoc(collection(firestore, 'deposits'), {
+      await addDoc(collection(firestore, 'deposit-requests'), {
         userId: user.uid,
+        userName: user.displayName || 'N/A',
+        userEmail: user.email || 'N/A',
         amount: parseInt(amount, 10),
         transactionId,
         screenshotUrl,
         status: 'pending',
-        createdAt: new Date(),
+        createdAt: Timestamp.now(),
       });
 
       toast({
@@ -83,7 +84,7 @@ export default function DepositPageContent() {
             <h2 className="text-2xl font-bold mb-4">Payment Details</h2>
             {settingsLoading ? (
                 <p>Loading payment details...</p>
-            ) : paymentGateway ? (
+            ) : paymentSettings ? (
               <div className="space-y-4">
                 <div>
                   <Label className="text-lg">Amount</Label>
@@ -91,14 +92,8 @@ export default function DepositPageContent() {
                 </div>
                 <div>
                   <Label className="text-lg">UPI ID</Label>
-                  <p className="text-xl font-mono">{paymentGateway.upiId}</p>
+                  <p className="text-xl font-mono">{paymentSettings.upiId}</p>
                 </div>
-                {paymentGateway.qrCodeUrl && (
-                  <div>
-                    <Label className="text-lg">Scan QR Code</Label>
-                    <img src={paymentGateway.qrCodeUrl} alt="UPI QR Code" className="w-48 h-48 mt-2" />
-                  </div>
-                )}
                 <div className='text-sm text-muted-foreground pt-4'>
                     <p>1. Complete the payment using your preferred UPI app.</p>
                     <p>2. Take a screenshot of the successful payment.</p>

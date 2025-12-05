@@ -62,8 +62,10 @@ service cloud.firestore {
       // --- User Transactions (Subcollection) ---
       match /transactions/{transactionId} {
         allow read: if isOwner(userId) || isSuperAdmin();
+        // Transactions are created by server-side logic (functions) or validated client-side transactions (like match entry)
+        // Allow create for user or admins for flexibility with client-side tx creation
         allow create: if isOwner(userId) || isDepositAdmin() || isSuperAdmin();
-        allow update, delete: if false;
+        allow update, delete: if false; // Transactions should be immutable
       }
     }
     

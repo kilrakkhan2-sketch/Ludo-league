@@ -3,73 +3,77 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // --- Helper Functions --- //
-    // Yah functions niyamon ko saaf aur padhne mein aasan banate hain.
-
+    // --- Helper Functions (सहायक फंक्शन्स) ---
     function isSignedIn() {
+      // Check karta hai ki user logged in hai ya nahi.
       return request.auth != null;
     }
 
     function isOwner(userId) {
+      // Check karta hai ki request karne wala user file ka owner hai ya nahi.
       return request.auth.uid == userId;
     }
 
-    // User ka role Firestore se laata hai
-    function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    // Firestore se user ka role get karta hai.
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    // Alag-alag admin roles ko check karta hai
     function isSuperAdmin() {
-      let role = getUserRole();
-      return role == 'superadmin';
+      return getUserData().role == 'superadmin';
     }
 
     function isDepositAdmin() {
-      let role = getUserRole();
-      return role == 'deposit_admin';
+      return getUserData().role == 'deposit_admin' || isSuperAdmin();
     }
-
+    
     function isKycAdmin() {
-      let role = getUserRole();
-      return role == 'kyc_admin';
+      // Abhi ke liye superadmin ko hi KYC admin mana gaya hai.
+      // Aap chahein to 'kyc_admin' role bhi add kar sakte hain.
+      return isSuperAdmin();
     }
 
-    // --- Storage Path Rules --- //
+    // --- Storage Path Rules (स्टोरेज पाथ के नियम) ---
 
     //== PROFILE PICTURES ==//
     // Path: /profile-pictures/{userId}/<filename>
     match /profile-pictures/{userId}/{fileName} {
-      // Padhein: Koi bhi user kisi ki bhi profile picture dekh sakta hai.
+      // Koi bhi user kisi ki bhi profile picture dekh sakta hai.
       allow read: if true;
-      
-      // Likhein (Upload/Update/Delete): User sirf apni profile picture hi badal sakta hai.
-      allow write: if isSignedIn() && isOwner(userId);
+      // User sirf apni profile picture hi badal sakta hai.
+      allow write: if isOwner(userId);
     }
 
     //== DEPOSIT SCREENSHOTS ==//
     // Path: /deposit-screenshots/{userId}/<filename>
     match /deposit-screenshots/{userId}/{fileName} {
-      // Padhein: User apna screenshot, ya deposit/super admin kisi ka bhi screenshot dekh sakta hai.
-      allow read: if isSignedIn() && (isOwner(userId) || isDepositAdmin() || isSuperAdmin());
-      
-      // Likhein (Upload): User sirf apne liye hi screenshot upload kar sakta hai.
-      allow write: if isSignedIn() && isOwner(userId);
+      // User apna screenshot, ya deposit/super admin kisi ka bhi screenshot dekh sakta hai.
+      allow read: if isOwner(userId) || isDepositAdmin();
+      // User sirf apne liye hi screenshot upload kar sakta hai.
+      allow write: if isOwner(userId);
     }
 
     //== KYC DOCUMENTS ==//
     // Path: /kyc-documents/{userId}/<filename>
     match /kyc-documents/{userId}/{fileName} {
-      // Padhein: User apna document, ya kyc/super admin kisi ka bhi document dekh sakta hai.
-      allow read: if isSignedIn() && (isOwner(userId) || isKycAdmin() || isSuperAdmin());
-      
-      // Likhein (Upload): User sirf apne liye hi document upload kar sakta hai.
-      allow write: if isSignedIn() && isOwner(userId);
+      // User apna document, ya kyc/super admin kisi ka bhi document dekh sakta hai.
+      allow read: if isOwner(userId) || isKycAdmin();
+      // User sirf apne liye hi document upload kar sakta hai.
+      allow write: if isOwner(userId);
     }
 
-    // Koi bhi anjaan path par access deny karein
+    //== MATCH RESULTS ==//
+    // Path: /match-results/{matchId}/<filename>
+    match /match-results/{matchId}/{fileName} {
+        // Koi bhi signed-in user result screenshot dekh sakta hai (taaki admin verify kar sake).
+        allow read: if isSignedIn();
+        // Sirf wahi user result upload kar sakta hai jiska UID file name mein hai.
+        allow write: if request.auth.uid in fileName;
+    }
+
+    // Baaki sabhi paths par access deny karein.
     match /{allPaths=**} {
-        allow read, write: if false;
+      allow read, write: if false;
     }
   }
 }
