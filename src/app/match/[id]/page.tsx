@@ -108,10 +108,10 @@ export default function MatchPage({ params }: { params: { id: string } }) {
                 
                 const currentMatch = matchDoc.data() as Match;
                 if (currentMatch.players.length >= currentMatch.maxPlayers) throw new Error("Match is already full");
-                if ((userDoc.data().balance || 0) < currentMatch.entryFee) throw new Error("Insufficient balance");
+                if ((userDoc.data().walletBalance || 0) < currentMatch.entryFee) throw new Error("Insufficient balance");
 
-                const newBalance = userDoc.data().balance - currentMatch.entryFee;
-                transaction.update(userRef, { balance: newBalance });
+                const newBalance = userDoc.data().walletBalance - currentMatch.entryFee;
+                transaction.update(userRef, { walletBalance: newBalance });
 
                 const newPrizePool = (currentMatch.prizePool || 0) + (currentMatch.entryFee * 0.9);
                 transaction.update(matchRef, { 
@@ -253,7 +253,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
                     </CardContent>
                     <CardFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
                         {match.status === 'open' && !alreadyJoined && !isFull && (
-                            <Button onClick={handleJoinMatch} disabled={isJoining || (profile?.balance || 0) < match.entryFee}>
+                            <Button onClick={handleJoinMatch} disabled={isJoining || (profile?.walletBalance || 0) < match.entryFee}>
                                 {isJoining ? 'Joining...' : `Join for ₹${match.entryFee}`}
                             </Button>
                         )}

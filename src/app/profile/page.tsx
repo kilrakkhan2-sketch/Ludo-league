@@ -108,7 +108,7 @@ export default function ProfilePage() {
   const matchesWon = matches.filter(m => m.winnerId === user?.uid).length;
   const winRate = matchesPlayed > 0 ? Math.round((matchesWon / matchesPlayed) * 100) : 0;
   const totalWinnings = transactions
-    .filter(t => t.type === 'match_winnings')
+    .filter(t => t.type === 'prize')
     .reduce((sum, t) => sum + t.amount, 0);
 
 
@@ -131,7 +131,7 @@ export default function ProfilePage() {
                 <p className="text-muted-foreground">{user?.email}</p>
                 <div className="mt-4 text-2xl font-bold text-success flex items-center gap-2">
                     <Wallet className="w-7 h-7"/>
-                    <span>₹{profile.balance?.toFixed(2) || '0.00'}</span>
+                    <span>₹{profile.walletBalance?.toFixed(2) || '0.00'}</span>
                 </div>
             </Card>
 
