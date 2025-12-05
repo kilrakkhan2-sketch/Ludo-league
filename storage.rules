@@ -3,18 +3,15 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // --- Helper Functions (सहायक फंक्शन्स) ---
+    // --- Helper Functions ---
     function isSignedIn() {
-      // Check karta hai ki user logged in hai ya nahi.
       return request.auth != null;
     }
 
     function isOwner(userId) {
-      // Check karta hai ki request karne wala user file ka owner hai ya nahi.
       return request.auth.uid == userId;
     }
 
-    // Firestore se user ka role get karta hai.
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
@@ -24,54 +21,46 @@ service firebase.storage {
     }
 
     function isDepositAdmin() {
-      return getUserData().role == 'deposit_admin' || isSuperAdmin();
+      let userRole = getUserData().role;
+      return userRole == 'deposit_admin' || userRole == 'superadmin';
     }
     
     function isKycAdmin() {
-      // Abhi ke liye superadmin ko hi KYC admin mana gaya hai.
-      // Aap chahein to 'kyc_admin' role bhi add kar sakte hain.
       return isSuperAdmin();
     }
 
-    // --- Storage Path Rules (स्टोरेज पाथ के नियम) ---
+    // --- Storage Path Rules ---
 
     //== PROFILE PICTURES ==//
-    // Path: /profile-pictures/{userId}/<filename>
+    // Path: /profile-pictures/{userId}/{fileName}
     match /profile-pictures/{userId}/{fileName} {
-      // Koi bhi user kisi ki bhi profile picture dekh sakta hai.
       allow read: if true;
-      // User sirf apni profile picture hi badal sakta hai.
       allow write: if isOwner(userId);
     }
 
     //== DEPOSIT SCREENSHOTS ==//
-    // Path: /deposit-screenshots/{userId}/<filename>
+    // Path: /deposit-screenshots/{userId}/{fileName}
     match /deposit-screenshots/{userId}/{fileName} {
-      // User apna screenshot, ya deposit/super admin kisi ka bhi screenshot dekh sakta hai.
       allow read: if isOwner(userId) || isDepositAdmin();
-      // User sirf apne liye hi screenshot upload kar sakta hai.
       allow write: if isOwner(userId);
     }
 
     //== KYC DOCUMENTS ==//
-    // Path: /kyc-documents/{userId}/<filename>
+    // Path: /kyc-documents/{userId}/{fileName}
     match /kyc-documents/{userId}/{fileName} {
-      // User apna document, ya kyc/super admin kisi ka bhi document dekh sakta hai.
       allow read: if isOwner(userId) || isKycAdmin();
-      // User sirf apne liye hi document upload kar sakta hai.
       allow write: if isOwner(userId);
     }
 
     //== MATCH RESULTS ==//
-    // Path: /match-results/{matchId}/<filename>
+    // Path: /match-results/{matchId}/{fileName}
     match /match-results/{matchId}/{fileName} {
-        // Koi bhi signed-in user result screenshot dekh sakta hai (taaki admin verify kar sake).
         allow read: if isSignedIn();
-        // Sirf wahi user result upload kar sakta hai jiska UID file name mein hai.
-        allow write: if request.auth.uid in fileName;
+        // The user's UID should be part of the filename to verify ownership.
+        allow write: if isSignedIn() && request.auth.uid in fileName;
     }
 
-    // Baaki sabhi paths par access deny karein.
+    // Deny access to all other paths by default.
     match /{allPaths=**} {
       allow read, write: if false;
     }
