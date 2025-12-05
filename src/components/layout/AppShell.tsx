@@ -50,6 +50,7 @@ import { Skeleton } from "../ui/skeleton";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutGrid, label: "Dashboard" },
+  { href: "/profile", icon: User, label: "Profile" },
   { href: "/leaderboard", icon: Star, label: "Leaderboard" },
   { href: "/tournaments", icon: Trophy, label: "Tournaments" },
   { href: "/friends", icon: Users, label: "Friends" },

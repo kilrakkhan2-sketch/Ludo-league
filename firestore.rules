@@ -1,10 +1,23 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // --- Helper Functions ---
+    function isSuperAdmin() {
+      return getUserData(request.auth.uid).role == 'superadmin';
+    }
 
-    // --- Helper Functions --- //
-    // Yah functions niyamon ko saaf aur padhne mein aasan banate hain.
+    function isDepositAdmin() {
+      let role = getUserData(request.auth.uid).role;
+      return role == 'deposit_admin' || role == 'superadmin';
+    }
+    
+    function isMatchAdmin() {
+      let role = getUserData(request.auth.uid).role;
+      return role == 'match_admin' || role == 'superadmin';
+    }
 
     function isSignedIn() {
       return request.auth != null;
@@ -13,122 +26,84 @@ service cloud.firestore {
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
-
-    // User ka data (jisme role bhi hai) database se laata hai
+    
     function getUserData(userId) {
-      return get(/databases/$(database)/documents/users/$(userId));
-    }
-
-    // User ka role laata hai
-    function getUserRole(userId) {
-      return getUserData(userId).data.role;
-    }
-
-    // Alag-alag admin roles ko check karta hai
-    function isSuperAdmin() {
-      return isSignedIn() && getUserRole(request.auth.uid) == 'superadmin';
-    }
-
-    function isDepositAdmin() {
-      return isSignedIn() && getUserRole(request.auth.uid) == 'deposit_admin';
-    }
-
-    function isKycAdmin() {
-      return isSignedIn() && getUserRole(request.auth.uid) == 'kyc_admin';
+      return get(/databases/$(database)/documents/users/$(userId)).data;
     }
     
-    // --- Collection Rules --- //
-
-    //== USERS Collection ==//
-    // User ki profile data yahan save hota hai
-    match /users/{userId} {
-      // Padhein: Koi bhi admin ya user khud apna data padh sakta hai
-      allow read: if isSignedIn() && (isOwner(userId) || isSuperAdmin() || isDepositAdmin() || isKycAdmin());
-      
-      // Banayein: User signup ke time apna document bana sakta hai
-      allow create: if isOwner(userId);
-      
-      // Update Karein: User sirf apni profile (displayName, photoURL) update kar sakta hai.
-      // Balance ya role jaisi cheezein sirf superadmin hi badal sakta hai.
-      allow update: if (isSignedIn() && isOwner(userId) && request.resource.data.keys().hasOnly(['displayName', 'photoURL'])) || isSuperAdmin();
-      
-      // Delete Karein: Kisi ko bhi user delete karne ki anumati nahi hai (suraksha ke liye).
-      allow delete: if false;
+    function isExistingUser(userId) {
+        return exists(/databases/$(database)/documents/users/$(userId));
+    }
+    
+    function isValidBalance() {
+        return request.resource.data.walletBalance is number && request.resource.data.walletBalance >= 0;
     }
 
-    //== MATCHES Collection ==//
-    // Ludo matches ka data
-    match /matches/{matchId} {
-      // Padhein: Koi bhi logged-in user sabhi matches dekh sakta hai.
+    // --- User Profiles ---
+    match /users/{userId} {
       allow read: if isSignedIn();
       
-      // Banayein: Koi bhi logged-in user match bana sakta hai.
-      allow create: if isSignedIn();
+      allow create: if isOwner(userId) 
+                    && request.resource.data.role == 'user'
+                    && request.resource.data.walletBalance == 0;
       
-      // Update Karein: Sirf match ke khiladi ya superadmin hi match ko update kar sakte hain (jaise result submit karna).
-      allow update: if isSignedIn() && (request.auth.uid in resource.data.players || isSuperAdmin());
-      
-      // Delete Karein: Sirf superadmin hi match ko delete kar sakta hai.
+      allow update: if (isOwner(userId) && !('role' in request.resource.data.diff(resource.data).affectedKeys()) && isValidBalance())
+                    || isSuperAdmin();
+
       allow delete: if isSuperAdmin();
+
+      // --- User Transactions (Subcollection) ---
+      match /transactions/{transactionId} {
+        allow read: if isOwner(userId) || isSuperAdmin();
+        allow create: if isOwner(userId) || isDepositAdmin() || isSuperAdmin();
+        allow update, delete: if false;
+      }
+    }
+    
+    match /{path=**}/transactions/{transactionId} {
+        allow read: if isSuperAdmin();
+    }
+    
+    // --- Matches ---
+    match /matches/{matchId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isExistingUser(request.auth.uid);
+      allow update: if isSignedIn() && (resource.data.creatorId == request.auth.uid || isMatchAdmin() || isSuperAdmin());
+      allow delete: if isMatchAdmin() || isSuperAdmin();
+
+       match /messages/{messageId} {
+        allow read, write: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
+      }
+    }
+    
+    // --- Deposit Requests ---
+    match /deposit-requests/{depositId} {
+        allow read: if isSignedIn() && (isOwner(resource.data.userId) || isDepositAdmin());
+        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
+        allow update: if isDepositAdmin(); 
+        allow delete: if isSuperAdmin();
     }
 
-    //== DEPOSITS Collection ==//
-    // Paise deposit karne ke requests
-    match /deposits/{depositId} {
-      // Padhein: User apne deposits, aur deposit/super admin sabke deposits dekh sakte hain.
-      allow read: if isSignedIn() && (isOwner(resource.data.userId) || isDepositAdmin() || isSuperAdmin());
-
-      // Banayein: User sirf apne liye deposit request bana sakta hai.
-      allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-
-      // Update Karein: Sirf deposit/super admin hi deposit ka status (approved/rejected) badal sakte hain.
-      allow update: if (isDepositAdmin() || isSuperAdmin()) && request.resource.data.keys().hasOnly(['status', 'verifiedBy']);
-
-      // Delete Karein: Kisi ko anumati nahi hai.
-      allow delete: if false;
+    // --- Withdrawal Requests ---
+    match /withdrawal-requests/{withdrawalId} {
+        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
+        allow read: if isSignedIn() && (isOwner(resource.data.userId) || isDepositAdmin());
+        allow update: if isDepositAdmin();
+        allow delete: if isSuperAdmin();
     }
 
-    //== WITHDRAWALS Collection ==//
-    // Paise nikalne ke requests
-    match /withdrawals/{withdrawalId} {
-      // Padhein: User apne withdrawals, aur deposit/super admin sabke withdrawals dekh sakte hain.
-      allow read: if isSignedIn() && (isOwner(resource.data.userId) || isDepositAdmin() || isSuperAdmin());
-
-      // Banayein: User sirf apne liye withdrawal request bana sakta hai.
-      allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-
-      // Update Karein: Sirf deposit/super admin hi status badal sakte hain.
-      allow update: if (isDepositAdmin() || isSuperAdmin()) && request.resource.data.keys().hasOnly(['status', 'processedBy']);
-
-      // Delete Karein: Kisi ko anumati nahi hai.
-      allow delete: if false;
+    // --- KYC Requests ---
+    match /kyc-requests/{kycId} {
+        allow read: if isSignedIn() && (isOwner(resource.data.userId) || isSuperAdmin());
+        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
+        allow update: if isSuperAdmin();
+        allow delete: if isSuperAdmin();
     }
 
-    //== KYC_SUBMISSIONS Collection ==//
-    // KYC documents ki details
-    match /kyc_submissions/{submissionId} {
-      // Padhein: User apni submission, aur kyc/super admin sabki submissions dekh sakte hain.
-      allow read: if isSignedIn() && (isOwner(resource.data.userId) || isKycAdmin() || isSuperAdmin());
-
-      // Banayein: User sirf apne liye KYC request bana sakta hai.
-      allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-
-      // Update Karein: Sirf kyc/super admin hi status (verified/rejected) badal sakte hain.
-      allow update: if (isKycAdmin() || isSuperAdmin()) && request.resource.data.keys().hasOnly(['status', 'reviewedBy']);
-
-      // Delete Karein: Kisi ko anumati nahi hai.
-      allow delete: if false;
-    }
-
-    //== TRANSACTIONS Collection ==//
-    // Sabhi financial লেনদেন ka record (deposit, withdrawal, match win/loss)
-    match /transactions/{transactionId} {
-      // Padhein: User apne transactions, aur koi bhi admin sabke transactions dekh sakta hai (auditing ke liye).
-      allow read: if isSignedIn() && (isOwner(resource.data.userId) || isSuperAdmin() || isDepositAdmin());
-
-      // LIKHNA (Create, Update, Delete): KISI KO BHI DIRECTLY LIKHNE KI ANUMATI NAHI HAI.
-      // Transactions hamesha server-side (Cloud Functions) se hi banaye jaane chahiye taaki balance ke saath chhed-chhad na ho.
-      allow write: if false;
+    // --- Settings ---
+    match /settings/payment {
+        allow read: if isSignedIn();
+        allow write: if isSuperAdmin();
     }
   }
 }
