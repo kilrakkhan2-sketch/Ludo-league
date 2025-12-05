@@ -13,11 +13,11 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Users, Trophy, PlusCircle } from "lucide-react";
+import { Users, Trophy, PlusCircle, Wallet } from "lucide-react";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
-import { useCollection, useUser } from "@/firebase";
-import type { Match } from "@/types";
+import { useCollection, useUser, useDoc } from "@/firebase";
+import type { Match, UserProfile } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const MatchCardSkeleton = () => (
@@ -96,6 +96,7 @@ const MatchCard = ({ match, myMatchesCount }: { match: Match, myMatchesCount?: n
 
 export default function DashboardPage() {
   const { user } = useUser();
+  const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
   const { data: myMatches, loading: myMatchesLoading } = useCollection<Match>('matches', {
     where: user?.uid ? ['players', 'array-contains', user.uid] : undefined,
     limit: 3
@@ -130,12 +131,24 @@ export default function DashboardPage() {
               Join an existing match or create your own.
             </p>
           </div>
-          <Button asChild>
-            <Link href="/create-match">
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Create a Match
-            </Link>
-          </Button>
+          <div className="flex items-center gap-4">
+            {profileLoading ? (
+                <Skeleton className="h-10 w-24" />
+            ) : (
+                <Button variant="outline" asChild>
+                    <Link href="/wallet">
+                        <Wallet className="h-4 w-4 mr-2" />
+                        ₹{profile?.walletBalance || 0}
+                    </Link>
+                </Button>
+            )}
+            <Button asChild>
+                <Link href="/create-match">
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Create a Match
+                </Link>
+            </Button>
+          </div>
         </div>
 
         {/* My Matches Section */}

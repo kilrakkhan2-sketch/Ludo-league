@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Swords, Star, TrendingUp, ShieldCheck } from "lucide-react";
 import Link from "next/link";
@@ -10,10 +9,10 @@ export default function LandingPage() {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 px-4 lg:px-6 h-16 flex items-center bg-background/80 backdrop-blur-sm border-b border-border/60">
         <Link href="/" className="flex items-center justify-center gap-2">
-          <div className="p-2 bg-gradient-to-r from-primary to-secondary rounded-lg shadow-md">
+          <div className="p-2 bg-gradient-to-r from-primary to-accent rounded-lg shadow-md">
             <Swords className="h-6 w-6 text-primary-foreground" />
           </div>
-          <span className="text-2xl font-bold font-headline bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
+          <span className="text-2xl font-bold font-headline bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
             LudoLeague
           </span>
         </Link>
@@ -34,13 +33,13 @@ export default function LandingPage() {
             <div className="absolute inset-0 opacity-5"></div>
             <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background"></div>
             <div className="absolute w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse-slow -top-16 -left-16"></div>
-            <div className="absolute w-96 h-96 bg-secondary/20 rounded-full blur-3xl animate-pulse-slow-delay bottom-0 -right-16"></div>
+            <div className="absolute w-96 h-96 bg-accent/20 rounded-full blur-3xl animate-pulse-slow-delay bottom-0 -right-16"></div>
 
             <div className="container px-4 md:px-6 z-10">
             <div className="flex flex-col justify-center items-center space-y-6 text-center">
                 <div className="space-y-4">
                 <h1 className="text-5xl font-bold tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl/none font-headline bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70 py-2">
-                    Where Kings Are Crowned
+                    Where Champions Compete
                 </h1>
                 <p className="max-w-[700px] text-muted-foreground text-lg md:text-xl">
                     Step into the arena. Challenge the best Ludo players, rise through the ranks, and claim your victory spoils. The digital board awaits its next champion.
@@ -50,7 +49,7 @@ export default function LandingPage() {
                 <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-primary/50 transition-all duration-300 transform hover:scale-105 animate-pulse">
                     <Link href="/dashboard">Enter the Arena</Link>
                 </Button>
-                <Button size="lg" variant="secondary" asChild className="bg-secondary/90 hover:bg-secondary text-secondary-foreground shadow-lg hover:shadow-secondary/50 transition-all duration-300 transform hover:scale-105">
+                <Button size="lg" variant="secondary" asChild className="bg-accent/90 hover:bg-accent text-accent-foreground shadow-lg hover:shadow-accent/50 transition-all duration-300 transform hover:scale-105">
                     <Link href="/tournaments">See Tournaments</Link>
                 </Button>
                 </div>
@@ -67,17 +66,17 @@ export default function LandingPage() {
                 </div>
                 <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                     <div className="flex flex-col items-center text-center p-6 rounded-lg bg-card border border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300">
-                        <div className="p-4 bg-gradient-to-r from-primary to-secondary rounded-full mb-4"><Star className="h-8 w-8 text-primary-foreground"/></div>
+                        <div className="p-4 bg-gradient-to-r from-primary to-accent rounded-full mb-4"><Star className="h-8 w-8 text-primary-foreground"/></div>
                         <h3 className="text-xl font-bold mb-2">Exciting Matches</h3>
                         <p className="text-muted-foreground">Create or join matches 24/7. Play against friends or find a worthy opponent from our global community.</p>
                     </div>
                     <div className="flex flex-col items-center text-center p-6 rounded-lg bg-card border border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300">
-                        <div className="p-4 bg-gradient-to-r from-primary to-secondary rounded-full mb-4"><TrendingUp className="h-8 w-8 text-primary-foreground"/></div>
+                        <div className="p-4 bg-gradient-to-r from-primary to-accent rounded-full mb-4"><TrendingUp className="h-8 w-8 text-primary-foreground"/></div>
                         <h3 className="text-xl font-bold mb-2">Rise the Ranks</h3>
                         <p className="text-muted-foreground">Compete in skill-based matchmaking. Track your stats, improve your game, and climb the leaderboard.</p>
                     </div>
                     <div className="flex flex-col items-center text-center p-6 rounded-lg bg-card border border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300">
-                        <div className="p-4 bg-gradient-to-r from-primary to-secondary rounded-full mb-4"><ShieldCheck className="h-8 w-8 text-primary-foreground"/></div>
+                        <div className="p-4 bg-gradient-to-r from-primary to-accent rounded-full mb-4"><ShieldCheck className="h-8 w-8 text-primary-foreground"/></div>
                         <h3 className="text-xl font-bold mb-2">Secure & Fair Play</h3>
                         <p className="text-muted-foreground">Our platform ensures a secure environment with fair play policies and quick, reliable prize distribution.</p>
                     </div>
