@@ -5,13 +5,57 @@ import * as admin from "firebase-admin";
 admin.initializeApp();
 const db = admin.firestore();
 
+export const setSuperAdminRole = functions.https.onCall(async (data, context) => {
+  const email = data.email;
+  if (typeof email !== 'string' || email.length === 0) {
+    throw new functions.https.HttpsError('invalid-argument', 'The function must be called with one argument "email" containing the user email address.');
+  }
+  try {
+    const user = await admin.auth().getUserByEmail(email);
+    await admin.auth().setCustomUserClaims(user.uid, { role: 'superadmin' });
+    return {
+      message: `Success! ${email} has been made a superadmin.`
+    };
+  } catch (error) {
+    console.error("Failed to set superadmin role:", error);
+    throw new functions.https.HttpsError('internal', 'An error occurred while trying to set the user role.');
+  }
+});
+
+export const setUserRole = functions.https.onCall(async (data, context) => {
+  if (context.auth?.token.role !== 'superadmin') {
+    throw new functions.https.HttpsError('permission-denied', 'Only superadmins can set user roles.');
+  }
+
+  const { userId, role } = data;
+
+  if (typeof userId !== 'string' || userId.length === 0) {
+    throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a "userId" argument.');
+  }
+
+  if (typeof role !== 'string' || role.length === 0) {
+    throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a "role" argument.');
+  }
+
+  try {
+    await admin.auth().setCustomUserClaims(userId, { role: role });
+    await db.collection('users').doc(userId).set({ role: role }, { merge: true });
+
+    return {
+      message: `Success! User ${userId} has been assigned the role of ${role}.`
+    };
+  } catch (error) {
+    console.error("Failed to set user role:", error);
+    throw new functions.https.HttpsError('internal', 'An error occurred while trying to set the user role.');
+  }
+});
+
 export const onDepositStatusChange = functions.firestore
   .document("deposit-requests/{depositId}")
   .onUpdate(async (change, context) => {
     const beforeData = change.before.data();
     const afterData = change.after.data();
 
-    // Only run if status changes to 'approved'
     if (beforeData.status === "approved" || afterData.status !== "approved") {
         return null;
     }
@@ -19,7 +63,7 @@ export const onDepositStatusChange = functions.firestore
     const { userId, amount } = afterData;
     if (!userId || !amount || amount <= 0) {
         functions.logger.error("Missing or invalid userId/amount", { id: context.params.depositId });
-        return;
+        return null;
     }
 
     const userRef = db.collection("users").doc(userId);
@@ -48,11 +92,10 @@ export const onDepositStatusChange = functions.firestore
         functions.logger.info(`Deposit of ${amount} for user ${userId} completed successfully.`);
     } catch (error) {
         functions.logger.error(`Transaction failed for deposit ${context.params.depositId}:`, error);
-        // Revert status to 'failed' on the request doc
         await change.after.ref.update({ status: "failed", error: (error as Error).message });
     }
+    return null;
 });
-
 
 export const onWithdrawalStatusChange = functions.firestore
   .document("withdrawal-requests/{withdrawalId}")
@@ -61,10 +104,9 @@ export const onWithdrawalStatusChange = functions.firestore
     const afterData = change.after.data();
     const { withdrawalId } = context.params;
 
-    // --- Rejection Logic ---
     if (beforeData.status !== "rejected" && afterData.status === "rejected") {
         const { userId, amount } = afterData;
-        if (!userId || !amount) return;
+        if (!userId || !amount) return null;
 
         const userRef = db.collection("users").doc(userId);
         const transactionRef = db.collection(`users/${userId}/transactions`).doc(withdrawalId);
@@ -82,8 +124,8 @@ export const onWithdrawalStatusChange = functions.firestore
             functions.logger.error(`Failed to refund user ${userId} for rejected withdrawal ${withdrawalId}:`, error);
         }
     }
+    return null;
 });
-
 
 export const onMatchResultUpdate = functions.firestore
   .document("matches/{matchId}")
@@ -92,7 +134,6 @@ export const onMatchResultUpdate = functions.firestore
     const afterData = change.after.data();
     const { matchId } = context.params;
 
-    // Check if a winner has been declared for the first time and the status is now 'completed'
     if (beforeData.status !== 'completed' && afterData.status === 'completed' && afterData.winnerId) {
         const { winnerId, prizePool } = afterData;
 
@@ -127,7 +168,6 @@ export const onMatchResultUpdate = functions.firestore
             functions.logger.info(`Prize money of ${prizePool} credited to user ${winnerId} for match ${matchId}.`);
         } catch (error) {
             functions.logger.error(`Failed to process prize for match ${matchId}:`, error);
-            // Optionally, set match status to an error state to indicate a problem
             await change.after.ref.update({ status: "error", error: (error as Error).message });
         }
     }

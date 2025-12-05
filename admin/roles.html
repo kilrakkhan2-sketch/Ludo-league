@@ -1,0 +1,46 @@
+<h1>Set User Role</h1>
+<form id="setRoleForm">
+  <label for="userId">User ID:</label>
+  <input type="text" id="userId" name="userId" required><br><br>
+  <label for="role">Role:</label>
+  <select id="role" name="role">
+    <option value="user">User</option>
+    <option value="withdrawal_manager">Withdrawal Manager</option>
+    <option value="deposit_manager">Deposit Manager</option>
+    <option value="match_manager">Match Manager</option>
+    <option value="superadmin">Super Admin</option>
+  </select><br><br>
+  <button type="submit">Set Role</button>
+</form>
+
+<div id="message"></div>
+
+<script src="/firebase-config.js"></script>
+<script src="/firebase-app.js"></script>
+<script src="/firebase-auth.js"></script>
+<script src="/firebase-functions.js"></script>
+
+<script>
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const functions = firebase.functions();
+
+  const setRoleForm = document.getElementById('setRoleForm');
+  const messageDiv = document.getElementById('message');
+
+  setRoleForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const userId = setRoleForm.userId.value;
+    const role = setRoleForm.role.value;
+
+    const setUserRole = functions.httpsCallable('setUserRole');
+
+    try {
+      const result = await setUserRole({ userId, role });
+      messageDiv.textContent = result.data.message;
+    } catch (error) { 
+      messageDiv.textContent = error.message;
+    }
+  });
+</script>

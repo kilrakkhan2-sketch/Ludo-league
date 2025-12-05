@@ -6,6 +6,7 @@ const typescriptParser = require('@typescript-eslint/parser');
 module.exports = [
   {
     files: ['**/*.ts', '**/*.tsx'],
+    ignores: ['functions/**'],
     plugins: {
       '@next/next': nextEslintPlugin,
       'react': reactPlugin,
