@@ -2,9 +2,7 @@
 'use client';
 
 import { doc, runTransaction, updateDoc, arrayUnion, Timestamp, collection } from 'firebase/firestore';
-import { useDocument } from '@/firebase/firestore/use-document';
-import { useUser } from '@/firebase/auth/use-user';
-import { useFirebase } from '@/firebase/provider';
+import { useDoc, useUser, useCollection, useFirebase } from '@/firebase';
 import { Match, UserProfile } from '@/types';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
@@ -13,13 +11,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Users, Trophy, Swords, Calendar, Hourglass, ClipboardCopy, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { useCollection } from '@/firebase/firestore/use-collection';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ChatRoom } from '@/components/chat/ChatRoom';
 import { useState } from 'react';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 
 const StatItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
     <div className="flex flex-col items-center gap-1 p-2 border rounded-lg">
@@ -73,12 +71,12 @@ const MatchPageSkeleton = () => (
 
 export default function MatchPage({ params }: { params: { id: string } }) {
   const { user, loading: userLoading } = useUser();
-  const { data: profile, loading: profileLoading } = useDocument<UserProfile>(user ? `users/${user.uid}` : undefined);
+  const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
   const { firestore } = useFirebase();
   const { toast } = useToast();
   const router = useRouter();
 
-  const { data: match, loading: matchLoading, error } = useDocument<Match>(`matches/${params.id}`);
+  const { data: match, loading: matchLoading, error } = useDoc<Match>(`matches/${params.id}`);
   const { data: players, loading: playersLoading } = useCollection<UserProfile>('users', {
     where: match ? ['uid', 'in', match.players] : undefined
   });
@@ -196,7 +194,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
     return <AppShell><div className="text-center p-8">Match not found.</div></AppShell>;
   }
 
-  const creatorProfile = players.find(p => p.id === match.creatorId);
+  const creatorProfile = players.find((p: UserProfile) => p.id === match.creatorId);
   const createdAtTime = match.createdAt ? (match.createdAt as Timestamp).toDate() : new Date();
 
   return (
@@ -238,7 +236,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
                         <div>
                             <h3 className="font-bold mb-4">Players ({match.players.length}/{match.maxPlayers})</h3>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                {players.map(p => (
+                                {players.map((p: UserProfile) => (
                                     <div key={p.id} className="flex items-center gap-3 p-2 border rounded-lg bg-background">
                                         <Avatar className="h-10 w-10">
                                             <AvatarImage src={p.photoURL || undefined} />
