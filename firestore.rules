@@ -6,16 +6,16 @@ service cloud.firestore {
     
     // --- Helper Functions ---
     function isSuperAdmin() {
-      return getUserData(request.auth.uid).role == 'superadmin';
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
     }
 
     function isDepositAdmin() {
-      let role = getUserData(request.auth.uid).role;
+      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
       return role == 'deposit_admin' || role == 'superadmin';
     }
     
     function isMatchAdmin() {
-      let role = getUserData(request.auth.uid).role;
+      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
       return role == 'match_admin' || role == 'superadmin';
     }
 
@@ -25,10 +25,6 @@ service cloud.firestore {
 
     function isOwner(userId) {
       return request.auth.uid == userId;
-    }
-    
-    function getUserData(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data;
     }
     
     function isExistingUser(userId) {
