@@ -71,7 +71,6 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
   const db = useFirestore();
   const [state, dispatch] = useReducer(stateReducer, createInitialState<T>());
 
-  // Memoize options to prevent re-renders
   const optionsMemo = useMemo(() => options, [
       JSON.stringify(options?.where),
       JSON.stringify(options?.orderBy),
@@ -80,7 +79,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
   ]);
 
 
-  const buildQuery = useCallback((startAfterDoc: QueryDocumentSnapshot<DocumentData> | null = null) => {
+  const buildQuery = useCallback(() => {
     if (!path || !db) {
         return null;
     }
@@ -93,9 +92,6 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
         for (const w of whereClauses) {
             const [field, op, value] = w;
             if ( (op === 'in' || op === 'not-in') && (!Array.isArray(value) || value.length === 0) ) {
-                // Firestore 'in' and 'not-in' queries require a non-empty array.
-                // If the array is empty, we can't perform the query.
-                // We return null to indicate a valid but empty result.
                 return null;
             }
             constraints.push(where(field, op, value));
@@ -109,9 +105,6 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
             constraints.push(orderBy(o[0], o[1]));
         }
     }
-    if (startAfterDoc) {
-        constraints.push(startAfter(startAfterDoc));
-    }
     if (optionsMemo?.limit) {
         constraints.push(limit(optionsMemo.limit));
     }
@@ -119,7 +112,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     return query(q, ...constraints);
   }, [db, path, optionsMemo]);
 
-  const loadInitial = useCallback(async () => {
+  const loadInitial = useCallback(() => {
     dispatch({ type: 'loading' });
     const q = buildQuery();
 
@@ -128,20 +121,25 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
        return;
     }
 
-    try {
-      const snapshot = await getDocs(q);
-      const result: T[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
-      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
-      const hasMore = optionsMemo?.limit ? result.length === optionsMemo.limit : false;
-      dispatch({ type: 'data', payload: result, lastDoc: lastVisible || null, hasMore });
-    } catch (err: any) {
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const result: T[] = [];
+        querySnapshot.forEach((doc) => {
+            result.push({ id: doc.id, ...doc.data() } as T);
+        });
+        const lastVisible = querySnapshot.docs[querySnapshot.docs.length-1];
+        const hasMore = optionsMemo?.limit ? result.length === optionsMemo.limit : false;
+        dispatch({ type: 'data', payload: result, lastDoc: lastVisible || null, hasMore });
+    }, (err: any) => {
       console.error(err);
       dispatch({ type: 'error', payload: err });
-    }
+    });
+
+    return unsubscribe;
   }, [buildQuery, optionsMemo?.limit]);
   
   useEffect(() => {
-    loadInitial();
+    const unsubscribe = loadInitial();
+    return () => unsubscribe?.();
   }, [loadInitial]);
 
 
@@ -151,8 +149,32 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     dispatch({ type: 'loading' });
 
     try {
-        const q = buildQuery(state.lastDoc);
+        let q: Query<DocumentData> | null = null;
+        if (path && db) {
+            let baseQuery: Query<DocumentData> = optionsMemo?.isCollectionGroup ? collectionGroup(db, path) : collection(db, path);
+            const constraints: QueryConstraint[] = [];
+
+            if (optionsMemo?.where) {
+                const whereClauses = Array.isArray(optionsMemo.where[0]) ? (optionsMemo.where as WhereClause[]) : ([optionsMemo.where] as WhereClause[]);
+                whereClauses.forEach(w => constraints.push(where(w[0], w[1], w[2])));
+            }
+             if (optionsMemo?.orderBy) {
+                if (Array.isArray(optionsMemo.orderBy[0])) {
+                        (optionsMemo.orderBy as OrderByClause[]).forEach(o => constraints.push(orderBy(o[0], o[1])));
+                } else {
+                    const o = optionsMemo.orderBy as OrderByClause;
+                    constraints.push(orderBy(o[0], o[1]));
+                }
+            }
+            constraints.push(startAfter(state.lastDoc));
+            if (optionsMemo?.limit) {
+                constraints.push(limit(optionsMemo.limit));
+            }
+            q = query(baseQuery, ...constraints);
+        }
+
         if (!q) return;
+
         const snapshot = await getDocs(q);
         const result: T[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
         const lastVisible = snapshot.docs[snapshot.docs.length - 1];
@@ -163,7 +185,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
         console.error(err);
         dispatch({ type: 'error', payload: err });
     }
-  }, [state.lastDoc, state.hasMore, state.loading, buildQuery, optionsMemo?.limit]);
+  }, [state.lastDoc, state.hasMore, state.loading, path, db, optionsMemo]);
 
   return { ...state, loadMore, reload: loadInitial };
 }
