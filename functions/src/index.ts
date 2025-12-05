@@ -117,7 +117,7 @@ export const onWithdrawalStatusChange = functions.firestore
                 const currentBalance = userDoc.data()?.walletBalance || 0;
                 const newBalance = currentBalance + amount; // Refund the amount
                 t.update(userRef, { walletBalance: newBalance });
-                t.update(transactionRef, { status: 'failed', description: 'Withdrawal rejected by admin' });
+                t.update(transactionRef, { status: 'failed', description: 'Withdrawal request rejected by admin' });
             });
             functions.logger.info(`Withdrawal ${withdrawalId} for user ${userId} was rejected and funds were refunded.`);
         } catch (error) {
@@ -128,14 +128,14 @@ export const onWithdrawalStatusChange = functions.firestore
 });
 
 export const onMatchResultUpdate = functions.firestore
-  .document("matches/{matchId}")
-  .onUpdate(async (change, context) => {
+    .document("matches/{matchId}")
+    .onUpdate(async (change, context) => {
     const beforeData = change.before.data();
     const afterData = change.after.data();
     const { matchId } = context.params;
 
     if (beforeData.status !== 'completed' && afterData.status === 'completed' && afterData.winnerId) {
-        const { winnerId, prizePool } = afterData;
+        const { winnerId, prizePool, players } = afterData;
 
         if (!winnerId || !prizePool || prizePool <= 0) {
             functions.logger.error("Missing or invalid winnerId/prizePool", { id: matchId });
@@ -144,18 +144,30 @@ export const onMatchResultUpdate = functions.firestore
 
         const winnerRef = db.collection("users").doc(winnerId);
         const transactionRef = db.collection(`users/${winnerId}/transactions`).doc();
-
+        
         try {
             await db.runTransaction(async (t) => {
                 const winnerDoc = await t.get(winnerRef);
                 if (!winnerDoc.exists) {
                     throw new Error(`Winner user ${winnerId} not found.`);
                 }
-                const currentBalance = winnerDoc.data()?.walletBalance || 0;
+                const winnerData = winnerDoc.data();
+                const currentBalance = winnerData?.walletBalance || 0;
+                const currentRating = winnerData?.rating || 1000;
+                const currentXp = winnerData?.xp || 0;
+
                 const newBalance = currentBalance + prizePool;
+                const newRating = currentRating + 10;
+                const newXp = currentXp + 25;
                 
-                t.update(winnerRef, { walletBalance: newBalance });
+                // 1. Update winner's balance, rating, and XP
+                t.update(winnerRef, { 
+                    walletBalance: newBalance,
+                    rating: newRating,
+                    xp: newXp 
+                });
                 
+                // 2. Create prize transaction for winner
                 t.set(transactionRef, {
                     amount: prizePool,
                     type: "prize",
@@ -164,10 +176,23 @@ export const onMatchResultUpdate = functions.firestore
                     relatedId: matchId,
                     createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 });
+
+                // 3. Update ratings for all other players (losers)
+                const loserIds = players.filter((pId: string) => pId !== winnerId);
+                for (const loserId of loserIds) {
+                    const loserRef = db.collection("users").doc(loserId);
+                    const loserDoc = await t.get(loserRef);
+                    if (loserDoc.exists) {
+                        const loserData = loserDoc.data();
+                        const loserRating = loserData?.rating || 1000;
+                        const newLoserRating = Math.max(0, loserRating - 5); // Don't go below 0
+                        t.update(loserRef, { rating: newLoserRating });
+                    }
+                }
             });
-            functions.logger.info(`Prize money of ${prizePool} credited to user ${winnerId} for match ${matchId}.`);
+            functions.logger.info(`Prize money, rating, and XP updated for match ${matchId}.`);
         } catch (error) {
-            functions.logger.error(`Failed to process prize for match ${matchId}:`, error);
+            functions.logger.error(`Failed to process results for match ${matchId}:`, error);
             await change.after.ref.update({ status: "error", error: (error as Error).message });
         }
     }
