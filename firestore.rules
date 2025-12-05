@@ -36,17 +36,24 @@ service cloud.firestore {
     }
     
     function isValidBalance() {
-        return request.resource.data.walletBalance is number && request.resource.data.walletBalance >= 0;
+        // Ensure wallet balance is a number and not negative.
+        return request.resource.data.walletBalance is number 
+          && request.resource.data.walletBalance >= 0;
     }
 
     // --- User Profiles ---
     match /users/{userId} {
       allow read: if isSignedIn();
       
+      // Allow user to create their own profile on signup.
+      // Must have 'user' role and 0 balance initially.
       allow create: if isOwner(userId) 
                     && request.resource.data.role == 'user'
                     && request.resource.data.walletBalance == 0;
       
+      // Allow user to update their own profile (e.g., name, photoURL)
+      // but NOT their role. Balance updates are handled by transactions.
+      // Superadmin can update any field.
       allow update: if (isOwner(userId) && !('role' in request.resource.data.diff(resource.data).affectedKeys()) && isValidBalance())
                     || isSuperAdmin();
 
@@ -60,6 +67,7 @@ service cloud.firestore {
       }
     }
     
+    // Allow superadmin to read all transactions via collection group query
     match /{path=**}/transactions/{transactionId} {
         allow read: if isSuperAdmin();
     }
