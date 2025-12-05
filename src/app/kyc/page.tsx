@@ -71,7 +71,7 @@ export default function KycPage() {
         await uploadBytes(docRef, docFile);
         const documentUrl = await getDownloadURL(docRef);
 
-        await addDoc(collection(firestore, 'kyc'), {
+        await addDoc(collection(firestore, 'kyc-requests'), {
             userId: user.uid,
             fullName,
             documentType: docType,
