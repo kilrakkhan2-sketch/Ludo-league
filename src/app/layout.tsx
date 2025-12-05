@@ -7,6 +7,7 @@ import { FirebaseClientProvider } from "@/firebase";
 export const metadata: Metadata = {
   title: "LudoLeague",
   description: "The ultimate platform for competitive Ludo.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
