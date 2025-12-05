@@ -40,8 +40,8 @@ export default function CreateMatchPage() {
       toast({ variant: 'destructive', title: 'Missing Information', description: 'Please fill out all fields.' });
       return false;
     }
-    if (ludoKingCode.length !== 6) {
-        toast({ variant: 'destructive', title: 'Invalid Ludo King Code', description: 'The code must be 6 characters long.' });
+    if (ludoKingCode.length !== 9) {
+        toast({ variant: 'destructive', title: 'Invalid Ludo King Code', description: 'The code must be 9 characters long.' });
         return false;
     }
     return true;
@@ -165,8 +165,8 @@ export default function CreateMatchPage() {
                 id="ludoKingCode"
                 value={ludoKingCode}
                 onChange={(e) => setLudoKingCode(e.target.value.toUpperCase())}
-                placeholder="Enter the 6-character code from Ludo King"
-                maxLength={6}
+                placeholder="Enter the 9-character code from Ludo King"
+                maxLength={9}
               />
             </div>
             <Button onClick={handleSubmit} className="w-full" disabled={isSubmitting}>
