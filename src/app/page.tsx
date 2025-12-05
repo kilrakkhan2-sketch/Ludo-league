@@ -5,10 +5,9 @@ import Image from "next/image";
 
 export default function LandingPage() {
   return (
-    <div className="flex flex-col min-h-screen font-sans bg-gradient-to-br from-background via-background to-primary/10 text-foreground">
+    <div className="flex flex-col min-h-screen font-sans bg-light-mode text-foreground dark:bg-dark-mode">
       
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 px-4 lg:px-6 h-16 flex items-center bg-background/80 backdrop-blur-sm border-b border-border/60">
+      <header className="fixed top-0 left-0 right-0 z-50 px-4 lg:px-6 h-16 flex items-center bg-card/80 backdrop-blur-sm border-b border-border/60">
         <Link href="/" className="flex items-center justify-center gap-2">
           <div className="p-2 bg-gradient-to-r from-primary to-accent rounded-lg shadow-md">
              <Image src="/logo.svg" alt="LudoLeague Logo" width={24} height={24} className="text-primary-foreground" />
@@ -27,9 +26,7 @@ export default function LandingPage() {
         </nav>
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 pt-16">
-        {/* Hero Section */}
         <section className="relative w-full min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 opacity-5"></div>
             <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background"></div>
@@ -58,7 +55,6 @@ export default function LandingPage() {
             </div>
         </section>
 
-        {/* Features Section */}
         <section id="features" className="w-full py-20 md:py-32 bg-background">
             <div className="container px-4 md:px-6">
                 <div className="text-center mb-12">
@@ -87,7 +83,6 @@ export default function LandingPage() {
 
       </main>
 
-      {/* Footer */}
       <footer className="py-6 w-full shrink-0 px-4 md:px-6 border-t border-border/60 bg-background">
         <div className="container flex flex-col gap-2 sm:flex-row items-center justify-between">
              <p className="text-xs text-muted-foreground">

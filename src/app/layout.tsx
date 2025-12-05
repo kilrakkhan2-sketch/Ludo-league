@@ -25,10 +25,10 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;700&family=Roboto+Mono&display=swap"
           rel="stylesheet"
         />
-        <meta name="theme-color" content="#1E3A8A" />
+        <meta name="theme-color" content="#2563EB" />
       </head>
       <body className={cn("font-body antialiased")}>
         <FirebaseClientProvider>
