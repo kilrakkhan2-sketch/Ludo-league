@@ -68,7 +68,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const isAdmin = claims?.role && ['superadmin', 'deposit_admin', 'match_admin'].includes(claims.role);
 
   useEffect(() => {
-    if (!userLoading && !isAdmin) {
+    if (!userLoading && (!user || !isAdmin)) {
       router.push('/login');
       toast({
         variant: 'destructive',
@@ -76,7 +76,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         description: 'You do not have permission to access this page.',
       });
     }
-  }, [userLoading, isAdmin, router, toast]);
+  }, [user, userLoading, isAdmin, router, toast]);
 
   const handleLogout = async () => {
     const auth = getAuth();
