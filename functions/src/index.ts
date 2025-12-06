@@ -277,7 +277,7 @@ export const createMatch = functions.https.onCall(async (data, context) => {
                 prizePool,
                 creatorId: userId,
                 players: [userId], // The creator is the first player
-                status: "waiting", // Initial status of the match
+                status: "open", // Initial status of the match
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
             
