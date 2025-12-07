@@ -1,4 +1,5 @@
 
+
 export type UserProfile = {
   id: string;
   uid: string;
@@ -44,7 +45,7 @@ export type Transaction = {
   userId: string;
   userName?: string; // Denormalized for easier display
   userEmail?: string; // Denormalized for easier display
-  type: "deposit" | "withdrawal" | "entry_fee" | "prize";
+  type: "deposit" | "withdrawal" | "entry_fee" | "prize" | "win" | "add_money";
   amount: number;
   status: "pending" | "completed" | "failed";
   createdAt: any; // Can be server timestamp
@@ -104,3 +105,5 @@ export type KycRequest = {
   processedAt?: any;
   processedBy?: string;
 }
+
+    

@@ -24,11 +24,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  ArrowDownLeft,
-  ArrowUpRight,
+  ArrowDown,
+  ArrowUp,
   Download,
   Upload,
   Wallet as WalletIcon,
+  Trophy,
+  Ticket,
+  CircleArrowUp,
+  CircleArrowDown
 } from "lucide-react";
 import {
   Table,
@@ -49,6 +53,25 @@ import { addDoc, collection, runTransaction, doc, Timestamp } from "firebase/fir
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
+import { BottomNav } from "@/components/layout/BottomNav";
+
+const getTransactionIcon = (type: Transaction['type']) => {
+    switch (type) {
+        case 'prize':
+        case 'win':
+            return <Trophy className="h-5 w-5" />;
+        case 'entry_fee':
+            return <Ticket className="h-5 w-5" />;
+        case 'withdrawal':
+            return <CircleArrowUp className="h-5 w-5" />;
+        case 'deposit':
+        case 'add_money':
+            return <CircleArrowDown className="h-5 w-5" />;
+        default:
+            return <WalletIcon className="h-5 w-5" />;
+    }
+}
 
 export default function WalletPage() {
   const { user, loading: userLoading } = useUser();
@@ -81,7 +104,6 @@ export default function WalletPage() {
 
     setIsSubmitting(true);
     try {
-      // Use a transaction to ensure atomicity
       await runTransaction(firestore, async (transaction) => {
         const userRef = doc(firestore, 'users', user.uid);
         const userDoc = await transaction.get(userRef);
@@ -89,11 +111,9 @@ export default function WalletPage() {
           throw new Error('Insufficient balance.');
         }
 
-        // Deduct from user's balance immediately
         const newBalance = userDoc.data().walletBalance - amount;
         transaction.update(userRef, { walletBalance: newBalance });
 
-        // Create a withdrawal request for admin approval
         const withdrawalRef = doc(collection(firestore, 'withdrawal-requests'));
         transaction.set(withdrawalRef, {
           userId: user.uid,
@@ -106,7 +126,6 @@ export default function WalletPage() {
           createdAt: Timestamp.now(),
         });
         
-        // Create a pending transaction record
         const transactionRef = doc(collection(firestore, `users/${user.uid}/transactions`));
         transaction.set(transactionRef, {
             amount: -amount,
@@ -121,7 +140,6 @@ export default function WalletPage() {
       toast({ title: 'Withdrawal Request Submitted', description: 'Your request is being processed.' });
       setWithdrawalAmount('');
       setWithdrawalDetails('');
-      // Close dialog if it's open - requires state management for dialog
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Request Failed', description: error.message || 'Could not submit withdrawal request.' });
     } finally {
@@ -132,36 +150,45 @@ export default function WalletPage() {
 
   const loading = userLoading || profileLoading || transactionsLoading;
 
-  return (
-    <AppShell>
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold font-headline">My Wallet</h1>
+  const totalWinnings = transactions
+    .filter((t: Transaction) => t.type === 'prize' || t.type === 'win')
+    .reduce((sum, t) => sum + t.amount, 0);
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div>
-              <CardTitle>Current Balance</CardTitle>
-              <CardDescription>Available balance for playing</CardDescription>
-            </div>
-            <WalletIcon className="h-8 w-8 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-                 <Skeleton className="h-12 w-48" />
-            ): (
-                 <p className="text-5xl font-bold">
-                    ₹{profile?.walletBalance?.toLocaleString() ?? 0}
-                </p>
-            )}
-          </CardContent>
-          <CardFooter className="flex flex-col sm:flex-row gap-4">
-            <Button className="flex-1" onClick={() => router.push('/add-money')}>
-              <Upload className="mr-2 h-4 w-4" /> Deposit
+  return (
+    <div className="bg-muted/30 min-h-screen">
+      <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 sticky top-0 z-10 shadow-md">
+            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                <ArrowLeft />
             </Button>
-            <Dialog>
+            <h1 className="text-xl font-bold">Wallet</h1>
+      </header>
+
+      <div className="p-4 space-y-6">
+        <Card className="bg-primary-dark text-primary-foreground shadow-lg -mt-16 mx-2">
+            <CardContent className="p-6 space-y-4">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <p className="text-sm opacity-80">Total Balance</p>
+                        {loading ? <Skeleton className="h-8 w-36 mt-1 bg-white/20"/> : <p className="text-3xl font-bold">₹{profile?.walletBalance?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</p>}
+                    </div>
+                </div>
+                 <div className="flex justify-between items-center pt-2">
+                    <div>
+                        <p className="text-sm opacity-80">Winning Balance</p>
+                        {loading ? <Skeleton className="h-6 w-28 mt-1 bg-white/20"/> : <p className="text-2xl font-bold">₹{totalWinnings.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>}
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-2 gap-4 px-2">
+            <Button className="py-6 text-base bg-green-500 hover:bg-green-600 text-white" onClick={() => router.push('/add-money')}>
+              <Upload className="mr-2 h-5 w-5" /> Deposit
+            </Button>
+             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="secondary" className="flex-1">
-                  <Download className="mr-2 h-4 w-4" /> Withdraw
+                <Button variant="destructive" className="py-6 text-base bg-red-500 hover:bg-red-600">
+                  <Download className="mr-2 h-5 w-5" /> Withdraw
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -191,81 +218,42 @@ export default function WalletPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-          </CardFooter>
-        </Card>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Transaction History</CardTitle>
-            <CardDescription>Your recent wallet activity.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Amount (₹)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                    <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center">Loading transactions...</TableCell>
-                    </TableRow>
-                ) : transactions.length > 0 ? (
-                  transactions.map((tx: Transaction) => (
-                    <TableRow key={tx.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {tx.amount > 0 ? (
-                            <div className="p-1.5 bg-success/20 rounded-full">
-                              <ArrowUpRight className="h-4 w-4 text-success" />
-                            </div>
-                          ) : (
-                            <div className="p-1.5 bg-destructive/20 rounded-full">
-                              <ArrowDownLeft className="h-4 w-4 text-destructive" />
-                            </div>
-                          )}
-                          <span className="font-medium capitalize">{tx.type.replace('_', ' ')}</span>
+        <div className="space-y-2 px-2">
+            <div className="flex justify-between items-center">
+                 <h2 className="text-lg font-semibold">Recent Transactions</h2>
+                 <Link href="/wallet/history" className="text-sm font-semibold text-primary">View All</Link>
+            </div>
+            <div className="bg-card p-4 rounded-lg shadow-sm space-y-4">
+            {loading ? (
+                <div className="text-center py-4 text-muted-foreground">Loading transactions...</div>
+            ) : transactions.length > 0 ? (
+                transactions.slice(0,5).map((tx: Transaction) => (
+                <div key={tx.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className={cn("p-2 rounded-full", tx.amount > 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600')}>
+                          {getTransactionIcon(tx.type)}
                         </div>
-                      </TableCell>
-                       <TableCell>{tx.createdAt ? format(tx.createdAt.toDate(), 'dd MMM yyyy, HH:mm') : 'N/A'}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={"outline"}
-                          className={cn(
-                            "font-medium capitalize",
-                            tx.status === "completed" && "bg-success/20 text-success border-success/20",
-                            tx.status === "pending" && "bg-warning/20 text-warning border-warning/20",
-                            tx.status === "failed" && "bg-destructive/20 text-destructive border-destructive/20"
-                          )}
-                        >
-                          {tx.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell
-                        className={cn(
-                          "text-right font-semibold",
-                          tx.amount > 0 ? "text-success" : "text-destructive"
-                        )}
-                      >
-                        {tx.amount > 0 ? "+" : ""}
-                        {tx.amount.toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                    <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center">No transactions yet.</TableCell>
-                    </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                        <div>
+                            <p className="font-semibold capitalize">{tx.description || tx.type.replace(/_/g, ' ')}</p>
+                            <p className="text-xs text-muted-foreground">{tx.createdAt ? format(tx.createdAt.toDate(), 'dd MMM yyyy') : 'N/A'}</p>
+                        </div>
+                    </div>
+                    <p className={cn("font-bold text-lg", tx.amount > 0 ? "text-green-600" : "text-red-600")}>
+                        {tx.amount > 0 ? "+" : "-"}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                    </p>
+                </div>
+                ))
+            ) : (
+                <div className="text-center py-8 text-muted-foreground">No transactions yet.</div>
+            )}
+            </div>
+        </div>
       </div>
-    </AppShell>
+      <BottomNav />
+    </div>
   );
 }
+
+    
