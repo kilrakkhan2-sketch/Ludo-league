@@ -102,7 +102,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
             <SidebarHeader>
               <div className="flex items-center gap-2">
                 <div className="p-2 bg-primary rounded-lg">
-                  <Image src="/logo.svg" alt="LudoLeague Logo" width={24} height={24} />
+                  <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
                 </div>
                 <h1 className="text-xl font-bold font-headline text-primary">LudoLeague</h1>
               </div>

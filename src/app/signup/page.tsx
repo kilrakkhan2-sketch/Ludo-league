@@ -130,7 +130,7 @@ export default function SignupPage() {
         <CardHeader className="text-center">
           <Link href="/" className="flex justify-center mb-4">
             <div className="p-2 bg-gradient-to-r from-primary to-accent rounded-lg shadow-md">
-              <Image src="/logo.svg" alt="LudoLeague Logo" width={48} height={48} />
+              <Image src="/favicon.ico" alt="LudoLeague Logo" width={48} height={48} />
             </div>
           </Link>
           <CardTitle className="text-2xl sm:text-3xl font-headline">Create an Account</CardTitle>

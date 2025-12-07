@@ -123,7 +123,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <SidebarHeader>
             <div className="flex items-center gap-2">
               <div className="p-2 bg-primary rounded-lg">
-                 <Image src="/logo.svg" alt="LudoLeague Admin Logo" width={24} height={24} className="text-primary-foreground" />
+                 <Image src="/favicon.ico" alt="LudoLeague Admin Logo" width={24} height={24} />
               </div>
               <h1 className="text-xl font-bold font-headline text-primary">
                 Admin Panel

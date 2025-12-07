@@ -21,7 +21,7 @@ export default function SplashPage() {
   return (
     <div className="flex flex-col min-h-screen font-sans items-center justify-center bg-background p-4 text-center">
         <div className="p-4 bg-gradient-to-r from-primary to-accent rounded-2xl shadow-lg">
-            <Image src="/logo.svg" alt="LudoLeague Logo" width={96} height={96} className="text-primary-foreground" />
+            <Image src="/favicon.ico" alt="LudoLeague Logo" width={96} height={96} />
         </div>
         <h1 className="text-4xl sm:text-5xl font-bold font-headline mt-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
             LudoLeague
