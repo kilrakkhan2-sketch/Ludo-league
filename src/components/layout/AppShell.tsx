@@ -6,9 +6,11 @@ import { BottomNav } from "./BottomNav";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <>
-      {children}
+    <div className="flex flex-col min-h-screen">
+      <main className="flex-grow pb-20">
+        {children}
+      </main>
       <BottomNav />
-    </>
+    </div>
   );
 }

@@ -31,10 +31,8 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body antialiased bg-background")}>
         <FirebaseClientProvider>
-          <div className="relative md:max-w-sm mx-auto md:shadow-2xl md:my-8">
-            <main className="pb-20">
+          <div className="relative md:max-w-sm mx-auto md:shadow-2xl md:my-8 bg-card">
               {children}
-            </main>
           </div>
         </FirebaseClientProvider>
         <Toaster />
