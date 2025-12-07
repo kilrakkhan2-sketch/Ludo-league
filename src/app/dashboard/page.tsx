@@ -19,6 +19,7 @@ import { useCollection, useUser, useDoc } from "@/firebase";
 import type { Match, UserProfile } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
+import { useMemo } from "react";
 
 const MatchCardSkeleton = () => (
     <Card className="flex flex-col border-border/60 hover:border-primary/50 transition-colors duration-300">
@@ -82,11 +83,19 @@ export default function DashboardPage() {
     where: user?.uid ? ['players', 'array-contains', user.uid] : undefined,
     limit: 3
   });
-  const { data: openMatches, loading: openMatchesLoading, hasMore: hasMoreOpen, loadMore: loadMoreOpen } = useCollection<Match>('matches', {
+  
+  const { data: allOpenMatches, loading: openMatchesLoading } = useCollection<Match>('matches', {
     where: ['status', '==', 'open'],
     orderBy: ['createdAt', 'desc'],
     limit: 6
   });
+
+  const openMatches = useMemo(() => {
+    if (!user) return allOpenMatches;
+    return allOpenMatches.filter(match => !match.players.includes(user.uid));
+  }, [allOpenMatches, user]);
+
+
   const { data: fullMatches, loading: fullMatchesLoading, hasMore: hasMoreFull, loadMore: loadMoreFull } = useCollection<Match>('matches', {
       where: ['status', 'in', ['ongoing', 'completed', 'verification']],
       orderBy: ['createdAt', 'desc'],
@@ -176,13 +185,6 @@ export default function DashboardPage() {
                     <MatchCard key={match.id} match={match} myMatchesCount={myMatches.length} />
                 ))}
                 </div>
-                {hasMoreOpen && (
-                    <div className="flex justify-center">
-                        <Button onClick={loadMoreOpen} disabled={openMatchesLoading}>
-                            {openMatchesLoading ? "Loading..." : "Load More"}
-                        </Button>
-                    </div>
-                )}
             </>
           ) : (
             <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg">
