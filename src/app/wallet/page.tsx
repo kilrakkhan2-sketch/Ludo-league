@@ -32,7 +32,8 @@ import {
   Trophy,
   Ticket,
   CircleArrowUp,
-  CircleArrowDown
+  CircleArrowDown,
+  ArrowLeft
 } from "lucide-react";
 import {
   Table,
@@ -255,5 +256,3 @@ export default function WalletPage() {
     </div>
   );
 }
-
-    
