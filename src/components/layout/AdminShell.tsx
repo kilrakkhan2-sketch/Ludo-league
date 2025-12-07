@@ -104,9 +104,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
       return item.roles.includes(userRole);
   });
 
-  if (userLoading || !isAdmin) {
+  if (loading || !isAdmin) {
     return (
-        <div className="flex h-screen items-center justify-center">
+        <div className="flex h-screen items-center justify-center bg-background">
             <p>Loading...</p>
         </div>
     );
@@ -118,10 +118,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <SidebarContent className="bg-card">
           <SidebarHeader>
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-destructive rounded-lg">
-                 <Image src="/logo.svg" alt="LudoLeague Admin Logo" width={24} height={24} className="text-destructive-foreground" />
+              <div className="p-2 bg-primary rounded-lg">
+                 <Image src="/logo.svg" alt="LudoLeague Admin Logo" width={24} height={24} className="text-primary-foreground" />
               </div>
-              <h1 className="text-xl font-bold font-headline text-destructive">
+              <h1 className="text-xl font-bold font-headline text-primary">
                 Admin Panel
               </h1>
             </div>
@@ -171,8 +171,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage
-                      src={user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`}
-                      data-ai-hint="person portrait"
+                      src={profile?.photoURL || undefined}
+                      alt={profile?.displayName || 'Admin'}
                     />
                     <AvatarFallback>{profile?.displayName?.charAt(0) || user.email?.charAt(0) || 'A'}</AvatarFallback>
                   </Avatar>
@@ -215,7 +215,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <Input placeholder="Search..." className="pl-9" />
           </div>
         </header>
-        <main className="flex-1 p-4 lg:p-6 bg-muted/40">{children}</main>
+        <main className="flex-1 p-4 lg:p-6 bg-background/95">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );
