@@ -3,229 +3,139 @@
 
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Users, Trophy, PlusCircle, Wallet, Calendar, Bot } from "lucide-react";
-import Link from "next/link";
-import { Separator } from "@/components/ui/separator";
 import { useCollection, useUser, useDoc } from "@/firebase";
-import type { Match, UserProfile } from "@/types";
+import type { Match, UserProfile, Transaction } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDistanceToNow } from "date-fns";
-import { useMemo } from "react";
+import { Bell, MessageCircle, PlusCircle, Users, Wallet } from "lucide-react";
+import Link from "next/link";
+import { BottomNav } from "@/components/layout/BottomNav";
 
-const MatchCardSkeleton = () => (
-    <Card className="flex flex-col border-border/60 hover:border-primary/50 transition-colors duration-300">
-        <CardHeader className="p-4">
-            <Skeleton className="h-5 w-3/4 mb-2" />
-            <Skeleton className="h-4 w-1/2" />
-        </CardHeader>
-        <CardContent className="p-4 pt-0 flex-grow space-y-2">
-            <Skeleton className="h-6 w-1/4" />
-            <Skeleton className="h-5 w-1/2" />
-        </CardContent>
-        <CardFooter className="p-4 pt-0">
-             <Skeleton className="h-10 w-full" />
-        </CardFooter>
-    </Card>
-);
-
-
-const MatchCard = ({ match, myMatchesCount }: { match: Match, myMatchesCount?: number }) => (
-  <Card className="flex flex-col border-border/60 hover:border-primary/50 transition-colors duration-300 bg-card/50">
-    <CardHeader className="p-4 border-b border-border/60">
-        <div className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-accent"/>
-            <CardTitle className="text-md font-headline">LEAGUE MATCH #{match.id.substring(0, 6).toUpperCase()}</CardTitle>
-        </div>
-    </CardHeader>
-    <CardContent className="p-4 flex-grow space-y-3">
-       <div>
-            <p className="text-xs text-muted-foreground font-semibold">DIVISION</p>
-            <p className="font-headline text-lg text-primary">{match.title}</p>
-       </div>
-       <div>
-            <p className="text-xs text-muted-foreground font-semibold">PRIZE POOL</p>
-            <p className="font-code text-xl font-bold text-success">₹{match.prizePool || match.entryFee * match.players.length * 0.9}</p>
-       </div>
-       <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <span className="font-code">{match.players.length}/{match.maxPlayers} SLOTS</span>
+const StatCard = ({ title, value, loading }: { title: string, value: string | number, loading: boolean }) => (
+    <div className="bg-card p-3 rounded-lg shadow-sm text-center">
+        {loading ? (
+            <div className="space-y-2">
+                <Skeleton className="h-4 w-20 mx-auto" />
+                <Skeleton className="h-6 w-12 mx-auto" />
             </div>
-             <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="font-code">{formatDistanceToNow(new Date(match.createdAt.seconds * 1000), { addSuffix: true })}</span>
-            </div>
-       </div>
-    </CardContent>
-    <CardFooter className="p-2 bg-muted/50 border-t border-border/60">
-       <Button asChild className="w-full" disabled={match.players.length === match.maxPlayers || match.status !== 'open' || (myMatchesCount !== undefined && myMatchesCount >= 3)}>
-         <Link href={`/match/${match.id}`}>
-            JOIN LEAGUE
-         </Link>
-      </Button>
-    </CardFooter>
-  </Card>
-);
-
-export default function DashboardPage() {
-  const { user } = useUser();
-  const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
-  const { data: myMatches, loading: myMatchesLoading } = useCollection<Match>('matches', {
-    where: user?.uid ? ['players', 'array-contains', user.uid] : undefined,
-    limit: 3
-  });
-  
-  const { data: allOpenMatches, loading: openMatchesLoading } = useCollection<Match>('matches', {
-    where: ['status', '==', 'open'],
-    orderBy: ['createdAt', 'desc'],
-    limit: 6
-  });
-
-  const openMatches = useMemo(() => {
-    if (!user) return allOpenMatches;
-    return allOpenMatches.filter(match => !match.players.includes(user.uid));
-  }, [allOpenMatches, user]);
-
-
-  const { data: fullMatches, loading: fullMatchesLoading, hasMore: hasMoreFull, loadMore: loadMoreFull } = useCollection<Match>('matches', {
-      where: ['status', 'in', ['ongoing', 'completed', 'verification']],
-      orderBy: ['createdAt', 'desc'],
-      limit: 3
-  })
-
-  const Skeletons = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <MatchCardSkeleton />
-        <MatchCardSkeleton />
-        <MatchCardSkeleton />
+        ) : (
+            <>
+                <p className="text-xs text-muted-foreground">{title}</p>
+                <p className="text-lg font-bold">{value}</p>
+            </>
+        )}
     </div>
-  )
+);
 
-
-  return (
-    <AppShell>
-      <div className="flex flex-col gap-8">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold font-headline">Find a Match</h1>
-            <p className="text-muted-foreground">
-              Join an existing match or create your own.
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            {profileLoading ? (
-                <Skeleton className="h-10 w-24" />
-            ) : (
-                <Button variant="outline" asChild>
-                    <Link href="/wallet">
-                        <Wallet className="h-4 w-4 mr-2" />
-                        <span className="font-code">₹{profile?.walletBalance || 0}</span>
-                    </Link>
-                </Button>
-            )}
-            <Button asChild className="font-headline">
-                <Link href="/create-match">
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Create a Match
+const MatchCard = ({ match }: { match: Match }) => (
+    <div className="shrink-0 w-64 bg-card rounded-lg shadow-sm overflow-hidden">
+        <div className="p-3 bg-gradient-to-br from-primary to-purple-600 text-primary-foreground">
+            <h3 className="font-bold text-md">{match.title || "Classic Match"}</h3>
+            <p className="text-xs opacity-80">Team Nork</p> 
+        </div>
+        <div className="p-3 space-y-2 text-sm">
+            <div className="flex justify-between">
+                <span className="text-muted-foreground">Room Code</span>
+                <span className="font-mono">{match.ludoKingCode || 'N/A'}</span>
+            </div>
+            <div className="flex justify-between">
+                <span className="text-muted-foreground">Entry Fee</span>
+                <span className="font-bold">₹{match.entryFee.toLocaleString()}</span>
+            </div>
+        </div>
+        <div className="p-2">
+            <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" asChild>
+                <Link href={`/match/${match.id}`}>
+                    Ready
                 </Link>
             </Button>
-          </div>
         </div>
+    </div>
+);
 
-        <div className="space-y-4">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h2 className="text-2xl font-bold font-headline">My Matches</h2>
-                    <p className="text-muted-foreground">
-                    Your active games. You can have a maximum of 3 active matches.
-                    </p>
-                </div>
-                <Button variant="link" asChild><Link href="/matches/my-matches">View All</Link></Button>
-            </div>
-          {myMatchesLoading ? <Skeletons /> : myMatches.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {myMatches.map((match: Match) => (
-                <MatchCard key={match.id} match={match} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg">
-              <p className="text-muted-foreground">
-                You haven't joined or created any matches yet.
-              </p>
-            </div>
-          )}
-        </div>
 
-        <Separator />
+export default function DashboardPage() {
+    const { user, loading: userLoading } = useUser();
+    const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
+    const { data: myMatches, loading: myMatchesLoading } = useCollection<Match>('matches', {
+        where: user?.uid ? ['players', 'array-contains', user.uid] : undefined,
+        limit: 5,
+        orderBy: ['createdAt', 'desc']
+    });
+     const { data: transactions, loading: txLoading } = useCollection<Transaction>(
+        user ? `users/${user.uid}/transactions` : '',
+        {
+          orderBy: ['createdAt', 'desc'],
+          limit: 100
+        }
+    );
 
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-                <h2 className="text-2xl font-bold font-headline">Open Matches</h2>
-                <p className="text-muted-foreground">
-                Available matches you can join right now.
-                </p>
-            </div>
-             <Button variant="link" asChild><Link href="/matches/open">View All</Link></Button>
-          </div>
-          {openMatchesLoading && openMatches.length === 0 ? <Skeletons /> : openMatches.length > 0 ? (
-            <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {openMatches.map((match: Match) => (
-                    <MatchCard key={match.id} match={match} myMatchesCount={myMatches.length} />
-                ))}
-                </div>
-            </>
-          ) : (
-            <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg">
-              <p className="text-muted-foreground">
-                No open matches available. Why not create one?
-              </p>
-            </div>
-          )}
-        </div>
+    const loading = userLoading || profileLoading || myMatchesLoading || txLoading;
+    
+    const matchesPlayed = myMatches.length;
+    const matchesWon = myMatches.filter((m: Match) => m.winnerId === user?.uid).length;
+    const winRate = matchesPlayed > 0 ? `${((matchesWon / matchesPlayed) * 100).toFixed(2)}%` : "0%";
 
-        <Separator />
+    return (
+        <>
+            <div className="bg-primary text-primary-foreground p-4 rounded-b-3xl shadow-lg">
+                <header className="flex justify-between items-center mb-4">
+                    {loading ? <Skeleton className="h-7 w-32 bg-white/20"/> : <h1 className="text-xl font-bold">Hi, {profile?.displayName || 'Player'}!</h1>}
+                    <div className="flex items-center gap-4">
+                        <MessageCircle className="h-6 w-6" />
+                        <Bell className="h-6 w-6" />
+                    </div>
+                </header>
 
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-2xl font-bold font-headline">Ongoing & Recent Matches</h2>
-            <p className="text-muted-foreground">
-              Matches that are already in progress or just finished.
-            </p>
-          </div>
-          {fullMatchesLoading && fullMatches.length === 0 ? <Skeletons /> : fullMatches.length > 0 ? (
-            <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 opacity-80">
-                {fullMatches.map((match: Match) => (
-                    <MatchCard key={match.id} match={match} />
-                ))}
-                </div>
-                {hasMoreFull && (
-                     <div className="flex justify-center">
-                        <Button onClick={loadMoreFull} disabled={fullMatchesLoading} variant="secondary">
-                            {fullMatchesLoading ? "Loading..." : "Load More"}
+                <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <p className="text-sm opacity-80">Wallet Balance</p>
+                            {loading ? <Skeleton className="h-8 w-36 mt-1 bg-white/20"/> : <p className="text-3xl font-bold">₹{profile?.walletBalance?.toLocaleString() || '0.00'}</p>}
+                        </div>
+                        <Button className="bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-md" asChild>
+                            <Link href="/add-money">
+                                Add Money
+                            </Link>
                         </Button>
                     </div>
-                )}
-            </>
-          ) : (
-            <p className="text-muted-foreground text-center py-8">
-              No ongoing or recent matches right now.
-            </p>
-          )}
-        </div>
-      </div>
-    </AppShell>
-  );
+                </div>
+            </div>
+            
+            <div className="p-4 space-y-6">
+                <section>
+                    <h2 className="text-lg font-bold mb-3">Quick Stats</h2>
+                    <div className="grid grid-cols-3 gap-3">
+                        <StatCard title="Total Matches" value={matchesPlayed} loading={loading}/>
+                        <StatCard title="Wins" value={matchesWon} loading={loading} />
+                        <StatCard title="Win Rate" value={winRate} loading={loading} />
+                    </div>
+                </section>
+
+                <section>
+                    <div className="flex justify-between items-center mb-3">
+                        <h2 className="text-lg font-bold">My Active Matches</h2>
+                        <Link href="/matches/my-matches" className="text-sm font-semibold text-primary">View All</Link>
+                    </div>
+                    {loading ? (
+                         <div className="flex space-x-4 overflow-x-auto pb-4">
+                            <Skeleton className="shrink-0 w-64 h-48 rounded-lg" />
+                            <Skeleton className="shrink-0 w-64 h-48 rounded-lg" />
+                         </div>
+                    ): myMatches.length > 0 ? (
+                        <div className="flex space-x-4 overflow-x-auto pb-4">
+                           {myMatches.map(match => <MatchCard key={match.id} match={match}/>)}
+                        </div>
+                    ) : (
+                        <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg bg-card">
+                            <p className="text-muted-foreground mb-2">No active matches</p>
+                            <Button asChild>
+                                <Link href="/create-match"><PlusCircle className="mr-2 h-4 w-4"/>Create a Match</Link>
+                            </Button>
+                        </div>
+                    )}
+                </section>
+            </div>
+            <BottomNav />
+        </>
+    );
 }
