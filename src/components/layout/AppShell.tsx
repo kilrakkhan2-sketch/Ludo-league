@@ -33,9 +33,9 @@ export function AppShell({ children, showBackButton, pageTitle }: AppShellProps)
             <h1 className="text-xl font-bold">{pageTitle}</h1>
         </header>
        )}
-      <main className={`flex-grow ${hideNav ? '' : 'pb-20'}`}>
+      <div className={`flex-grow ${hideNav ? '' : 'pb-20'}`}>
         {children}
-      </main>
+      </div>
       {!hideNav && <BottomNav />}
     </div>
   );

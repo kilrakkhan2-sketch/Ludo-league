@@ -76,66 +76,68 @@ export default function DashboardPage() {
     const winRate = matchesPlayed > 0 ? `${((matchesWon / matchesPlayed) * 100).toFixed(2)}%` : "0%";
 
     return (
-        <>
-            <div className="bg-primary text-primary-foreground p-4 rounded-b-3xl shadow-lg">
-                <header className="flex justify-between items-center mb-4">
-                    {loading ? <Skeleton className="h-7 w-32 bg-white/20"/> : <h1 className="text-xl font-bold">Hi, {profile?.displayName || 'Player'}!</h1>}
-                    <div className="flex items-center gap-4">
-                        <MessageCircle className="h-6 w-6" />
-                        <Bell className="h-6 w-6" />
-                    </div>
-                </header>
-
-                <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <p className="text-sm opacity-80">Wallet Balance</p>
-                            {loading ? <Skeleton className="h-8 w-36 mt-1 bg-white/20"/> : <p className="text-3xl font-bold">₹{profile?.walletBalance?.toLocaleString() || '0.00'}</p>}
+        <div className="flex flex-col min-h-screen">
+            <main className="flex-grow pb-20">
+                <div className="bg-primary text-primary-foreground p-4 rounded-b-3xl shadow-lg">
+                    <header className="flex justify-between items-center mb-4">
+                        {loading ? <Skeleton className="h-7 w-32 bg-white/20"/> : <h1 className="text-xl font-bold">Hi, {profile?.displayName || 'Player'}!</h1>}
+                        <div className="flex items-center gap-4">
+                            <MessageCircle className="h-6 w-6" />
+                            <Bell className="h-6 w-6" />
                         </div>
-                        <Button className="bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-md" asChild>
-                            <Link href="/add-money">
-                                Add Money
-                            </Link>
-                        </Button>
-                    </div>
-                </div>
-            </div>
-            
-            <div className="p-4 space-y-6">
-                <section>
-                    <h2 className="text-lg font-bold mb-3">Quick Stats</h2>
-                    <div className="grid grid-cols-3 gap-3">
-                        <StatCard title="Total Matches" value={matchesPlayed} loading={loading}/>
-                        <StatCard title="Wins" value={matchesWon} loading={loading} />
-                        <StatCard title="Win Rate" value={winRate} loading={loading} />
-                    </div>
-                </section>
+                    </header>
 
-                <section>
-                    <div className="flex justify-between items-center mb-3">
-                        <h2 className="text-lg font-bold">My Active Matches</h2>
-                        <Link href="/matches/my-matches" className="text-sm font-semibold text-primary">View All</Link>
-                    </div>
-                    {loading ? (
-                         <div className="flex space-x-4 overflow-x-auto pb-4">
-                            <Skeleton className="shrink-0 w-64 h-48 rounded-lg" />
-                            <Skeleton className="shrink-0 w-64 h-48 rounded-lg" />
-                         </div>
-                    ): myMatches.length > 0 ? (
-                        <div className="flex space-x-4 overflow-x-auto pb-4">
-                           {myMatches.map(match => <MatchCard key={match.id} match={match}/>)}
-                        </div>
-                    ) : (
-                        <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg bg-card">
-                            <p className="text-muted-foreground mb-2">No active matches</p>
-                            <Button asChild>
-                                <Link href="/create-match"><PlusCircle className="mr-2 h-4 w-4"/>Create a Match</Link>
+                    <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <p className="text-sm opacity-80">Wallet Balance</p>
+                                {loading ? <Skeleton className="h-8 w-36 mt-1 bg-white/20"/> : <p className="text-3xl font-bold">₹{profile?.walletBalance?.toLocaleString() || '0.00'}</p>}
+                            </div>
+                            <Button className="bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-md" asChild>
+                                <Link href="/add-money">
+                                    Add Money
+                                </Link>
                             </Button>
                         </div>
-                    )}
-                </section>
-            </div>
+                    </div>
+                </div>
+                
+                <div className="p-4 space-y-6">
+                    <section>
+                        <h2 className="text-lg font-bold mb-3">Quick Stats</h2>
+                        <div className="grid grid-cols-3 gap-3">
+                            <StatCard title="Total Matches" value={matchesPlayed} loading={loading}/>
+                            <StatCard title="Wins" value={matchesWon} loading={loading} />
+                            <StatCard title="Win Rate" value={winRate} loading={loading} />
+                        </div>
+                    </section>
+
+                    <section>
+                        <div className="flex justify-between items-center mb-3">
+                            <h2 className="text-lg font-bold">My Active Matches</h2>
+                            <Link href="/matches/my-matches" className="text-sm font-semibold text-primary">View All</Link>
+                        </div>
+                        {loading ? (
+                             <div className="flex space-x-4 overflow-x-auto pb-4">
+                                <Skeleton className="shrink-0 w-64 h-48 rounded-lg" />
+                                <Skeleton className="shrink-0 w-64 h-48 rounded-lg" />
+                             </div>
+                        ): myMatches.length > 0 ? (
+                            <div className="flex space-x-4 overflow-x-auto pb-4 -mx-4 px-4">
+                               {myMatches.map(match => <MatchCard key={match.id} match={match}/>)}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg bg-card">
+                                <p className="text-muted-foreground mb-2">No active matches</p>
+                                <Button asChild>
+                                    <Link href="/create-match"><PlusCircle className="mr-2 h-4 w-4"/>Create a Match</Link>
+                                </Button>
+                            </div>
+                        )}
+                    </section>
+                </div>
+            </main>
             <BottomNav />
-        </>
+        </div>
     );
 }

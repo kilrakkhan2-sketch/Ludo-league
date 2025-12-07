@@ -29,7 +29,8 @@ import {
   Trophy,
   Ticket,
   CircleArrowUp,
-  CircleArrowDown
+  CircleArrowDown,
+  ArrowLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser, useDoc, useCollection } from "@/firebase";
@@ -144,13 +145,14 @@ export default function WalletPage() {
 
   return (
     <div className="bg-muted/30 flex flex-col min-h-screen">
-      <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 sticky top-0 z-10 shadow-md">
+       <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 sticky top-0 z-10 shadow-md">
             <h1 className="text-xl font-bold">Wallet</h1>
       </header>
 
-      <main className="flex-grow">
-        <div className="p-4 space-y-6">
-            <Card className="bg-primary-dark text-primary-foreground shadow-lg -mt-16 mx-2 relative top-12">
+      <main className="flex-grow pb-20">
+        <div className="relative">
+            <div className="bg-primary h-24 rounded-b-3xl"></div>
+            <Card className="bg-primary-dark text-primary-foreground shadow-lg mx-4 -mt-16 relative">
                 <CardContent className="p-6 space-y-4">
                     <div className="flex justify-between items-center">
                         <div>
@@ -166,8 +168,10 @@ export default function WalletPage() {
                     </div>
                 </CardContent>
             </Card>
+        </div>
 
-            <div className="grid grid-cols-2 gap-4 px-2 pt-12">
+        <div className="p-4 space-y-6">
+            <div className="grid grid-cols-2 gap-4">
                 <Button className="py-6 text-base bg-green-500 hover:bg-green-600 text-white" onClick={() => router.push('/add-money')}>
                   <Upload className="mr-2 h-5 w-5" /> Deposit
                 </Button>
@@ -206,7 +210,7 @@ export default function WalletPage() {
                 </Dialog>
             </div>
 
-            <div className="space-y-2 px-2">
+            <div className="space-y-2">
                 <div className="flex justify-between items-center">
                      <h2 className="text-lg font-semibold">Recent Transactions</h2>
                      <Link href="/wallet/history" className="text-sm font-semibold text-primary">View All</Link>
