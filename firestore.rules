@@ -75,9 +75,10 @@ service cloud.firestore {
 
       // -------- Messages Subcollection --------
       match /messages/{messageId} {
-        // Server access is inherited.
-        allow read, write: if isSignedIn()
-          && request.auth.uid in resource.data.players;
+        allow read: if isSignedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
+        allow write: if isSignedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
       }
     }
 
