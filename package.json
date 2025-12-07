@@ -54,6 +54,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@ducanh2912/next-pwa": "^10.2.7",
     "@types/events": "^3.0.3",
     "@types/glob": "7.2.0",
     "@types/node": "^20",

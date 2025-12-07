@@ -1,9 +1,18 @@
+
 {
   "name": "LudoLeague",
   "short_name": "LudoLeague",
-  "description": "Where Champions Compete",
+  "description": "The ultimate platform for competitive Ludo.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0F172A",
-  "theme_color": "#2563EB"
+  "background_color": "#22203E",
+  "theme_color": "#5856D6",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "48x48 72x72 96x96 128x128 256x256 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
 }
