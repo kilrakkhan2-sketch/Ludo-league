@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Award, Calendar } from "lucide-react";
+import { Award, Calendar, Users, PlusCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
@@ -22,6 +22,8 @@ const tournaments = [
     entryFee: 200,
     startDate: "August 1, 2024",
     status: "Upcoming",
+    players: 48,
+    maxPlayers: 64,
   },
   {
     id: 2,
@@ -30,6 +32,8 @@ const tournaments = [
     entryFee: 50,
     startDate: "July 25, 2024",
     status: "Live",
+    players: 32,
+    maxPlayers: 32,
   },
   {
     id: 3,
@@ -38,6 +42,8 @@ const tournaments = [
     entryFee: 10,
     startDate: "July 22, 2024",
     status: "Completed",
+    players: 16,
+    maxPlayers: 16,
   },
 ];
 
@@ -48,7 +54,7 @@ const tournamentCardImage = PlaceHolderImages.find(
 export default function TournamentsPage() {
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="p-4 space-y-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold font-headline">Tournaments</h1>
@@ -57,15 +63,15 @@ export default function TournamentsPage() {
             </p>
           </div>
           <Button asChild>
-            <Link href="/create-tournament">Host a Tournament</Link>
+            <Link href="/create-tournament"><PlusCircle className="mr-2 h-4 w-4" />Host Tournament</Link>
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {tournaments.map((tournament) => (
-            <Card key={tournament.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+            <Card key={tournament.id} className="overflow-hidden hover:shadow-lg transition-shadow bg-card">
               {tournamentCardImage && (
-                <div className="relative h-48 w-full">
+                <div className="relative h-40 w-full">
                   <Image
                     src={`${tournamentCardImage.imageUrl}&seed=${tournament.id}`}
                     alt={tournamentCardImage.description}
@@ -73,6 +79,7 @@ export default function TournamentsPage() {
                     fill
                     className="object-cover"
                   />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   <Badge
                     className="absolute top-3 right-3"
                     variant={
@@ -81,27 +88,33 @@ export default function TournamentsPage() {
                   >
                     {tournament.status}
                   </Badge>
+                   <div className="absolute bottom-3 left-4 text-primary-foreground">
+                        <h3 className="font-bold text-lg">{tournament.name}</h3>
+                        <p className="text-xs opacity-80">Entry: ₹{tournament.entryFee}</p>
+                   </div>
                 </div>
               )}
-              <CardHeader>
-                <CardTitle>{tournament.name}</CardTitle>
-                <CardDescription>
-                  Entry Fee: ₹{tournament.entryFee}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Award className="h-5 w-5 text-primary" />
-                  <span className="font-semibold text-foreground">
-                    Prize Pool: ₹{tournament.prizePool}
-                  </span>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Award className="h-5 w-5 text-primary" />
+                      <span className="font-semibold text-foreground">
+                        ₹{tournament.prizePool.toLocaleString()}
+                      </span>
+                    </div>
+                     <div className="flex items-center gap-2 text-muted-foreground">
+                      <Users className="h-5 w-5" />
+                      <span className="font-semibold text-foreground">
+                        {tournament.players}/{tournament.maxPlayers}
+                      </span>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm">
                   <Calendar className="h-5 w-5" />
                   <span>Starts: {tournament.startDate}</span>
                 </div>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="p-4 pt-0">
                 <Button
                   className="w-full"
                   disabled={tournament.status === "Completed"}

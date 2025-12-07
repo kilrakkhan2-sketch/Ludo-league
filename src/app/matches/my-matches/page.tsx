@@ -20,77 +20,88 @@ import type { Match } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const MatchCardSkeleton = () => (
-    <Card>
+    <Card className="flex flex-col">
         <CardHeader className="p-4">
             <Skeleton className="h-5 w-3/4 mb-2" />
             <Skeleton className="h-4 w-1/2" />
         </CardHeader>
-        <CardContent className="p-4 pt-0">
+        <CardContent className="p-4 pt-0 flex-grow">
             <Skeleton className="h-6 w-1/4 mb-2" />
             <Skeleton className="h-5 w-1/2" />
         </CardContent>
         <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-4">
-            <Skeleton className="h-6 w-1/4" />
+            <Skeleton className="h-8 w-1/4" />
             <Skeleton className="h-10 w-20" />
         </CardFooter>
     </Card>
 );
 
-const MatchCard = ({ match }: { match: Match }) => (
-  <Card className="flex flex-col hover:shadow-lg transition-shadow">
-    <CardHeader className="p-4">
-      <div className="flex justify-between items-start">
-        <div>
-          <CardTitle className="text-lg">{match.title}</CardTitle>
-          <CardDescription>
-            Entry: <span className="font-bold text-primary">₹{match.entryFee}</span>
-          </CardDescription>
-        </div>
-        <Badge
-          variant={
-            match.players.length === match.maxPlayers ? "destructive" : (match.status === 'open' ? 'secondary' : 'default')
-          }
-        >
-          {match.status}
-        </Badge>
-      </div>
-    </CardHeader>
-    <CardContent className="p-4 pt-0 flex-grow">
-      <div className="flex items-center -space-x-2 mb-2">
-        {Array.from({ length: match.players.length }).map((_, i) => (
-          <Avatar key={i} className="h-6 w-6 border-2 border-background">
-            <AvatarImage
-              src={`https://picsum.photos/seed/player${match.id}-${i}/40/40`}
-            />
-            <AvatarFallback>P{i + 1}</AvatarFallback>
-          </Avatar>
-        ))}
-         {Array.from({ length: Math.max(0, match.maxPlayers - match.players.length) }).map((_, i) => (
-            <Avatar key={`empty-${i}`} className="h-6 w-6 border-2 border-background bg-muted">
-                <AvatarFallback>?</AvatarFallback>
-            </Avatar>
-        ))}
-      </div>
-      <div className="flex items-center gap-2 text-muted-foreground text-sm">
-        <Users className="h-4 w-4" />
-        <span>
-          {match.players.length} / {match.maxPlayers} Players
-        </span>
-      </div>
-    </CardContent>
-    <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-4">
-      <div className="flex items-center gap-1.5">
-        <Trophy className="h-5 w-5 text-yellow-500" />
-        <p className="text-lg font-bold">₹{match.prizePool || match.entryFee * match.players.length * 0.9}</p>
-      </div>
-       <Button asChild disabled={match.players.length === match.maxPlayers || match.status !== 'open'}>
-         <Link href={`/match/${match.id}`}>
-            {match.status === 'open' ? 'Join' : 'View'}
-         </Link>
-      </Button>
-    </CardFooter>
-  </Card>
-);
+const MatchCard = ({ match }: { match: Match }) => {
+    
+    const getStatusVariant = (status: Match['status']) => {
+        switch (status) {
+            case 'open': return 'secondary';
+            case 'ongoing': return 'default';
+            case 'completed': return 'outline';
+            case 'verification': return 'destructive';
+            default: return 'default';
+        }
+    }
+
+    return (
+      <Card className="flex flex-col hover:shadow-lg transition-shadow">
+        <CardHeader className="p-4">
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="text-lg">{match.title}</CardTitle>
+              <CardDescription>
+                Entry: <span className="font-bold text-primary">₹{match.entryFee}</span>
+              </CardDescription>
+            </div>
+            <Badge
+              variant={getStatusVariant(match.status)}
+            >
+              {match.status}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-0 flex-grow">
+          <div className="flex items-center -space-x-2 mb-2">
+            {Array.from({ length: match.players.length }).map((_, i) => (
+              <Avatar key={i} className="h-6 w-6 border-2 border-background">
+                <AvatarImage
+                  src={`https://api.dicebear.com/7.x/adventurer/svg?seed=player${match.id}-${i}`}
+                />
+                <AvatarFallback>P{i + 1}</AvatarFallback>
+              </Avatar>
+            ))}
+             {Array.from({ length: Math.max(0, match.maxPlayers - match.players.length) }).map((_, i) => (
+                <Avatar key={`empty-${i}`} className="h-6 w-6 border-2 border-background bg-muted">
+                    <AvatarFallback>?</AvatarFallback>
+                </Avatar>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground text-sm">
+            <Users className="h-4 w-4" />
+            <span>
+              {match.players.length} / {match.maxPlayers} Players
+            </span>
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-4">
+          <div className="flex items-center gap-1.5">
+            <Trophy className="h-5 w-5 text-yellow-500" />
+            <p className="text-lg font-bold">₹{match.prizePool || match.entryFee * match.players.length * 0.9}</p>
+          </div>
+           <Button asChild>
+             <Link href={`/match/${match.id}`}>
+                {match.status === 'open' ? 'Join' : 'View'}
+             </Link>
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+}
 
 export default function MyMatchesPage() {
   const { user } = useUser();
@@ -110,8 +121,8 @@ export default function MyMatchesPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-8">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="p-4 space-y-6">
+        <div className="flex flex-col gap-2">
           <div>
             <h1 className="text-3xl font-bold font-headline">My Matches</h1>
             <p className="text-muted-foreground">
@@ -122,7 +133,7 @@ export default function MyMatchesPage() {
 
         {loading && matches.length === 0 ? <Skeletons /> : matches.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {matches.map((match: Match) => (
                 <MatchCard key={match.id} match={match} />
               ))}
@@ -136,8 +147,10 @@ export default function MyMatchesPage() {
             )}
           </>
         ) : (
-          <div className="text-center py-12 px-4 border-2 border-dashed rounded-lg">
-            <p className="text-muted-foreground">
+          <div className="text-center py-12 px-4 border-2 border-dashed rounded-lg bg-card mt-8">
+             <Trophy className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-2 text-sm font-semibold text-foreground">No matches found</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
               You haven't joined or created any matches yet.
             </p>
           </div>

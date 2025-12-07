@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -8,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { ArrowLeft, Wallet } from 'lucide-react';
+import { BottomNav } from '@/components/layout/BottomNav';
 
 export default function AddMoneyPage() {
   const [amount, setAmount] = useState('');
@@ -27,29 +28,47 @@ export default function AddMoneyPage() {
     }
   };
 
+  const quickAmounts = [100, 200, 500, 1000];
+
   return (
-    <AppShell>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold font-headline mb-4">Add Money to Wallet</h1>
-        <div className="max-w-md mx-auto bg-card p-6 rounded-lg shadow-md">
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="amount" className="text-lg">Amount to Add</Label>
-              <Input
-                id="amount"
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="Enter amount (e.g., 500)"
-                className="w-full text-2xl p-4 mt-2"
-              />
-            </div>
-            <Button onClick={handleProceed} className="w-full text-lg py-6">
-              Proceed to Deposit
+    <div className="flex flex-col min-h-screen bg-muted/30">
+        <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 sticky top-0 z-10 shadow-md">
+            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                <ArrowLeft />
             </Button>
+            <h1 className="text-xl font-bold">Add Money</h1>
+        </header>
+
+        <main className="flex-grow p-4 space-y-6">
+          <div className="bg-card p-6 rounded-lg shadow-md text-center">
+              <Label htmlFor="amount" className="text-muted-foreground">Amount to Add (INR)</Label>
+              <div className="relative mt-2">
+                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-3xl font-bold">₹</span>
+                   <Input
+                    id="amount"
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full text-4xl font-bold h-auto p-4 pl-10 text-center border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                    />
+              </div>
           </div>
-        </div>
-      </div>
-    </AppShell>
+          
+          <div className="grid grid-cols-4 gap-3">
+              {quickAmounts.map(qAmount => (
+                  <Button key={qAmount} variant="outline" className="py-6 text-base" onClick={() => setAmount(qAmount.toString())}>
+                      ₹{qAmount}
+                  </Button>
+              ))}
+          </div>
+        </main>
+        
+        <footer className="p-4 sticky bottom-0 bg-background border-t">
+             <Button onClick={handleProceed} className="w-full text-lg py-6 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90" disabled={!amount}>
+                Proceed to Add ₹{amount || 0}
+            </Button>
+        </footer>
+    </div>
   );
 }

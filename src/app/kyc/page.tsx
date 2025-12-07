@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/select";
 import { UploadCloud, ShieldCheck } from "lucide-react";
 import Image from "next/image";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useUser, useDoc } from "@/firebase";
 import { useFirebase } from "@/firebase/provider";
@@ -30,8 +29,6 @@ import { useToast } from "@/hooks/use-toast";
 import { addDoc, collection, Timestamp } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import type { UserProfile, KycRequest } from "@/types";
-
-const kycCardImage = PlaceHolderImages.find((p) => p.id === "kyc_card");
 
 export default function KycPage() {
   const { user } = useUser();
@@ -105,8 +102,8 @@ export default function KycPage() {
 
   return (
     <AppShell>
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+      <div className="p-4 space-y-6">
+        <div className="flex flex-col gap-2">
           <div>
             <h1 className="text-3xl font-bold font-headline">
               KYC Verification
@@ -135,7 +132,7 @@ export default function KycPage() {
                 verification.
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid md:grid-cols-2 gap-8">
+            <CardContent>
               <form className="space-y-6" onSubmit={handleSubmit}>
                 <div className="space-y-2">
                   <Label htmlFor="full-name">Full Name</Label>
@@ -205,22 +202,6 @@ export default function KycPage() {
                   {isSubmitting ? "Submitting..." : "Submit for Verification"}
                 </Button>
               </form>
-              <div className="hidden md:flex items-center justify-center rounded-lg bg-muted p-4">
-                {kycCardImage ? (
-                  <Image
-                    src={kycCardImage.imageUrl}
-                    alt={kycCardImage.description}
-                    data-ai-hint={kycCardImage.imageHint}
-                    width={400}
-                    height={250}
-                    className="rounded-md object-contain"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <ShieldCheck className="w-24 h-24 text-muted-foreground/50" />
-                  </div>
-                )}
-              </div>
             </CardContent>
           </Card>
         )}

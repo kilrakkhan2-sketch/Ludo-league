@@ -13,24 +13,20 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useUser } from "@/firebase";
 
 export default function SettingsPage() {
+    const { user } = useUser();
+
   return (
     <AppShell>
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="p-4 space-y-6">
         <h1 className="text-3xl font-bold font-headline">Settings</h1>
 
         <Card>
           <CardHeader>
-            <CardTitle>Profile Settings</CardTitle>
+            <CardTitle>Profile</CardTitle>
             <CardDescription>
               Update your public profile information.
             </CardDescription>
@@ -38,8 +34,8 @@ export default function SettingsPage() {
           <CardContent className="space-y-6">
             <div className="flex items-center gap-6">
                 <Avatar className="w-20 h-20">
-                    <AvatarImage src="https://picsum.photos/seed/user-avatar/200/200" />
-                    <AvatarFallback>JD</AvatarFallback>
+                    <AvatarImage src={user?.photoURL || undefined} />
+                    <AvatarFallback>{user?.displayName?.[0]}</AvatarFallback>
                 </Avatar>
                 <div className="flex-grow">
                      <Label htmlFor="avatar-upload">Profile Picture</Label>
@@ -48,22 +44,18 @@ export default function SettingsPage() {
                 </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input id="username" defaultValue="LudoKing99" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="bio">Bio</Label>
-              <Input id="bio" placeholder="Tell everyone a little about yourself" />
+              <Label htmlFor="username">Display Name</Label>
+              <Input id="username" defaultValue={user?.displayName || ''} />
             </div>
           </CardContent>
           <CardFooter className="border-t pt-6">
-            <Button>Save Changes</Button>
+            <Button>Save Profile</Button>
           </CardFooter>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Account Settings</CardTitle>
+            <CardTitle>Account</CardTitle>
             <CardDescription>
               Manage your email and password.
             </CardDescription>
@@ -71,7 +63,7 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" defaultValue="john.doe@email.com" />
+              <Input id="email" type="email" defaultValue={user?.email || ''} disabled />
             </div>
              <div className="space-y-2">
               <Label htmlFor="password">New Password</Label>
@@ -79,7 +71,7 @@ export default function SettingsPage() {
             </div>
           </CardContent>
            <CardFooter className="border-t pt-6 flex justify-between items-center">
-            <Button>Update Account</Button>
+            <Button>Update Password</Button>
             <Button variant="destructive">Delete Account</Button>
           </CardFooter>
         </Card>
@@ -91,22 +83,25 @@ export default function SettingsPage() {
               Control how you receive notifications.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-2">
              <div className="flex items-center justify-between rounded-lg border p-4">
-              <Label htmlFor="friend-requests">
-                Friend Requests
+              <Label htmlFor="friend-requests" className="flex flex-col gap-1">
+                <span>Friend Requests</span>
+                <span className="text-xs text-muted-foreground">Notify me about new friend requests.</span>
               </Label>
               <Switch id="friend-requests" defaultChecked />
             </div>
              <div className="flex items-center justify-between rounded-lg border p-4">
-              <Label htmlFor="match-invites">
-                Match Invites
+              <Label htmlFor="match-invites" className="flex flex-col gap-1">
+                <span>Match Updates</span>
+                <span className="text-xs text-muted-foreground">Notify me about match starts, results, etc.</span>
               </Label>
               <Switch id="match-invites" defaultChecked />
             </div>
              <div className="flex items-center justify-between rounded-lg border p-4">
-              <Label htmlFor="newsletter">
-                Newsletter
+              <Label htmlFor="newsletter" className="flex flex-col gap-1">
+                <span>Newsletter</span>
+                <span className="text-xs text-muted-foreground">Receive updates about new features and promotions.</span>
               </Label>
               <Switch id="newsletter" />
             </div>

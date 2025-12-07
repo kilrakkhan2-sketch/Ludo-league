@@ -1,3 +1,4 @@
+
 "use client";
 
 import { AppShell } from "@/components/layout/AppShell";
@@ -18,19 +19,19 @@ const friends = [
   {
     id: 1,
     name: "Alice",
-    avatar: "https://picsum.photos/seed/friend1/100/100",
+    avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=alice",
     online: true,
   },
   {
     id: 2,
     name: "Bob",
-    avatar: "https://picsum.photos/seed/friend2/100/100",
+    avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=bob",
     online: false,
   },
   {
     id: 3,
     name: "Charlie",
-    avatar: "https://picsum.photos/seed/friend3/100/100",
+    avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=charlie",
     online: true,
   },
 ];
@@ -39,14 +40,14 @@ const requests = [
   {
     id: 4,
     name: "David",
-    avatar: "https://picsum.photos/seed/request1/100/100",
+    avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=david",
   },
 ];
 
 export default function FriendsPage() {
   return (
     <AppShell>
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="p-4 space-y-6">
         <h1 className="text-3xl font-bold font-headline">Friends</h1>
 
         <Card>
@@ -59,26 +60,25 @@ export default function FriendsPage() {
           <CardContent className="flex gap-2">
             <Input placeholder="Username#1234" />
             <Button>
-              <UserPlus className="mr-2" />
+              <UserPlus className="mr-2 h-4 w-4" />
               Send Request
             </Button>
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="friends">
+        <Tabs defaultValue="friends" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="friends">My Friends ({friends.length})</TabsTrigger>
             <TabsTrigger value="requests">
-              Friend Requests ({requests.length})
+              Requests ({requests.length})
             </TabsTrigger>
           </TabsList>
           <TabsContent value="friends">
-            <Card>
-              <CardContent className="p-6 space-y-4">
+            <div className="space-y-4 pt-4">
                 {friends.map((friend) => (
                   <div
                     key={friend.id}
-                    className="flex items-center justify-between"
+                    className="flex items-center justify-between p-3 bg-card rounded-lg border"
                   >
                     <div className="flex items-center gap-4">
                       <Avatar className="h-12 w-12">
@@ -113,16 +113,14 @@ export default function FriendsPage() {
                     </div>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
           </TabsContent>
           <TabsContent value="requests">
-            <Card>
-              <CardContent className="p-6 space-y-4">
+             <div className="space-y-4 pt-4">
                 {requests.map((request) => (
                   <div
                     key={request.id}
-                    className="flex items-center justify-between"
+                    className="flex items-center justify-between p-3 bg-card rounded-lg border"
                   >
                     <div className="flex items-center gap-4">
                       <Avatar className="h-12 w-12">
@@ -134,13 +132,12 @@ export default function FriendsPage() {
                       <p className="font-semibold">{request.name}</p>
                     </div>
                     <div className="flex gap-2">
-                      <Button>Accept</Button>
-                      <Button variant="outline">Decline</Button>
+                      <Button size="sm">Accept</Button>
+                      <Button size="sm" variant="outline">Decline</Button>
                     </div>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
           </TabsContent>
         </Tabs>
       </div>
