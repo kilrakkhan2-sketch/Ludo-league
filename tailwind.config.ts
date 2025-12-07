@@ -98,16 +98,19 @@ export default {
           "0%, 100%": { opacity: "0.5", transform: "scale(1)" },
           "50%": { opacity: "1", transform: "scale(1.05)" },
         },
+        "fade-in": {
+          from: { opacity: "0", transform: "translateY(10px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        }
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-slow": "pulse-slow 5s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "pulse-slow-delay": "pulse-slow 5s cubic-bezier(0.4, 0, 0.6, 1) 2.5s infinite",
+        "fade-in": "fade-in 0.3s ease-out forwards",
       },
     },
   },
   plugins: [require("tailwindcss-animate")],
 } satisfies Config;
-
-    
