@@ -4,11 +4,10 @@
 import { doc, runTransaction, updateDoc, arrayUnion, Timestamp, collection } from 'firebase/firestore';
 import { useDoc, useUser, useCollection, useFirebase } from '@/firebase';
 import { Match, UserProfile } from '@/types';
-import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, Trophy, Swords, Calendar, Hourglass, ClipboardCopy, Upload, Crown, ArrowLeft } from 'lucide-react';
+import { Users, Trophy, Swords, Calendar, Hourglass, ClipboardCopy, Upload, Crown, ArrowLeft, CheckCircle, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -35,7 +34,6 @@ const MatchPageHeader = ({ title, showBackButton = true }: { title: string, show
         </div>
     );
 };
-
 
 const StatItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
     <div className="flex flex-col items-center gap-1 p-2 border rounded-lg bg-card text-card-foreground">
@@ -72,30 +70,62 @@ const MatchPageSkeleton = () => (
     </>
 )
 
-const PlayerList = ({ players }: { players: UserProfile[] }) => (
-    <Card>
-        <CardHeader>
-            <CardTitle>Players ({players.length})</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-            {players.map(p => (
-                <div key={p.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                        <Avatar>
-                            <AvatarImage src={p.photoURL || undefined} />
-                            <AvatarFallback>{p.displayName?.[0]}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                            <p className="font-semibold">{p.displayName}</p>
-                            <p className="text-xs text-muted-foreground">Rating: {p.rating || 1000}</p>
+const PlayerListLobby = ({ match, players }: { match: Match, players: UserProfile[] }) => {
+    const { toast } = useToast();
+    const copyRoomCode = () => {
+        if (!match.ludoKingCode) return;
+        navigator.clipboard.writeText(match.ludoKingCode);
+        toast({ title: 'Room Code Copied!' });
+    };
+
+    const emptySlots = Array.from({ length: Math.max(0, match.maxPlayers - players.length) });
+
+    return (
+        <Card className="bg-transparent shadow-none border-0">
+             <CardHeader className="text-center">
+                <CardDescription>Room Code</CardDescription>
+                <div className="flex items-center justify-center gap-2">
+                    <CardTitle className="text-2xl font-mono tracking-widest">{match.ludoKingCode || 'N/A'}</CardTitle>
+                    <Button variant="ghost" size="icon" onClick={copyRoomCode}><ClipboardCopy className="h-5 w-5"/></Button>
+                </div>
+                 <div className="pt-4">
+                    <CardDescription>Countdown</CardDescription>
+                    <CardTitle className="text-4xl font-mono">00:05:00</CardTitle>
+                 </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {players.map(p => (
+                     <div key={p.id} className="flex items-center justify-between p-3 bg-card border-2 border-green-500 rounded-lg shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <Avatar>
+                                <AvatarImage src={p.photoURL || undefined} />
+                                <AvatarFallback>{p.displayName?.[0]}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <p className="font-semibold">{p.displayName}</p>
+                                <p className="text-xs text-muted-foreground">{p.uid === match.creatorId ? 'Creator - Ready' : 'Ready'}</p>
+                            </div>
+                        </div>
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                    </div>
+                ))}
+                 {emptySlots.map((_, index) => (
+                     <div key={`empty-${index}`} className="flex items-center p-3 bg-card border border-dashed rounded-lg">
+                        <div className="flex items-center gap-3">
+                            <Avatar>
+                                <AvatarFallback>?</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <p className="font-semibold text-muted-foreground">Empty Slot - Join Now</p>
+                            </div>
                         </div>
                     </div>
-                    {/* Add ready status if needed */}
-                </div>
-            ))}
-        </CardContent>
-    </Card>
-);
+                ))}
+            </CardContent>
+        </Card>
+    );
+};
+
 
 const MatchOpen = ({ match, profile, players }: { match: Match, profile: UserProfile, players: UserProfile[] }) => {
     const { user } = useUser();
@@ -108,12 +138,6 @@ const MatchOpen = ({ match, profile, players }: { match: Match, profile: UserPro
     const isFull = match.players.length >= match.maxPlayers;
     const isCreator = match.creatorId === user?.uid;
     const canStart = isCreator && match.players.length >= 2;
-
-    const copyRoomCode = () => {
-        if (!match.ludoKingCode) return;
-        navigator.clipboard.writeText(match.ludoKingCode);
-        toast({ title: 'Room Code Copied!' });
-    };
 
     const handleJoinMatch = async () => {
         if (!user || !profile || !firestore) return;
@@ -134,8 +158,10 @@ const MatchOpen = ({ match, profile, players }: { match: Match, profile: UserPro
 
                 const newBalance = userDoc.data().walletBalance - currentMatch.entryFee;
                 transaction.update(userRef, { walletBalance: newBalance });
-
-                const newPrizePool = (currentMatch.prizePool || 0) + (currentMatch.entryFee * 0.9);
+                
+                // Update prize pool based on the number of players
+                const newPlayerCount = currentMatch.players.length + 1;
+                const newPrizePool = currentMatch.entryFee * newPlayerCount * 0.9;
                 transaction.update(matchRef, { players: arrayUnion(user.uid), prizePool: newPrizePool });
 
                 const txRef = doc(collection(firestore, `users/${user.uid}/transactions`));
@@ -145,6 +171,7 @@ const MatchOpen = ({ match, profile, players }: { match: Match, profile: UserPro
                     type: 'entry_fee',
                     description: `Entry fee for "${currentMatch.title}"`,
                     createdAt: Timestamp.now(),
+                    status: 'completed',
                 });
             });
             toast({ title: 'Successfully Joined!', description: `You are now in the match "${match.title}".` });
@@ -168,39 +195,26 @@ const MatchOpen = ({ match, profile, players }: { match: Match, profile: UserPro
     };
 
     return (
-        <div className="p-4 space-y-4">
-            <Card>
-                 <CardHeader>
-                    <CardTitle className="text-2xl">{match.title}</CardTitle>
-                    <CardDescription>The match is waiting for players to join.</CardDescription>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4">
-                    <StatItem icon={Trophy} label="Prize Pool" value={`₹${match.prizePool?.toLocaleString() || '0'}`} />
-                    <StatItem icon={Users} label="Players" value={`${match.players.length}/${match.maxPlayers}`} />
-                    <StatItem icon={Trophy} label="Entry Fee" value={`₹${match.entryFee}`} />
-                    <StatItem icon={Calendar} label="Created" value={formatDistanceToNow(match.createdAt.toDate(), { addSuffix: true })} />
-                </CardContent>
-                <CardFooter className="flex flex-col gap-2">
-                    {!alreadyJoined && !isFull && (
-                        <Button className="w-full" onClick={handleJoinMatch} disabled={isJoining || (profile?.walletBalance || 0) < match.entryFee}>
-                            {isJoining ? 'Joining...' : `Join for ₹${match.entryFee}`}
-                        </Button>
-                    )}
-                    {alreadyJoined && (
-                        <div className="text-center p-3 bg-green-100 text-green-800 rounded-md w-full">You have joined this match.</div>
-                    )}
-                    {canStart && (
-                        <Button className="w-full" onClick={handleStartMatch} disabled={isStarting}>
-                            <Swords className="mr-2 h-4 w-4" />
-                            {isStarting ? 'Starting...' : 'Start Match Now'}
-                        </Button>
-                    )}
-                </CardFooter>
-            </Card>
-
-            <PlayerList players={players} />
-
-            {alreadyJoined && <ChatRoom matchId={match.id} />}
+        <div className="flex flex-col flex-grow">
+            <main className="flex-grow p-4 space-y-4">
+                <PlayerListLobby match={match} players={players} />
+            </main>
+            <footer className="p-4 sticky bottom-0 bg-background border-t space-y-2">
+                 {!alreadyJoined && !isFull && (
+                    <Button className="w-full text-lg py-6 bg-gradient-to-r from-primary to-purple-600" onClick={handleJoinMatch} disabled={isJoining || (profile?.walletBalance || 0) < match.entryFee}>
+                        {isJoining ? 'Joining...' : `Join for ₹${match.entryFee}`}
+                    </Button>
+                )}
+                {canStart && (
+                    <Button className="w-full text-lg py-6 bg-gradient-to-r from-primary to-purple-600" onClick={handleStartMatch} disabled={isStarting}>
+                        <Swords className="mr-2 h-5 w-5" />
+                        {isStarting ? 'Starting...' : 'Start Match'}
+                    </Button>
+                )}
+                 <Button variant="outline" className="w-full text-lg py-6">
+                    Invite Friends
+                </Button>
+            </footer>
         </div>
     );
 };
@@ -303,8 +317,8 @@ const MatchVerification = ({ match, players }: { match: Match, players: UserProf
         <div className="p-4 text-center">
             <Card className="bg-card">
                 <CardHeader>
-                    <CardTitle>Result Verification</CardTitle>
-                    <CardDescription>The match is over. Please upload a screenshot of the Ludo King victory screen to claim your prize.</CardDescription>
+                    <CardTitle>Congratulations!</CardTitle>
+                    <CardDescription>The match is complete. Please upload a screenshot of the Ludo King victory screen to claim your prize.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <label htmlFor="screenshot-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-border border-dashed rounded-lg cursor-pointer bg-muted hover:bg-muted/50">
@@ -333,7 +347,6 @@ const MatchCompleted = ({ match, players }: { match: Match, players: UserProfile
     const { width, height } = useWindowSize();
     const winner = players.find(p => p.id === match.winnerId);
     
-    // Sort players by prize (mock for now, should be based on real results if available)
     const podiumPlayers = [...players].sort((a, b) => (b.rating || 0) - (a.rating || 0));
     const first = winner || podiumPlayers[0];
     const second = podiumPlayers.find(p => p.id !== first.id) || podiumPlayers[1];
@@ -354,7 +367,6 @@ const MatchCompleted = ({ match, players }: { match: Match, players: UserProfile
                     <CardTitle>Final Standings</CardTitle>
                 </CardHeader>
                 <CardContent className="flex justify-center items-end gap-2 px-2">
-                    {/* Second Place */}
                     {second && (
                         <div className="text-center w-1/3">
                             <Avatar className="h-16 w-16 mx-auto border-4 border-slate-400">
@@ -363,13 +375,11 @@ const MatchCompleted = ({ match, players }: { match: Match, players: UserProfile
                             </Avatar>
                             <div className="mt-2 p-2 h-20 flex flex-col justify-center bg-gradient-to-b from-purple-500 to-purple-600 text-white rounded-t-lg">
                                 <p className="font-bold text-lg">2</p>
-                                {/* Mock prize */}
                                 <p className="font-semibold text-sm">₹{((match.prizePool || 0) * 0.3).toFixed(0)}</p>
                             </div>
                         </div>
                     )}
 
-                    {/* First Place */}
                     {first && (
                         <div className="text-center w-1/3">
                              <Avatar className="h-20 w-20 mx-auto border-4 border-yellow-400">
@@ -383,7 +393,6 @@ const MatchCompleted = ({ match, players }: { match: Match, players: UserProfile
                         </div>
                     )}
                     
-                    {/* Third Place */}
                     {third && (
                          <div className="text-center w-1/3">
                              <Avatar className="h-14 w-14 mx-auto border-4 border-orange-400">
@@ -392,7 +401,6 @@ const MatchCompleted = ({ match, players }: { match: Match, players: UserProfile
                             </Avatar>
                              <div className="mt-2 p-2 h-16 flex flex-col justify-center bg-gradient-to-b from-purple-400 to-purple-500 text-white rounded-t-lg">
                                 <p className="font-bold text-base">3</p>
-                                {/* Mock prize */}
                                 <p className="font-semibold text-xs">₹{((match.prizePool || 0) * 0.1).toFixed(0)}</p>
                             </div>
                         </div>
@@ -415,8 +423,10 @@ export default function MatchPage({ params }: { params: { id: string } }) {
   const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
   
   const { data: match, loading: matchLoading } = useDoc<Match>(`matches/${params.id}`);
+  
+  const playerIds = useMemo(() => match?.players || [], [match]);
   const { data: players, loading: playersLoading } = useCollection<UserProfile>('users', {
-    where: match ? ['uid', 'in', match.players] : undefined
+    where: playerIds.length > 0 ? ['uid', 'in', playerIds] : undefined
   });
 
   const loading = matchLoading || playersLoading || userLoading || profileLoading;
@@ -431,7 +441,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
 
     switch (match.status) {
         case 'open':
-            title = 'Waiting Room';
+            title = 'Match Lobby';
             content = <MatchOpen match={match} profile={profile} players={players as UserProfile[]} />;
             break;
         case 'ongoing':
@@ -456,13 +466,12 @@ export default function MatchPage({ params }: { params: { id: string } }) {
     }
     
     return (
-        <>
+        <div className="flex flex-col min-h-screen">
             <MatchPageHeader title={title} />
             {content}
-        </>
+        </div>
     );
   };
   
-  return <AppShell>{renderContent()}</AppShell>;
+  return <div className="bg-muted/30">{renderContent()}</div>;
 }
-

@@ -16,7 +16,7 @@ import {
 } from "firebase/firestore";
 import { useFirestore } from "../provider";
 
-type WhereClause = readonly [string, "==" | "<" | ">" | "<=" | ">=" | "!=" | "array-contains" | "in" | "not-in", any];
+type WhereClause = readonly [string, "==" | "<" | ">" | "<=" | ">=" | "!=" | "array-contains" | "array-contains-any" | "in" | "not-in", any];
 type OrderByClause = readonly [string, "asc" | "desc"];
 
 interface UseCollectionOptions {
@@ -32,6 +32,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  // Memoize options to prevent re-renders from object recreation
   const optionsMemo = useMemo(() => options, [
       JSON.stringify(options?.where),
       JSON.stringify(options?.orderBy),
@@ -51,7 +52,10 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
         
         for (const w of whereClauses) {
             const [field, op, value] = w;
-            if ( (op === 'in' || op === 'not-in') && (!Array.isArray(value) || value.length === 0) ) {
+            // Firestore 'in' and 'not-in' queries require a non-empty array.
+            if ( (op === 'in' || op === 'not-in' || op === 'array-contains-any') && (!Array.isArray(value) || value.length === 0) ) {
+                // Return null to signify an invalid query that should not be run.
+                // This prevents Firestore from throwing an error.
                 return null;
             }
             constraints.push(where(field, op, value));
@@ -76,6 +80,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     setLoading(true);
     const q = buildQuery();
 
+    // If the query is invalid (e.g., 'in' with an empty array), don't execute it.
     if (!q) {
       setData([]);
       setLoading(false);
@@ -96,6 +101,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
       setLoading(false);
     });
 
+    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [buildQuery]);
 

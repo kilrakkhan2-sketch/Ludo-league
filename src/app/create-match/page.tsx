@@ -4,12 +4,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ArrowLeft, Gamepad2, Users, Shield } from 'lucide-react';
 
 const feeOptions = [10, 50, 100];
 
@@ -48,13 +48,13 @@ export default function CreateMatchPage() {
       finalFee = parseInt(entryFee, 10);
     }
 
-    if (!title || !ludoKingCode) {
+    if (!title.trim() || !ludoKingCode.trim()) {
       toast({ variant: 'destructive', title: 'Missing Information', description: 'Please fill out all fields.' });
       return;
     }
     
-    if (ludoKingCode.length !== 9) {
-      toast({ variant: 'destructive', title: 'Invalid Ludo King Code', description: 'The code must be 9 characters long.' });
+    if (ludoKingCode.length < 4) { // Ludo King codes can vary in length
+      toast({ variant: 'destructive', title: 'Invalid Room Code', description: 'The room code seems too short.' });
       return;
     }
 
@@ -64,7 +64,7 @@ export default function CreateMatchPage() {
     const createMatchCloudFunction = httpsCallable(functions, 'createMatch');
 
     try {
-      const prizePool = finalFee * (maxPlayers === 2 ? 1.8 : 3.6); // Example prize pool logic
+      const prizePool = finalFee * maxPlayers * 0.9; // 90% of total entry fees
 
       const result = await createMatchCloudFunction({
         title,
@@ -72,6 +72,8 @@ export default function CreateMatchPage() {
         prizePool,
         ludoKingCode,
         maxPlayers,
+        status: 'open',
+        privacy: 'public',
       });
 
       toast({ title: 'Match Created!', description: 'Your match is now live.' });
@@ -91,74 +93,101 @@ export default function CreateMatchPage() {
   };
 
   return (
-    <AppShell>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold font-headline mb-4">Create a New Match</h1>
-        <div className="max-w-lg mx-auto bg-card p-6 rounded-lg shadow-md">
-          <div className="space-y-6">
-            <div>
-              <Label htmlFor="title">Match Title</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Weekend Warriors"
-              />
-            </div>
-            <div>
-              <Label>Entry Fee</Label>
-              <RadioGroup value={entryFee} onValueChange={handleFeeChange} className="flex items-center gap-4 mt-2">
-                {feeOptions.map(fee => (
-                  <Label key={fee} htmlFor={`fee-${fee}`} className="flex items-center gap-2 cursor-pointer border rounded-full px-4 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground">
-                    <RadioGroupItem value={fee.toString()} id={`fee-${fee}`} />
-                    ₹{fee}
-                  </Label>
-                ))}
-                <Label htmlFor="fee-custom" className="flex items-center gap-2 cursor-pointer border rounded-full px-4 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground">
-                  <RadioGroupItem value="custom" id="fee-custom" />
-                  Custom
-                </Label>
-              </RadioGroup>
-              {entryFee === 'custom' && (
-                <Input
-                  type="number"
-                  value={customFee}
-                  onChange={(e) => setCustomFee(e.target.value)}
-                  placeholder="Enter custom fee"
-                  className="mt-2"
-                  min="1"
-                />
-              )}
-            </div>
-            <div>
-              <Label>Max Players</Label>
-              <RadioGroup value={maxPlayers.toString()} onValueChange={val => setMaxPlayers(parseInt(val))} className="flex items-center gap-4 mt-2">
-                <Label htmlFor="players-2" className="flex items-center gap-2 cursor-pointer border rounded-full px-4 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground">
-                  <RadioGroupItem value="2" id="players-2" />
-                  2 Players
-                </Label>
-                <Label htmlFor="players-4" className="flex items-center gap-2 cursor-pointer border rounded-full px-4 py-2 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground">
-                  <RadioGroupItem value="4" id="players-4" />
-                  4 Players
-                </Label>
-              </RadioGroup>
-            </div>
-            <div>
-              <Label htmlFor="ludoKingCode">Ludo King Room Code</Label>
-              <Input
-                id="ludoKingCode"
-                value={ludoKingCode}
-                onChange={(e) => setLudoKingCode(e.target.value.toUpperCase())}
-                placeholder="Enter the 9-character code from Ludo King"
-                maxLength={9}
-              />
-            </div>
-            <Button onClick={handleCreateMatch} className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating Match...' : 'Create Match & Deduct Fee'}
+    <div className="flex flex-col min-h-screen bg-background">
+        <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 sticky top-0 z-10 shadow-md">
+            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                <ArrowLeft />
             </Button>
-          </div>
-        </div>
-      </div>
-    </AppShell>
+            <h1 className="text-xl font-bold">Create Match</h1>
+        </header>
+
+        <main className="flex-grow p-4 space-y-6">
+             {/* Step 1: Basic Info */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 bg-primary text-primary-foreground h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold">1</div>
+                    <h2 className="font-semibold text-lg">Basic Info</h2>
+                </div>
+                 <div className="space-y-2 pl-9">
+                    <Label htmlFor="title">Match Title</Label>
+                    <Input
+                        id="title"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="e.g., Weekend Warriors"
+                    />
+                </div>
+                <div className="space-y-2 pl-9">
+                    <Label htmlFor="ludoKingCode">Ludo King Room Code</Label>
+                    <Input
+                        id="ludoKingCode"
+                        value={ludoKingCode}
+                        onChange={(e) => setLudoKingCode(e.target.value.toUpperCase())}
+                        placeholder="Enter the code from Ludo King"
+                    />
+                </div>
+            </div>
+
+            {/* Step 2: Entry Details */}
+            <div className="space-y-4">
+                 <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 bg-primary text-primary-foreground h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold">2</div>
+                    <h2 className="font-semibold text-lg">Entry Details</h2>
+                </div>
+                <div className="pl-9 space-y-3">
+                    <Label>Entry Fee</Label>
+                    <RadioGroup value={entryFee} onValueChange={handleFeeChange} className="flex items-center gap-2 flex-wrap">
+                        {feeOptions.map(fee => (
+                        <Label key={fee} htmlFor={`fee-${fee}`} className="flex items-center gap-2 cursor-pointer border rounded-md px-3 py-2 text-sm has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary transition-colors">
+                            <RadioGroupItem value={fee.toString()} id={`fee-${fee}`} />
+                            ₹{fee}
+                        </Label>
+                        ))}
+                        <Label htmlFor="fee-custom" className="flex items-center gap-2 cursor-pointer border rounded-md px-3 py-2 text-sm has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary transition-colors">
+                        <RadioGroupItem value="custom" id="fee-custom" />
+                        Custom
+                        </Label>
+                    </RadioGroup>
+                    {entryFee === 'custom' && (
+                        <Input
+                        type="number"
+                        value={customFee}
+                        onChange={(e) => setCustomFee(e.target.value)}
+                        placeholder="Enter custom fee"
+                        className="mt-2"
+                        min="1"
+                        />
+                    )}
+                </div>
+            </div>
+
+             {/* Step 3: Advanced Settings (Simplified) */}
+            <div className="space-y-4">
+                 <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 bg-primary text-primary-foreground h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold">3</div>
+                    <h2 className="font-semibold text-lg">Game Settings</h2>
+                </div>
+                 <div className="pl-9 space-y-3">
+                    <Label>Max Players</Label>
+                    <RadioGroup value={maxPlayers.toString()} onValueChange={val => setMaxPlayers(parseInt(val))} className="flex items-center gap-2 mt-2">
+                        <Label htmlFor="players-2" className="flex items-center gap-2 cursor-pointer border rounded-md px-3 py-2 text-sm has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary transition-colors">
+                        <RadioGroupItem value="2" id="players-2" />
+                        2 Players
+                        </Label>
+                        <Label htmlFor="players-4" className="flex items-center gap-2 cursor-pointer border rounded-md px-3 py-2 text-sm has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary transition-colors">
+                        <RadioGroupItem value="4" id="players-4" />
+                        4 Players
+                        </Label>
+                    </RadioGroup>
+                </div>
+            </div>
+        </main>
+        
+        <footer className="p-4 sticky bottom-0 bg-background border-t">
+             <Button onClick={handleCreateMatch} className="w-full text-lg py-6 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating Match...' : 'Create Match & Play'}
+            </Button>
+        </footer>
+    </div>
   );
 }
