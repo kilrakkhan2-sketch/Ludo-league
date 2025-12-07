@@ -29,8 +29,8 @@ const StatCard = ({ title, value, loading }: { title: string, value: string | nu
 const MatchCard = ({ match }: { match: Match }) => (
     <div className="shrink-0 w-64 bg-card rounded-lg shadow-sm overflow-hidden">
         <div className="p-3 bg-gradient-to-br from-primary to-purple-600 text-primary-foreground">
-            <h3 className="font-bold text-md">{match.title || "Classic Match"}</h3>
-            <p className="text-xs opacity-80">Team Nork</p> 
+            <h3 className="font-bold text-md truncate">{match.title || "Classic Match"}</h3>
+            <p className="text-xs opacity-80">Prize: ₹{match.prizePool?.toLocaleString() || 'N/A'}</p> 
         </div>
         <div className="p-3 space-y-2 text-sm">
             <div className="flex justify-between">
@@ -45,35 +45,79 @@ const MatchCard = ({ match }: { match: Match }) => (
         <div className="p-2">
             <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" asChild>
                 <Link href={`/match/${match.id}`}>
-                    Ready
+                    {match.status === 'open' ? 'Join Now' : 'View Match'}
                 </Link>
             </Button>
         </div>
     </div>
 );
 
+const MatchSection = ({ title, matches, loading, emptyMessage, viewAllLink }: { title: string, matches: Match[], loading: boolean, emptyMessage: string, viewAllLink?: string }) => (
+    <section>
+        <div className="flex justify-between items-center mb-3">
+            <h2 className="text-lg font-bold">{title}</h2>
+            {viewAllLink && <Link href={viewAllLink} className="text-sm font-semibold text-primary">View All</Link>}
+        </div>
+        {loading ? (
+             <div className="flex space-x-4 overflow-x-auto pb-4">
+                <Skeleton className="shrink-0 w-64 h-48 rounded-lg" />
+                <Skeleton className="shrink-0 w-64 h-48 rounded-lg" />
+             </div>
+        ): matches.length > 0 ? (
+            <div className="flex space-x-4 overflow-x-auto pb-4 -mx-4 px-4">
+               {matches.map(match => <MatchCard key={match.id} match={match}/>)}
+            </div>
+        ) : (
+            <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg bg-card">
+                <p className="text-muted-foreground mb-2">{emptyMessage}</p>
+                {title === 'My Active Matches' && (
+                    <Button asChild>
+                        <Link href="/create-match"><PlusCircle className="mr-2 h-4 w-4"/>Create a Match</Link>
+                    </Button>
+                )}
+            </div>
+        )}
+    </section>
+);
+
 
 export default function DashboardPage() {
     const { user, loading: userLoading } = useUser();
     const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
+    
+    // My Matches (participating)
     const { data: myMatches, loading: myMatchesLoading } = useCollection<Match>('matches', {
-        where: user?.uid ? ['players', 'array-contains', user.uid] : undefined,
+        where: user?.uid ? [['players', 'array-contains', user.uid], ['status', '!=', 'completed']] : undefined,
         limit: 5,
         orderBy: ['createdAt', 'desc']
     });
-     const { data: transactions, loading: txLoading } = useCollection<Transaction>(
-        user ? `users/${user.uid}/transactions` : '',
-        {
-          orderBy: ['createdAt', 'desc'],
-          limit: 100
-        }
+
+    // Open Matches (not participating in)
+    const { data: openMatches, loading: openMatchesLoading } = useCollection<Match>('matches', {
+        where: [['status', '==', 'open']],
+        limit: 10,
+        orderBy: ['createdAt', 'desc']
+    });
+
+    // Ongoing Matches (not participating in)
+    const { data: ongoingMatches, loading: ongoingMatchesLoading } = useCollection<Match>('matches', {
+        where: [['status', '==', 'ongoing']],
+        limit: 10,
+        orderBy: ['createdAt', 'desc']
+    });
+    
+    const { data: transactions, loading: txLoading } = useCollection<Transaction>(
+        user ? `users/${user.uid}/transactions` : '', { orderBy: ['createdAt', 'desc'], limit: 100 }
     );
 
-    const loading = userLoading || profileLoading || myMatchesLoading || txLoading;
+    const loading = userLoading || profileLoading || myMatchesLoading || txLoading || openMatchesLoading || ongoingMatchesLoading;
     
-    const matchesPlayed = myMatches.length;
-    const matchesWon = myMatches.filter((m: Match) => m.winnerId === user?.uid).length;
-    const winRate = matchesPlayed > 0 ? `${((matchesWon / matchesPlayed) * 100).toFixed(2)}%` : "0%";
+    const matchesPlayed = transactions.filter(t => t.type === 'entry_fee').length;
+    const matchesWon = transactions.filter(t => t.type === 'prize' || t.type === 'win').length;
+    const winRate = matchesPlayed > 0 ? `${((matchesWon / matchesPlayed) * 100).toFixed(0)}%` : "0%";
+
+    const filteredOpenMatches = user ? openMatches.filter(match => !match.players.includes(user.uid)) : openMatches;
+    const filteredOngoingMatches = user ? ongoingMatches.filter(match => !match.players.includes(user.uid)) : ongoingMatches;
 
     return (
         <div className="flex flex-col min-h-screen">
@@ -112,29 +156,28 @@ export default function DashboardPage() {
                         </div>
                     </section>
 
-                    <section>
-                        <div className="flex justify-between items-center mb-3">
-                            <h2 className="text-lg font-bold">My Active Matches</h2>
-                            <Link href="/matches/my-matches" className="text-sm font-semibold text-primary">View All</Link>
-                        </div>
-                        {loading ? (
-                             <div className="flex space-x-4 overflow-x-auto pb-4">
-                                <Skeleton className="shrink-0 w-64 h-48 rounded-lg" />
-                                <Skeleton className="shrink-0 w-64 h-48 rounded-lg" />
-                             </div>
-                        ): myMatches.length > 0 ? (
-                            <div className="flex space-x-4 overflow-x-auto pb-4 -mx-4 px-4">
-                               {myMatches.map(match => <MatchCard key={match.id} match={match}/>)}
-                            </div>
-                        ) : (
-                            <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg bg-card">
-                                <p className="text-muted-foreground mb-2">No active matches</p>
-                                <Button asChild>
-                                    <Link href="/create-match"><PlusCircle className="mr-2 h-4 w-4"/>Create a Match</Link>
-                                </Button>
-                            </div>
-                        )}
-                    </section>
+                    <MatchSection
+                        title="My Active Matches"
+                        matches={myMatches}
+                        loading={myMatchesLoading}
+                        emptyMessage="No active matches"
+                        viewAllLink="/matches/my-matches"
+                    />
+
+                    <MatchSection
+                        title="Open Matches"
+                        matches={filteredOpenMatches}
+                        loading={openMatchesLoading}
+                        emptyMessage="No open matches available right now"
+                        viewAllLink="/matches/open"
+                    />
+
+                    <MatchSection
+                        title="Ongoing Matches"
+                        matches={filteredOngoingMatches}
+                        loading={ongoingMatchesLoading}
+                        emptyMessage="No matches are currently ongoing"
+                    />
                 </div>
             </main>
             <BottomNav />
