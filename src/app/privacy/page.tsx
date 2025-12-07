@@ -4,20 +4,21 @@ import { AppShell } from "@/components/layout/AppShell";
 export default function PrivacyPolicyPage() {
   return (
     <AppShell pageTitle="Privacy Policy" showBackButton>
-      <div className="p-4">
-        <div className="prose dark:prose-invert max-w-none bg-card p-6 rounded-lg">
-            <p>Last updated: July 24, 2024</p>
+      <div className="p-4 sm:p-6">
+        <div className="prose dark:prose-invert max-w-none bg-card p-6 rounded-lg shadow-sm">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-4">Privacy Policy</h1>
+            <p className="text-sm text-muted-foreground">Last updated: July 24, 2024</p>
 
             <p>This Privacy Policy describes Our policies and procedures on the collection, use and disclosure of Your information when You use the Service and tells You about Your privacy rights and how the law protects You.</p>
 
             <p>We use Your Personal data to provide and improve the Service. By using the Service, You agree to the collection and use of information in accordance with this Privacy Policy.</p>
 
-            <h2>Interpretation and Definitions</h2>
-            <h3>Interpretation</h3>
+            <h2 className="text-xl sm:text-2xl font-semibold mt-6 mb-3">Interpretation and Definitions</h2>
+            <h3 className="text-lg sm:text-xl font-semibold mt-4 mb-2">Interpretation</h3>
             <p>The words of which the initial letter is capitalized have meanings defined under the following conditions. The following definitions shall have the same meaning regardless of whether they appear in singular or in plural.</p>
-            <h3>Definitions</h3>
+            <h3 className="text-lg sm:text-xl font-semibold mt-4 mb-2">Definitions</h3>
             <p>For the purposes of this Privacy Policy:</p>
-            <ul>
+            <ul className="list-disc space-y-2 pl-5">
                 <li>
                     <p><strong>"Account"</strong> means a unique account created for You to access our Service or parts of our Service.</p>
                 </li>
@@ -41,22 +42,22 @@ export default function PrivacyPolicyPage() {
                 </li>
             </ul>
 
-            <h2>Collecting and Using Your Personal Data</h2>
-            <h3>Types of Data Collected</h3>
-            <h4>Personal Data</h4>
+            <h2 className="text-xl sm:text-2xl font-semibold mt-6 mb-3">Collecting and Using Your Personal Data</h2>
+            <h3 className="text-lg sm:text-xl font-semibold mt-4 mb-2">Types of Data Collected</h3>
+            <h4 className="text-base sm:text-lg font-semibold mt-4 mb-2">Personal Data</h4>
             <p>While using Our Service, We may ask You to provide Us with certain personally identifiable information that can be used to contact or identify You. Personally identifiable information may include, but is not limited to:</p>
-            <ul>
+            <ul className="list-disc space-y-2 pl-5">
                 <li>Email address</li>
                 <li>First name and last name</li>
                 <li>Usage Data</li>
             </ul>
-            <h4>Usage Data</h4>
+            <h4 className="text-base sm:text-lg font-semibold mt-4 mb-2">Usage Data</h4>
             <p>Usage Data is collected automatically when using the Service.</p>
             <p>Usage Data may include information such as Your Device's Internet Protocol address (e.g. IP address), browser type, browser version, the pages of our Service that You visit, the time and date of Your visit, the time spent on those pages, unique device identifiers and other diagnostic data.</p>
 
-            <h2>Use of Your Personal Data</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold mt-6 mb-3">Use of Your Personal Data</h2>
             <p>The Company may use Personal Data for the following purposes:</p>
-            <ul>
+            <ul className="list-disc space-y-2 pl-5">
                 <li>To provide and maintain our Service, including to monitor the usage of our Service.</li>
                 <li>To manage Your Account: to manage Your registration as a user of the Service. The Personal Data You provide can give You access to different functionalities of the Service that are available to You as a registered user.</li>
                 <li>To contact You: To contact You by email, telephone calls, SMS, or other equivalent forms of electronic communication, such as a mobile application's push notifications regarding updates or informative communications related to the functionalities, products or contracted services, including the security updates, when necessary or reasonable for their implementation.</li>
@@ -64,14 +65,14 @@ export default function PrivacyPolicyPage() {
                 <li>To manage Your requests: To attend and manage Your requests to Us.</li>
             </ul>
 
-            <h2>Changes to this Privacy Policy</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold mt-6 mb-3">Changes to this Privacy Policy</h2>
             <p>We may update Our Privacy Policy from time to time. We will notify You of any changes by posting the new Privacy Policy on this page.</p>
             <p>We will let You know via email and/or a prominent notice on Our Service, prior to the change becoming effective and update the "Last updated" date at the top of this Privacy Policy.</p>
             <p>You are advised to review this Privacy Policy periodically for any changes. Changes to this Privacy Policy are effective when they are posted on this page.</p>
 
-            <h2>Contact Us</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold mt-6 mb-3">Contact Us</h2>
             <p>If you have any questions about this Privacy Policy, You can contact us:</p>
-            <ul>
+            <ul className="list-disc space-y-2 pl-5">
                 <li>By email: support@ludoleague.com</li>
             </ul>
         </div>

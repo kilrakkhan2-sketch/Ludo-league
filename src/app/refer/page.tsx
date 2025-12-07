@@ -46,7 +46,7 @@ export default function ReferPage() {
 
   return (
     <AppShell pageTitle="Refer & Earn" showBackButton>
-      <div className="p-4 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         <Card className="bg-primary text-primary-foreground text-center overflow-hidden">
           <CardContent className="p-6 space-y-2">
             <Gift className="mx-auto h-12 w-12 opacity-80" />
@@ -71,13 +71,13 @@ export default function ReferPage() {
                   <Copy className="h-5 w-5 text-primary" />
                 </div>
             )}
-            <Button className="w-full" onClick={shareCode}>
+            <Button className="w-full sm:w-auto" onClick={shareCode}>
                 <Share2 className="mr-2 h-4 w-4" /> Share with Friends
             </Button>
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total Referrals</CardTitle>

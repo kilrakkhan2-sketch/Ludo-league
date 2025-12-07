@@ -100,15 +100,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background p-4">
-      <Card className="w-full max-w-sm border-0 shadow-none">
+    <div className="flex items-center justify-center min-h-screen bg-background p-4 sm:p-6 lg:p-8">
+      <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <Link href="/" className="flex justify-center mb-4">
             <div className="p-2 bg-gradient-to-r from-primary to-accent rounded-lg shadow-md">
                <Image src="/logo.svg" alt="LudoLeague Logo" width={48} height={48} className="text-primary-foreground" />
             </div>
           </Link>
-          <CardTitle className="text-3xl font-headline">Welcome Back!</CardTitle>
+          <CardTitle className="text-2xl sm:text-3xl font-headline">Welcome Back!</CardTitle>
           <CardDescription>Sign in to your LudoLeague account</CardDescription>
         </CardHeader>
         <CardContent>

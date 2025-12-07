@@ -6,9 +6,8 @@ import { Button } from "@/components/ui/button";
 import { useCollection, useUser, useDoc } from "@/firebase";
 import type { Match, UserProfile, Transaction } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bell, MessageCircle, PlusCircle, Users, Wallet } from "lucide-react";
+import { Bell, MessageCircle, PlusCircle } from "lucide-react";
 import Link from "next/link";
-import { BottomNav } from "@/components/layout/BottomNav";
 
 const StatCard = ({ title, value, loading }: { title: string, value: string | number, loading: boolean }) => (
     <div className="bg-card p-3 rounded-lg shadow-sm text-center">
@@ -113,74 +112,71 @@ export default function DashboardPage() {
     const loading = userLoading || profileLoading || myMatchesLoading || txLoading || openMatchesLoading || ongoingMatchesLoading;
     
     const matchesPlayed = transactions.filter(t => t.type === 'entry_fee').length;
-    const matchesWon = transactions.filter(t => t.type === 'prize' || t.type === 'win').length;
+    const matchesWon = transactions.filter(t => t.type === 'win').length;
     const winRate = matchesPlayed > 0 ? `${((matchesWon / matchesPlayed) * 100).toFixed(0)}%` : "0%";
 
     const filteredOpenMatches = user ? openMatches.filter(match => !match.players.includes(user.uid)) : openMatches;
     const filteredOngoingMatches = user ? ongoingMatches.filter(match => !match.players.includes(user.uid)) : ongoingMatches;
 
     return (
-        <div className="flex flex-col min-h-screen">
-            <main className="flex-grow pb-20">
-                <div className="bg-primary text-primary-foreground p-4 rounded-b-3xl shadow-lg">
-                    <header className="flex justify-between items-center mb-4">
-                        {loading ? <Skeleton className="h-7 w-32 bg-white/20"/> : <h1 className="text-xl font-bold">Hi, {profile?.displayName || 'Player'}!</h1>}
-                        <div className="flex items-center gap-4">
-                            <MessageCircle className="h-6 w-6" />
-                            <Bell className="h-6 w-6" />
-                        </div>
-                    </header>
+        <AppShell pageTitle="Dashboard">
+            <div className="bg-primary text-primary-foreground p-4 sm:p-6 rounded-b-3xl shadow-lg">
+                <header className="flex justify-between items-center mb-4">
+                    {loading ? <Skeleton className="h-7 w-32 bg-white/20"/> : <h1 className="text-xl sm:text-2xl font-bold">Hi, {profile?.displayName || 'Player'}!</h1>}
+                    <div className="flex items-center gap-4">
+                        <MessageCircle className="h-6 w-6" />
+                        <Bell className="h-6 w-6" />
+                    </div>
+                </header>
 
-                    <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <p className="text-sm opacity-80">Wallet Balance</p>
-                                {loading ? <Skeleton className="h-8 w-36 mt-1 bg-white/20"/> : <p className="text-3xl font-bold">₹{profile?.walletBalance?.toLocaleString() || '0.00'}</p>}
-                            </div>
-                            <Button className="bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-md" asChild>
-                                <Link href="/add-money">
-                                    Add Money
-                                </Link>
-                            </Button>
+                <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div>
+                            <p className="text-sm opacity-80">Wallet Balance</p>
+                            {loading ? <Skeleton className="h-8 w-36 mt-1 bg-white/20"/> : <p className="text-3xl font-bold">₹{profile?.walletBalance?.toLocaleString() || '0.00'}</p>}
                         </div>
+                        <Button className="bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-md w-full sm:w-auto" asChild>
+                            <Link href="/add-money">
+                                Add Money
+                            </Link>
+                        </Button>
                     </div>
                 </div>
-                
-                <div className="p-4 space-y-6">
-                    <section>
-                        <h2 className="text-lg font-bold mb-3">Quick Stats</h2>
-                        <div className="grid grid-cols-3 gap-3">
-                            <StatCard title="Total Matches" value={matchesPlayed} loading={loading}/>
-                            <StatCard title="Wins" value={matchesWon} loading={loading} />
-                            <StatCard title="Win Rate" value={winRate} loading={loading} />
-                        </div>
-                    </section>
+            </div>
+            
+            <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
+                <section>
+                    <h2 className="text-lg font-bold mb-3">Quick Stats</h2>
+                    <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                        <StatCard title="Total Matches" value={matchesPlayed} loading={loading}/>
+                        <StatCard title="Wins" value={matchesWon} loading={loading} />
+                        <StatCard title="Win Rate" value={winRate} loading={loading} />
+                    </div>
+                </section>
 
-                    <MatchSection
-                        title="My Active Matches"
-                        matches={myMatches}
-                        loading={myMatchesLoading}
-                        emptyMessage="No active matches"
-                        viewAllLink="/matches/my-matches"
-                    />
+                <MatchSection
+                    title="My Active Matches"
+                    matches={myMatches}
+                    loading={myMatchesLoading}
+                    emptyMessage="No active matches"
+                    viewAllLink="/matches/my-matches"
+                />
 
-                    <MatchSection
-                        title="Open Matches"
-                        matches={filteredOpenMatches}
-                        loading={openMatchesLoading}
-                        emptyMessage="No open matches available right now"
-                        viewAllLink="/matches/open"
-                    />
+                <MatchSection
+                    title="Open Matches"
+                    matches={filteredOpenMatches}
+                    loading={openMatchesLoading}
+                    emptyMessage="No open matches available right now"
+                    viewAllLink="/matches/open"
+                />
 
-                    <MatchSection
-                        title="Ongoing Matches"
-                        matches={filteredOngoingMatches}
-                        loading={ongoingMatchesLoading}
-                        emptyMessage="No matches are currently ongoing"
-                    />
-                </div>
-            </main>
-            <BottomNav />
-        </div>
+                <MatchSection
+                    title="Ongoing Matches"
+                    matches={filteredOngoingMatches}
+                    loading={ongoingMatchesLoading}
+                    emptyMessage="No matches are currently ongoing"
+                />
+            </div>
+        </AppShell>
     );
 }

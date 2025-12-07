@@ -104,7 +104,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       return item.roles.includes(userRole);
   });
 
-  if (loading || !isAdmin) {
+  if (loading) {
     return (
         <div className="flex h-screen items-center justify-center bg-background">
             <p>Loading...</p>
@@ -112,9 +112,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
     );
   }
 
+  if (!isAdmin) {
+     return null; // Render nothing while redirecting
+  }
+
   return (
     <SidebarProvider>
-      <Sidebar>
+      <Sidebar collapsible>
         <SidebarContent className="bg-card">
           <SidebarHeader>
             <div className="flex items-center gap-2">

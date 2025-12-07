@@ -1,3 +1,4 @@
+
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
@@ -208,83 +209,91 @@ export const onMatchResultUpdate = functions.firestore
 
 
 // =================================================================
-//  🔥 NEW - MATCH CREATION FUNCTION
+//  MATCH CREATION & MANAGEMENT
 // =================================================================
 
 export const createMatch = functions.https.onCall(async (data, context) => {
-    // 1. Authentication Check: User must be logged in.
+    // 1. Authentication Check
     if (!context.auth) {
-        throw new functions.https.HttpsError(
-            "unauthenticated",
-            "You must be logged in to create a match."
-        );
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to create a match.");
     }
 
-    // 2. Data Validation: Check for required fields.
-    const { title, entryFee, prizePool } = data;
-    if (!title || typeof title !== "string" || title.length === 0) {
-        throw new functions.https.HttpsError("invalid-argument", "Match title is required.");
+    // 2. Data Validation
+    const { title, entryFee, prizePool, ludoKingCode, maxPlayers, privacy } = data;
+    
+    if (!title || typeof title !== "string" || title.length === 0 || title.length > 50) {
+        throw new functions.https.HttpsError("invalid-argument", "Match title is required and must be 50 characters or less.");
     }
-    if (typeof entryFee !== "number" || entryFee < 0) { // Allow 0 for free matches
-        throw new functions.https.HttpsError("invalid-argument", "A valid entry fee is required.");
+    if (typeof entryFee !== "number" || entryFee < 0) {
+        throw new functions.https.HttpsError("invalid-argument", "A valid, non-negative entry fee is required.");
     }
-     if (typeof prizePool !== "number" || prizePool < 0) {
+    if (typeof prizePool !== "number" || prizePool < 0) {
         throw new functions.https.HttpsError("invalid-argument", "A valid prize pool is required.");
+    }
+    if (!ludoKingCode || typeof ludoKingCode !== "string") {
+        throw new functions.https.HttpsError("invalid-argument", "A valid Ludo King room code is required.");
+    }
+    if (maxPlayers !== 2 && maxPlayers !== 4) {
+        throw new functions.https.HttpsError("invalid-argument", "Max players must be either 2 or 4.");
+    }
+    if (privacy && privacy !== 'public' && privacy !== 'private') {
+        throw new functions.https.HttpsError("invalid-argument", "Privacy must be either 'public' or 'private'.");
     }
 
     const userId = context.auth.uid;
     const userRef = db.collection("users").doc(userId);
-    const matchRef = db.collection("matches").doc(); // Auto-generate ID for the new match
-    const transactionRef = db.collection(`users/${userId}/transactions`).doc(); // Auto-generate ID for the new transaction
+    const matchRef = db.collection("matches").doc();
+    const transactionRef = db.collection(`users/${userId}/transactions`).doc();
 
     try {
-        // 3. Firestore Transaction: All operations succeed or all fail.
         const newMatchId = await db.runTransaction(async (t) => {
             const userDoc = await t.get(userRef);
             if (!userDoc.exists) {
-                throw new functions.https.HttpsError("not-found", "User creating the match does not exist.");
+                throw new functions.https.HttpsError("not-found", "Your user profile does not exist.");
             }
 
+            // A. Check user's balance
             const userData = userDoc.data()!;
             const currentBalance = userData.walletBalance || 0;
-
-            // Check if user has enough balance for the entry fee
             if (currentBalance < entryFee) {
-                throw new functions.https.HttpsError(
-                    "failed-precondition",
-                    "Insufficient wallet balance to create the match."
-                );
+                throw new functions.https.HttpsError("failed-precondition", "Insufficient funds to create this match.");
             }
 
-            // Operation A: Deduct entry fee from user's wallet
-            const newBalance = currentBalance - entryFee;
-            t.update(userRef, { walletBalance: newBalance });
+            // B. Deduct entry fee from creator's wallet (if any)
+            if (entryFee > 0) {
+                const newBalance = currentBalance - entryFee;
+                t.update(userRef, { walletBalance: newBalance });
 
-            // Operation B: Create a transaction record for the deduction
-            t.set(transactionRef, {
-                amount: -entryFee, // Negative amount for a deduction
-                type: "entry-fee",
-                status: "completed",
-                description: `Entry fee for match: ${title}`,
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                relatedId: matchRef.id, // Link this transaction to the match document
-            });
+                // C. Create a transaction for the entry fee
+                t.set(transactionRef, {
+                    amount: -entryFee,
+                    type: "entry-fee",
+                    status: "completed",
+                    description: `Entry fee for new match: ${title}`,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    relatedId: matchRef.id,
+                });
+            }
 
-            // Operation C: Create the new match document
+            // D. Create the new match document
             t.set(matchRef, {
                 title,
                 entryFee,
                 prizePool,
+                ludoKingCode,
+                maxPlayers,
+                privacy: privacy || 'public',
                 creatorId: userId,
-                players: [userId], // The creator is the first player
-                status: "open", // Initial status of the match
+                players: [userId], // Creator is the first player
+                playerCount: 1,
+                status: 'open',
+                winnerId: null,
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
             
             return matchRef.id;
         });
 
-        // 4. Success Response: Return a success message to the client.
         return {
             status: "success",
             message: "Match created successfully!",
@@ -293,11 +302,10 @@ export const createMatch = functions.https.onCall(async (data, context) => {
 
     } catch (error) {
         functions.logger.error(`Failed to create match for user ${userId}:`, error);
-        // Re-throw HTTPS errors to be caught by the client, or wrap other errors.
         if (error instanceof functions.https.HttpsError) {
             throw error;
         } else {
-            throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the match.");
+            throw new functions.https.HttpsError("internal", "An unexpected error occurred.");
         }
     }
 });
