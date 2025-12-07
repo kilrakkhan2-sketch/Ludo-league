@@ -6,7 +6,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { useUser, useDoc, useCollection } from '@/firebase';
 import { useFirebase } from '@/firebase/provider';
 import { doc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -16,7 +16,7 @@ import type { UserProfile, Match, Transaction } from '@/types';
 import { Upload, Crown, Swords, Wallet, TrendingUp, Percent, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, formatDistanceToNow } from 'date-fns';
-import { getAuth, signOut } from 'firebase/auth';
+import { getAuth, signOut, updateProfile } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -79,7 +79,8 @@ export default function ProfilePage() {
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user || !firestore || !storage) return;
+    const auth = getAuth();
+    if (!file || !user || !firestore || !storage || !auth.currentUser) return;
 
     setIsUploading(true);
     try {
@@ -89,8 +90,13 @@ export default function ProfilePage() {
       await uploadBytes(storageRef, file);
       const photoURL = await getDownloadURL(storageRef);
       
+      // Update Firebase Auth user profile
+      await updateProfile(auth.currentUser, { photoURL });
+      
+      // Update Firestore user document
       const userDocRef = doc(firestore, 'users', user.uid);
       await updateDoc(userDocRef, { photoURL });
+
 
       toast({ title: 'Avatar Updated!', description: 'Your new profile picture has been saved.' });
     } catch (error) {
@@ -123,7 +129,7 @@ export default function ProfilePage() {
   const loading = userLoading || profileLoading || matchesLoading || txLoading;
 
   if (loading || !profile) {
-      return <AppShell><ProfileLoadingSkeleton /></AppShell>
+      return <AppShell pageTitle="My Profile"><ProfileLoadingSkeleton /></AppShell>
   }
 
   // Calculate stats
@@ -137,7 +143,7 @@ export default function ProfilePage() {
 
   return (
     <AppShell pageTitle="My Profile">
-        <div className="p-4 space-y-6">
+        <main className="flex-grow p-4 space-y-6">
             {/* Profile Header */}
             <Card className="text-center flex flex-col items-center p-6 bg-card">
                 <div className="relative group">
@@ -230,7 +236,7 @@ export default function ProfilePage() {
                                     <div>
                                         <p className='font-semibold capitalize'>{tx.description || tx.type.replace(/_/g, ' ')}</p>
                                         <p className='text-sm text-muted-foreground'>
-                                           {format(tx.createdAt.toDate(), 'PP')}
+                                           {tx.createdAt && tx.createdAt.toDate ? format(tx.createdAt.toDate(), 'PP') : 'N/A'}
                                         </p>
                                     </div>
                                      <p className={`font-bold text-lg ${tx.amount > 0 ? 'text-success' : 'text-destructive'}`}>
@@ -242,7 +248,7 @@ export default function ProfilePage() {
                     </Card>
                 </TabsContent>
             </Tabs>
-        </div>
+        </main>
     </AppShell>
   );
 }

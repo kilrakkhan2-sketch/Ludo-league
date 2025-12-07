@@ -73,8 +73,8 @@ export default function DepositPageContent() {
     } catch (error) {
       console.error('Deposit error:', error);
       toast({ variant: 'destructive', title: 'Submission Failed', description: 'Could not submit your request. Please try again.' });
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
   
     if (!amount) {

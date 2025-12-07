@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,27 +16,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUser } from "@/firebase";
+import { useUser, useDoc } from "@/firebase";
 import { useFirebase } from '@/firebase/provider';
 import { doc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
-import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import type { UserProfile } from '@/types';
 
 export default function SettingsPage() {
     const { user } = useUser();
+    const { data: profile } = useDoc<UserProfile>(user ? `users/${user.uid}`: '');
     const { firestore, storage, auth } = useFirebase();
     const { toast } = useToast();
     
-    const [displayName, setDisplayName] = useState(user?.displayName || '');
+    const [displayName, setDisplayName] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [isSavingProfile, setIsSavingProfile] = useState(false);
     const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
+    useEffect(() => {
+        if(profile) {
+            setDisplayName(profile.displayName || '');
+        }
+    }, [profile]);
+
     const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (!file || !user || !firestore || !storage) return;
+      if (!file || !user || !firestore || !storage || !auth?.currentUser) return;
 
       setIsUploading(true);
       try {
@@ -48,10 +56,8 @@ export default function SettingsPage() {
         
         const userDocRef = doc(firestore, 'users', user.uid);
         await updateDoc(userDocRef, { photoURL });
-
-        if(auth?.currentUser) {
-          await updateProfile(auth.currentUser, { photoURL });
-        }
+        await updateProfile(auth.currentUser, { photoURL });
+        
 
         toast({ title: 'Avatar Updated!', description: 'Your new profile picture has been saved.' });
       } catch (error) {
@@ -62,15 +68,13 @@ export default function SettingsPage() {
     };
 
     const handleProfileSave = async () => {
-      if(!user || !firestore || !displayName) return;
+      if(!user || !firestore || !displayName || !auth?.currentUser) return;
       setIsSavingProfile(true);
       try {
         const userDocRef = doc(firestore, 'users', user.uid);
         await updateDoc(userDocRef, { name: displayName, displayName: displayName });
+        await updateProfile(auth.currentUser, { displayName });
 
-        if(auth?.currentUser) {
-          await updateProfile(auth.currentUser, { displayName });
-        }
         toast({ title: 'Profile Saved!' });
       } catch(error) {
         toast({ variant: 'destructive', title: 'Save Failed' });
@@ -96,7 +100,7 @@ export default function SettingsPage() {
 
   return (
     <AppShell pageTitle="Settings" showBackButton>
-      <div className="p-4 space-y-6">
+      <main className="flex-grow p-4 space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Profile</CardTitle>
@@ -107,8 +111,8 @@ export default function SettingsPage() {
           <CardContent className="space-y-6">
             <div className="flex items-center gap-6">
                 <Avatar className="w-20 h-20">
-                    <AvatarImage src={user?.photoURL || undefined} />
-                    <AvatarFallback>{user?.displayName?.[0]}</AvatarFallback>
+                    <AvatarImage src={user?.photoURL || profile?.photoURL || undefined} />
+                    <AvatarFallback>{displayName?.[0]}</AvatarFallback>
                 </Avatar>
                 <div className="flex-grow">
                      <Label htmlFor="avatar-upload">Profile Picture</Label>
@@ -185,7 +189,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-      </div>
+      </main>
     </AppShell>
   );
 }

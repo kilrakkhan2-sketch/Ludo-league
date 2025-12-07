@@ -13,7 +13,7 @@ export default function SplashPage() {
     const timer = setTimeout(() => {
       setLoading(false);
       router.push('/login');
-    }, 3000); // 3-second splash screen
+    }, 1500); // 1.5-second splash screen
 
     return () => clearTimeout(timer);
   }, [router]);
