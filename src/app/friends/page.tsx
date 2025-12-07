@@ -46,10 +46,8 @@ const requests = [
 
 export default function FriendsPage() {
   return (
-    <AppShell>
+    <AppShell pageTitle="Friends" showBackButton>
       <div className="p-4 space-y-6">
-        <h1 className="text-3xl font-bold font-headline">Friends</h1>
-
         <Card>
           <CardHeader>
             <CardTitle>Add Friend</CardTitle>

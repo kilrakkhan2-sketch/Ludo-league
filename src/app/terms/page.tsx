@@ -3,10 +3,9 @@ import { AppShell } from "@/components/layout/AppShell";
 
 export default function TermsOfServicePage() {
   return (
-    <AppShell>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold font-headline mb-4">Terms of Service</h1>
-        <div className="prose dark:prose-invert max-w-none">
+    <AppShell pageTitle="Terms of Service" showBackButton>
+      <div className="p-4">
+        <div className="prose dark:prose-invert max-w-none bg-card p-6 rounded-lg">
             <p>Last updated: July 24, 2024</p>
 
             <p>Please read these terms and conditions carefully before using Our Service.</p>

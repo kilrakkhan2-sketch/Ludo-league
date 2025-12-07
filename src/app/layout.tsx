@@ -31,7 +31,7 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body antialiased bg-background")}>
         <FirebaseClientProvider>
-          <div className="relative mx-auto bg-background animate-fade-in">
+          <div className="relative mx-auto bg-background animate-fade-in w-full">
               {children}
           </div>
         </FirebaseClientProvider>

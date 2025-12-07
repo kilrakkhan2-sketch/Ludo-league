@@ -84,7 +84,7 @@ export default function DepositPageContent() {
                     <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft /></Button>
                     <h1 className="text-xl font-bold">Error</h1>
                 </header>
-                <div className="flex-grow flex items-center justify-center">
+                <div className="flex-grow flex items-center justify-center p-4">
                     <Alert variant="destructive" className="max-w-sm">
                       <AlertTitle>Invalid Amount</AlertTitle>
                       <AlertDescription>
@@ -104,7 +104,7 @@ export default function DepositPageContent() {
             </Button>
             <h1 className="text-xl font-bold">Complete Deposit</h1>
         </header>
-      <div className="p-4 space-y-6">
+      <main className="flex-grow p-4 space-y-6">
         <div className="bg-card p-6 rounded-lg shadow-md">
             <h2 className="text-lg font-semibold mb-4 text-center">Scan & Pay</h2>
              <div className="space-y-4">
@@ -155,7 +155,7 @@ export default function DepositPageContent() {
               </div>
             </div>
           </div>
-      </div>
+      </main>
       <footer className="p-4 sticky bottom-0 bg-background border-t">
         <Button onClick={handleSubmit} className="w-full text-lg py-6" disabled={isSubmitting || !screenshot || !transactionId}>
             {isSubmitting ? 'Submitting...' : 'Submit Deposit Request'}

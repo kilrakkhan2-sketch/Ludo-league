@@ -1,3 +1,4 @@
+
 "use client";
 
 import { AppShell } from "@/components/layout/AppShell";
@@ -52,9 +53,8 @@ export default function LeaderboardPage() {
         .map((p, i) => ({...p, rank: i + 1}));
 
   return (
-    <AppShell>
+    <AppShell pageTitle="Leaderboard">
       <div className="p-4 space-y-6">
-        <h1 className="text-3xl font-bold font-headline">Leaderboard</h1>
         <div className="rounded-xl overflow-hidden shadow-lg border">
             <Table>
               <TableHeader>

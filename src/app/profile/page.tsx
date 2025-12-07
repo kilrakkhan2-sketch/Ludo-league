@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import type { UserProfile, Match, Transaction } from '@/types';
-import { Upload, Crown, Swords, Wallet, TrendingUp, Percent, LogOut } from 'lucide-react';
+import { Upload, Crown, Swords, Wallet, TrendingUp, Percent, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, formatDistanceToNow } from 'date-fns';
 import { getAuth, signOut } from 'firebase/auth';
@@ -136,7 +136,7 @@ export default function ProfilePage() {
 
 
   return (
-    <AppShell>
+    <AppShell pageTitle="My Profile">
         <div className="p-4 space-y-6">
             {/* Profile Header */}
             <Card className="text-center flex flex-col items-center p-6 bg-card">
@@ -146,7 +146,7 @@ export default function ProfilePage() {
                         <AvatarFallback>{profile.displayName?.[0] || user?.email?.[0]}</AvatarFallback>
                     </Avatar>
                     <label htmlFor="avatar-upload" className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <Upload className="w-8 h-8 text-white" />
+                        {isUploading ? <div className="w-6 h-6 border-2 border-white rounded-full animate-spin border-t-transparent" /> : <Upload className="w-8 h-8 text-white" />}
                         <input id="avatar-upload" type="file" className="hidden" accept="image/png, image/jpeg" onChange={handleAvatarUpload} disabled={isUploading}/>
                     </label>
                 </div>
@@ -154,7 +154,7 @@ export default function ProfilePage() {
                 <p className="text-sm text-muted-foreground">{user?.email}</p>
                  <div className="mt-4 flex gap-2">
                     <Button asChild variant="outline" size="sm">
-                        <Link href="/settings">Edit Profile</Link>
+                        <Link href="/settings"><SettingsIcon className='mr-2 h-4 w-4' /> Edit Profile</Link>
                     </Button>
                     <Button onClick={handleLogout} variant="destructive" size="sm">
                         <LogOut className="mr-2 h-4 w-4"/>
@@ -164,14 +164,14 @@ export default function ProfilePage() {
             </Card>
             
             <Card>
-                <CardContent className="p-4 grid grid-cols-2 gap-4">
-                    <Link href="/refer" className="p-4 bg-muted rounded-lg hover:bg-primary/10 transition-colors">
+                <CardContent className="p-2 grid grid-cols-2 gap-2">
+                    <Link href="/refer" className="p-3 bg-muted rounded-lg hover:bg-primary/10 transition-colors">
                         <p className="font-bold">Refer & Earn</p>
                         <p className="text-xs text-muted-foreground">Invite friends and win rewards</p>
                     </Link>
-                    <Link href="/kyc" className="p-4 bg-muted rounded-lg hover:bg-primary/10 transition-colors">
+                    <Link href="/kyc" className="p-3 bg-muted rounded-lg hover:bg-primary/10 transition-colors">
                         <p className="font-bold">KYC Verification</p>
-                         <p className="text-xs text-muted-foreground">{profile.isVerified ? 'Completed' : 'Pending'}</p>
+                         <p className={`text-xs ${profile.isVerified ? 'text-success' : 'text-destructive'}`}>{profile.isVerified ? 'Completed' : 'Pending'}</p>
                     </Link>
                 </CardContent>
             </Card>
@@ -228,7 +228,7 @@ export default function ProfilePage() {
                             {transactions.slice(0,5).map((tx: Transaction) => (
                                 <div key={tx.id} className='flex items-center justify-between p-3 rounded-lg bg-muted/50'>
                                     <div>
-                                        <p className='font-semibold capitalize'>{tx.type.replace(/_/g, ' ')}</p>
+                                        <p className='font-semibold capitalize'>{tx.description || tx.type.replace(/_/g, ' ')}</p>
                                         <p className='text-sm text-muted-foreground'>
                                            {format(tx.createdAt.toDate(), 'PP')}
                                         </p>

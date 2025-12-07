@@ -24,30 +24,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  ArrowDown,
-  ArrowUp,
   Download,
   Upload,
-  Wallet as WalletIcon,
   Trophy,
   Ticket,
   CircleArrowUp,
-  CircleArrowDown,
-  ArrowLeft
+  CircleArrowDown
 } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useUser, useDoc, useCollection } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { UserProfile, Transaction, AppSettings, WithdrawalRequest } from "@/types";
+import { UserProfile, Transaction } from "@/types";
 import { format } from "date-fns";
 import { useFirebase } from "@/firebase/provider";
 import { addDoc, collection, runTransaction, doc, Timestamp } from "firebase/firestore";
@@ -70,7 +57,7 @@ const getTransactionIcon = (type: Transaction['type']) => {
         case 'add_money':
             return <CircleArrowDown className="h-5 w-5" />;
         default:
-            return <WalletIcon className="h-5 w-5" />;
+            return <Download className="h-5 w-5" />;
     }
 }
 
@@ -156,102 +143,101 @@ export default function WalletPage() {
     .reduce((sum, t) => sum + t.amount, 0);
 
   return (
-    <div className="bg-muted/30 min-h-screen">
+    <div className="bg-muted/30 flex flex-col min-h-screen">
       <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 sticky top-0 z-10 shadow-md">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                <ArrowLeft />
-            </Button>
             <h1 className="text-xl font-bold">Wallet</h1>
       </header>
 
-      <div className="p-4 space-y-6">
-        <Card className="bg-primary-dark text-primary-foreground shadow-lg -mt-16 mx-2">
-            <CardContent className="p-6 space-y-4">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <p className="text-sm opacity-80">Total Balance</p>
-                        {loading ? <Skeleton className="h-8 w-36 mt-1 bg-white/20"/> : <p className="text-3xl font-bold">₹{profile?.walletBalance?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</p>}
-                    </div>
-                </div>
-                 <div className="flex justify-between items-center pt-2">
-                    <div>
-                        <p className="text-sm opacity-80">Winning Balance</p>
-                        {loading ? <Skeleton className="h-6 w-28 mt-1 bg-white/20"/> : <p className="text-2xl font-bold">₹{totalWinnings.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>}
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-2 gap-4 px-2">
-            <Button className="py-6 text-base bg-green-500 hover:bg-green-600 text-white" onClick={() => router.push('/add-money')}>
-              <Upload className="mr-2 h-5 w-5" /> Deposit
-            </Button>
-             <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="destructive" className="py-6 text-base bg-red-500 hover:bg-red-600">
-                  <Download className="mr-2 h-5 w-5" /> Withdraw
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Request Withdrawal</DialogTitle>
-                  <DialogDescription>
-                    Withdrawal requests are processed within 24 hours.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="withdrawal-amount">Amount (₹)</Label>
-                    <Input id="withdrawal-amount" type="number" placeholder={`Available: ₹${profile?.walletBalance || 0}`} value={withdrawalAmount} onChange={(e) => setWithdrawalAmount(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="withdrawal-details">UPI ID / Bank Account</Label>
-                    <Input id="withdrawal-details" placeholder="e.g., yourname@upi or bank details" value={withdrawalDetails} onChange={(e) => setWithdrawalDetails(e.target.value)} />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <DialogClose asChild>
-                     <Button type="button" variant="outline">Cancel</Button>
-                  </DialogClose>
-                  <Button onClick={handleRequestWithdrawal} disabled={isSubmitting}>
-                    {isSubmitting ? 'Submitting...' : 'Submit Request'}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-        </div>
-
-        <div className="space-y-2 px-2">
-            <div className="flex justify-between items-center">
-                 <h2 className="text-lg font-semibold">Recent Transactions</h2>
-                 <Link href="/wallet/history" className="text-sm font-semibold text-primary">View All</Link>
-            </div>
-            <div className="bg-card p-4 rounded-lg shadow-sm space-y-4">
-            {loading ? (
-                <div className="text-center py-4 text-muted-foreground">Loading transactions...</div>
-            ) : transactions.length > 0 ? (
-                transactions.slice(0,5).map((tx: Transaction) => (
-                <div key={tx.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className={cn("p-2 rounded-full", tx.amount > 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600')}>
-                          {getTransactionIcon(tx.type)}
-                        </div>
+      <main className="flex-grow">
+        <div className="p-4 space-y-6">
+            <Card className="bg-primary-dark text-primary-foreground shadow-lg -mt-16 mx-2 relative top-12">
+                <CardContent className="p-6 space-y-4">
+                    <div className="flex justify-between items-center">
                         <div>
-                            <p className="font-semibold capitalize">{tx.description || tx.type.replace(/_/g, ' ')}</p>
-                            <p className="text-xs text-muted-foreground">{tx.createdAt ? format(tx.createdAt.toDate(), 'dd MMM yyyy') : 'N/A'}</p>
+                            <p className="text-sm opacity-80">Total Balance</p>
+                            {loading ? <Skeleton className="h-8 w-36 mt-1 bg-white/20"/> : <p className="text-3xl font-bold">₹{profile?.walletBalance?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</p>}
                         </div>
                     </div>
-                    <p className={cn("font-bold text-lg", tx.amount > 0 ? "text-green-600" : "text-red-600")}>
-                        {tx.amount > 0 ? "+" : "-"}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
-                    </p>
+                     <div className="flex justify-between items-center pt-2">
+                        <div>
+                            <p className="text-sm opacity-80">Winning Balance</p>
+                            {loading ? <Skeleton className="h-6 w-28 mt-1 bg-white/20"/> : <p className="text-2xl font-bold">₹{totalWinnings.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-2 gap-4 px-2 pt-12">
+                <Button className="py-6 text-base bg-green-500 hover:bg-green-600 text-white" onClick={() => router.push('/add-money')}>
+                  <Upload className="mr-2 h-5 w-5" /> Deposit
+                </Button>
+                 <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="destructive" className="py-6 text-base bg-red-500 hover:bg-red-600">
+                      <Download className="mr-2 h-5 w-5" /> Withdraw
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Request Withdrawal</DialogTitle>
+                      <DialogDescription>
+                        Withdrawal requests are processed within 24 hours.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="withdrawal-amount">Amount (₹)</Label>
+                        <Input id="withdrawal-amount" type="number" placeholder={`Available: ₹${profile?.walletBalance || 0}`} value={withdrawalAmount} onChange={(e) => setWithdrawalAmount(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="withdrawal-details">UPI ID / Bank Account</Label>
+                        <Input id="withdrawal-details" placeholder="e.g., yourname@upi or bank details" value={withdrawalDetails} onChange={(e) => setWithdrawalDetails(e.target.value)} />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <DialogClose asChild>
+                         <Button type="button" variant="outline">Cancel</Button>
+                      </DialogClose>
+                      <Button onClick={handleRequestWithdrawal} disabled={isSubmitting}>
+                        {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+            </div>
+
+            <div className="space-y-2 px-2">
+                <div className="flex justify-between items-center">
+                     <h2 className="text-lg font-semibold">Recent Transactions</h2>
+                     <Link href="/wallet/history" className="text-sm font-semibold text-primary">View All</Link>
                 </div>
-                ))
-            ) : (
-                <div className="text-center py-8 text-muted-foreground">No transactions yet.</div>
-            )}
+                <div className="bg-card p-4 rounded-lg shadow-sm space-y-4">
+                {loading ? (
+                    <div className="text-center py-4 text-muted-foreground">Loading transactions...</div>
+                ) : transactions.length > 0 ? (
+                    transactions.slice(0,5).map((tx: Transaction) => (
+                    <div key={tx.id} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className={cn("p-2 rounded-full", tx.amount > 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600')}>
+                              {getTransactionIcon(tx.type)}
+                            </div>
+                            <div>
+                                <p className="font-semibold capitalize">{tx.description || tx.type.replace(/_/g, ' ')}</p>
+                                <p className="text-xs text-muted-foreground">{tx.createdAt ? format(tx.createdAt.toDate(), 'dd MMM yyyy') : 'N/A'}</p>
+                            </div>
+                        </div>
+                        <p className={cn("font-bold text-lg", tx.amount > 0 ? "text-green-600" : "text-red-600")}>
+                            {tx.amount > 0 ? "+" : "-"}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                        </p>
+                    </div>
+                    ))
+                ) : (
+                    <div className="text-center py-8 text-muted-foreground">No transactions yet.</div>
+                )}
+                </div>
             </div>
         </div>
-      </div>
+      </main>
       <BottomNav />
     </div>
   );

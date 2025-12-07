@@ -1,3 +1,4 @@
+
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,15 +54,9 @@ const tournamentCardImage = PlaceHolderImages.find(
 
 export default function TournamentsPage() {
   return (
-    <AppShell>
+    <AppShell pageTitle="Tournaments">
       <div className="p-4 space-y-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold font-headline">Tournaments</h1>
-            <p className="text-muted-foreground">
-              Compete for bigger prizes in our tournaments.
-            </p>
-          </div>
           <Button asChild>
             <Link href="/create-tournament"><PlusCircle className="mr-2 h-4 w-4" />Host Tournament</Link>
           </Button>
@@ -73,7 +68,7 @@ export default function TournamentsPage() {
               {tournamentCardImage && (
                 <div className="relative h-40 w-full">
                   <Image
-                    src={`${tournamentCardImage.imageUrl}&seed=${tournament.id}`}
+                    src={`${tournamentCardImage.imageUrl.replace('&w=1080', '&w=600')}`}
                     alt={tournamentCardImage.description}
                     data-ai-hint={tournamentCardImage.imageHint}
                     fill

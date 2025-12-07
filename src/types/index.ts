@@ -17,6 +17,9 @@ export type UserProfile = {
   rank?: number;
   bannerUrl?: string;
   displayName?: string;
+  referralCode?: string;
+  referredBy?: string;
+  referralEarnings?: number;
 };
 
 export type Match = {
@@ -45,7 +48,7 @@ export type Transaction = {
   userId: string;
   userName?: string; // Denormalized for easier display
   userEmail?: string; // Denormalized for easier display
-  type: "deposit" | "withdrawal" | "entry_fee" | "prize" | "win" | "add_money";
+  type: "deposit" | "withdrawal" | "entry_fee" | "prize" | "win" | "add_money" | "referral_bonus";
   amount: number;
   status: "pending" | "completed" | "failed";
   createdAt: any; // Can be server timestamp
@@ -106,4 +109,10 @@ export type KycRequest = {
   processedBy?: string;
 }
 
-    
+export type Referral = {
+    id: string;
+    referrerId: string; // User who referred
+    referredId: string;  // User who was referred
+    status: 'pending' | 'completed'; // Completed after referred user plays first game
+    createdAt: any;
+}

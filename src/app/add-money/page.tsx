@@ -1,14 +1,13 @@
+
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Wallet } from 'lucide-react';
-import { BottomNav } from '@/components/layout/BottomNav';
+import { ArrowLeft } from 'lucide-react';
 
 export default function AddMoneyPage() {
   const [amount, setAmount] = useState('');

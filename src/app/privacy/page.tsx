@@ -3,10 +3,9 @@ import { AppShell } from "@/components/layout/AppShell";
 
 export default function PrivacyPolicyPage() {
   return (
-    <AppShell>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold font-headline mb-4">Privacy Policy</h1>
-        <div className="prose dark:prose-invert max-w-none">
+    <AppShell pageTitle="Privacy Policy" showBackButton>
+      <div className="p-4">
+        <div className="prose dark:prose-invert max-w-none bg-card p-6 rounded-lg">
             <p>Last updated: July 24, 2024</p>
 
             <p>This Privacy Policy describes Our policies and procedures on the collection, use and disclosure of Your information when You use the Service and tells You about Your privacy rights and how the law protects You.</p>

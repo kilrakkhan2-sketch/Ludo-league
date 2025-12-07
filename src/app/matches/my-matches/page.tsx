@@ -120,17 +120,8 @@ export default function MyMatchesPage() {
   )
 
   return (
-    <AppShell>
+    <AppShell pageTitle="My Matches" showBackButton>
       <div className="p-4 space-y-6">
-        <div className="flex flex-col gap-2">
-          <div>
-            <h1 className="text-3xl font-bold font-headline">My Matches</h1>
-            <p className="text-muted-foreground">
-              All of your active and past matches.
-            </p>
-          </div>
-        </div>
-
         {loading && matches.length === 0 ? <Skeletons /> : matches.length > 0 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

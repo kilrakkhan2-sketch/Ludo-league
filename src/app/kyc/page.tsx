@@ -21,7 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { UploadCloud, ShieldCheck } from "lucide-react";
-import Image from "next/image";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useUser, useDoc } from "@/firebase";
 import { useFirebase } from "@/firebase/provider";
@@ -101,19 +100,8 @@ export default function KycPage() {
 
 
   return (
-    <AppShell>
+    <AppShell pageTitle="KYC Verification" showBackButton>
       <div className="p-4 space-y-6">
-        <div className="flex flex-col gap-2">
-          <div>
-            <h1 className="text-3xl font-bold font-headline">
-              KYC Verification
-            </h1>
-            <p className="text-muted-foreground">
-              Verify your identity to unlock all platform features.
-            </p>
-          </div>
-        </div>
-
         {isVerified ? (
           <Alert className="bg-success/10 border-success/20">
             <ShieldCheck className="h-4 w-4 text-success" />

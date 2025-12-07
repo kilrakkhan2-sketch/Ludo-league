@@ -36,7 +36,7 @@ const MatchCardSkeleton = () => (
     </Card>
 );
 
-const MatchCard = ({ match, myMatchesCount }: { match: Match, myMatchesCount?: number }) => {
+const MatchCard = ({ match }: { match: Match }) => {
     const { user } = useUser();
     const hasJoined = user ? match.players.includes(user.uid) : false;
 
@@ -98,10 +98,6 @@ const MatchCard = ({ match, myMatchesCount }: { match: Match, myMatchesCount?: n
 }
 
 export default function OpenMatchesPage() {
-  const { user } = useUser();
-  const { data: myMatches } = useCollection<Match>('matches', {
-    where: user?.uid ? ['players', 'array-contains', user.uid] : undefined,
-  });
   const { data: matches, loading, hasMore, loadMore } = useCollection<Match>("matches", {
     where: ["status", "==", "open"],
     orderBy: ["createdAt", "desc"],
@@ -118,22 +114,15 @@ export default function OpenMatchesPage() {
   );
 
   return (
-    <AppShell>
+    <AppShell pageTitle="Open Matches">
       <div className="p-4 space-y-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold font-headline">Open Matches</h1>
-            <p className="text-muted-foreground">Available matches you can join right now.</p>
-          </div>
-        </div>
-
         {loading && matches.length === 0 ? (
           <Skeletons />
         ) : matches.length > 0 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {matches.map((match: Match) => (
-                <MatchCard key={match.id} match={match} myMatchesCount={myMatches.length} />
+                <MatchCard key={match.id} match={match} />
               ))}
             </div>
             {hasMore && (
