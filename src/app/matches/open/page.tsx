@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AppShell } from "@/components/layout/AppShell";
@@ -13,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Users, Trophy } from "lucide-react";
+import { Users, Trophy, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { useCollection, useUser } from "@/firebase";
 import type { Match } from "@/types";
@@ -39,6 +38,7 @@ const MatchCardSkeleton = () => (
 const MatchCard = ({ match }: { match: Match }) => {
     const { user } = useUser();
     const hasJoined = user ? match.players.includes(user.uid) : false;
+    const isFull = match.players.length >= match.maxPlayers;
 
     return (
       <Card className="flex flex-col hover:shadow-lg transition-shadow">
@@ -52,10 +52,10 @@ const MatchCard = ({ match }: { match: Match }) => {
             </div>
             <Badge
               variant={
-                match.players.length === match.maxPlayers ? "destructive" : "secondary"
+                isFull ? "destructive" : "secondary"
               }
             >
-              {match.players.length === match.maxPlayers ? 'Full' : 'Open'}
+              {isFull ? 'Full' : 'Open'}
             </Badge>
           </div>
         </CardHeader>
@@ -87,7 +87,7 @@ const MatchCard = ({ match }: { match: Match }) => {
             <Trophy className="h-5 w-5 text-yellow-500" />
             <p className="text-lg font-bold">₹{match.prizePool || match.entryFee * match.players.length * 0.9}</p>
           </div>
-           <Button asChild disabled={match.players.length === match.maxPlayers || hasJoined}>
+           <Button asChild disabled={isFull || hasJoined}>
              <Link href={`/match/${match.id}`}>
                 {hasJoined ? 'View' : 'Join'}
              </Link>
@@ -114,7 +114,7 @@ export default function OpenMatchesPage() {
   );
 
   return (
-    <AppShell pageTitle="Open Matches">
+    <AppShell pageTitle="Open Matches" showBackButton>
       <div className="p-4 space-y-6">
         {loading && matches.length === 0 ? (
           <Skeletons />
@@ -141,7 +141,7 @@ export default function OpenMatchesPage() {
               No open matches available right now. Why not create one?
             </p>
              <Button className="mt-4" asChild>
-                <Link href="/create-match">Create a Match</Link>
+                <Link href="/create-match"><PlusCircle className="mr-2 h-4 w-4"/>Create a Match</Link>
             </Button>
           </div>
         )}
