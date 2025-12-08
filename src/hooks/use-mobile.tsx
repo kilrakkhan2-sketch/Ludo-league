@@ -1,6 +1,6 @@
 import * as React from "react"
 
-const MOBILE_BREAKPOINT = 768; // sm breakpoint
+const MOBILE_BREAKPOINT = 768; // md breakpoint
 
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState(false);
@@ -18,7 +18,7 @@ export function useIsMobile() {
     window.addEventListener("resize", checkIsMobile);
 
     // Cleanup listener
-    return () => window.removeEventListener("resize", checkIs-mobile);
+    return () => window.removeEventListener("resize", checkIsMobile);
   }, []);
 
   return isMobile;
