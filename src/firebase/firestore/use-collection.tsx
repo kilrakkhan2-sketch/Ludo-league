@@ -44,7 +44,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     if (!path || !db) {
         return null;
     }
-    let q: Query<DocumentData> = optionsMemo?.isCollectionGroup ? collectionGroup(db, path) : collection(db, path);
+    
     const constraints: QueryConstraint[] = [];
 
     if (optionsMemo?.where) {
@@ -72,8 +72,10 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     if (optionsMemo?.limit) {
         constraints.push(limit(optionsMemo.limit));
     }
+    
+    const collectionRef = optionsMemo?.isCollectionGroup ? collectionGroup(db, path) : collection(db, path);
 
-    return query(q, ...constraints);
+    return query(collectionRef, ...constraints);
   }, [db, path, optionsMemo]);
 
   useEffect(() => {

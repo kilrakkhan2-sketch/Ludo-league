@@ -8,6 +8,10 @@ import type { Match, UserProfile, Transaction } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Bell, MessageCircle, PlusCircle, Swords } from "lucide-react";
 import Link from "next/link";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Users, Trophy } from "lucide-react";
 
 const StatCard = ({ title, value, loading }: { title: string, value: string | number, loading: boolean }) => (
     <div className="bg-card p-3 rounded-lg shadow-sm text-center">
@@ -25,31 +29,76 @@ const StatCard = ({ title, value, loading }: { title: string, value: string | nu
     </div>
 );
 
-const MatchCard = ({ match }: { match: Match }) => (
-    <div className="shrink-0 w-64 bg-card rounded-lg shadow-sm overflow-hidden">
-        <div className="p-3 bg-gradient-to-br from-primary to-purple-600 text-primary-foreground">
-            <h3 className="font-bold text-md truncate">{match.title || "Classic Match"}</h3>
-            <p className="text-xs opacity-80">Prize: ₹{match.prizePool?.toLocaleString() || 'N/A'}</p> 
-        </div>
-        <div className="p-3 space-y-2 text-sm">
-            <div className="flex justify-between">
-                <span className="text-muted-foreground">Room Code</span>
-                <span className="font-mono">{match.ludoKingCode || 'N/A'}</span>
+
+const MatchCard = ({ match }: { match: Match }) => {
+    const { user } = useUser();
+    const hasJoined = user ? match.players.includes(user.uid) : false;
+    const isFull = match.players.length >= match.maxPlayers;
+
+    const getStatusVariant = (status: Match['status']) => {
+        switch (status) {
+            case 'open': return 'secondary';
+            case 'ongoing': return 'default';
+            case 'completed': return 'outline';
+            case 'verification': return 'destructive';
+            default: return 'default';
+        }
+    }
+
+    return (
+      <Card className="flex flex-col hover:shadow-lg transition-shadow shrink-0 w-72">
+        <CardHeader className="p-4">
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="text-lg truncate">{match.title}</CardTitle>
+              <CardDescription>
+                Entry: <span className="font-bold text-primary">₹{match.entryFee}</span>
+              </CardDescription>
             </div>
-            <div className="flex justify-between">
-                <span className="text-muted-foreground">Entry Fee</span>
-                <span className="font-bold">₹{match.entryFee.toLocaleString()}</span>
-            </div>
-        </div>
-        <div className="p-2">
-            <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" asChild>
-                <Link href={`/match/${match.id}`}>
-                    {match.status === 'open' ? 'Join Now' : 'View Match'}
-                </Link>
-            </Button>
-        </div>
-    </div>
-);
+            <Badge
+              variant={getStatusVariant(match.status)}
+            >
+              {match.status}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-0 flex-grow">
+          <div className="flex items-center -space-x-2 mb-2">
+            {Array.from({ length: match.players.length }).map((_, i) => (
+              <Avatar key={i} className="h-6 w-6 border-2 border-background">
+                <AvatarImage
+                  src={`https://api.dicebear.com/7.x/adventurer/svg?seed=player${match.id}-${i}`}
+                />
+                <AvatarFallback>P{i + 1}</AvatarFallback>
+              </Avatar>
+            ))}
+             {Array.from({ length: Math.max(0, match.maxPlayers - match.players.length) }).map((_, i) => (
+                <Avatar key={`empty-${i}`} className="h-6 w-6 border-2 border-background bg-muted">
+                    <AvatarFallback>?</AvatarFallback>
+                </Avatar>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground text-sm">
+            <Users className="h-4 w-4" />
+            <span>
+              {match.players.length} / {match.maxPlayers} Players
+            </span>
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-4">
+          <div className="flex items-center gap-1.5">
+            <Trophy className="h-5 w-5 text-yellow-500" />
+            <p className="text-lg font-bold">₹{match.prizePool || match.entryFee * match.players.length * 0.9}</p>
+          </div>
+           <Button asChild disabled={isFull && !hasJoined}>
+             <Link href={`/match/${match.id}`}>
+                {hasJoined ? 'View' : 'Join'}
+             </Link>
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+}
 
 const MatchSection = ({ title, matches, loading, emptyMessage, viewAllLink }: { title: string, matches: Match[], loading: boolean, emptyMessage: string, viewAllLink?: string }) => (
     <section>
@@ -59,8 +108,8 @@ const MatchSection = ({ title, matches, loading, emptyMessage, viewAllLink }: { 
         </div>
         {loading ? (
              <div className="flex space-x-4 overflow-x-auto pb-4">
-                <Skeleton className="shrink-0 w-64 h-48 rounded-lg" />
-                <Skeleton className="shrink-0 w-64 h-48 rounded-lg" />
+                <Skeleton className="shrink-0 w-72 h-48 rounded-lg" />
+                <Skeleton className="shrink-0 w-72 h-48 rounded-lg" />
              </div>
         ): matches.length > 0 ? (
             <div className="flex space-x-4 overflow-x-auto pb-4 -mx-4 px-4">
@@ -82,9 +131,16 @@ export default function DashboardPage() {
     const { user, loading: userLoading } = useUser();
     const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
     
-    // My Matches (participating) - this is the most important data to show first.
+    // My Matches (participating and not completed)
     const { data: myMatches, loading: myMatchesLoading } = useCollection<Match>('matches', {
         where: user?.uid ? [['players', 'array-contains', user.uid], ['status', '!=', 'completed']] : undefined,
+        limit: 10,
+        orderBy: ['createdAt', 'desc']
+    });
+
+    // Open matches to join
+    const { data: openMatches, loading: openMatchesLoading } = useCollection<Match>('matches', {
+        where: ['status', '==', 'open'],
         limit: 10,
         orderBy: ['createdAt', 'desc']
     });
@@ -93,10 +149,10 @@ export default function DashboardPage() {
         user ? `users/${user.uid}/transactions` : '', { orderBy: ['createdAt', 'desc'], limit: 100 }
     );
 
-    const loading = userLoading || profileLoading || myMatchesLoading || txLoading;
+    const loading = userLoading || profileLoading;
     
     const matchesPlayed = transactions.filter(t => t.type === 'entry_fee').length;
-    const matchesWon = transactions.filter(t => t.type === 'win').length;
+    const matchesWon = transactions.filter(t => t.type === 'win' || t.type === 'prize').length;
     const winRate = matchesPlayed > 0 ? `${((matchesWon / matchesPlayed) * 100).toFixed(0)}%` : "0%";
 
     return (
@@ -130,9 +186,9 @@ export default function DashboardPage() {
                     <section>
                         <h2 className="text-lg font-bold mb-3">Quick Stats</h2>
                         <div className="grid grid-cols-3 gap-3 sm:gap-4">
-                            <StatCard title="Total Matches" value={matchesPlayed} loading={loading}/>
-                            <StatCard title="Wins" value={matchesWon} loading={loading} />
-                            <StatCard title="Win Rate" value={winRate} loading={loading} />
+                            <StatCard title="Total Matches" value={matchesPlayed} loading={txLoading}/>
+                            <StatCard title="Wins" value={matchesWon} loading={txLoading} />
+                            <StatCard title="Win Rate" value={winRate} loading={txLoading} />
                         </div>
                     </section>
 
@@ -144,17 +200,13 @@ export default function DashboardPage() {
                         viewAllLink="/matches/my-matches"
                     />
 
-                    <div className="bg-card p-4 rounded-lg shadow-sm">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="font-bold">Find a Match</h3>
-                                <p className="text-sm text-muted-foreground">Browse open games and join the action.</p>
-                            </div>
-                             <Button asChild>
-                                <Link href="/matches/open"><Swords className="mr-2 h-4 w-4"/> View All</Link>
-                            </Button>
-                        </div>
-                    </div>
+                    <MatchSection
+                        title="Open Matches"
+                        matches={openMatches}
+                        loading={openMatchesLoading}
+                        emptyMessage="No open matches available"
+                        viewAllLink="/matches/open"
+                    />
                 </div>
             </main>
         </AppShell>
