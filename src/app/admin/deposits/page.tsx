@@ -35,7 +35,7 @@ export default function AdminDepositsPage() {
   const [statusFilter, setStatusFilter] = useState('pending');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: deposits, loading: depositsLoading, reload: reloadDeposits } = useCollection<DepositRequest>('deposit-requests', {
+  const { data: deposits, loading: depositsLoading } = useCollection<DepositRequest>('deposit-requests', {
     orderBy: ['createdAt', 'desc'],
     where: ['status', '==', statusFilter]
   });
@@ -72,7 +72,6 @@ export default function AdminDepositsPage() {
 
       if((result.data as any).success) {
         toast({ title: 'Success', description: 'Deposit has been approved.' });
-        reloadDeposits();
       } else {
          throw new Error((result.data as any).message || 'The cloud function failed.');
       }
@@ -97,7 +96,6 @@ export default function AdminDepositsPage() {
         });
       await batch.commit();
       toast({ title: 'Success', description: 'Deposit has been rejected.' });
-      reloadDeposits();
     } catch (error) {
       console.error('Error rejecting deposit:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not reject deposit.' });

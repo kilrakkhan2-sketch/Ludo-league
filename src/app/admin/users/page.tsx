@@ -19,7 +19,7 @@ import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminUsersPage() {
-  const { data: users, loading, hasMore, loadMore } = useCollection<UserProfile>('users', { 
+  const { data: users, loading } = useCollection<UserProfile>('users', { 
     orderBy: ['createdAt', 'desc'], 
     limit: 20,
   });
@@ -87,13 +87,6 @@ export default function AdminUsersPage() {
           ))}
         </TableBody>
       </Table>
-      {hasMore && (
-        <div className="flex justify-center mt-4">
-            <Button onClick={loadMore} disabled={loading}>
-                {loading ? "Loading..." : "Load More"}
-            </Button>
-        </div>
-      )}
     </AdminShell>
   );
 }

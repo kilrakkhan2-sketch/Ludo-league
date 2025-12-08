@@ -54,7 +54,7 @@ export default function AdminWithdrawalsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<WithdrawalRequest | null>(null);
 
-  const { data: requests, loading, reload: reloadRequests } = useCollection<WithdrawalRequest>('withdrawal-requests', {
+  const { data: requests, loading } = useCollection<WithdrawalRequest>('withdrawal-requests', {
     where: ['status', '==', statusFilter],
     orderBy: ['createdAt', 'desc'],
   });
@@ -153,7 +153,6 @@ export default function AdminWithdrawalsPage() {
         });
 
         toast({ title: 'Success', description: `Request has been ${action}ed.` });
-        reloadRequests();
         setSelectedRequest(null);
     } catch (error: any) {
         console.error("Error processing withdrawal:", error);

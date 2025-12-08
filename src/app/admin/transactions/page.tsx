@@ -18,7 +18,7 @@ import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminTransactionsPage() {
-  const { data: transactions, loading, hasMore, loadMore } = useCollection<Transaction>('transactions', { 
+  const { data: transactions, loading } = useCollection<Transaction>('transactions', { 
     orderBy: ['createdAt', 'desc'], 
     limit: 20, 
     isCollectionGroup: true 
@@ -74,13 +74,6 @@ export default function AdminTransactionsPage() {
           ))}
         </TableBody>
       </Table>
-      {hasMore && (
-        <div className="flex justify-center mt-4">
-            <Button onClick={loadMore} disabled={loading}>
-                {loading ? "Loading..." : "Load More"}
-            </Button>
-        </div>
-      )}
     </AdminShell>
   );
 }

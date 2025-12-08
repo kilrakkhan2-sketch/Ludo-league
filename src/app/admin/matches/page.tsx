@@ -21,7 +21,7 @@ export default function AdminMatchesPage() {
   const [statusFilter, setStatusFilter] = useState('verification');
   const [selectedWinner, setSelectedWinner] = useState<string | null>(null);
 
-  const { data: matches, loading: matchesLoading, reload: reloadMatches } = useCollection<Match>('matches', {
+  const { data: matches, loading: matchesLoading } = useCollection<Match>('matches', {
     where: ['status', '==', statusFilter],
     orderBy: ['createdAt', 'desc'],
   });
@@ -44,13 +44,14 @@ export default function AdminMatchesPage() {
         batch.update(matchRef, { status: 'completed', winnerId: selectedWinner });
 
         // 2. Update winner's wallet
-        const newBalance = (winnerUser.walletBalance || 0) + match.prizePool;
+        const prizePool = match.prizePool || 0;
+        const newBalance = (winnerUser.walletBalance || 0) + prizePool;
         batch.update(winnerRef, { walletBalance: newBalance });
 
         // 3. Create a transaction record
         const transactionRef = doc(collection(firestore, `users/${selectedWinner}/transactions`));
         batch.set(transactionRef, {
-            amount: match.prizePool,
+            amount: prizePool,
             type: 'win',
             description: `Prize money for match: ${match.title}`,
             createdAt: new Date(),
@@ -58,8 +59,7 @@ export default function AdminMatchesPage() {
 
         await batch.commit();
 
-        toast({ title: 'Winner Declared!', description: `${winnerUser.name} has been awarded ₹${match.prizePool}.` });
-        reloadMatches();
+        toast({ title: 'Winner Declared!', description: `${winnerUser.name} has been awarded ₹${prizePool}.` });
         setSelectedWinner(null);
     } catch (error) {
         console.error("Error declaring winner:", error);
@@ -85,7 +85,7 @@ export default function AdminMatchesPage() {
                 {matchesLoading ? <TableRow><TableCell colSpan={5}>Loading...</TableCell></TableRow> : matches.map((match: Match) => (
                     <TableRow key={match.id}>
                         <TableCell>{match.title}</TableCell>
-                        <TableCell>₹{match.prizePool}</TableCell>
+                        <TableCell>₹{match.prizePool || 0}</TableCell>
                         <TableCell>{format(new Date(match.createdAt.seconds * 1000), 'dd MMM, HH:mm')}</TableCell>
                         <TableCell><Badge>{match.status}</Badge></TableCell>
                         <TableCell>
