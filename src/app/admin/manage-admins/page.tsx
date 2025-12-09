@@ -176,12 +176,13 @@ export default function ManageAdminsPage() {
                         </Select>
                       </TableCell>
                       <TableCell className="text-right">
-                          <DialogTrigger asChild>
-                              <Button variant="outline" size="sm" onClick={() => setSelectedUser(user)}>
-                                  <Banknote className="mr-2 h-4 w-4"/>
-                                  Set Balance
-                              </Button>
-                          </DialogTrigger>
+                          <Button variant="outline" size="sm" onClick={() => {
+                            setSelectedUser(user);
+                            setIsDialogOpen(true);
+                          }}>
+                              <Banknote className="mr-2 h-4 w-4"/>
+                              Set Balance
+                          </Button>
                       </TableCell>
                     </TableRow>
                   ))}
