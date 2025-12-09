@@ -70,13 +70,12 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
     return <div className="min-h-screen w-full bg-muted/30">{children}</div>;
   }
   
-  // AppShell is now wrapped in SidebarProvider at the root, so we can use it everywhere.
   return (
-    <SidebarProvider>
+    <>
       {/* Mobile View */}
       {isMobile && (
-        <>
-          <Sidebar>
+        <div className={cn("w-full bg-muted/30", className)}>
+           <Sidebar>
             <SidebarContent>
               <SidebarHeader>
                  <div className="flex items-center gap-2">
@@ -122,29 +121,27 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
             </SidebarFooter>
             </SidebarContent>
           </Sidebar>
-          <div className={cn("w-full bg-muted/30", className)}>
-            <div className="flex flex-col min-h-screen">
-                <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 sticky top-0 z-10 shadow-md shrink-0">
-                    {showBackButton ? (
-                      <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                          <ArrowLeft />
+          <div className="flex flex-col min-h-screen">
+              <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 sticky top-0 z-10 shadow-md shrink-0">
+                  {showBackButton ? (
+                    <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                        <ArrowLeft />
+                    </Button>
+                  ) : (
+                    <SidebarTrigger asChild>
+                       <Button variant="ghost" size="icon">
+                          <Menu />
                       </Button>
-                    ) : (
-                      <SidebarTrigger asChild>
-                         <Button variant="ghost" size="icon">
-                            <Menu />
-                        </Button>
-                      </SidebarTrigger>
-                    )}
-                    <h1 className="text-xl font-bold">{pageTitle}</h1>
-                </header>
-                <main className="flex-grow overflow-y-auto pb-20">
-                    {children}
-                </main>
-            </div>
-            <BottomNav />
+                    </SidebarTrigger>
+                  )}
+                  <h1 className="text-xl font-bold">{pageTitle}</h1>
+              </header>
+              <main className="flex-grow overflow-y-auto pb-20">
+                  {children}
+              </main>
           </div>
-        </>
+          <BottomNav />
+        </div>
       )}
 
       {/* Desktop View */}
@@ -210,7 +207,11 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
 
           <SidebarInset className="flex flex-col max-h-screen">
             <header className="p-4 border-b shrink-0 flex items-center gap-4">
-              <SidebarTrigger className="sm:hidden"/>
+              <div className="sm:hidden">
+                <SidebarTrigger>
+                  <Menu />
+                </SidebarTrigger>
+              </div>
               <h1 className="text-2xl font-bold">{pageTitle}</h1>
             </header>
             <div className="flex-grow overflow-y-auto">
@@ -219,6 +220,6 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
           </SidebarInset>
         </div>
       )}
-    </SidebarProvider>
+    </>
   );
 }
