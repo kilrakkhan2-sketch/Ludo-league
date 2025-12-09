@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode } from "react";
@@ -124,16 +125,13 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
               </Sidebar>
               <div className="flex flex-col min-h-screen">
                   <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 sticky top-0 z-10 shadow-md shrink-0">
-                      {showBackButton && (
+                      {showBackButton ? (
                           <Button variant="ghost" size="icon" onClick={() => router.back()}>
                               <ArrowLeft />
                           </Button>
-                      )}
-                      {!showBackButton && (
-                          <SidebarTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                  <Menu />
-                              </Button>
+                      ) : (
+                          <SidebarTrigger>
+                              <Menu />
                           </SidebarTrigger>
                       )}
                       <h1 className="text-xl font-bold">{pageTitle}</h1>

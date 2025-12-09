@@ -147,7 +147,9 @@ export default function AdminDepositsPage() {
                       <TableCell><Badge variant={getStatusVariant(deposit.status)}>{deposit.status}</Badge></TableCell>
                       <TableCell className="text-right">
                           <Dialog>
-                              <DialogTrigger asChild><Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button></DialogTrigger>
+                              <DialogTrigger>
+                                <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
+                              </DialogTrigger>
                               <DialogContent className="max-w-md">
                                   <DialogHeader>
                                       <DialogTitle>Deposit Details</DialogTitle>

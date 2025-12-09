@@ -226,5 +226,3 @@ export function AdminShell({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
-
-    
