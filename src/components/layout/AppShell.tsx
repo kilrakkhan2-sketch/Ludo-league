@@ -67,10 +67,6 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
     }
   };
 
-  if (hideNav) {
-    return <div className="min-h-screen w-full bg-muted/30">{children}</div>;
-  }
-  
   const headerContent = (
     <>
       {showBackButton && (
@@ -79,78 +75,81 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
         </Button>
       )}
       {!showBackButton && (
-        <SidebarTrigger>
-          <Menu />
+        <SidebarTrigger asChild>
+           <Button variant="ghost" size="icon">
+                <Menu />
+            </Button>
         </SidebarTrigger>
       )}
       <h1 className="text-xl font-bold">{pageTitle}</h1>
     </>
   );
 
+  if (hideNav) {
+    return <div className="min-h-screen w-full bg-muted/30">{children}</div>;
+  }
+
   return (
     <>
       {/* Mobile View */}
       {isMobile && (
         <SidebarProvider>
-          <div className={cn("min-h-screen w-full bg-muted/30", className)}>
-              <Sidebar>
-                <SidebarContent>
-                  <SidebarHeader>
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 bg-primary rounded-lg">
-                        <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
-                      </div>
-                      <h1 className="text-xl font-bold font-headline text-primary">LudoLeague</h1>
-                    </div>
-                  </SidebarHeader>
-                  <SidebarMenu>
-                    {navItems.map((item) => (
-                      <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton href={item.href}>
-                          <item.icon />
-                          <span>{item.label}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                  <SidebarFooter>
-                    {loading ? (
-                      <div className="flex items-center gap-2 p-2">
-                        <Skeleton className="h-8 w-8 rounded-full" />
-                        <Skeleton className="h-4 flex-grow" />
-                      </div>
-                    ) : user ? (
-                        <div className="flex flex-col gap-2">
-                            <Button variant="ghost" className="justify-start w-full gap-2 p-2 h-auto" onClick={() => router.push('/profile')}>
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src={profile?.photoURL || undefined} />
-                                    <AvatarFallback>{profile?.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div className="text-left overflow-hidden">
-                                    <p className="font-medium truncate">{profile?.displayName || 'User'}</p>
-                                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                                </div>
-                            </Button>
-                            <Button variant="destructive" onClick={handleLogout}><LogOut className="mr-2"/> Logout</Button>
+            <div className={cn("flex flex-col h-screen w-full bg-muted/30", className)}>
+                <Sidebar>
+                    <SidebarContent>
+                    <SidebarHeader>
+                        <div className="flex items-center gap-2">
+                        <div className="p-2 bg-primary rounded-lg">
+                            <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
                         </div>
-                    ) : (
-                      <Button asChild className="w-full"><Link href="/login">Login</Link></Button>
-                    )}
-                </SidebarFooter>
-                </SidebarContent>
-              </Sidebar>
-              
-              <div className="flex flex-col min-h-screen">
-                  <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 sticky top-0 z-10 shadow-md shrink-0">
+                        <h1 className="text-xl font-bold font-headline text-primary">LudoLeague</h1>
+                        </div>
+                    </SidebarHeader>
+                    <SidebarMenu>
+                        {navItems.map((item) => (
+                        <SidebarMenuItem key={item.href}>
+                            <SidebarMenuButton href={item.href}>
+                            <item.icon />
+                            <span>{item.label}</span>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        ))}
+                    </SidebarMenu>
+                    <SidebarFooter>
+                        {loading ? (
+                        <div className="flex items-center gap-2 p-2">
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <Skeleton className="h-4 flex-grow" />
+                        </div>
+                        ) : user ? (
+                            <div className="flex flex-col gap-2">
+                                <Button variant="ghost" className="justify-start w-full gap-2 p-2 h-auto" onClick={() => router.push('/profile')}>
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarImage src={profile?.photoURL || undefined} />
+                                        <AvatarFallback>{profile?.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="text-left overflow-hidden">
+                                        <p className="font-medium truncate">{profile?.displayName || 'User'}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                                    </div>
+                                </Button>
+                                <Button variant="destructive" onClick={handleLogout}><LogOut className="mr-2"/> Logout</Button>
+                            </div>
+                        ) : (
+                        <Button asChild className="w-full"><Link href="/login">Login</Link></Button>
+                        )}
+                    </SidebarFooter>
+                    </SidebarContent>
+                </Sidebar>
+                
+                <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 z-10 shadow-md shrink-0">
                     {headerContent}
-                  </header>
-                  <main className="flex-grow overflow-y-auto pb-20">
-                      {children}
-                  </main>
-              </div>
-
-              <BottomNav />
-          </div>
+                </header>
+                <main className="flex-grow overflow-y-auto pb-16">
+                    {children}
+                </main>
+                <BottomNav />
+            </div>
         </SidebarProvider>
       )}
 
