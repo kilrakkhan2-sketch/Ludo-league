@@ -76,180 +76,243 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
   };
 
   const headerContent = (
-    <>
-      {showBackButton ? (
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft />
-        </Button>
-      ) : (
-        <SidebarTrigger>
-            <Menu />
-        </SidebarTrigger>
+    <div className="flex items-center gap-4">
+       {showBackButton && (
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+              <ArrowLeft />
+          </Button>
+      )}
+      {!showBackButton && (
+           <SidebarTrigger>
+              <Menu />
+          </SidebarTrigger>
       )}
       <h1 className="text-xl font-bold">{pageTitle}</h1>
-    </>
+    </div>
   );
+
+  const userMenu = loading ? (
+    <Skeleton className="h-8 w-8 rounded-full" />
+  ) : user ? (
+     <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Avatar className="h-8 w-8">
+                    <AvatarImage src={profile?.photoURL || undefined} alt={profile?.displayName || ''} />
+                    <AvatarFallback>{profile?.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
+                </Avatar>
+            </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{profile?.displayName}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => router.push('/profile')}>
+                <User className="mr-2 h-4 w-4" />
+                <span>Profile</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+            </DropdownMenuItem>
+        </DropdownMenuContent>
+    </DropdownMenu>
+  ) : null;
 
   if (hideNav) {
     return <div className="min-h-screen w-full bg-muted/30">{children}</div>;
   }
 
-  return (
-    <>
-      {/* Mobile View */}
-      {isMobile && (
-        <div className={cn("flex flex-col h-screen w-full bg-muted/30", className)}>
-            <SidebarProvider>
-                <Sidebar>
-                    <SidebarContent>
-                    <SidebarHeader>
-                        <div className="flex items-center gap-2">
-                        <div className="p-2 bg-primary rounded-lg">
-                            <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
-                        </div>
-                        <h1 className="text-xl font-bold font-headline text-primary">LudoLeague</h1>
-                        </div>
-                    </SidebarHeader>
-                    <SidebarMenu>
-                        {navItems.map((item) => (
-                        <SidebarMenuItem key={item.href}>
-                            <SidebarMenuButton href={item.href}>
-                            <item.icon />
-                            <span>{item.label}</span>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                        ))}
-                        {isAdmin && (
-                            <SidebarMenuItem>
-                                <SidebarMenuButton href={adminNavItem.href}>
-                                    <adminNavItem.icon />
-                                    <span>{adminNavItem.label}</span>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                        )}
-                    </SidebarMenu>
-                    <SidebarFooter>
-                        {loading ? (
-                        <div className="flex items-center gap-2 p-2">
-                            <Skeleton className="h-8 w-8 rounded-full" />
-                            <Skeleton className="h-4 flex-grow" />
-                        </div>
-                        ) : user ? (
-                            <div className="flex flex-col gap-2">
-                                <Button variant="ghost" className="justify-start w-full gap-2 p-2 h-auto" onClick={() => router.push('/profile')}>
-                                    <Avatar className="h-8 w-8">
-                                        <AvatarImage src={profile?.photoURL || undefined} />
-                                        <AvatarFallback>{profile?.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="text-left overflow-hidden">
-                                        <p className="font-medium truncate">{profile?.displayName || 'User'}</p>
-                                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                                    </div>
-                                </Button>
-                                <Button variant="destructive" onClick={handleLogout}><LogOut className="mr-2"/> Logout</Button>
-                            </div>
-                        ) : (
-                        <Button asChild className="w-full"><Link href="/login">Login</Link></Button>
-                        )}
-                    </SidebarFooter>
-                    </SidebarContent>
-                </Sidebar>
-                
-                <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 z-10 shadow-md shrink-0">
-                    {headerContent}
-                </header>
-                <main className="flex-grow overflow-y-auto pb-16">
-                    {children}
-                </main>
-                <BottomNav />
-            </SidebarProvider>
-        </div>
-      )}
-
-      {/* Desktop View */}
-      {!isMobile && (
-        <div className={cn("min-h-screen w-full bg-muted/30", className)}>
+  // Mobile View
+  if (isMobile) {
+    return (
+      <div className={cn("flex flex-col h-screen w-full bg-muted/30", className)}>
           <SidebarProvider>
+              <Sidebar>
+                  <SidebarContent>
+                  <SidebarHeader>
+                      <div className="flex items-center gap-2">
+                      <div className="p-2 bg-primary rounded-lg">
+                          <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
+                      </div>
+                      <h1 className="text-xl font-bold font-headline text-primary">LudoLeague</h1>
+                      </div>
+                  </SidebarHeader>
+                  <SidebarMenu>
+                      {navItems.map((item) => (
+                      <SidebarMenuItem key={item.href}>
+                          <SidebarMenuButton href={item.href}>
+                          <item.icon />
+                          <span>{item.label}</span>
+                          </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      ))}
+                      {isAdmin && (
+                          <SidebarMenuItem>
+                              <SidebarMenuButton href={adminNavItem.href}>
+                                  <adminNavItem.icon />
+                                  <span>{adminNavItem.label}</span>
+                              </SidebarMenuButton>
+                          </SidebarMenuItem>
+                      )}
+                  </SidebarMenu>
+                  <SidebarFooter>
+                      {loading ? (
+                      <div className="flex items-center gap-2 p-2">
+                          <Skeleton className="h-8 w-8 rounded-full" />
+                          <Skeleton className="h-4 flex-grow" />
+                      </div>
+                      ) : user ? (
+                          <div className="flex flex-col gap-2">
+                              <Button variant="ghost" className="justify-start w-full gap-2 p-2 h-auto" onClick={() => router.push('/profile')}>
+                                  <Avatar className="h-8 w-8">
+                                      <AvatarImage src={profile?.photoURL || undefined} />
+                                      <AvatarFallback>{profile?.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
+                                  </Avatar>
+                                  <div className="text-left overflow-hidden">
+                                      <p className="font-medium truncate">{profile?.displayName || 'User'}</p>
+                                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                                  </div>
+                              </Button>
+                              <Button variant="destructive" onClick={handleLogout}><LogOut className="mr-2"/> Logout</Button>
+                          </div>
+                      ) : (
+                      <Button asChild className="w-full"><Link href="/login">Login</Link></Button>
+                      )}
+                  </SidebarFooter>
+                  </SidebarContent>
+              </Sidebar>
+              
+              <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 z-10 shadow-md shrink-0">
+                  {headerContent}
+              </header>
+              <main className="flex-grow overflow-y-auto pb-20">
+                  {children}
+              </main>
+              <BottomNav />
+          </SidebarProvider>
+      </div>
+    );
+  }
+
+  // Desktop View
+  return (
+      <div className={cn("min-h-screen w-full bg-muted/30", className)}>
+        <SidebarProvider>
+          {isAdmin ? (
+            // Desktop view for Admins with Sidebar
             <Sidebar>
-              <SidebarContent>
+                <SidebarContent>
                 <SidebarHeader>
-                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                     <div className="p-2 bg-primary rounded-lg">
-                      <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
+                        <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
                     </div>
                     <h1 className="text-xl font-bold font-headline text-primary">LudoLeague</h1>
-                  </div>
+                    </div>
                 </SidebarHeader>
                 <SidebarMenu>
-                  {navItems.map((item) => (
+                    {navItems.map((item) => (
                     <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton href={item.href} tooltip={item.label}>
+                        <SidebarMenuButton href={item.href} tooltip={item.label}>
                         <item.icon />
                         <span>{item.label}</span>
-                      </SidebarMenuButton>
+                        </SidebarMenuButton>
                     </SidebarMenuItem>
-                  ))}
-                  {isAdmin && (
+                    ))}
+                    {isAdmin && (
                     <SidebarMenuItem>
                         <SidebarMenuButton href={adminNavItem.href} tooltip={adminNavItem.label}>
                             <adminNavItem.icon />
                             <span>{adminNavItem.label}</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
-                  )}
+                    )}
                 </SidebarMenu>
                 <SidebarFooter>
-                  {loading ? (
+                    {loading ? (
                     <div className="flex items-center gap-2 p-2">
-                      <Skeleton className="h-8 w-8 rounded-full" />
-                      <Skeleton className="h-4 flex-grow" />
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <Skeleton className="h-4 flex-grow" />
                     </div>
-                  ) : user ? (
+                    ) : user ? (
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+                        <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="justify-start w-full gap-2 p-2 h-auto">
-                          <Avatar className="h-8 w-8">
+                            <Avatar className="h-8 w-8">
                             <AvatarImage src={profile?.photoURL || undefined} />
                             <AvatarFallback>{profile?.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div className="text-left overflow-hidden group-data-[collapsible=icon]:hidden">
+                            </Avatar>
+                            <div className="text-left overflow-hidden group-data-[collapsible=icon]:hidden">
                             <p className="font-medium truncate">{profile?.displayName || 'User'}</p>
                             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                          </div>
+                            </div>
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-56 mb-2" align="end" forceMount>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-56 mb-2" align="end" forceMount>
                         <DropdownMenuLabel>{profile?.displayName || user.email}</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => router.push('/profile')}>
-                          <User className="mr-2 h-4 w-4" /><span>Profile</span>
+                            <User className="mr-2 h-4 w-4" /><span>Profile</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={handleLogout}>
-                          <LogOut className="mr-2 h-4 w-4" /><span>Log out</span>
+                            <LogOut className="mr-2 h-4 w-4" /><span>Log out</span>
                         </DropdownMenuItem>
-                      </DropdownMenuContent>
+                        </DropdownMenuContent>
                     </DropdownMenu>
-                  ) : (
+                    ) : (
                     <Button asChild className="w-full"><Link href="/login">Login</Link></Button>
-                  )}
+                    )}
                 </SidebarFooter>
-              </SidebarContent>
+                </SidebarContent>
             </Sidebar>
+          ) : null}
 
-            <SidebarInset className="flex flex-col max-h-screen">
-              <header className="p-4 border-b shrink-0 flex items-center gap-4">
-                <div className="sm:hidden">
-                    {headerContent}
-                </div>
-                <h1 className="text-2xl font-bold hidden sm:block">{pageTitle}</h1>
-              </header>
-              <div className="flex-grow overflow-y-auto">
-                {children}
-              </div>
-            </SidebarInset>
-          </SidebarProvider>
-        </div>
-      )}
-    </>
+          <SidebarInset className="flex flex-col max-h-screen">
+            {/* Simple header for non-admin desktop users */}
+            {!isAdmin && (
+                 <header className="p-4 border-b shrink-0 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                         <div className="p-2 bg-primary rounded-lg">
+                            <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
+                        </div>
+                        <h1 className="text-xl font-bold font-headline text-primary">LudoLeague</h1>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        {navItems.map(item => (
+                            <Button key={item.href} variant="ghost" asChild>
+                                <Link href={item.href}>{item.label}</Link>
+                            </Button>
+                        ))}
+                        {userMenu}
+                    </div>
+                </header>
+            )}
+             {/* Header for admin desktop users */}
+            {isAdmin && (
+                <header className="p-4 border-b shrink-0 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    {showBackButton && (
+                      <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                        <ArrowLeft />
+                      </Button>
+                    )}
+                    <h1 className="text-2xl font-bold">{pageTitle}</h1>
+                  </div>
+                  {userMenu}
+                </header>
+            )}
+            <div className="flex-grow overflow-y-auto">
+              {children}
+            </div>
+          </SidebarInset>
+        </SidebarProvider>
+      </div>
   );
 }
+
+    
