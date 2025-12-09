@@ -73,11 +73,12 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
   
   const headerContent = (
     <>
-      {showBackButton ? (
+      {showBackButton && (
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft />
         </Button>
-      ) : (
+      )}
+      {!showBackButton && (
         <SidebarTrigger>
           <Menu />
         </SidebarTrigger>
@@ -90,8 +91,8 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
     <>
       {/* Mobile View */}
       {isMobile && (
-        <div className={cn("w-full bg-muted/30", className)}>
-           <SidebarProvider>
+        <SidebarProvider>
+          <div className={cn("min-h-screen w-full bg-muted/30", className)}>
               <Sidebar>
                 <SidebarContent>
                   <SidebarHeader>
@@ -138,6 +139,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                 </SidebarFooter>
                 </SidebarContent>
               </Sidebar>
+              
               <div className="flex flex-col min-h-screen">
                   <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 sticky top-0 z-10 shadow-md shrink-0">
                     {headerContent}
@@ -146,9 +148,10 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                       {children}
                   </main>
               </div>
+
               <BottomNav />
-            </SidebarProvider>
-        </div>
+          </div>
+        </SidebarProvider>
       )}
 
       {/* Desktop View */}
