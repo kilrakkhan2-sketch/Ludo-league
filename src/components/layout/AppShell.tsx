@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "../ui/button";
-import { ArrowLeft, Home, Swords, Wallet, User, LogOut, Menu } from "lucide-react";
+import { ArrowLeft, Home, Swords, Wallet, User, LogOut, Menu, Shield } from "lucide-react";
 import { BottomNav } from "./BottomNav";
 import { cn } from "@/lib/utils";
 import {
@@ -45,13 +45,21 @@ const navItems = [
   { href: "/profile", icon: User, label: "Profile" },
 ];
 
+const adminNavItem = {
+    href: "/admin/dashboard",
+    icon: Shield,
+    label: "Admin Panel",
+}
+
 export function AppShell({ children, pageTitle, showBackButton = false, className }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const { user, loading: userLoading } = useUser();
+  const { user, loading: userLoading, claims } = useUser();
   const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
   const isMobile = useIsMobile();
+
+  const isAdmin = claims?.role && ['superadmin', 'deposit_admin', 'match_admin'].includes(claims.role);
 
   const hideNav = pagesWithoutNav.some(path => pathname.startsWith(path));
   const loading = userLoading || profileLoading;
@@ -90,8 +98,8 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
     <>
       {/* Mobile View */}
       {isMobile && (
-        <SidebarProvider>
-            <div className={cn("flex flex-col h-screen w-full bg-muted/30", className)}>
+        <div className={cn("flex flex-col h-screen w-full bg-muted/30", className)}>
+            <SidebarProvider>
                 <Sidebar>
                     <SidebarContent>
                     <SidebarHeader>
@@ -111,6 +119,14 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                         ))}
+                        {isAdmin && (
+                            <SidebarMenuItem>
+                                <SidebarMenuButton href={adminNavItem.href}>
+                                    <adminNavItem.icon />
+                                    <span>{adminNavItem.label}</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        )}
                     </SidebarMenu>
                     <SidebarFooter>
                         {loading ? (
@@ -146,8 +162,8 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                     {children}
                 </main>
                 <BottomNav />
-            </div>
-        </SidebarProvider>
+            </SidebarProvider>
+        </div>
       )}
 
       {/* Desktop View */}
@@ -173,6 +189,14 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
+                  {isAdmin && (
+                    <SidebarMenuItem>
+                        <SidebarMenuButton href={adminNavItem.href} tooltip={adminNavItem.label}>
+                            <adminNavItem.icon />
+                            <span>{adminNavItem.label}</span>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
                 </SidebarMenu>
                 <SidebarFooter>
                   {loading ? (

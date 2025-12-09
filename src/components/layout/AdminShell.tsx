@@ -150,82 +150,85 @@ export function AdminShell({ children }: { children: ReactNode }) {
                     ))}
                 </>
             )}
-             <SidebarMenuItem>
-                <SidebarMenuButton href="/dashboard" className="mt-4 text-muted-foreground hover:text-foreground">
-                  <ArrowLeft />
-                  <span>Back to App</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
           </SidebarMenu>
-        </SidebarContent>
-        <SidebarFooter>
-          {loading ? (
-             <div className="flex items-center gap-2 p-2">
-                <Skeleton className="h-8 w-8 rounded-full" />
-                <div className="flex-grow group-data-[collapsible=icon]:hidden space-y-1">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-3 w-32" />
+          <SidebarFooter>
+            <SidebarMenu>
+                <SidebarMenuItem>
+                    <SidebarMenuButton href="/dashboard" tooltip="Back to App" className="text-muted-foreground hover:text-foreground">
+                        <ArrowLeft />
+                        <span>Back to App</span>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            </SidebarMenu>
+
+            {loading ? (
+                <div className="flex items-center gap-2 p-2">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <div className="flex-grow group-data-[collapsible=icon]:hidden space-y-1">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-3 w-32" />
+                    </div>
                 </div>
-            </div>
-          ) : user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="justify-start w-full gap-2 p-2 h-auto"
-                >
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage
-                      src={profile?.photoURL || undefined}
-                      alt={profile?.displayName || 'Admin'}
-                    />
-                    <AvatarFallback>{profile?.displayName?.charAt(0) || user.email?.charAt(0) || 'A'}</AvatarFallback>
-                  </Avatar>
-                  <div className="text-left overflow-hidden group-data-[collapsible=icon]:hidden">
-                    <p className="font-medium truncate">{profile?.displayName || 'Admin User'}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {user.email}
-                    </p>
-                  </div>
+            ) : user ? (
+                <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                    variant="ghost"
+                    className="justify-start w-full gap-2 p-2 h-auto"
+                    >
+                    <Avatar className="h-8 w-8">
+                        <AvatarImage
+                        src={profile?.photoURL || undefined}
+                        alt={profile?.displayName || 'Admin'}
+                        />
+                        <AvatarFallback>{profile?.displayName?.charAt(0) || user.email?.charAt(0) || 'A'}</AvatarFallback>
+                    </Avatar>
+                    <div className="text-left overflow-hidden group-data-[collapsible=icon]:hidden">
+                        <p className="font-medium truncate">{profile?.displayName || 'Admin User'}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                        {user.email}
+                        </p>
+                    </div>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 mb-2" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">{profile?.displayName || 'Admin User'}</p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                        </p>
+                    </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+                </DropdownMenu>
+            ) : (
+                <Button asChild className="w-full">
+                    <Link href="/login">Login</Link>
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 mb-2" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{profile?.displayName || 'Admin User'}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
-                    </p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-             <Button asChild className="w-full">
-                <Link href="/login">Login</Link>
-             </Button>
-          )}
+            )}
         </SidebarFooter>
+        </SidebarContent>
+        <SidebarInset>
+          <header className="flex items-center justify-between p-4 bg-card border-b md:justify-end">
+            <div className="md:hidden">
+                <SidebarTrigger>
+                    <Menu />
+                </SidebarTrigger>
+            </div>
+            <div className="relative w-full max-w-xs ml-auto">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Search..." className="pl-9" />
+            </div>
+          </header>
+          <main className="flex-1 p-4 lg:p-6 bg-background/95">{children}</main>
+        </SidebarInset>
       </Sidebar>
-      <SidebarInset>
-        <header className="flex items-center justify-between p-4 bg-card border-b md:justify-end">
-          <div className="md:hidden">
-            <SidebarTrigger>
-                <Menu />
-            </SidebarTrigger>
-          </div>
-          <div className="relative w-full max-w-xs ml-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search..." className="pl-9" />
-          </div>
-        </header>
-        <main className="flex-1 p-4 lg:p-6 bg-background/95">{children}</main>
-      </SidebarInset>
     </SidebarProvider>
   );
 }
