@@ -143,7 +143,7 @@ export default function ProfilePage() {
 
   return (
     <AppShell pageTitle="My Profile">
-        <main className="flex-grow p-4 space-y-6">
+        <div className="p-4 space-y-6 pb-20">
             {/* Profile Header */}
             <Card className="text-center flex flex-col items-center p-6 bg-card">
                 <div className="relative group">
@@ -248,7 +248,7 @@ export default function ProfilePage() {
                     </Card>
                 </TabsContent>
             </Tabs>
-        </main>
+        </div>
     </AppShell>
   );
 }

@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ReactNode } from "react";
@@ -11,7 +10,7 @@ import { BottomNav } from "./BottomNav";
 import { cn } from "@/lib/utils";
 import {
   Sidebar, SidebarContent, SidebarHeader, SidebarInset, SidebarProvider, SidebarMenu,
-  SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarTrigger
+  SidebarMenuItem, SidebarMenuButton, SidebarFooter
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -67,28 +66,26 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
     }
   };
 
-  const MainContent = (
-    <main className={cn("flex-grow", isMobile && !hideNav && "pb-16")}>
-        {children}
-    </main>
-  );
-
   if (hideNav) {
     return <div className="min-h-screen w-full bg-muted/30">{children}</div>;
   }
   
   if (isMobile) {
     return (
-      <div className={cn("min-h-screen w-full bg-muted/30 flex flex-col", className)}>
-        <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 sticky top-0 z-10 shadow-md">
-            {showBackButton && (
-              <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                <ArrowLeft />
-              </Button>
-            )}
-            <h1 className="text-xl font-bold">{pageTitle}</h1>
-        </header>
-        {MainContent}
+      <div className={cn("w-full bg-muted/30", className)}>
+        <div className="flex flex-col h-screen">
+            <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 sticky top-0 z-10 shadow-md shrink-0">
+                {showBackButton && (
+                <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                    <ArrowLeft />
+                </Button>
+                )}
+                <h1 className="text-xl font-bold">{pageTitle}</h1>
+            </header>
+            <main className="flex-grow overflow-y-auto">
+                {children}
+            </main>
+        </div>
         <BottomNav />
       </div>
     );
@@ -156,7 +153,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
         </Sidebar>
 
         <SidebarInset className="flex flex-col h-screen">
-          <header className="p-4 border-b">
+          <header className="p-4 border-b shrink-0">
              <h1 className="text-2xl font-bold">{pageTitle}</h1>
           </header>
           <div className="flex-grow overflow-y-auto">

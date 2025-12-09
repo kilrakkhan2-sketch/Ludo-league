@@ -144,12 +144,8 @@ export default function WalletPage() {
     .reduce((sum, t) => sum + t.amount, 0);
 
   return (
-    <div className="bg-muted/30 flex flex-col min-h-screen">
-       <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 sticky top-0 z-10 shadow-md">
-            <h1 className="text-xl font-bold">Wallet</h1>
-      </header>
-
-      <main className="flex-grow pb-20">
+    <AppShell pageTitle="Wallet">
+      <div className="bg-muted/30">
         <div className="relative">
             <div className="bg-primary h-24 rounded-b-3xl"></div>
             <Card className="bg-primary-dark text-primary-foreground shadow-lg mx-4 -mt-16 relative">
@@ -170,7 +166,7 @@ export default function WalletPage() {
             </Card>
         </div>
 
-        <div className="p-4 space-y-6">
+        <div className="p-4 space-y-6 pb-20">
             <div className="grid grid-cols-2 gap-4">
                 <Button className="py-6 text-base bg-green-500 hover:bg-green-600 text-white" onClick={() => router.push('/add-money')}>
                   <Upload className="mr-2 h-5 w-5" /> Deposit
@@ -241,8 +237,7 @@ export default function WalletPage() {
                 </div>
             </div>
         </div>
-      </main>
-      <BottomNav />
-    </div>
+      </div>
+    </AppShell>
   );
 }

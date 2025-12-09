@@ -138,7 +138,7 @@ export default function DashboardPage() {
     });
 
     const { data: openMatches, loading: openMatchesLoading } = useCollection<Match>('matches', {
-        where: [['status', '==', 'open'], ['players', 'not-in', [user?.uid || '']]],
+        where: [['status', '==', 'open']],
         limit: 10,
         orderBy: ['createdAt', 'desc']
     });
@@ -155,7 +155,7 @@ export default function DashboardPage() {
 
     return (
         <AppShell pageTitle="Dashboard">
-            <main className="flex-grow">
+            <div className="bg-muted/30">
                 <div className="bg-primary text-primary-foreground p-4 sm:p-6">
                     <header className="flex justify-between items-center mb-4">
                         {loading ? <Skeleton className="h-7 w-32 bg-white/20"/> : <h1 className="text-xl sm:text-2xl font-bold">Hi, {profile?.displayName || 'Player'}!</h1>}
@@ -180,7 +180,7 @@ export default function DashboardPage() {
                     </div>
                 </div>
                 
-                <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
+                <div className="p-4 sm:p-6 space-y-6 sm:space-y-8 pb-20">
                     <section>
                         <h2 className="text-lg font-bold mb-3">Quick Stats</h2>
                         <div className="grid grid-cols-3 gap-3 sm:gap-4">
@@ -207,7 +207,7 @@ export default function DashboardPage() {
                     />
 
                 </div>
-            </main>
+            </div>
         </AppShell>
     );
 }
