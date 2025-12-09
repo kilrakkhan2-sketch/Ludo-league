@@ -118,7 +118,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
-      <Sidebar collapsible>
+      <Sidebar collapsible="icon">
         <SidebarContent className="bg-card">
           <SidebarHeader>
             <div className="flex items-center gap-2">

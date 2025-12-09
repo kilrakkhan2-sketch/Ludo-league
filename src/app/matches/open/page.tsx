@@ -98,7 +98,7 @@ const MatchCard = ({ match }: { match: Match }) => {
 }
 
 export default function OpenMatchesPage() {
-  const { data: matches, loading, hasMore, loadMore } = useCollection<Match>("matches", {
+  const { data: matches, loading } = useCollection<Match>("matches", {
     where: ["status", "==", "open"],
     orderBy: ["createdAt", "desc"],
     limit: 12,
@@ -125,13 +125,6 @@ export default function OpenMatchesPage() {
                 <MatchCard key={match.id} match={match} />
               ))}
             </div>
-            {hasMore && (
-              <div className="flex justify-center mt-6">
-                <Button onClick={loadMore} disabled={loading} variant="outline">
-                  {loading ? "Loading..." : "Load More"}
-                </Button>
-              </div>
-            )}
           </>
         ) : (
           <div className="text-center py-12 px-4 border-2 border-dashed rounded-lg bg-card mt-8">

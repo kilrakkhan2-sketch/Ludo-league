@@ -105,7 +105,7 @@ const MatchCard = ({ match }: { match: Match }) => {
 
 export default function MyMatchesPage() {
   const { user } = useUser();
-  const { data: matches, loading, hasMore, loadMore } = useCollection<Match>('matches', {
+  const { data: matches, loading } = useCollection<Match>('matches', {
     where: user?.uid ? ['players', 'array-contains', user.uid] : undefined,
     orderBy: ['createdAt', 'desc'],
     limit: 12
@@ -129,13 +129,6 @@ export default function MyMatchesPage() {
                 <MatchCard key={match.id} match={match} />
               ))}
             </div>
-            {hasMore && (
-                <div className="flex justify-center">
-                    <Button onClick={loadMore} disabled={loading}>
-                        {loading ? "Loading..." : "Load More"}
-                    </Button>
-                </div>
-            )}
           </>
         ) : (
           <div className="text-center py-12 px-4 border-2 border-dashed rounded-lg bg-card mt-8">

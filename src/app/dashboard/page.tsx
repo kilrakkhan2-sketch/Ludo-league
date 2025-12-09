@@ -37,7 +37,7 @@ const MatchCard = ({ match }: { match: Match }) => {
 
     const getStatusVariant = (status: Match['status']) => {
         switch (status) {
-            case 'open': return 'secondary';
+            case 'open': return isFull ? 'destructive' : 'secondary';
             case 'ongoing': return 'default';
             case 'completed': return 'outline';
             case 'verification': return 'destructive';
@@ -58,7 +58,7 @@ const MatchCard = ({ match }: { match: Match }) => {
             <Badge
               variant={getStatusVariant(match.status)}
             >
-              {match.status}
+              {isFull && match.status === 'open' ? 'Full' : match.status}
             </Badge>
           </div>
         </CardHeader>
@@ -131,16 +131,14 @@ export default function DashboardPage() {
     const { user, loading: userLoading } = useUser();
     const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
     
-    // My Matches (participating and not completed)
     const { data: myMatches, loading: myMatchesLoading } = useCollection<Match>('matches', {
         where: user?.uid ? [['players', 'array-contains', user.uid], ['status', '!=', 'completed']] : undefined,
         limit: 10,
         orderBy: ['createdAt', 'desc']
     });
 
-    // Open matches to join
     const { data: openMatches, loading: openMatchesLoading } = useCollection<Match>('matches', {
-        where: ['status', '==', 'open'],
+        where: [['status', '==', 'open'], ['players', 'not-in', [user?.uid || '']]],
         limit: 10,
         orderBy: ['createdAt', 'desc']
     });
@@ -158,7 +156,7 @@ export default function DashboardPage() {
     return (
         <AppShell pageTitle="Dashboard">
             <main className="flex-grow">
-                <div className="bg-primary text-primary-foreground p-4 sm:p-6 rounded-b-3xl shadow-lg">
+                <div className="bg-primary text-primary-foreground p-4 sm:p-6">
                     <header className="flex justify-between items-center mb-4">
                         {loading ? <Skeleton className="h-7 w-32 bg-white/20"/> : <h1 className="text-xl sm:text-2xl font-bold">Hi, {profile?.displayName || 'Player'}!</h1>}
                         <div className="flex items-center gap-4">
@@ -191,12 +189,12 @@ export default function DashboardPage() {
                             <StatCard title="Win Rate" value={winRate} loading={txLoading} />
                         </div>
                     </section>
-
-                    <MatchSection
+                    
+                     <MatchSection
                         title="My Active Matches"
                         matches={myMatches}
                         loading={myMatchesLoading}
-                        emptyMessage="No active matches"
+                        emptyMessage="You have no active matches."
                         viewAllLink="/matches/my-matches"
                     />
 
@@ -204,9 +202,10 @@ export default function DashboardPage() {
                         title="Open Matches"
                         matches={openMatches}
                         loading={openMatchesLoading}
-                        emptyMessage="No open matches available"
+                        emptyMessage="No open matches available."
                         viewAllLink="/matches/open"
                     />
+
                 </div>
             </main>
         </AppShell>

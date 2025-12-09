@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ChatRoom } from '@/components/chat/ChatRoom';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';

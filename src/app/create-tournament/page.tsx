@@ -29,11 +29,8 @@ export default function CreateTournamentPage() {
   const [endDate, setEndDate] = React.useState<Date>();
 
   return (
-    <AppShell>
+    <AppShell pageTitle="Host New Tournament">
       <div className="p-4 space-y-6">
-        <h1 className="text-3xl font-bold mb-6 font-headline">
-          Host New Tournament
-        </h1>
         <Card>
           <CardHeader>
             <CardTitle>Tournament Details</CardTitle>

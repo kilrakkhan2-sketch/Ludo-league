@@ -52,10 +52,10 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
         
         for (const w of whereClauses) {
             const [field, op, value] = w;
-            // Firestore 'in' and 'not-in' queries require a non-empty array.
+            // Firestore 'in', 'not-in', and 'array-contains-any' queries require a non-empty array.
             if ( (op === 'in' || op === 'not-in' || op === 'array-contains-any') && (!Array.isArray(value) || value.length === 0) ) {
-                // Return null to signify an invalid query that should not be run.
-                // This prevents Firestore from throwing an error.
+                // This is an invalid query for Firestore. By returning null, we prevent an error and can handle it gracefully.
+                // An empty 'data' array will be returned for this query.
                 return null;
             }
             constraints.push(where(field, op, value));
@@ -80,9 +80,17 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
 
   useEffect(() => {
     setLoading(true);
+    // Return early if the path is not provided, which can happen during initial renders.
+    if (!path) {
+        setData([]);
+        setLoading(false);
+        return;
+    }
+
     const q = buildQuery();
 
     // If the query is invalid (e.g., 'in' with an empty array), don't execute it.
+    // Set data to empty array and stop loading.
     if (!q) {
       setData([]);
       setLoading(false);
@@ -98,14 +106,15 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
         setLoading(false);
         setError(null);
     }, (err: any) => {
-      console.error(err);
+      console.error(`Error fetching collection from path: ${path}`, err);
       setError(err);
       setLoading(false);
     });
 
     // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, [buildQuery]);
+  }, [buildQuery, path]);
 
   return { data, loading, error };
 }
+
