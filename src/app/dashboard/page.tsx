@@ -112,7 +112,7 @@ const MatchSection = ({ title, matches, loading, emptyMessage, viewAllLink }: { 
                 <Skeleton className="shrink-0 w-72 h-48 rounded-lg" />
              </div>
         ): matches.length > 0 ? (
-            <div className="flex space-x-4 overflow-x-auto pb-4 -mx-4 px-4">
+            <div className="flex space-x-4 overflow-x-auto pb-4">
                {matches.map(match => <MatchCard key={match.id} match={match}/>)}
             </div>
         ) : (
