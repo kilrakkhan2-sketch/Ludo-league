@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeft } from "lucide-react"
+import { Menu } from "lucide-react"
 import Link from "next/link";
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -281,7 +281,7 @@ const SidebarTrigger = React.forwardRef<
       }}
       {...props}
     >
-      <PanelLeft />
+      <Menu />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
@@ -540,14 +540,14 @@ const SidebarMenuButton = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button"> & {
     asChild?: boolean
-    isActive?: boolean
+    current?: boolean
     tooltip?: string | React.ComponentProps<typeof TooltipContent>
     href?: string
   } & VariantProps<typeof sidebarMenuButtonVariants>
 >((
     {
         asChild = false,
-        isActive = false,
+        current = false,
         variant = "default",
         size = "default",
         tooltip,
@@ -565,7 +565,7 @@ const SidebarMenuButton = React.forwardRef<
             ref={ref}
             data-sidebar="menu-button"
             data-size={size}
-            data-active={isActive}
+            data-active={current}
             className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
             href={href as any}
             {...props}
@@ -765,4 +765,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-

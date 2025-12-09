@@ -1,9 +1,9 @@
-
 import type { Metadata } from "next";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 export const metadata: Metadata = {
   title: "LudoLeague",
@@ -32,9 +32,11 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body antialiased bg-background")}>
         <FirebaseClientProvider>
-          <div className="relative mx-auto bg-background animate-fade-in w-full">
-              {children}
-          </div>
+          <SidebarProvider>
+            <div className="relative mx-auto bg-background animate-fade-in w-full">
+                {children}
+            </div>
+          </SidebarProvider>
         </FirebaseClientProvider>
         <Toaster />
       </body>
