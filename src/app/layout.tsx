@@ -33,8 +33,10 @@ export default function RootLayout({
       <body className={cn("font-body antialiased bg-background")}>
         <FirebaseClientProvider>
           <SidebarProvider>
-            <div className="bg-background w-full">
-                {children}
+            <div className="w-full overflow-x-hidden">
+                <div className="bg-background">
+                    {children}
+                </div>
             </div>
           </SidebarProvider>
         </FirebaseClientProvider>
