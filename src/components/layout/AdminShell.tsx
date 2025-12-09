@@ -26,7 +26,8 @@ import {
   Package,
   ArrowLeft,
   Banknote,
-  ClipboardList
+  ClipboardList,
+  Menu,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -214,7 +215,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <SidebarInset>
         <header className="flex items-center justify-between p-4 bg-card border-b md:justify-end">
           <div className="md:hidden">
-            <SidebarTrigger />
+            <SidebarTrigger>
+                <Menu />
+            </SidebarTrigger>
           </div>
           <div className="relative w-full max-w-xs ml-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

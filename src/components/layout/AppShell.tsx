@@ -71,6 +71,21 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
     return <div className="min-h-screen w-full bg-muted/30">{children}</div>;
   }
   
+  const headerContent = (
+    <>
+      {showBackButton ? (
+        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+          <ArrowLeft />
+        </Button>
+      ) : (
+        <SidebarTrigger>
+          <Menu />
+        </SidebarTrigger>
+      )}
+      <h1 className="text-xl font-bold">{pageTitle}</h1>
+    </>
+  );
+
   return (
     <>
       {/* Mobile View */}
@@ -125,16 +140,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
               </Sidebar>
               <div className="flex flex-col min-h-screen">
                   <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 sticky top-0 z-10 shadow-md shrink-0">
-                      {showBackButton ? (
-                          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                              <ArrowLeft />
-                          </Button>
-                      ) : (
-                          <SidebarTrigger>
-                              <Menu />
-                          </SidebarTrigger>
-                      )}
-                      <h1 className="text-xl font-bold">{pageTitle}</h1>
+                    {headerContent}
                   </header>
                   <main className="flex-grow overflow-y-auto pb-20">
                       {children}
@@ -210,11 +216,9 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
             <SidebarInset className="flex flex-col max-h-screen">
               <header className="p-4 border-b shrink-0 flex items-center gap-4">
                 <div className="sm:hidden">
-                  <SidebarTrigger>
-                    <Menu />
-                  </SidebarTrigger>
+                    {headerContent}
                 </div>
-                <h1 className="text-2xl font-bold">{pageTitle}</h1>
+                <h1 className="text-2xl font-bold hidden sm:block">{pageTitle}</h1>
               </header>
               <div className="flex-grow overflow-y-auto">
                 {children}
