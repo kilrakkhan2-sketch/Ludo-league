@@ -69,16 +69,13 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
 
   const headerContent = (
     <>
-      {showBackButton && (
+      {showBackButton ? (
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft />
         </Button>
-      )}
-      {!showBackButton && (
-        <SidebarTrigger asChild>
-           <Button variant="ghost" size="icon">
-                <Menu />
-            </Button>
+      ) : (
+        <SidebarTrigger>
+            <Menu />
         </SidebarTrigger>
       )}
       <h1 className="text-xl font-bold">{pageTitle}</h1>
