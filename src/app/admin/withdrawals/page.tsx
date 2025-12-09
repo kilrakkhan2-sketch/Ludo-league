@@ -210,11 +210,11 @@ export default function AdminWithdrawalsPage() {
                     {statusFilter !== 'pending' && <TableCell>{processor?.displayName || 'N/A'}</TableCell>}
                     <TableCell><Badge variant={getStatusVariant(req.status)}>{req.status}</Badge></TableCell>
                     <TableCell className="text-right space-x-2">
-                        <DialogTrigger asChild>
-                            {statusFilter === 'pending' && (
+                        {statusFilter === 'pending' && (
+                            <DialogTrigger asChild>
                                 <Button size="sm" onClick={() => setSelectedRequest(req)}>Process</Button>
-                            )}
-                        </DialogTrigger>
+                            </DialogTrigger>
+                        )}
                     </TableCell>
                     </TableRow>
                 )}) : (
@@ -248,7 +248,3 @@ export default function AdminWithdrawalsPage() {
     </AdminShell>
   );
 }
-
-    
-
-    
