@@ -91,7 +91,7 @@ export default function AdminMatchesPage() {
                         <TableCell>
                             {match.status === 'verification' && (
                                 <Dialog onOpenChange={() => setSelectedWinner(null)}>
-                                    <DialogTrigger asChild>
+                                    <DialogTrigger>
                                         <Button size="sm">Verify</Button>
                                     </DialogTrigger>
                                     <DialogContent className="max-w-2xl">

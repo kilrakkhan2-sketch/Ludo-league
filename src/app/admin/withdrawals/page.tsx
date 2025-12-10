@@ -211,7 +211,7 @@ export default function AdminWithdrawalsPage() {
                     <TableCell><Badge variant={getStatusVariant(req.status)}>{req.status}</Badge></TableCell>
                     <TableCell className="text-right space-x-2">
                         {statusFilter === 'pending' && (
-                           <Dialog onOpenChange={(isOpen) => !isOpen && setSelectedRequest(null)}>
+                           <Dialog>
                                 <DialogTrigger>
                                      <Button size="sm" onClick={() => setSelectedRequest(req)}>Process</Button>
                                 </DialogTrigger>
@@ -248,5 +248,3 @@ export default function AdminWithdrawalsPage() {
     </AdminShell>
   );
 }
-
-    
