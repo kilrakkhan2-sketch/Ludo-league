@@ -211,9 +211,27 @@ export default function AdminWithdrawalsPage() {
                     <TableCell><Badge variant={getStatusVariant(req.status)}>{req.status}</Badge></TableCell>
                     <TableCell className="text-right space-x-2">
                         {statusFilter === 'pending' && (
-                            <DialogTrigger asChild>
-                                <Button size="sm" onClick={() => setSelectedRequest(req)}>Process</Button>
-                            </DialogTrigger>
+                           <Dialog onOpenChange={(isOpen) => !isOpen && setSelectedRequest(null)}>
+                                <DialogTrigger>
+                                     <Button size="sm" onClick={() => setSelectedRequest(req)}>Process</Button>
+                                </DialogTrigger>
+                                {selectedRequest && selectedRequest.id === req.id && (
+                                     <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Process Withdrawal</DialogTitle>
+                                            <DialogDescription>
+                                            You are about to process a withdrawal of <span className="font-bold">₹{selectedRequest.amount}</span> for {selectedRequest.userName}.
+                                            Ensure funds are transferred externally before approving. This action is irreversible. Approving will deduct ₹{selectedRequest.amount} from your admin wallet.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <DialogFooter>
+                                            <Button size="sm" variant="outline" onClick={() => setSelectedRequest(null)}>Cancel</Button>
+                                            <Button size="sm" variant="destructive" onClick={() => handleProcessRequest(selectedRequest, 'reject')} disabled={isSubmitting}><XCircle className="h-4 w-4 mr-2"/>Reject</Button>
+                                            <Button size="sm" onClick={() => handleProcessRequest(selectedRequest, 'approve')} disabled={isSubmitting || (adminProfile?.walletBalance || 0) < selectedRequest.amount}><CheckCircle className="h-4 w-4 mr-2"/>Approve</Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                )}
+                           </Dialog>
                         )}
                     </TableCell>
                     </TableRow>
@@ -227,24 +245,8 @@ export default function AdminWithdrawalsPage() {
             </CardContent>
         </Card>
         </div>
-        <Dialog open={!!selectedRequest} onOpenChange={(isOpen) => !isOpen && setSelectedRequest(null)}>
-            {selectedRequest && (
-                 <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Process Withdrawal</DialogTitle>
-                        <DialogDescription>
-                        You are about to process a withdrawal of <span className="font-bold">₹{selectedRequest.amount}</span> for {selectedRequest.userName}.
-                        Ensure funds are transferred externally before approving. This action is irreversible. Approving will deduct ₹{selectedRequest.amount} from your admin wallet.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button size="sm" variant="outline" onClick={() => setSelectedRequest(null)}>Cancel</Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleProcessRequest(selectedRequest, 'reject')} disabled={isSubmitting}><XCircle className="h-4 w-4 mr-2"/>Reject</Button>
-                        <Button size="sm" onClick={() => handleProcessRequest(selectedRequest, 'approve')} disabled={isSubmitting || (adminProfile?.walletBalance || 0) < selectedRequest.amount}><CheckCircle className="h-4 w-4 mr-2"/>Approve</Button>
-                    </DialogFooter>
-                </DialogContent>
-            )}
-        </Dialog>
     </AdminShell>
   );
 }
+
+    
