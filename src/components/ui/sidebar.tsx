@@ -34,6 +34,7 @@ type SidebarContext = {
   openMobile: boolean
   setOpenMobile: (open: boolean) => void
   toggleSidebar: () => void
+  isMobile: boolean
 }
 
 const SidebarContext = React.createContext<SidebarContext | null>(null)
@@ -133,8 +134,9 @@ const SidebarProvider = React.forwardRef<
         openMobile,
         setOpenMobile,
         toggleSidebar,
+        isMobile,
       }),
-      [state, open, setOpen, openMobile, setOpenMobile, toggleSidebar]
+      [state, open, setOpen, openMobile, setOpenMobile, toggleSidebar, isMobile]
     )
 
     return (
@@ -183,17 +185,7 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { state, openMobile, setOpenMobile } = useSidebar()
-    const [isMobile, setIsMobile] = React.useState(false);
-
-    React.useEffect(() => {
-        const checkIsMobile = () => {
-            setIsMobile(window.innerWidth < 768);
-        };
-        checkIsMobile();
-        window.addEventListener('resize', checkIsMobile);
-        return () => window.removeEventListener('resize', checkIsMobile);
-    }, []);
+    const { state, openMobile, setOpenMobile, isMobile } = useSidebar()
 
     if (collapsible === "none") {
       return (
@@ -575,17 +567,7 @@ const SidebarMenuButton = React.forwardRef<
     ref
 ) => {
     const Comp = href ? Link : (asChild ? Slot : "button");
-    const { state } = useSidebar()
-    const [isMobile, setIsMobile] = React.useState(false);
-
-    React.useEffect(() => {
-        const checkIsMobile = () => {
-            setIsMobile(window.innerWidth < 768);
-        };
-        checkIsMobile();
-        window.addEventListener('resize', checkIsMobile);
-        return () => window.removeEventListener('resize', checkIsMobile);
-    }, []);
+    const { state, isMobile } = useSidebar()
 
     const button = (
         <Comp

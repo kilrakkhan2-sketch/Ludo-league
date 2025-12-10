@@ -63,21 +63,20 @@ service cloud.firestore {
     // ------------------ MATCHES COLLECTION ------------------
 
     match /matches/{matchId} {
-      // Cloud Functions can write, but client rules are more specific.
-      allow write: if isServer();
+      // Cloud Functions get full access. Client access is handled below.
+      allow create, update, delete: if isServer();
 
       // Client-side rules
       allow read: if isSignedIn();
-      allow create: if isSignedIn(); // Any signed-in user can create a match.
+      allow create: if isSignedIn();
       allow update: if isSignedIn()
         && (resource.data.creatorId == request.auth.uid || isMatchAdmin() || isSuperAdmin());
       allow delete: if isMatchAdmin() || isSuperAdmin();
 
       // -------- Messages Subcollection --------
       match /messages/{messageId} {
-        allow read: if isSignedIn()
-          && request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
-        allow write: if isSignedIn()
+        // Server access is inherited.
+        allow read, write: if isSignedIn()
           && request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
       }
     }
