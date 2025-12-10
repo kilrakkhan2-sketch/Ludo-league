@@ -131,7 +131,6 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
   }
 
   return (
-    <div className="w-full overflow-x-hidden">
       <div className={cn("min-h-screen w-full bg-muted/30", className)}>
           {/* Mobile Layout - Always renders SidebarProvider structure */}
           <div className="md:hidden">
@@ -265,6 +264,5 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
              )}
           </div>
       </div>
-    </div>
   );
 }
