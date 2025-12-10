@@ -21,11 +21,7 @@ export default function RootLayout({
       <body className={cn("font-body antialiased bg-background")}>
         <FirebaseClientProvider>
           <SidebarProvider>
-            <div className="w-full overflow-x-hidden">
-                <div className="bg-background">
-                    {children}
-                </div>
-            </div>
+            {children}
           </SidebarProvider>
         </FirebaseClientProvider>
         <Toaster />
