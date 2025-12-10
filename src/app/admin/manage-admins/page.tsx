@@ -46,7 +46,6 @@ export default function ManageAdminsPage() {
 
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [amount, setAmount] = useState('');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     if (!firestore) return;
@@ -100,9 +99,8 @@ export default function ManageAdminsPage() {
         await batch.commit();
 
         toast({ title: 'Balance Updated', description: `${selectedUser.name}\'s balance has been set to ₹${numericAmount}.` });
-        setIsDialogOpen(false);
-        setAmount('');
         setSelectedUser(null);
+        setAmount('');
     } catch (error) {
         console.error(error);
         toast({ variant: 'destructive', title: 'Update failed' });
@@ -180,7 +178,7 @@ export default function ManageAdminsPage() {
                                setAmount('');
                            }
                        }}>
-                        <DialogTrigger asChild>
+                        <DialogTrigger>
                             <Button variant="outline" size="sm" onClick={() => setSelectedUser(user)}>
                                 <Banknote className="mr-2 h-4 w-4"/>
                                 Set Balance
