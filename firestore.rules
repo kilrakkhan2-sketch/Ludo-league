@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -60,24 +61,53 @@ service cloud.firestore {
       }
     }
 
-    // ------------------ MATCHES COLLECTION ------------------
-
+    // ------------------ MATCHES COLLECTION (REWRITTEN & OPTIMIZED) ------------------
     match /matches/{matchId} {
-      // Cloud Functions get full access. Client access is handled below.
-      allow create, update, delete: if isServer();
+      // --- Helper variables for this context ---
+      let matchData = resource.data;
+      let newMatchData = request.resource.data;
+      let isPlayerInMatch = request.auth.uid in matchData.players;
+      let isCreator = request.auth.uid == matchData.creatorId;
 
-      // Client-side rules
+      // --- Main Access Rules ---
+      // Any signed-in user can see the list of matches (critical for lobbies).
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn()
-        && (resource.data.creatorId == request.auth.uid || isMatchAdmin() || isSuperAdmin());
-      allow delete: if isMatchAdmin() || isSuperAdmin();
+
+      // Any signed-in user can create a new match with valid initial data.
+      allow create: if isSignedIn()
+                    && request.auth.uid == newMatchData.creatorId
+                    && newMatchData.status == 'open'
+                    && newMatchData.players == [request.auth.uid] // Creator must be the first player
+                    && newMatchData.createdAt == request.time;    // Enforce server timestamp
+
+      // Only specific, secure actions are allowed for updates.
+      allow update: if isSignedIn() && (
+                      // Case 1: A player joins an open, non-full match.
+                      (
+                        matchData.status == 'open' &&
+                        newMatchData.players == matchData.players.concat(request.auth.uid) && // Securely add player
+                        !isPlayerInMatch && // User cannot join twice
+                        matchData.players.size() < matchData.maxPlayers
+                      ) ||
+                      // Case 2: The creator starts the match when enough players have joined.
+                      (
+                        matchData.status == 'open' &&
+                        newMatchData.status == 'ongoing' &&
+                        isCreator &&
+                        matchData.players.size() >= 2 &&
+                        newMatchData.players == matchData.players // Players list cannot be changed when starting
+                      ) ||
+                      // Case 3: Admin or Server can manage the match.
+                      isMatchAdmin() || isSuperAdmin() || isServer()
+                    );
+
+      // Only admins or server can delete matches.
+      allow delete: if isMatchAdmin() || isSuperAdmin() || isServer();
 
       // -------- Messages Subcollection --------
       match /messages/{messageId} {
-        // Server access is inherited.
-        allow read, write: if isSignedIn()
-          && request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
+        // Only players who are part of THIS match can read or write messages.
+        allow read, write: if isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players);
       }
     }
 
