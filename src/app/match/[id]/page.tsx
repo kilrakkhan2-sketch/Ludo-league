@@ -1,7 +1,7 @@
 
 'use client';
 
-import { doc, runTransaction, updateDoc, arrayUnion, Timestamp, collection } from 'firebase/firestore';
+import { doc, runTransaction, updateDoc, arrayUnion, Timestamp, collection, getDocs, query, where } from 'firebase/firestore';
 import { useDoc, useUser, useCollection, useFirebase } from '@/firebase';
 import { Match, UserProfile } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ChatRoom } from '@/components/chat/ChatRoom';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -421,13 +421,29 @@ const MatchCompleted = ({ match, players }: { match: Match, players: UserProfile
 export default function MatchPage({ params }: { params: { id: string } }) {
   const { user, loading: userLoading } = useUser();
   const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
-  
+  const { firestore } = useFirebase();
+
   const { data: match, loading: matchLoading } = useDoc<Match>(`matches/${params.id}`);
   
-  const playerIds = useMemo(() => match?.players || [], [match]);
-  const { data: players, loading: playersLoading } = useCollection<UserProfile>('users', {
-    where: playerIds.length > 0 ? ['uid', 'in', playerIds] : undefined
-  });
+  const [players, setPlayers] = useState<UserProfile[]>([]);
+  const [playersLoading, setPlayersLoading] = useState(true);
+
+  useEffect(() => {
+    if (match?.players && match.players.length > 0 && firestore) {
+      const fetchPlayers = async () => {
+        setPlayersLoading(true);
+        const playersRef = collection(firestore, 'users');
+        const q = query(playersRef, where('uid', 'in', match.players));
+        const snapshot = await getDocs(q);
+        const playersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
+        setPlayers(playersData);
+        setPlayersLoading(false);
+      };
+      fetchPlayers();
+    } else {
+        setPlayersLoading(false);
+    }
+  }, [match, firestore]);
 
   const loading = matchLoading || playersLoading || userLoading || profileLoading;
 
@@ -442,19 +458,19 @@ export default function MatchPage({ params }: { params: { id: string } }) {
     switch (match.status) {
         case 'open':
             title = 'Match Lobby';
-            content = <MatchOpen match={match} profile={profile} players={players as UserProfile[]} />;
+            content = <MatchOpen match={match} profile={profile} players={players} />;
             break;
         case 'ongoing':
             title = 'Game In Progress';
-            content = <MatchOngoing match={match} players={players as UserProfile[]} />;
+            content = <MatchOngoing match={match} players={players} />;
             break;
         case 'verification':
              title = 'Submit Result';
-             content = <MatchVerification match={match} players={players as UserProfile[]} />;
+             content = <MatchVerification match={match} players={players} />;
              break;
         case 'completed':
             title = 'Match Completed';
-            content = <MatchCompleted match={match} players={players as UserProfile[]} />;
+            content = <MatchCompleted match={match} players={players} />;
             break;
         case 'cancelled':
             title = 'Match Cancelled';

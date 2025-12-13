@@ -49,47 +49,6 @@ const adminNavItems = [
     { href: "/admin/manage-users", icon: UserCog, label: "Manage Users" },
 ];
 
-
-function SidebarNavigation({ isAdmin, isSuperAdmin, isDesktop = false }: { isAdmin: boolean, isSuperAdmin: boolean, isDesktop?: boolean }) {
-    const regularNav = isAdmin ? [] : navItems; // Regular users only see this in admin view if they aren't admins
-    const adminNav = isAdmin ? adminNavItems.filter(item => isSuperAdmin || item.href !== '/admin/manage-users') : [];
-    const allNavItems = [...regularNav, ...adminNav];
-    
-    // In non-admin main view, show standard items + admin panel link if admin
-    if (!pathname.startsWith('/admin')) {
-        const mainNav = [...navItems];
-        if (isAdmin) {
-            mainNav.push({ href: "/admin/dashboard", icon: Shield, label: "Admin Panel" });
-        }
-        return (
-            <SidebarMenu>
-                {mainNav.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton href={item.href} tooltip={isDesktop ? item.label : undefined}>
-                            <item.icon />
-                            <span>{item.label}</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                ))}
-            </SidebarMenu>
-        )
-    }
-
-    return (
-        <SidebarMenu>
-            {allNavItems.map((item) => (
-            <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton href={item.href} tooltip={isDesktop ? item.label : undefined}>
-                    <item.icon />
-                    <span>{item.label}</span>
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-            ))}
-      </SidebarMenu>
-    )
-}
-
-
 export function AppShell({ children, pageTitle, showBackButton = false, className }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -99,7 +58,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
 
   const isAdmin = claims?.role && ['superadmin', 'deposit_admin', 'match_admin'].includes(claims.role);
   const isSuperAdmin = claims?.role === 'superadmin';
-  const hideNav = pagesWithoutNav.some(path => pathname.startsWith(path));
+  const hideNav = pathname ? pagesWithoutNav.some(path => pathname.startsWith(path)) : false;
   const loading = userLoading || profileLoading;
 
   const handleLogout = async () => {
@@ -116,7 +75,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
   // Combine rendering logic for sidebar navigation
   const renderSidebarNav = (isDesktop: boolean) => {
       // Main view navigation
-      if (!pathname.startsWith('/admin')) {
+      if (!pathname?.startsWith('/admin')) {
           const mainNav = [...navItems];
           if (isAdmin) {
               mainNav.push({ href: "/admin/dashboard", icon: Shield, label: "Admin Panel" });
@@ -276,7 +235,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
 
           {/* Desktop Layout */}
           <div className="hidden md:block">
-            {pathname.startsWith('/admin') ? (
+            {pathname?.startsWith('/admin') ? (
                 <Sidebar>
                     <SidebarContent>
                         {sidebarHeader}
@@ -302,7 +261,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                     </div>
                     <div className="flex items-center gap-4">
                         {navItems.map(item => (
-                            <Button key={item.href} variant={pathname.startsWith(item.href) ? "secondary" : "ghost"} asChild>
+                            <Button key={item.href} variant={pathname?.startsWith(item.href) ? "secondary" : "ghost"} asChild>
                                 <Link href={item.href}>{item.label}</Link>
                             </Button>
                         ))}

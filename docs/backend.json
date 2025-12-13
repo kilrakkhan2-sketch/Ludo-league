@@ -17,7 +17,8 @@
         "role": { "type": "string", "description": "The user's role in the system.", "enum": ["superadmin", "deposit_admin", "match_admin", "user"] },
         "referralCode": { "type": "string", "description": "The user's unique referral code." },
         "referredBy": { "type": "string", "description": "The referral code of the user who referred them." },
-        "referralEarnings": { "type": "number", "description": "Total earnings from referrals." }
+        "referralEarnings": { "type": "number", "description": "Total earnings from referrals." },
+        "friends": { "type": "array", "items": { "type": "string" }, "description": "Array of user IDs who are friends."}
       },
       "required": ["uid", "name", "email", "role"]
     },
@@ -113,6 +114,36 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["referrerId", "referredId", "status", "createdAt"]
+    },
+    "FriendRequest": {
+      "title": "Friend Request",
+      "description": "Represents a friend request between two users.",
+      "type": "object",
+      "properties": {
+        "from": { "type": "string", "description": "The UID of the user sending the request." },
+        "to": { "type": "string", "description": "The UID of the user receiving the request." },
+        "status": { "type": "string", "enum": ["pending", "accepted", "declined"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["from", "to", "status", "createdAt"]
+    },
+    "Tournament": {
+      "title": "Tournament",
+      "description": "Represents a multi-match tournament event.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "prizePool": { "type": "number" },
+        "entryFee": { "type": "number" },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["upcoming", "live", "completed"] },
+        "players": { "type": "array", "items": { "type": "string" } },
+        "maxPlayers": { "type": "number" },
+        "creatorId": { "type": "string" }
+      },
+      "required": ["name", "prizePool", "entryFee", "startDate", "status", "players", "maxPlayers", "creatorId"]
     }
   },
   "auth": {
@@ -126,6 +157,10 @@
     "/matches/{matchId}": {
       "schema": { "$ref": "#/entities/Match" },
       "description": "Stores all created matches."
+    },
+    "/tournaments/{tournamentId}": {
+      "schema": { "$ref": "#/entities/Tournament" },
+      "description": "Stores all created tournaments."
     },
     "/users/{userId}/transactions/{transactionId}": {
       "schema": { "$ref": "#/entities/Transaction" },
@@ -150,6 +185,10 @@
     "/referrals/{referralId}": {
       "schema": { "$ref": "#/entities/Referral" },
       "description": "Stores referral tracking information."
+    },
+    "/friend-requests/{requestId}": {
+      "schema": { "$ref": "#/entities/FriendRequest" },
+      "description": "Stores friend requests between users."
     }
   }
 }

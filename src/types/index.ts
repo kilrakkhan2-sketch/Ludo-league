@@ -20,6 +20,7 @@ export type UserProfile = {
   referralCode?: string;
   referredBy?: string;
   referralEarnings?: number;
+  friends?: string[];
 };
 
 export type Match = {
@@ -116,3 +117,25 @@ export type Referral = {
     status: 'pending' | 'completed'; // Completed after referred user plays first game
     createdAt: any;
 }
+
+export type FriendRequest = {
+  id: string;
+  from: string;
+  to: string;
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt: any;
+};
+
+export type Tournament = {
+  id: string;
+  name: string;
+  description: string;
+  prizePool: number;
+  entryFee: number;
+  startDate: any;
+  endDate: any;
+  status: 'upcoming' | 'live' | 'completed';
+  players: string[];
+  maxPlayers: number;
+  creatorId: string;
+};

@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { AdminShell } from '@/components/layout/AdminShell';
 import { Button } from '@/components/ui/button';
 import { useCollection } from '@/firebase';
 import { doc, writeBatch, Timestamp } from 'firebase/firestore';
@@ -18,6 +17,7 @@ import { Eye, CheckCircle, XCircle } from 'lucide-react';
 import Image from 'next/image';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useUser } from '@/firebase';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const getStatusVariant = (status: string) => {
   switch (status) {
@@ -42,12 +42,14 @@ export default function AdminDepositsPage() {
 
   const allUserIdsInView = useMemo(() => {
     const ids = new Set<string>();
-    deposits.forEach((d: DepositRequest) => {
-        ids.add(d.userId);
-        if (d.processedBy) {
-            ids.add(d.processedBy);
-        }
-    });
+    if (deposits) {
+        deposits.forEach((d: DepositRequest) => {
+            ids.add(d.userId);
+            if (d.processedBy) {
+                ids.add(d.processedBy);
+            }
+        });
+    }
     return Array.from(ids);
   }, [deposits]);
 
@@ -57,7 +59,9 @@ export default function AdminDepositsPage() {
 
   const usersMap = useMemo(() => {
     const map = new Map<string, UserProfile>();
-    users.forEach((user: UserProfile) => map.set(user.uid, user));
+    if (users) {
+        users.forEach((user: UserProfile) => map.set(user.uid, user));
+    }
     return map;
   }, [users]);
 
@@ -73,11 +77,11 @@ export default function AdminDepositsPage() {
       if((result.data as any).success) {
         toast({ title: 'Success', description: 'Deposit has been approved.' });
       } else {
-         throw new Error((result.data as any).message || 'The cloud function failed.');
+         throw new Error((result.data as any).message || 'The cloud function returned an error.');
       }
     } catch (error: any) {
       console.error('Error approving deposit:', error);
-      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not approve deposit.' });
+      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not approve deposit. Check function logs.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -104,7 +108,6 @@ export default function AdminDepositsPage() {
     }
   };
   return (
-    <AdminShell>
       <div className="space-y-6">
         <h1 className="text-3xl font-bold font-headline">Manage Deposits</h1>
         <Card>
@@ -132,9 +135,9 @@ export default function AdminDepositsPage() {
               </TableHeader>
               <TableBody>
                 {(depositsLoading || usersLoading) ? (
-                  <TableRow><TableCell colSpan={6} className="text-center">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center"><Skeleton className="h-8 w-full" /></TableCell></TableRow>
                 ) : deposits.length === 0 ? (
-                   <TableRow><TableCell colSpan={6} className="text-center">No {statusFilter} deposits found.</TableCell></TableRow>
+                   <TableRow><TableCell colSpan={6} className="text-center h-24">No {statusFilter} deposits found.</TableCell></TableRow>
                 ) : deposits.map((deposit: DepositRequest) => {
                   const user = usersMap.get(deposit.userId);
                   const processor = deposit.processedBy ? usersMap.get(deposit.processedBy) : null;
@@ -147,7 +150,7 @@ export default function AdminDepositsPage() {
                       <TableCell><Badge variant={getStatusVariant(deposit.status)}>{deposit.status}</Badge></TableCell>
                       <TableCell className="text-right">
                           <Dialog>
-                              <DialogTrigger>
+                              <DialogTrigger asChild>
                                 <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
                               </DialogTrigger>
                               <DialogContent className="max-w-md">
@@ -180,6 +183,5 @@ export default function AdminDepositsPage() {
            </CardContent>
         </Card>
       </div>
-    </AdminShell>
   );
 }
