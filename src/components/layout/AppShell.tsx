@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "../ui/button";
-import { ArrowLeft, Home, Swords, Wallet, User, LogOut, Menu, Shield } from "lucide-react";
+import { ArrowLeft, Home, Swords, Wallet, User, LogOut, Menu, Shield, UserCog } from "lucide-react"; // Added UserCog
 import { BottomNav } from "./BottomNav";
 import { cn } from "@/lib/utils";
 import {
@@ -44,14 +44,37 @@ const navItems = [
   { href: "/profile", icon: User, label: "Profile" },
 ];
 
-const adminNavItem = {
-    href: "/admin/dashboard",
-    icon: Shield,
-    label: "Admin Panel",
-}
+const adminNavItems = [
+    { href: "/admin/dashboard", icon: Shield, label: "Admin Dashboard" },
+    { href: "/admin/manage-users", icon: UserCog, label: "Manage Users" },
+];
 
-function SidebarNavigation({ isAdmin, isDesktop = false }: { isAdmin: boolean, isDesktop?: boolean }) {
-    const allNavItems = isAdmin ? [...navItems, adminNavItem] : navItems;
+
+function SidebarNavigation({ isAdmin, isSuperAdmin, isDesktop = false }: { isAdmin: boolean, isSuperAdmin: boolean, isDesktop?: boolean }) {
+    const regularNav = isAdmin ? [] : navItems; // Regular users only see this in admin view if they aren't admins
+    const adminNav = isAdmin ? adminNavItems.filter(item => isSuperAdmin || item.href !== '/admin/manage-users') : [];
+    const allNavItems = [...regularNav, ...adminNav];
+    
+    // In non-admin main view, show standard items + admin panel link if admin
+    if (!pathname.startsWith('/admin')) {
+        const mainNav = [...navItems];
+        if (isAdmin) {
+            mainNav.push({ href: "/admin/dashboard", icon: Shield, label: "Admin Panel" });
+        }
+        return (
+            <SidebarMenu>
+                {mainNav.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton href={item.href} tooltip={isDesktop ? item.label : undefined}>
+                            <item.icon />
+                            <span>{item.label}</span>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                ))}
+            </SidebarMenu>
+        )
+    }
+
     return (
         <SidebarMenu>
             {allNavItems.map((item) => (
@@ -75,6 +98,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
   const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
 
   const isAdmin = claims?.role && ['superadmin', 'deposit_admin', 'match_admin'].includes(claims.role);
+  const isSuperAdmin = claims?.role === 'superadmin';
   const hideNav = pagesWithoutNav.some(path => pathname.startsWith(path));
   const loading = userLoading || profileLoading;
 
@@ -88,21 +112,36 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
       toast({ variant: "destructive", title: "Logout Failed" });
     }
   };
+  
+  // Combine rendering logic for sidebar navigation
+  const renderSidebarNav = (isDesktop: boolean) => {
+      // Main view navigation
+      if (!pathname.startsWith('/admin')) {
+          const mainNav = [...navItems];
+          if (isAdmin) {
+              mainNav.push({ href: "/admin/dashboard", icon: Shield, label: "Admin Panel" });
+          }
+          return mainNav.map(item => (
+              <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton href={item.href} tooltip={isDesktop ? item.label : undefined}>
+                      <item.icon />
+                      <span>{item.label}</span>
+                  </SidebarMenuButton>
+              </SidebarMenuItem>
+          ));
+      }
+      // Admin view navigation
+      const adminNav = adminNavItems.filter(item => isSuperAdmin || item.href !== '/admin/manage-users');
+      return adminNav.map(item => (
+          <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton href={item.href} tooltip={isDesktop ? item.label : undefined}>
+                  <item.icon />
+                  <span>{item.label}</span>
+              </SidebarMenuButton>
+          </SidebarMenuItem>
+      ));
+  }
 
-  const mobileHeaderContent = (
-    <div className="flex items-center gap-4">
-       {showBackButton ? (
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-              <ArrowLeft />
-          </Button>
-      ) : (
-        <SidebarTrigger>
-          <Menu />
-        </SidebarTrigger>
-      )}
-      <h1 className="text-xl font-bold">{pageTitle}</h1>
-    </div>
-  );
 
   const userMenu = loading ? (
     <Skeleton className="h-8 w-8 rounded-full" />
@@ -133,6 +172,12 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                 <Shield className="mr-2 h-4 w-4" />
                 <span>Admin Panel</span>
               </DropdownMenuItem>
+            )}
+            {isSuperAdmin && (
+                <DropdownMenuItem onClick={() => router.push('/admin/manage-users')}>
+                    <UserCog className="mr-2 h-4 w-4" />
+                    <span>Manage Users</span>
+                </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
@@ -184,6 +229,16 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
     </SidebarFooter>
   )
 
+  // Loading Skeleton for the whole page to prevent flashes of incorrect UI
+  if (loading) {
+      return (
+        <div className="flex h-screen w-full bg-muted/30">
+            <div className="hidden md:flex w-14 h-full border-r p-2 flex-col items-center gap-2"><Skeleton className="w-8 h-8 rounded-full" /><Skeleton className="w-8 h-8" /><Skeleton className="w-8 h-8" /><Skeleton className="w-8 h-8" /></div>
+            <div className="flex-1 p-4"><Skeleton className="h-full w-full"/></div>
+        </div>
+      )
+  }
+
   return (
     <SidebarProvider>
       <div className={cn("min-h-screen w-full bg-muted/30", className)}>
@@ -192,14 +247,25 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
             <Sidebar>
                 <SidebarContent>
                     {sidebarHeader}
-                    <SidebarNavigation isAdmin={!!isAdmin} />
+                    <SidebarMenu>{renderSidebarNav(false)}</SidebarMenu>
                     {mobileSidebarFooter}
                 </SidebarContent>
             </Sidebar>
             
             <div className="flex flex-col h-screen w-full">
               <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 z-10 shadow-md shrink-0">
-                  {mobileHeaderContent}
+                  <div className="flex items-center gap-4">
+                    {showBackButton ? (
+                        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                            <ArrowLeft />
+                        </Button>
+                    ) : (
+                        <SidebarTrigger>
+                        <Menu />
+                        </SidebarTrigger>
+                    )}
+                    <h1 className="text-xl font-bold">{pageTitle}</h1>
+                    </div>
               </header>
               <main className="flex-grow overflow-y-auto pb-20">
                   {children}
@@ -210,16 +276,11 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
 
           {/* Desktop Layout */}
           <div className="hidden md:block">
-            {loading ? (
-                <div className="flex h-screen w-full">
-                    <div className="w-14 h-full border-r p-2 flex flex-col items-center gap-2"><Skeleton className="w-8 h-8 rounded-full" /><Skeleton className="w-8 h-8" /><Skeleton className="w-8 h-8" /><Skeleton className="w-8 h-8" /></div>
-                    <div className="flex-1 p-4"><Skeleton className="h-full w-full"/></div>
-                </div>
-            ) : isAdmin ? (
+            {pathname.startsWith('/admin') ? (
                 <Sidebar>
                     <SidebarContent>
                         {sidebarHeader}
-                        <SidebarNavigation isAdmin={true} isDesktop={true} />
+                        <SidebarMenu>{renderSidebarNav(true)}</SidebarMenu>
                         <SidebarFooter>{userMenu}</SidebarFooter>
                     </SidebarContent>
                     <SidebarInset>
