@@ -18,7 +18,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn("font-body antialiased bg-background")}>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+      </head>
+      <body className={cn("font-body antialiased")}>
         <FirebaseClientProvider>
           <SidebarProvider>
             <div className="w-full min-h-screen overflow-x-hidden">

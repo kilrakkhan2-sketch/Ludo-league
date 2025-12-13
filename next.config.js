@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 
-const pwa_disabled = true;
+const pwa_disabled = false;
 
 const withPWA = require('@ducanh2912/next-pwa').default({
   dest: 'public',
