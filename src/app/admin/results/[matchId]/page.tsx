@@ -20,6 +20,16 @@ import { Trophy, AlertCircle } from "lucide-react";
 
 export default function VerifyResultPage() {
     const params = useParams();
+
+    // Fix: Handle cases where params might be null on initial render
+    if (!params) {
+        return <div className="space-y-4">
+            <Skeleton className="h-12 w-1/2" />
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-64 w-full" />
+        </div>;
+    }
+
     const matchId = params.matchId as string;
     const { data: match, loading: matchLoading, error } = useDoc<Match>(`matches/${matchId}`);
     const [players, setPlayers] = useState<UserProfile[]>([]);
@@ -99,8 +109,8 @@ export default function VerifyResultPage() {
         </div>;
     }
 
-    if (!match) {
-        return <Card><CardHeader><CardTitle>Match Not Found</CardTitle></CardHeader></Card>;
+    if (error || !match) {
+        return <Card><CardHeader><CardTitle>Match Not Found</CardTitle><CardDescription>{error?.message}</CardDescription></CardHeader></Card>;
     }
 
     if (match.status !== 'verification') {
@@ -135,7 +145,11 @@ export default function VerifyResultPage() {
                                     <CardDescription>User ID: {result.userId}</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <Image src={result.screenshotUrl} alt={`Result screenshot from ${player?.displayName}`} width={1920} height={1080} className="rounded-md border" />
+                                    {result.screenshotUrl ? (
+                                        <Image src={result.screenshotUrl} alt={`Result screenshot from ${player?.displayName}`} width={1920} height={1080} className="rounded-md border" />
+                                    ) : (
+                                        <p>No screenshot submitted.</p>
+                                    )}
                                 </CardContent>
                             </Card>
                         );
