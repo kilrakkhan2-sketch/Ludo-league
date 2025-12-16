@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { ReactNode } from "react";
@@ -27,6 +28,7 @@ import { getAuth, signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { UserProfile } from "@/types";
 import { Skeleton } from "../ui/skeleton";
+import { AdminShell } from "./AdminShell";
 
 interface AppShellProps {
   children: ReactNode;
