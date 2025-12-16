@@ -69,13 +69,19 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const isAdmin = claims?.role && ['superadmin', 'deposit_admin', 'match_admin'].includes(claims.role);
 
   useEffect(() => {
-    if (!userLoading && (!user || !isAdmin)) {
-      router.push('/login');
-      toast({
-        variant: 'destructive',
-        title: 'Unauthorized',
-        description: 'You do not have permission to access this page.',
-      });
+    if (!userLoading) {
+      if (!user) {
+        // Not logged in, redirect to login
+        router.push('/login');
+      } else if (!isAdmin) {
+        // Logged in, but not an admin, redirect to dashboard
+        toast({
+          variant: 'destructive',
+          title: 'Unauthorized',
+          description: 'You do not have permission to access this page.',
+        });
+        router.push('/dashboard');
+      }
     }
   }, [user, userLoading, isAdmin, router, toast]);
 
@@ -105,16 +111,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
       return item.roles.includes(userRole);
   });
 
-  if (loading) {
+  if (loading || !isAdmin) {
     return (
         <div className="flex h-screen items-center justify-center bg-background">
             <p>Loading...</p>
         </div>
     );
-  }
-
-  if (!isAdmin) {
-     return null; // Render nothing while redirecting
   }
 
   return (

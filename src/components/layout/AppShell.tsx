@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "../ui/button";
-import { ArrowLeft, Home, Swords, Wallet, User, LogOut, Menu, Shield, UserCog } from "lucide-react"; // Added UserCog
+import { ArrowLeft, Home, Swords, Wallet, User, LogOut, Menu, Shield, UserCog } from "lucide-react";
 import { BottomNav } from "./BottomNav";
 import { cn } from "@/lib/utils";
 import {
@@ -132,12 +132,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                 <span>Admin Panel</span>
               </DropdownMenuItem>
             )}
-            {isSuperAdmin && (
-                <DropdownMenuItem onClick={() => router.push('/admin/manage-users')}>
-                    <UserCog className="mr-2 h-4 w-4" />
-                    <span>Manage Users</span>
-                </DropdownMenuItem>
-            )}
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
@@ -189,70 +184,58 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
   )
 
   // Loading Skeleton for the whole page to prevent flashes of incorrect UI
-  if (loading) {
+  if (userLoading) {
       return (
-        <div className="flex h-screen w-full bg-muted/30">
-            <div className="hidden md:flex w-14 h-full border-r p-2 flex-col items-center gap-2"><Skeleton className="w-8 h-8 rounded-full" /><Skeleton className="w-8 h-8" /><Skeleton className="w-8 h-8" /><Skeleton className="w-8 h-8" /></div>
-            <div className="flex-1 p-4"><Skeleton className="h-full w-full"/></div>
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <p>Loading...</p>
         </div>
       )
   }
 
   return (
-    <SidebarProvider>
       <div className={cn("min-h-screen w-full bg-muted/30", className)}>
           {/* Mobile Layout */}
           <div className="md:hidden">
-            <Sidebar>
-                <SidebarContent>
-                    {sidebarHeader}
-                    <SidebarMenu>{renderSidebarNav(false)}</SidebarMenu>
-                    {mobileSidebarFooter}
-                </SidebarContent>
-            </Sidebar>
-            
-            <div className="flex flex-col h-screen w-full">
-              <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 z-10 shadow-md shrink-0">
-                  <div className="flex items-center gap-4">
-                    {showBackButton ? (
-                        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                            <ArrowLeft />
-                        </Button>
-                    ) : (
-                        <SidebarTrigger>
-                        <Menu />
-                        </SidebarTrigger>
-                    )}
-                    <h1 className="text-xl font-bold">{pageTitle}</h1>
-                    </div>
-              </header>
-              <main className="flex-grow overflow-y-auto pb-20">
-                  {children}
-              </main>
-              <BottomNav />
-            </div>
+            <SidebarProvider>
+              <Sidebar>
+                  <SidebarContent>
+                      {sidebarHeader}
+                      <SidebarMenu>{renderSidebarNav(false)}</SidebarMenu>
+                      {mobileSidebarFooter}
+                  </SidebarContent>
+              </Sidebar>
+              
+              <div className="flex flex-col h-screen w-full">
+                <header className="bg-primary text-primary-foreground p-4 flex items-center justify-between gap-4 z-10 shadow-md shrink-0">
+                    <div className="flex items-center gap-4">
+                      {showBackButton ? (
+                          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                              <ArrowLeft />
+                          </Button>
+                      ) : (
+                          <SidebarTrigger>
+                          <Menu />
+                          </SidebarTrigger>
+                      )}
+                      <h1 className="text-xl font-bold">{pageTitle}</h1>
+                      </div>
+                      <div>{userMenu}</div>
+                </header>
+                <main className="flex-grow overflow-y-auto pb-20">
+                    {children}
+                </main>
+                <BottomNav />
+              </div>
+            </SidebarProvider>
           </div>
 
           {/* Desktop Layout */}
           <div className="hidden md:block">
             {pathname?.startsWith('/admin') ? (
-                <Sidebar>
-                    <SidebarContent>
-                        {sidebarHeader}
-                        <SidebarMenu>{renderSidebarNav(true)}</SidebarMenu>
-                        <SidebarFooter>{userMenu}</SidebarFooter>
-                    </SidebarContent>
-                    <SidebarInset>
-                      <header className="p-4 border-b shrink-0 flex items-center justify-between gap-4">
-                        <h1 className="text-2xl font-bold">{pageTitle}</h1>
-                        {userMenu}
-                      </header>
-                      <div className="flex-grow overflow-y-auto p-4 lg:p-6">{children}</div>
-                    </SidebarInset>
-                </Sidebar>
+                <AdminShell>{children}</AdminShell>
              ) : (
                <div className="flex flex-col max-h-screen">
-                  <header className="p-4 border-b shrink-0 flex items-center justify-between gap-4">
+                  <header className="p-4 border-b shrink-0 flex items-center justify-between gap-4 bg-card">
                     <div className="flex items-center gap-2">
                         <div className="p-2 bg-primary rounded-lg">
                             <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
@@ -265,12 +248,13 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                                 <Link href={item.href}>{item.label}</Link>
                             </Button>
                         ))}
+                        {isAdmin && <Button variant={pathname?.startsWith('/admin') ? "secondary" : "ghost"} asChild><Link href="/admin/dashboard">Admin</Link></Button>}
                         {userMenu}
                     </div>
                   </header>
                   <div className="flex-grow overflow-y-auto">
-                    <div className="p-4 lg:p-6">
-                        <h1 className="text-2xl font-bold mb-4">{pageTitle}</h1>
+                    <div className="container mx-auto p-4 lg:p-6">
+                        <h1 className="text-3xl font-bold mb-6">{pageTitle}</h1>
                         {children}
                     </div>
                   </div>
@@ -278,6 +262,5 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
              )}
           </div>
       </div>
-    </SidebarProvider>
   );
 }

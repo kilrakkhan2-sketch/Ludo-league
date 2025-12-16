@@ -144,7 +144,7 @@ export default function WalletPage() {
     .reduce((sum, t) => sum + t.amount, 0);
 
   return (
-    <AppShell pageTitle="Wallet">
+    <AppShell pageTitle="Wallet" showBackButton>
       <div className="bg-muted/30">
         <div className="relative">
             <div className="bg-primary h-24 rounded-b-3xl"></div>
