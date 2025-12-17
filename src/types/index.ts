@@ -1,5 +1,6 @@
 
 
+
 export type UserProfile = {
   id: string;
   uid: string;
@@ -41,6 +42,7 @@ export type Match = {
   results?: {
       userId: string;
       screenshotUrl: string;
+      status: 'won' | 'lost';
       submittedAt: any;
   }[];
   winnerDeclaredBy?: string;

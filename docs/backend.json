@@ -37,7 +37,21 @@
         "roomCode": { "type": "string" },
         "status": { "type": "string", "enum": ["open", "ongoing", "completed", "cancelled", "verification"] },
         "players": { "type": "array", "items": { "type": "string" } },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "results": {
+          "type": "array",
+          "description": "Stores the results submitted by players.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "userId": { "type": "string" },
+              "screenshotUrl": { "type": "string", "format": "uri" },
+              "status": { "type": "string", "enum": ["won", "lost"] },
+              "submittedAt": { "type": "string", "format": "date-time" }
+            },
+            "required": ["userId", "screenshotUrl", "status", "submittedAt"]
+          }
+        }
       },
       "required": ["creatorId", "title", "entryFee", "maxPlayers", "privacy", "status", "players", "createdAt"]
     },

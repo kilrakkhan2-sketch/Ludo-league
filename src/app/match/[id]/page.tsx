@@ -1,7 +1,7 @@
 
 'use client';
 
-import { doc, runTransaction, updateDoc, arrayUnion, Timestamp, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, runTransaction, updateDoc, arrayUnion, Timestamp, collection, getDocs, query, where, writeBatch } from 'firebase/firestore';
 import { useDoc, useUser, useCollection, useFirebase } from '@/firebase';
 import { Match, UserProfile } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,8 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import Confetti from 'react-confetti';
 import { useWindowSize } from 'react-use';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const MatchPageHeader = ({ title, showBackButton = true }: { title: string, showBackButton?: boolean }) => {
     const router = useRouter();
@@ -34,14 +36,6 @@ const MatchPageHeader = ({ title, showBackButton = true }: { title: string, show
         </div>
     );
 };
-
-const StatItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
-    <div className="flex flex-col items-center gap-1 p-2 border rounded-lg bg-card text-card-foreground">
-        <Icon className="h-6 w-6 text-muted-foreground" />
-        <p className="font-semibold text-lg">{value}</p>
-        <p className="text-xs text-muted-foreground uppercase">{label}</p>
-    </div>
-)
 
 const MatchPageSkeleton = () => (
      <>
@@ -71,27 +65,13 @@ const MatchPageSkeleton = () => (
 )
 
 const PlayerListLobby = ({ match, players }: { match: Match, players: UserProfile[] }) => {
-    const { toast } = useToast();
-    const copyRoomCode = () => {
-        if (!match.ludoKingCode) return;
-        navigator.clipboard.writeText(match.ludoKingCode);
-        toast({ title: 'Room Code Copied!' });
-    };
-
     const emptySlots = Array.from({ length: Math.max(0, match.maxPlayers - players.length) });
 
     return (
         <Card className="bg-transparent shadow-none border-0">
-             <CardHeader className="text-center">
-                <CardDescription>Room Code</CardDescription>
-                <div className="flex items-center justify-center gap-2">
-                    <CardTitle className="text-2xl font-mono tracking-widest">{match.ludoKingCode || 'N/A'}</CardTitle>
-                    <Button variant="ghost" size="icon" onClick={copyRoomCode}><ClipboardCopy className="h-5 w-5"/></Button>
-                </div>
-                 <div className="pt-4">
-                    <CardDescription>Countdown</CardDescription>
-                    <CardTitle className="text-4xl font-mono">00:05:00</CardTitle>
-                 </div>
+            <CardHeader className="text-center">
+                <CardDescription>Players</CardDescription>
+                <CardTitle className="text-2xl">{players.length} / {match.maxPlayers}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
                 {players.map(p => (
@@ -116,7 +96,7 @@ const PlayerListLobby = ({ match, players }: { match: Match, players: UserProfil
                                 <AvatarFallback>?</AvatarFallback>
                             </Avatar>
                             <div>
-                                <p className="font-semibold text-muted-foreground">Empty Slot - Join Now</p>
+                                <p className="font-semibold text-muted-foreground">Waiting for player...</p>
                             </div>
                         </div>
                     </div>
@@ -132,13 +112,11 @@ const MatchOpen = ({ match, profile, players }: { match: Match, profile: UserPro
     const { firestore } = useFirebase();
     const { toast } = useToast();
     const [isJoining, setIsJoining] = useState(false);
-    const [isStarting, setIsStarting] = useState(false);
 
     const alreadyJoined = match.players.includes(user?.uid || '');
     const isFull = match.players.length >= match.maxPlayers;
     const isCreator = match.creatorId === user?.uid;
-    const canStart = isCreator && match.players.length >= 2;
-
+    
     const handleJoinMatch = async () => {
         if (!user || !profile || !firestore) return;
         setIsJoining(true);
@@ -159,9 +137,7 @@ const MatchOpen = ({ match, profile, players }: { match: Match, profile: UserPro
                 const newBalance = userDoc.data().walletBalance - currentMatch.entryFee;
                 transaction.update(userRef, { walletBalance: newBalance });
                 
-                // Update prize pool based on the number of players
-                const newPlayerCount = currentMatch.players.length + 1;
-                const newPrizePool = currentMatch.entryFee * newPlayerCount * 0.9;
+                const newPrizePool = currentMatch.entryFee * (currentMatch.players.length + 1) * 0.9;
                 transaction.update(matchRef, { players: arrayUnion(user.uid), prizePool: newPrizePool });
 
                 const txRef = doc(collection(firestore, `users/${user.uid}/transactions`));
@@ -181,19 +157,6 @@ const MatchOpen = ({ match, profile, players }: { match: Match, profile: UserPro
         setIsJoining(false);
     };
 
-    const handleStartMatch = async () => {
-        if (!firestore || !isCreator) return;
-        setIsStarting(true);
-        try {
-            const matchRef = doc(firestore, 'matches', match.id);
-            await updateDoc(matchRef, { status: 'ongoing' });
-            toast({ title: 'Match Started!', description: 'Good luck to all players!' });
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Start Failed', description: 'Could not start the match.' });
-        }
-        setIsStarting(false);
-    };
-
     return (
         <div className="flex flex-col flex-grow">
             <main className="flex-grow p-4 space-y-4">
@@ -205,12 +168,12 @@ const MatchOpen = ({ match, profile, players }: { match: Match, profile: UserPro
                         {isJoining ? 'Joining...' : `Join for ₹${match.entryFee}`}
                     </Button>
                 )}
-                {canStart && (
-                    <Button className="w-full text-lg py-6 bg-gradient-to-r from-primary to-purple-600" onClick={handleStartMatch} disabled={isStarting}>
-                        <Swords className="mr-2 h-5 w-5" />
-                        {isStarting ? 'Starting...' : 'Start Match'}
-                    </Button>
-                )}
+                 {isCreator && match.players.length < match.maxPlayers &&
+                    <div className='text-center p-4 bg-muted rounded-lg'>
+                        <p className='font-bold'>Waiting for players...</p>
+                        <p className='text-sm text-muted-foreground'>The match will begin once all slots are filled.</p>
+                    </div>
+                }
                  <Button variant="outline" className="w-full text-lg py-6">
                     Invite Friends
                 </Button>
@@ -219,68 +182,104 @@ const MatchOpen = ({ match, profile, players }: { match: Match, profile: UserPro
     );
 };
 
-const MatchOngoing = ({ match, players }: { match: Match, players: UserProfile[] }) => {
+
+const MatchJoined = ({ match, players }: { match: Match, players: UserProfile[] }) => {
+    const { user } = useUser();
+    const { firestore } = useFirebase();
+    const { toast } = useToast();
+    const [roomCode, setRoomCode] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const isCreator = match.creatorId === user?.uid;
+
+    const handleRoomCodeSubmit = async () => {
+        if (!firestore || !isCreator || !roomCode) return;
+        setIsSubmitting(true);
+        try {
+            const matchRef = doc(firestore, 'matches', match.id);
+            await updateDoc(matchRef, { ludoKingCode: roomCode, status: 'ongoing' });
+            toast({ title: 'Room Code Shared!', description: 'The match is now ready to start.' });
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not share the room code.' });
+        }
+        setIsSubmitting(false);
+    };
+
+    return (
+        <div className="flex flex-col flex-grow">
+            <main className="flex-grow p-4 space-y-4">
+                <PlayerListLobby match={match} players={players} />
+                 {isCreator ? (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Enter Room Code</CardTitle>
+                            <CardDescription>Another player has joined. Please enter the Ludo King room code to start the match.</CardDescription>
+                        </CardHeader>
+                        <CardContent className='space-y-2'>
+                             <Label htmlFor="room-code">Ludo King Room Code</Label>
+                             <Input id="room-code" value={roomCode} onChange={(e) => setRoomCode(e.target.value.toUpperCase())} placeholder="e.g., 12345678" />
+                        </CardContent>
+                        <CardFooter>
+                            <Button className="w-full" onClick={handleRoomCodeSubmit} disabled={isSubmitting || !roomCode}>
+                                {isSubmitting ? 'Sharing...' : 'Share Code & Start'}
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                 ) : (
+                    <div className='text-center p-8 bg-card rounded-lg'>
+                        <p className='font-bold text-lg'>Waiting for Room Code</p>
+                        <p className='text-sm text-muted-foreground'>The match creator is setting up the room. The code will appear here shortly.</p>
+                    </div>
+                 )}
+            </main>
+        </div>
+    );
+};
+
+
+const MatchReady = ({ match }: { match: Match }) => {
     const { toast } = useToast();
     const copyRoomCode = () => {
         if (!match.ludoKingCode) return;
         navigator.clipboard.writeText(match.ludoKingCode);
         toast({ title: 'Room Code Copied!' });
     };
-    
+
     return (
         <div className="p-4 space-y-4">
             <Card>
                 <CardContent className="p-6 text-center space-y-4">
-                     <p className="text-sm text-muted-foreground">Room Code</p>
+                     <p className="text-sm text-muted-foreground">Ludo King Room Code</p>
                      <div className="flex items-center justify-center gap-4">
                         <p className="text-3xl font-mono tracking-widest">{match.ludoKingCode}</p>
                         <Button variant="ghost" size="icon" onClick={copyRoomCode}><ClipboardCopy /></Button>
                      </div>
-                     <p className="text-sm text-muted-foreground">Countdown</p>
-                     <p className="text-5xl font-bold font-mono">00:15:00</p>
+                     <p className='text-sm text-muted-foreground max-w-xs mx-auto'>
+                         Use this code to join the private room in Ludo King. The game is now ongoing.
+                     </p>
                 </CardContent>
                 <CardFooter>
-                    <Button className="w-full text-lg py-6 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90">OPEN LUDO KING</Button>
+                    <Button className="w-full text-lg py-6 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90" onClick={() => toast({ title: "Feature coming soon!"})}>OPEN LUDO KING</Button>
                 </CardFooter>
             </Card>
-            <Card>
-                <CardHeader className="flex-row justify-between items-center">
-                    <CardTitle>Players</CardTitle>
-                    <p className="text-sm font-semibold">Winning</p>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    {players.map(p => (
-                        <div key={p.id} className="flex justify-between items-center p-2 bg-muted/50 rounded-md">
-                            <div className="flex items-center gap-3">
-                                <Avatar>
-                                    <AvatarImage src={p.photoURL || undefined} />
-                                    <AvatarFallback>{p.displayName?.[0]}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                    <p className="font-semibold">{p.displayName}</p>
-                                    {p.uid === match.creatorId && <p className="text-xs text-green-500">Creator - Ready</p>}
-                                </div>
-                            </div>
-                            <p className="font-bold text-green-600">₹{match.prizePool?.toLocaleString() || '0'}</p>
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
         </div>
-    )
+    );
 };
 
-const MatchVerification = ({ match, players }: { match: Match, players: UserProfile[] }) => {
+const MatchOngoing = ({ match }: { match: Match }) => {
     const { user } = useUser();
     const { firestore } = useFirebase();
     const { toast } = useToast();
     const [screenshot, setScreenshot] = useState<File | null>(null);
+    const [resultStatus, setResultStatus] = useState<'won' | 'lost' | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     
     const hasSubmitted = match.results?.some(r => r.userId === user?.uid);
 
     const handleResultSubmit = async () => {
-        if (!user || !firestore || !screenshot) return;
+        if (!user || !firestore || !screenshot || !resultStatus) {
+             toast({ variant: 'destructive', title: 'Missing Information', description: 'Please select your status and upload a screenshot.' });
+             return;
+        }
         setIsSubmitting(true);
         try {
             const storage = getStorage();
@@ -289,11 +288,22 @@ const MatchVerification = ({ match, players }: { match: Match, players: UserProf
             const screenshotUrl = await getDownloadURL(screenshotRef);
 
             const matchRef = doc(firestore, 'matches', match.id);
-            const resultData = { userId: user.uid, screenshotUrl, submittedAt: Timestamp.now() };
+            const resultData = { 
+                userId: user.uid, 
+                screenshotUrl, 
+                status: resultStatus,
+                submittedAt: Timestamp.now() 
+            };
+            
+            // Atomically update the match document
+            const batch = writeBatch(firestore);
+            batch.update(matchRef, { 
+                results: arrayUnion(resultData),
+                status: 'verification' 
+            });
+            await batch.commit();
 
-            await updateDoc(matchRef, { results: arrayUnion(resultData) });
-
-            toast({ title: 'Result Submitted', description: 'Your result is awaiting verification.' });
+            toast({ title: 'Result Submitted', description: 'Your result is now awaiting verification from the admin.' });
         } catch (error) {
             toast({ variant: 'destructive', title: 'Submission Failed', description: 'Could not submit your result.' });
         }
@@ -317,25 +327,45 @@ const MatchVerification = ({ match, players }: { match: Match, players: UserProf
         <div className="p-4 text-center">
             <Card className="bg-card">
                 <CardHeader>
-                    <CardTitle>Congratulations!</CardTitle>
-                    <CardDescription>The match is complete. Please upload a screenshot of the Ludo King victory screen to claim your prize.</CardDescription>
+                    <CardTitle>Submit Your Result</CardTitle>
+                    <CardDescription>The match is complete. Please select your status and upload a screenshot of the victory/loss screen.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <label htmlFor="screenshot-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-border border-dashed rounded-lg cursor-pointer bg-muted hover:bg-muted/50">
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                            <Upload className="w-8 h-8 mb-3 text-muted-foreground" />
-                            {screenshot ? (
-                                <p className="font-semibold text-primary">{screenshot.name}</p>
-                            ) : (
-                                <p className="text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span></p>
-                            )}
-                        </div>
-                        <Input id="screenshot-upload" type="file" className="hidden" onChange={(e) => setScreenshot(e.target.files ? e.target.files[0] : null)} accept="image/*" />
-                    </label>
+                <CardContent className="space-y-6">
+                    <div>
+                        <Label className='font-semibold'>1. Select your final status</Label>
+                        <RadioGroup onValueChange={(val: 'won' | 'lost') => setResultStatus(val)} className='mt-2 grid grid-cols-2 gap-4'>
+                            <div>
+                                <RadioGroupItem value="won" id="r-won" className='sr-only' />
+                                <Label htmlFor='r-won' className='flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 font-bold text-2xl hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground [&:has([data-state=checked])]:border-primary'>
+                                    I WON
+                                </Label>
+                            </div>
+                             <div>
+                                <RadioGroupItem value="lost" id="r-lost" className='sr-only' />
+                                <Label htmlFor='r-lost' className='flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 font-bold text-2xl hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-destructive peer-data-[state=checked]:bg-destructive peer-data-[state=checked]:text-destructive-foreground [&:has([data-state=checked])]:border-destructive'>
+                                    I LOST
+                                </Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+                     <div>
+                        <Label className='font-semibold'>2. Upload winning screenshot</Label>
+                        <label htmlFor="screenshot-upload" className="mt-2 flex flex-col items-center justify-center w-full h-32 border-2 border-border border-dashed rounded-lg cursor-pointer bg-muted hover:bg-muted/50">
+                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                <Upload className="w-8 h-8 mb-3 text-muted-foreground" />
+                                {screenshot ? (
+                                    <p className="font-semibold text-primary">{screenshot.name}</p>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span></p>
+                                )}
+                            </div>
+                            <Input id="screenshot-upload" type="file" className="hidden" onChange={(e) => setScreenshot(e.target.files ? e.target.files[0] : null)} accept="image/*" />
+                        </label>
+                    </div>
                 </CardContent>
                 <CardFooter>
-                    <Button className="w-full bg-gradient-to-r from-primary to-purple-600" onClick={handleResultSubmit} disabled={isSubmitting || !screenshot}>
-                        {isSubmitting ? 'Uploading...' : 'Upload Screenshot'}
+                    <Button className="w-full bg-gradient-to-r from-primary to-purple-600" onClick={handleResultSubmit} disabled={isSubmitting || !screenshot || !resultStatus}>
+                        {isSubmitting ? 'Uploading...' : 'Submit Result for Verification'}
                     </Button>
                 </CardFooter>
             </Card>
@@ -343,15 +373,25 @@ const MatchVerification = ({ match, players }: { match: Match, players: UserProf
     );
 };
 
+
+const MatchVerification = () => {
+    return (
+         <div className="p-8 text-center space-y-4">
+             <Card className="bg-blue-100 text-blue-900">
+                <CardHeader>
+                    <CardTitle>Result Pending Verification</CardTitle>
+                    <CardDescription className="text-blue-800">Your submitted result is awaiting verification from the admin. You will be notified once the prize money is distributed.</CardDescription>
+                </CardHeader>
+            </Card>
+        </div>
+    );
+};
+
+
 const MatchCompleted = ({ match, players }: { match: Match, players: UserProfile[] }) => {
     const { width, height } = useWindowSize();
     const winner = players.find(p => p.id === match.winnerId);
     
-    const podiumPlayers = [...players].sort((a, b) => (b.rating || 0) - (a.rating || 0));
-    const first = winner || podiumPlayers[0];
-    const second = podiumPlayers.find(p => p.id !== first.id) || podiumPlayers[1];
-    const third = podiumPlayers.find(p => p.id !== first.id && p.id !== second?.id) || podiumPlayers[2];
-
     return (
          <div className="p-4 space-y-4">
             {winner && <Confetti width={width} height={height} recycle={false} />}
@@ -360,55 +400,12 @@ const MatchCompleted = ({ match, players }: { match: Match, players: UserProfile
                     <CardTitle className="text-2xl">Congratulations, {winner?.displayName || 'Winner'}!</CardTitle>
                     <CardDescription className="text-primary-foreground/80">The match is complete and prizes have been distributed.</CardDescription>
                 </CardHeader>
-            </Card>
-
-            <Card>
-                <CardHeader className="items-center text-center">
-                    <CardTitle>Final Standings</CardTitle>
-                </CardHeader>
-                <CardContent className="flex justify-center items-end gap-2 px-2">
-                    {second && (
-                        <div className="text-center w-1/3">
-                            <Avatar className="h-16 w-16 mx-auto border-4 border-slate-400">
-                                <AvatarImage src={second.photoURL || undefined} />
-                                <AvatarFallback>{second.displayName?.[0]}</AvatarFallback>
-                            </Avatar>
-                            <div className="mt-2 p-2 h-20 flex flex-col justify-center bg-gradient-to-b from-purple-500 to-purple-600 text-white rounded-t-lg">
-                                <p className="font-bold text-lg">2</p>
-                                <p className="font-semibold text-sm">₹{((match.prizePool || 0) * 0.3).toFixed(0)}</p>
-                            </div>
-                        </div>
-                    )}
-
-                    {first && (
-                        <div className="text-center w-1/3">
-                             <Avatar className="h-20 w-20 mx-auto border-4 border-yellow-400">
-                                <AvatarImage src={first.photoURL || undefined} />
-                                <AvatarFallback>{first.displayName?.[0]}</AvatarFallback>
-                            </Avatar>
-                            <div className="mt-2 p-2 h-28 flex flex-col justify-center bg-gradient-to-b from-purple-600 to-purple-700 text-white rounded-t-lg">
-                                <p className="font-bold text-2xl">1</p>
-                                <p className="font-semibold text-lg">₹{match.prizePool?.toLocaleString()}</p>
-                            </div>
-                        </div>
-                    )}
-                    
-                    {third && (
-                         <div className="text-center w-1/3">
-                             <Avatar className="h-14 w-14 mx-auto border-4 border-orange-400">
-                                <AvatarImage src={third.photoURL || undefined} />
-                                <AvatarFallback>{third.displayName?.[0]}</AvatarFallback>
-                            </Avatar>
-                             <div className="mt-2 p-2 h-16 flex flex-col justify-center bg-gradient-to-b from-purple-400 to-purple-500 text-white rounded-t-lg">
-                                <p className="font-bold text-base">3</p>
-                                <p className="font-semibold text-xs">₹{((match.prizePool || 0) * 0.1).toFixed(0)}</p>
-                            </div>
-                        </div>
-                    )}
+                 <CardContent>
+                    <p className="text-sm">You won</p>
+                    <p className="text-4xl font-bold">₹{match.prizePool?.toLocaleString()}</p>
                 </CardContent>
             </Card>
-
-             <div className="flex justify-center">
+            <div className="flex justify-center">
                 <Button asChild>
                     <Link href="/dashboard">Back to Dashboard</Link>
                 </Button>
@@ -440,7 +437,8 @@ export default function MatchPage({ params }: { params: { id: string } }) {
         setPlayersLoading(false);
       };
       fetchPlayers();
-    } else {
+    } else if (match) { // If match exists but has no players or an empty player array
+        setPlayers([]);
         setPlayersLoading(false);
     }
   }, [match, firestore]);
@@ -455,30 +453,37 @@ export default function MatchPage({ params }: { params: { id: string } }) {
     let title = "Match Details";
     let content;
 
-    switch (match.status) {
-        case 'open':
-            title = 'Match Lobby';
+    const isCreator = match.creatorId === user?.uid;
+    const isPlayer = match.players.includes(user?.uid || '');
+    const isFull = match.players.length >= match.maxPlayers;
+    const roomCodeEntered = !!match.ludoKingCode;
+    
+    // Determine the state based on the user's new flow
+    if (match.status === 'open') {
+        if (!isFull) {
+            title = 'Waiting for Players';
             content = <MatchOpen match={match} profile={profile} players={players} />;
-            break;
-        case 'ongoing':
-            title = 'Game In Progress';
-            content = <MatchOngoing match={match} players={players} />;
-            break;
-        case 'verification':
-             title = 'Submit Result';
-             content = <MatchVerification match={match} players={players} />;
-             break;
-        case 'completed':
-            title = 'Match Completed';
-            content = <MatchCompleted match={match} players={players} />;
-            break;
-        case 'cancelled':
-            title = 'Match Cancelled';
-            content = <div className="p-8 text-center"><Card><CardHeader><CardTitle>Match Cancelled</CardTitle><CardDescription>This match has been cancelled.</CardDescription></CardHeader></Card></div>;
-            break;
-        default:
-            title = 'Match Status Unknown';
-            content = <div className="p-8 text-center">Could not determine match status.</div>;
+        } else {
+             title = 'Ready to Start';
+             content = <MatchJoined match={match} players={players} />;
+        }
+    } else if (match.status === 'ongoing') {
+        if (!roomCodeEntered) {
+             title = 'Ready to Start';
+             content = <MatchJoined match={match} players={players} />;
+        } else {
+            title = 'Game in Progress';
+            content = <MatchOngoing match={match} />;
+        }
+    } else if (match.status === 'verification') {
+        title = 'Awaiting Verification';
+        content = <MatchVerification />;
+    } else if (match.status === 'completed') {
+        title = 'Match Completed';
+        content = <MatchCompleted match={match} players={players} />;
+    } else {
+        title = 'Match Status Unknown';
+        content = <div className="p-8 text-center">Could not determine match status.</div>;
     }
     
     return (

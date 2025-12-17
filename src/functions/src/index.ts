@@ -1,4 +1,5 @@
 
+
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
@@ -260,7 +261,7 @@ export const createMatch = functions.https.onCall(async (data, context) => {
     }
 
     // 2. Data Validation
-    const { title, entryFee, prizePool, ludoKingCode, maxPlayers, privacy } = data;
+    const { title, entryFee, prizePool, maxPlayers, privacy } = data;
     
     if (!title || typeof title !== "string" || title.length === 0 || title.length > 50) {
         throw new functions.https.HttpsError("invalid-argument", "Match title is required and must be 50 characters or less.");
@@ -270,9 +271,6 @@ export const createMatch = functions.https.onCall(async (data, context) => {
     }
     if (typeof prizePool !== "number" || prizePool < 0) {
         throw new functions.https.HttpsError("invalid-argument", "A valid prize pool is required.");
-    }
-    if (!ludoKingCode || typeof ludoKingCode !== "string") {
-        throw new functions.https.HttpsError("invalid-argument", "A valid Ludo King room code is required.");
     }
     if (maxPlayers !== 2 && maxPlayers !== 4) {
         throw new functions.https.HttpsError("invalid-argument", "Max players must be either 2 or 4.");
@@ -321,12 +319,11 @@ export const createMatch = functions.https.onCall(async (data, context) => {
                 title,
                 entryFee,
                 prizePool,
-                ludoKingCode,
+                ludoKingCode: null, // Ludo King code is set later
                 maxPlayers,
                 privacy: privacy || 'public',
                 creatorId: userId,
                 players: [userId], // Creator is the first player
-                playerCount: 1,
                 status: 'open',
                 winnerId: null,
                 createdAt: FieldValue.serverTimestamp(),

@@ -20,8 +20,7 @@ export default function CreateMatchPage() {
   const [title, setTitle] = useState('');
   const [entryFee, setEntryFee] = useState('50');
   const [customFee, setCustomFee] = useState('');
-  const [maxPlayers, setMaxPlayers] = useState(4);
-  const [ludoKingCode, setLudoKingCode] = useState('');
+  const [maxPlayers, setMaxPlayers] = useState(2);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleFeeChange = (value: string) => {
@@ -48,13 +47,8 @@ export default function CreateMatchPage() {
       finalFee = parseInt(entryFee, 10);
     }
 
-    if (!title.trim() || !ludoKingCode.trim()) {
+    if (!title.trim()) {
       toast({ variant: 'destructive', title: 'Missing Information', description: 'Please fill out all fields.' });
-      return;
-    }
-    
-    if (ludoKingCode.length < 4) { // Ludo King codes can vary in length
-      toast({ variant: 'destructive', title: 'Invalid Room Code', description: 'The room code seems too short.' });
       return;
     }
 
@@ -64,19 +58,19 @@ export default function CreateMatchPage() {
     const createMatchCloudFunction = httpsCallable(functions, 'createMatch');
 
     try {
-      const prizePool = finalFee * maxPlayers * 0.9; // 90% of total entry fees
+      // Prize pool will be calculated dynamically as players join
+      const initialPrizePool = finalFee * 0.9; 
 
       const result = await createMatchCloudFunction({
         title,
         entryFee: finalFee,
-        prizePool,
-        ludoKingCode,
+        prizePool: initialPrizePool,
         maxPlayers,
         status: 'open',
         privacy: 'public',
       });
 
-      toast({ title: 'Match Created!', description: 'Your match is now live.' });
+      toast({ title: 'Match Created!', description: 'Your match is now live and waiting for players.' });
       // @ts-ignore
       router.push(`/match/${result.data.matchId}`);
 
@@ -115,15 +109,6 @@ export default function CreateMatchPage() {
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="e.g., Weekend Warriors"
-                    />
-                </div>
-                <div className="space-y-2 pl-9">
-                    <Label htmlFor="ludoKingCode">Ludo King Room Code</Label>
-                    <Input
-                        id="ludoKingCode"
-                        value={ludoKingCode}
-                        onChange={(e) => setLudoKingCode(e.target.value.toUpperCase())}
-                        placeholder="Enter the code from Ludo King"
                     />
                 </div>
             </div>
@@ -185,7 +170,7 @@ export default function CreateMatchPage() {
         
         <footer className="p-4 sticky bottom-0 bg-background border-t">
              <Button onClick={handleCreateMatch} className="w-full text-lg py-6 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating Match...' : 'Create Match & Play'}
+              {isSubmitting ? 'Creating Match...' : 'Create Match'}
             </Button>
         </footer>
     </div>
