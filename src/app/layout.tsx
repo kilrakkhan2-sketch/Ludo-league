@@ -22,9 +22,7 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body antialiased")}>
         <FirebaseClientProvider>
-          <div className="w-full min-h-screen overflow-x-hidden">
-            {children}
-          </div>
+          {children}
         </FirebaseClientProvider>
         <Toaster />
       </body>

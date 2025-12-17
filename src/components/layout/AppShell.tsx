@@ -26,6 +26,7 @@ import { getAuth, signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { UserProfile } from "@/types";
 import { Skeleton } from "../ui/skeleton";
+import { BottomNav } from "./BottomNav";
 
 interface AppShellProps {
   children: ReactNode;
@@ -113,36 +114,6 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
       mainNav.push({ href: "/admin/dashboard", icon: Shield, label: "Admin" });
   }
 
-  const sidebarContent = (
-    <>
-      <SidebarHeader>
-        <div className="flex items-center gap-2">
-        <div className="p-2 bg-primary rounded-lg">
-            <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
-        </div>
-        <h1 className="text-xl font-bold font-headline text-primary">LudoLeague</h1>
-        </div>
-    </SidebarHeader>
-      <SidebarMenu>
-          {mainNav.map(item => (
-          <SidebarMenuItem key={item.href}>
-              <SidebarMenuButton 
-                  href={item.href} 
-                  tooltip={item.label}
-                  current={pathname === item.href}
-              >
-                  <item.icon />
-                  <span>{item.label}</span>
-              </SidebarMenuButton>
-          </SidebarMenuItem>
-        ))}
-      </SidebarMenu>
-      <SidebarFooter>
-        {userMenu}
-      </SidebarFooter>
-    </>
-  );
-
   // Loading Skeleton for the whole page to prevent flashes of incorrect UI
   if (userLoading) {
       return (
@@ -155,36 +126,95 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
 
   return (
     <SidebarProvider>
-      <div className={cn("min-h-screen w-full bg-muted/30", className)}>
-           <Sidebar collapsible="icon">
-              <SidebarContent>
-                {sidebarContent}
-              </SidebarContent>
-           </Sidebar>
+      <div className={cn("min-h-screen w-full bg-background", className)}>
+        <Sidebar>
+          <SidebarContent>
+            <SidebarHeader>
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-primary rounded-lg">
+                  <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
+                </div>
+                <h1 className="text-xl font-bold font-headline text-primary">LudoLeague</h1>
+              </div>
+            </SidebarHeader>
+            <SidebarMenu>
+              {mainNav.map(item => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton 
+                      href={item.href} 
+                      tooltip={item.label}
+                      current={pathname === item.href}
+                  >
+                      <item.icon />
+                      <span>{item.label}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+             <SidebarFooter>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                    variant="ghost"
+                    className="justify-start w-full gap-2 p-2 h-auto"
+                    >
+                    <Avatar className="h-8 w-8">
+                        <AvatarImage
+                        src={profile?.photoURL || undefined}
+                        alt={profile?.displayName || ''}
+                        />
+                        <AvatarFallback>{profile?.displayName?.charAt(0) || user?.email?.charAt(0) || 'A'}</AvatarFallback>
+                    </Avatar>
+                    <div className="text-left overflow-hidden group-data-[collapsible=icon]:hidden">
+                        <p className="font-medium truncate">{profile?.displayName || 'User'}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                        {user?.email}
+                        </p>
+                    </div>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 mb-2" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">{profile?.displayName || 'User'}</p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                        {user?.email}
+                        </p>
+                    </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+                </DropdownMenu>
+            </SidebarFooter>
+          </SidebarContent>
+        </Sidebar>
           
-           <SidebarInset className="flex flex-col">
+        <div className="flex flex-col h-screen sm:pl-14">
               <header className="bg-card p-4 flex items-center justify-between gap-4 z-10 shadow-sm shrink-0 border-b">
-                  <div className="flex items-center gap-4">
-                    <SidebarTrigger className="md:hidden">
+                  <div className="flex items-center gap-2">
+                    <SidebarTrigger className="sm:hidden">
                         <Menu />
                     </SidebarTrigger>
                     {showBackButton && (
-                        <Button variant="ghost" size="icon" onClick={() => router.back()} className="hidden md:flex">
+                        <Button variant="ghost" size="icon" onClick={() => router.back()}>
                             <ArrowLeft />
                         </Button>
                     )}
                     <h1 className="text-xl font-bold">{pageTitle}</h1>
                     </div>
-                    <div className="hidden md:block">
+                    <div className="hidden sm:block">
                       {userMenu}
                     </div>
               </header>
-              <main className="flex-grow overflow-y-auto">
-                  <div className="container mx-auto p-4 md:p-6">
-                    {children}
-                  </div>
+              <main className="flex-grow overflow-y-auto pb-16 sm:pb-0">
+                  {children}
               </main>
-            </SidebarInset>
+              <BottomNav />
+        </div>
       </div>
     </SidebarProvider>
   );
