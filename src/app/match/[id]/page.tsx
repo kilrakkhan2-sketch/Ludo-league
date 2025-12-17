@@ -236,35 +236,6 @@ const MatchJoined = ({ match, players }: { match: Match, players: UserProfile[] 
 };
 
 
-const MatchReady = ({ match }: { match: Match }) => {
-    const { toast } = useToast();
-    const copyRoomCode = () => {
-        if (!match.ludoKingCode) return;
-        navigator.clipboard.writeText(match.ludoKingCode);
-        toast({ title: 'Room Code Copied!' });
-    };
-
-    return (
-        <div className="p-4 space-y-4">
-            <Card>
-                <CardContent className="p-6 text-center space-y-4">
-                     <p className="text-sm text-muted-foreground">Ludo King Room Code</p>
-                     <div className="flex items-center justify-center gap-4">
-                        <p className="text-3xl font-mono tracking-widest">{match.ludoKingCode}</p>
-                        <Button variant="ghost" size="icon" onClick={copyRoomCode}><ClipboardCopy /></Button>
-                     </div>
-                     <p className='text-sm text-muted-foreground max-w-xs mx-auto'>
-                         Use this code to join the private room in Ludo King. The game is now ongoing.
-                     </p>
-                </CardContent>
-                <CardFooter>
-                    <Button className="w-full text-lg py-6 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90" onClick={() => toast({ title: "Feature coming soon!"})}>OPEN LUDO KING</Button>
-                </CardFooter>
-            </Card>
-        </div>
-    );
-};
-
 const MatchOngoing = ({ match }: { match: Match }) => {
     const { user } = useUser();
     const { firestore } = useFirebase();
@@ -274,6 +245,12 @@ const MatchOngoing = ({ match }: { match: Match }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     
     const hasSubmitted = match.results?.some(r => r.userId === user?.uid);
+
+     const copyRoomCode = () => {
+        if (!match.ludoKingCode) return;
+        navigator.clipboard.writeText(match.ludoKingCode);
+        toast({ title: 'Room Code Copied!' });
+    };
 
     const handleResultSubmit = async () => {
         if (!user || !firestore || !screenshot || !resultStatus) {
@@ -296,12 +273,10 @@ const MatchOngoing = ({ match }: { match: Match }) => {
             };
             
             // Atomically update the match document
-            const batch = writeBatch(firestore);
-            batch.update(matchRef, { 
+            await updateDoc(matchRef, { 
                 results: arrayUnion(resultData),
                 status: 'verification' 
             });
-            await batch.commit();
 
             toast({ title: 'Result Submitted', description: 'Your result is now awaiting verification from the admin.' });
         } catch (error) {
@@ -324,7 +299,20 @@ const MatchOngoing = ({ match }: { match: Match }) => {
     }
 
     return (
-        <div className="p-4 text-center">
+        <div className="p-4 space-y-6">
+            <Card>
+                <CardContent className="p-6 text-center space-y-4">
+                     <p className="text-sm text-muted-foreground">Ludo King Room Code</p>
+                     <div className="flex items-center justify-center gap-4">
+                        <p className="text-3xl font-mono tracking-widest">{match.ludoKingCode}</p>
+                        <Button variant="ghost" size="icon" onClick={copyRoomCode}><ClipboardCopy /></Button>
+                     </div>
+                     <p className='text-sm text-muted-foreground max-w-xs mx-auto'>
+                         Use this code to join the private room in Ludo King. The game is now ongoing.
+                     </p>
+                </CardContent>
+            </Card>
+
             <Card className="bg-card">
                 <CardHeader>
                     <CardTitle>Submit Your Result</CardTitle>
@@ -450,37 +438,29 @@ export default function MatchPage({ params }: { params: { id: string } }) {
       return <MatchPageSkeleton />;
     }
 
-    let title = "Match Details";
+    let title;
     let content;
 
-    const isCreator = match.creatorId === user?.uid;
-    const isPlayer = match.players.includes(user?.uid || '');
     const isFull = match.players.length >= match.maxPlayers;
-    const roomCodeEntered = !!match.ludoKingCode;
     
-    // Determine the state based on the user's new flow
-    if (match.status === 'open') {
-        if (!isFull) {
-            title = 'Waiting for Players';
-            content = <MatchOpen match={match} profile={profile} players={players} />;
-        } else {
-             title = 'Ready to Start';
-             content = <MatchJoined match={match} players={players} />;
-        }
-    } else if (match.status === 'ongoing') {
-        if (!roomCodeEntered) {
-             title = 'Ready to Start';
-             content = <MatchJoined match={match} players={players} />;
-        } else {
-            title = 'Game in Progress';
-            content = <MatchOngoing match={match} />;
-        }
+    // Refactored state logic
+    if (match.status === 'completed') {
+        title = 'Match Completed';
+        content = <MatchCompleted match={match} players={players} />;
     } else if (match.status === 'verification') {
         title = 'Awaiting Verification';
         content = <MatchVerification />;
-    } else if (match.status === 'completed') {
-        title = 'Match Completed';
-        content = <MatchCompleted match={match} players={players} />;
+    } else if (match.status === 'ongoing') {
+        title = 'Game in Progress';
+        content = <MatchOngoing match={match} />;
+    } else if (match.status === 'open') {
+        if (isFull) {
+            title = 'Ready to Start';
+            content = <MatchJoined match={match} players={players} />;
+        } else {
+            title = 'Waiting for Players';
+            content = <MatchOpen match={match} profile={profile} players={players} />;
+        }
     } else {
         title = 'Match Status Unknown';
         content = <div className="p-8 text-center">Could not determine match status.</div>;
@@ -496,3 +476,5 @@ export default function MatchPage({ params }: { params: { id: string } }) {
   
   return <div className="bg-muted/30">{renderContent()}</div>;
 }
+
+    
