@@ -379,10 +379,15 @@ const MatchVerification = () => {
 const MatchCompleted = ({ match, players }: { match: Match, players: UserProfile[] }) => {
     const { width, height } = useWindowSize();
     const winner = players.find(p => p.id === match.winnerId);
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
     
     return (
          <div className="p-4 space-y-4">
-            {winner && <Confetti width={width} height={height} recycle={false} />}
+            {isClient && winner && <Confetti width={width} height={height} recycle={false} />}
             <Card className="text-center bg-gradient-to-b from-primary to-purple-800 text-primary-foreground">
                 <CardHeader>
                     <CardTitle className="text-2xl">Congratulations, {winner?.displayName || 'Winner'}!</CardTitle>
@@ -442,8 +447,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
     let content;
 
     const isFull = match.players.length >= match.maxPlayers;
-    
-    // Refactored state logic
+
     if (match.status === 'completed') {
         title = 'Match Completed';
         content = <MatchCompleted match={match} players={players} />;
@@ -476,5 +480,3 @@ export default function MatchPage({ params }: { params: { id: string } }) {
   
   return <div className="bg-muted/30">{renderContent()}</div>;
 }
-
-    
