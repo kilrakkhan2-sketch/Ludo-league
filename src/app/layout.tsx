@@ -3,7 +3,6 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase";
-import { SidebarProvider } from "@/components/ui/sidebar";
 
 export const metadata: Metadata = {
   title: "LudoLeague",
@@ -23,11 +22,9 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body antialiased")}>
         <FirebaseClientProvider>
-          <SidebarProvider>
-            <div className="w-full min-h-screen overflow-x-hidden">
-              {children}
-            </div>
-          </SidebarProvider>
+          <div className="w-full min-h-screen overflow-x-hidden">
+            {children}
+          </div>
         </FirebaseClientProvider>
         <Toaster />
       </body>
