@@ -25,8 +25,9 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useFirebase } from '@/firebase/provider';
-import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, UserCredential } from 'firebase/auth';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { customAlphabet } from 'nanoid';
 
 const formSchema = z
   .object({
@@ -55,6 +56,35 @@ export default function SignupPage() {
     },
   });
 
+  const handleNewUserSetup = async (userCredential: UserCredential) => {
+    if (!firestore) return;
+    const user = userCredential.user;
+    const userRef = doc(firestore, 'users', user.uid);
+
+    const userDoc = await getDoc(userRef);
+    if (!userDoc.exists()) {
+        const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 8);
+        const referralCode = nanoid();
+
+        await setDoc(userRef, {
+            uid: user.uid,
+            name: user.displayName,
+            displayName: user.displayName,
+            email: user.email,
+            photoURL: user.photoURL,
+            role: 'user',
+            walletBalance: 0,
+            isVerified: false,
+            matchesPlayed: 0,
+            matchesWon: 0,
+            rating: 1000,
+            xp: 0,
+            referralCode: referralCode,
+            createdAt: serverTimestamp(),
+        });
+    }
+  };
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!auth || !firestore) {
       toast({
@@ -71,15 +101,25 @@ export default function SignupPage() {
       
       await updateProfile(user, { displayName: values.displayName });
 
+      // Create user profile in Firestore
+      const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 8);
+      const referralCode = nanoid();
+
       await setDoc(doc(firestore, 'users', user.uid), {
         uid: user.uid,
         name: values.displayName,
         displayName: values.displayName,
         email: values.email,
+        photoURL: user.photoURL,
         role: 'user',
         walletBalance: 0,
         isVerified: false, 
-        createdAt: new Date(),
+        matchesPlayed: 0,
+        matchesWon: 0,
+        rating: 1000,
+        xp: 0,
+        referralCode: referralCode,
+        createdAt: serverTimestamp(),
       });
 
       toast({
@@ -104,11 +144,13 @@ export default function SignupPage() {
     }
   };
   
-    const handleGoogleSignIn = async () => {
-    if(!auth) return;
+  const handleGoogleSignIn = async () => {
+    if(!auth || !firestore) return;
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      const userCredential = await signInWithPopup(auth, provider);
+      await handleNewUserSetup(userCredential);
+      
       toast({
         title: 'Signed In!',
         description: 'Welcome!',

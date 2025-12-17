@@ -24,8 +24,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { signInWithEmailAndPassword, signInAnonymously, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { useAuth, useFirebase } from '@/firebase';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, UserCredential } from 'firebase/auth';
+import { useFirebase } from '@/firebase';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { customAlphabet } from 'nanoid';
+
 
 const formSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -35,7 +38,7 @@ const formSchema = z.object({
 type LoginFormValues = z.infer<typeof formSchema>;
 
 export default function LoginPage() {
-  const { auth } = useFirebase();
+  const { auth, firestore } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -46,6 +49,36 @@ export default function LoginPage() {
       password: '',
     },
   });
+
+  const handleNewUserSetup = async (userCredential: UserCredential) => {
+    if (!firestore) return;
+    const user = userCredential.user;
+    const userRef = doc(firestore, 'users', user.uid);
+
+    const userDoc = await getDoc(userRef);
+    if (!userDoc.exists()) {
+        const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 8);
+        const referralCode = nanoid();
+
+        await setDoc(userRef, {
+            uid: user.uid,
+            name: user.displayName,
+            displayName: user.displayName,
+            email: user.email,
+            photoURL: user.photoURL,
+            role: 'user',
+            walletBalance: 0,
+            isVerified: false,
+            matchesPlayed: 0,
+            matchesWon: 0,
+            rating: 1000,
+            xp: 0,
+            referralCode: referralCode,
+            createdAt: serverTimestamp(),
+        });
+    }
+  };
+
 
   const onSubmit = async (values: LoginFormValues) => {
     if (!auth) {
@@ -80,10 +113,12 @@ export default function LoginPage() {
   };
   
   const handleGoogleSignIn = async () => {
-    if(!auth) return;
+    if(!auth || !firestore) return;
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      const userCredential = await signInWithPopup(auth, provider);
+      await handleNewUserSetup(userCredential);
+
       toast({
         title: 'Signed In!',
         description: 'Welcome!',
