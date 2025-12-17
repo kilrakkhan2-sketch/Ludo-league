@@ -50,11 +50,15 @@ export default function AdminDepositsPage() {
             }
         });
     }
+     // Ensure the list is not empty to prevent Firestore errors with 'in' queries
+    if (ids.size === 0) {
+        return ['_']; // Use a placeholder that won't match any documents
+    }
     return Array.from(ids);
   }, [deposits]);
 
   const { data: users, loading: usersLoading } = useCollection<UserProfile>('users', { 
-    where: ['uid', 'in', allUserIdsInView.length > 0 ? allUserIdsInView : ['_']] 
+    where: ['uid', 'in', allUserIdsInView] 
   });
 
   const usersMap = useMemo(() => {
@@ -67,21 +71,26 @@ export default function AdminDepositsPage() {
 
 
  const handleApproveDeposit = async (deposit: DepositRequest) => {
-    if (!app) return;
+    if (!firestore || !adminUser) return;
     setIsSubmitting(true);
     try {
-      const functions = getFunctions(app);
-      const approveDeposit = httpsCallable(functions, 'approveDeposit');
-      const result = await approveDeposit({ depositId: deposit.id });
+      const depositRef = doc(firestore, 'deposit-requests', deposit.id);
+      const batch = writeBatch(firestore);
+      batch.update(depositRef, { 
+          status: 'approved', 
+          processedAt: Timestamp.now(),
+          processedBy: adminUser.uid,
+      });
+      await batch.commit();
 
-      if((result.data as any).success) {
-        toast({ title: 'Success', description: 'Deposit has been approved.' });
-      } else {
-         throw new Error((result.data as any).message || 'The cloud function returned an error.');
-      }
+      // The actual crediting logic is handled by the onDepositStatusChange cloud function
+      // to ensure atomicity and handle referral bonuses.
+      
+      toast({ title: 'Success', description: 'Deposit has been approved. The cloud function will process the transaction.' });
+
     } catch (error: any) {
       console.error('Error approving deposit:', error);
-      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not approve deposit. Check function logs.' });
+      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not approve deposit.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -185,3 +194,5 @@ export default function AdminDepositsPage() {
       </div>
   );
 }
+
+    

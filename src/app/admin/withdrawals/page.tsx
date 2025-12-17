@@ -67,11 +67,15 @@ export default function AdminWithdrawalsPage() {
             ids.add(r.processedBy);
         }
     });
+    // Ensure the list is not empty to prevent Firestore errors with 'in' queries
+    if (ids.size === 0) {
+        return ['_']; // Use a placeholder that won't match any documents
+    }
     return Array.from(ids);
   }, [requests]);
 
   const { data: usersData, loading: usersLoading } = useCollection<UserProfile>('users', {
-    where: ['uid', 'in', allUserIdsInView.length > 0 ? allUserIdsInView : ['_']]
+    where: ['uid', 'in', allUserIdsInView]
   });
 
   const usersMap = useMemo(() => {
@@ -201,8 +205,8 @@ export default function AdminWithdrawalsPage() {
                     <TableRow key={req.id}>
                     <TableCell>{req.createdAt ? format((req.createdAt as Timestamp).toDate(), 'dd MMM yyyy') : 'N/A'}</TableCell>
                     <TableCell>
-                        <div>{req.userName || user?.name}</div>
-                        <div className="text-xs text-muted-foreground">{req.userEmail || user?.email}</div>
+                        <div>{user?.name || req.userName}</div>
+                        <div className="text-xs text-muted-foreground">{user?.email || req.userEmail}</div>
                     </TableCell>
                     <TableCell className="font-semibold text-destructive">-₹{req.amount.toLocaleString()}</TableCell>
                     <TableCell className='capitalize'>{req.method}</TableCell>
@@ -220,7 +224,7 @@ export default function AdminWithdrawalsPage() {
                                         <DialogHeader>
                                             <DialogTitle>Process Withdrawal</DialogTitle>
                                             <DialogDescription>
-                                            You are about to process a withdrawal of <span className="font-bold">₹{selectedRequest.amount}</span> for {selectedRequest.userName}.
+                                            You are about to process a withdrawal of <span className="font-bold">₹{selectedRequest.amount}</span> for {user?.name || selectedRequest.userName}.
                                             Ensure funds are transferred externally before approving. This action is irreversible. Approving will deduct ₹{selectedRequest.amount} from your admin wallet.
                                             </DialogDescription>
                                         </DialogHeader>
@@ -248,3 +252,5 @@ export default function AdminWithdrawalsPage() {
     </AdminShell>
   );
 }
+
+    
