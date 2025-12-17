@@ -25,6 +25,7 @@ export default function ReferPage() {
   const loading = userLoading || profileLoading;
 
   const referralCode = profile?.referralCode || 'LUDO123';
+  const referralEarnings = profile?.referralEarnings || 0;
 
   const copyCode = () => {
     navigator.clipboard.writeText(referralCode);
@@ -52,7 +53,7 @@ export default function ReferPage() {
             <Gift className="mx-auto h-12 w-12 opacity-80" />
             <h2 className="text-2xl font-bold">Invite Friends, Earn Rewards!</h2>
             <p className="text-sm opacity-90 max-w-xs mx-auto">
-              Get ₹10 for every friend who signs up and plays their first match. They get a bonus too!
+              Get 5% commission on every deposit your friend makes. They get a bonus too!
             </p>
           </CardContent>
         </Card>
@@ -93,7 +94,7 @@ export default function ReferPage() {
                     <Gift className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                     {loading ? <Skeleton className="h-6 w-12"/> : <div className="text-2xl font-bold">₹20</div>}
+                     {loading ? <Skeleton className="h-6 w-12"/> : <div className="text-2xl font-bold">₹{referralEarnings.toLocaleString()}</div>}
                 </CardContent>
             </Card>
         </div>

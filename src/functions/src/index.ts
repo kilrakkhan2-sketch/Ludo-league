@@ -9,6 +9,9 @@ const db = admin.firestore();
 // Type definitions for robust data handling
 interface UserData {
     walletBalance?: number;
+    referralEarnings?: number;
+    referredBy?: string;
+    referralCode?: string;
     rating?: number;
     xp?: number;
     matchesPlayed?: number;
@@ -75,6 +78,7 @@ export const onDepositStatusChange = functions.firestore
     const beforeData = change.before.data();
     const afterData = change.after.data();
 
+    // Only proceed if the status changed to 'approved' from something else.
     if (beforeData.status === "approved" || afterData.status !== "approved") {
         return null;
     }
@@ -86,7 +90,6 @@ export const onDepositStatusChange = functions.firestore
     }
 
     const userRef = db.collection("users").doc(userId);
-    const transactionRef = db.collection(`users/${userId}/transactions`).doc();
 
     try {
         await db.runTransaction(async (t) => {
@@ -95,27 +98,58 @@ export const onDepositStatusChange = functions.firestore
                 throw new Error(`User ${userId} not found.`);
             }
             const userData = userDoc.data() as UserData;
-            const currentBalance = userData.walletBalance || 0;
-            const newBalance = currentBalance + amount;
             
-            t.update(userRef, { walletBalance: newBalance });
+            // 1. Credit the user's wallet for the deposit amount.
+            t.update(userRef, { walletBalance: FieldValue.increment(amount) });
             
-            t.set(transactionRef, {
+            // 2. Create a transaction log for the deposit.
+            const depositTxRef = db.collection(`users/${userId}/transactions`).doc();
+            t.set(depositTxRef, {
                 amount: amount,
                 type: "deposit",
                 status: "completed",
                 description: `Deposit of ₹${amount} approved.`,
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdAt: FieldValue.serverTimestamp(),
                 relatedId: context.params.depositId,
             });
+
+            // 3. Handle referral commission if the user was referred.
+            if (userData.referredBy) {
+                const referrerQuery = db.collection('users').where('referralCode', '==', userData.referredBy).limit(1);
+                const referrerSnapshot = await t.get(referrerQuery);
+
+                if (!referrerSnapshot.empty) {
+                    const referrerDoc = referrerSnapshot.docs[0];
+                    const referrerRef = referrerDoc.ref;
+                    const commissionAmount = amount * 0.05; // 5% commission
+
+                    // A. Credit the referrer's wallet and referral earnings.
+                    t.update(referrerRef, {
+                        walletBalance: FieldValue.increment(commissionAmount),
+                        referralEarnings: FieldValue.increment(commissionAmount)
+                    });
+
+                    // B. Create a transaction log for the referral bonus.
+                    const commissionTxRef = db.collection(`users/${referrerDoc.id}/transactions`).doc();
+                    t.set(commissionTxRef, {
+                        amount: commissionAmount,
+                        type: "referral_bonus",
+                        status: "completed",
+                        description: `5% commission from ${userData.name || 'a referred user'}'s deposit.`,
+                        createdAt: FieldValue.serverTimestamp(),
+                        relatedId: context.params.depositId,
+                    });
+                }
+            }
         });
-        functions.logger.info(`Deposit of ${amount} for user ${userId} completed successfully.`);
+        functions.logger.info(`Deposit of ${amount} for user ${userId} and any applicable commissions processed successfully.`);
     } catch (error) {
         functions.logger.error(`Transaction failed for deposit ${context.params.depositId}:`, error);
         await change.after.ref.update({ status: "failed", error: (error as Error).message });
     }
     return null;
 });
+
 
 export const onWithdrawalStatusChange = functions.firestore
   .document("withdrawal-requests/{withdrawalId}")
@@ -137,10 +171,10 @@ export const onWithdrawalStatusChange = functions.firestore
                  if (!userDoc.exists) {
                     throw new Error(`User ${userId} not found.`);
                 }
-                const userData = userDoc.data() as UserData;
-                const currentBalance = userData.walletBalance || 0;
-                const newBalance = currentBalance + amount; // Refund the amount
-                t.update(userRef, { walletBalance: newBalance });
+                
+                // Refund the amount to the user's wallet
+                t.update(userRef, { walletBalance: FieldValue.increment(amount) });
+                // Mark the original transaction as failed
                 t.update(transactionRef, { status: 'failed', description: 'Withdrawal request rejected by admin' });
             });
             functions.logger.info(`Withdrawal ${withdrawalId} for user ${userId} was rejected and funds were refunded.`);
@@ -173,7 +207,6 @@ export const onMatchResultUpdate = functions.firestore
                 if (!winnerDoc.exists) {
                     throw new Error(`Winner user ${winnerId} not found.`);
                 }
-                const winnerData = winnerDoc.data() as UserData;
 
                 // 1. Update winner's balance, rating, xp, and stats
                 t.update(winnerRef, { 
@@ -192,7 +225,7 @@ export const onMatchResultUpdate = functions.firestore
                     status: "completed",
                     description: `Prize money from match: ${afterData.title}`,
                     relatedId: matchId,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    createdAt: FieldValue.serverTimestamp(),
                 });
 
                 // 3. Update stats and ratings for all other players (losers)
@@ -278,7 +311,7 @@ export const createMatch = functions.https.onCall(async (data, context) => {
                     type: "entry-fee",
                     status: "completed",
                     description: `Entry fee for new match: ${title}`,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    createdAt: FieldValue.serverTimestamp(),
                     relatedId: matchRef.id,
                 });
             }
@@ -296,7 +329,7 @@ export const createMatch = functions.https.onCall(async (data, context) => {
                 playerCount: 1,
                 status: 'open',
                 winnerId: null,
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdAt: FieldValue.serverTimestamp(),
             });
             
             return matchRef.id;
