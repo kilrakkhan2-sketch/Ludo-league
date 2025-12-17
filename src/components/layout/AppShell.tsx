@@ -7,7 +7,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "../ui/button";
 import { ArrowLeft, Home, Swords, Wallet, User, LogOut, Menu, Shield, UserCog } from "lucide-react";
-import { BottomNav } from "./BottomNav";
 import { cn } from "@/lib/utils";
 import {
   Sidebar, SidebarContent, SidebarHeader, SidebarInset, SidebarProvider, SidebarMenu,
@@ -27,7 +26,6 @@ import { getAuth, signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { UserProfile } from "@/types";
 import { Skeleton } from "../ui/skeleton";
-import { AdminShell } from "./AdminShell";
 
 interface AppShellProps {
   children: ReactNode;
@@ -45,11 +43,6 @@ const navItems = [
   { href: "/profile", icon: User, label: "Profile" },
 ];
 
-const adminNavItems = [
-    { href: "/admin/dashboard", icon: Shield, label: "Admin Dashboard" },
-    { href: "/admin/manage-users", icon: UserCog, label: "Manage Users" },
-];
-
 export function AppShell({ children, pageTitle, showBackButton = false, className }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -58,7 +51,6 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
   const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
 
   const isAdmin = claims?.role && ['superadmin', 'deposit_admin', 'match_admin'].includes(claims.role);
-  const isSuperAdmin = claims?.role === 'superadmin';
   const hideNav = pathname ? pagesWithoutNav.some(path => pathname.startsWith(path)) : false;
   const loading = userLoading || profileLoading;
 
@@ -116,8 +108,14 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
     return <div className="min-h-screen w-full bg-muted/30">{children}</div>;
   }
   
-  const sidebarHeader = (
-    <SidebarHeader>
+  const mainNav = [...navItems];
+  if (isAdmin) {
+      mainNav.push({ href: "/admin/dashboard", icon: Shield, label: "Admin" });
+  }
+
+  const sidebarContent = (
+    <>
+      <SidebarHeader>
         <div className="flex items-center gap-2">
         <div className="p-2 bg-primary rounded-lg">
             <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
@@ -125,7 +123,25 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
         <h1 className="text-xl font-bold font-headline text-primary">LudoLeague</h1>
         </div>
     </SidebarHeader>
-  )
+      <SidebarMenu>
+          {mainNav.map(item => (
+          <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton 
+                  href={item.href} 
+                  tooltip={item.label}
+                  current={pathname === item.href}
+              >
+                  <item.icon />
+                  <span>{item.label}</span>
+              </SidebarMenuButton>
+          </SidebarMenuItem>
+        ))}
+      </SidebarMenu>
+      <SidebarFooter>
+        {userMenu}
+      </SidebarFooter>
+    </>
+  );
 
   // Loading Skeleton for the whole page to prevent flashes of incorrect UI
   if (userLoading) {
@@ -136,60 +152,38 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
       )
   }
 
-  const mainNav = [...navItems];
-  if (isAdmin) {
-      mainNav.push({ href: "/admin/dashboard", icon: Shield, label: "Admin" });
-  }
 
   return (
     <SidebarProvider>
       <div className={cn("min-h-screen w-full bg-muted/30", className)}>
-          {/* Unified Layout */}
-           <Sidebar collapsible="icon" className="hidden md:block">
+           <Sidebar collapsible="icon">
               <SidebarContent>
-                  {sidebarHeader}
-                  <SidebarMenu>
-                     {mainNav.map(item => (
-                      <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton 
-                              href={item.href} 
-                              tooltip={item.label}
-                              current={pathname === item.href}
-                          >
-                              <item.icon />
-                              <span>{item.label}</span>
-                          </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                  <SidebarFooter>
-                    {userMenu}
-                  </SidebarFooter>
+                {sidebarContent}
               </SidebarContent>
            </Sidebar>
           
-           <SidebarInset className="md:pl-[3.5rem] flex flex-col">
-              <header className="bg-card p-4 flex items-center justify-between gap-4 z-10 shadow-md shrink-0 border-b">
+           <SidebarInset className="flex flex-col">
+              <header className="bg-card p-4 flex items-center justify-between gap-4 z-10 shadow-sm shrink-0 border-b">
                   <div className="flex items-center gap-4">
+                    <SidebarTrigger className="md:hidden">
+                        <Menu />
+                    </SidebarTrigger>
                     {showBackButton && (
-                        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                        <Button variant="ghost" size="icon" onClick={() => router.back()} className="hidden md:flex">
                             <ArrowLeft />
                         </Button>
                     )}
                     <h1 className="text-xl font-bold">{pageTitle}</h1>
                     </div>
-                    <div className="md:hidden">
+                    <div className="hidden md:block">
                       {userMenu}
                     </div>
               </header>
-              <main className="flex-grow overflow-y-auto pb-20 md:pb-0">
-                  <div className="md:container md:mx-auto md:p-4 lg:p-6">
+              <main className="flex-grow overflow-y-auto">
+                  <div className="container mx-auto p-4 md:p-6">
                     {children}
                   </div>
               </main>
-              <div className="md:hidden">
-                <BottomNav />
-              </div>
             </SidebarInset>
       </div>
     </SidebarProvider>
