@@ -56,25 +56,6 @@ const StatCard = ({ title, value, description, icon: Icon, loading, to, isVisibl
     return cardContent;
 };
 
-const revenueData = [
-  { month: 'Jan', revenue: 1200, profit: 800 },
-  { month: 'Feb', revenue: 1500, profit: 1000 },
-  { month: 'Mar', revenue: 1800, profit: 1200 },
-  { month: 'Apr', revenue: 2200, profit: 1500 },
-  { month: 'May', revenue: 2500, profit: 1700 },
-  { month: 'Jun', revenue: 2800, profit: 1900 },
-];
-
-const registrationsData = [
-  { month: 'Jan', users: 30 },
-  { month: 'Feb', users: 45 },
-  { month: 'Mar', users: 60 },
-  { month: 'Apr', users: 50 },
-  { month: 'May', users: 70 },
-  { month: 'Jun', users: 90 },
-];
-
-
 export default function AdminDashboardPage() {
     const { user, loading: userLoading, claims } = useUser();
     
@@ -125,6 +106,24 @@ export default function AdminDashboardPage() {
             to: "/admin/withdrawals",
             isVisible: isSuperAdmin || isDepositAdmin
         },
+    ];
+
+    const revenueData = [
+      { month: 'Jan', revenue: 1200, profit: 800 },
+      { month: 'Feb', revenue: 1500, profit: 1000 },
+      { month: 'Mar', revenue: 1800, profit: 1200 },
+      { month: 'Apr', revenue: 2200, profit: 1500 },
+      { month: 'May', revenue: 2500, profit: 1700 },
+      { month: 'Jun', revenue: 2800, profit: 1900 },
+    ];
+
+    const registrationsData = [
+      { month: 'Jan', users: 30 },
+      { month: 'Feb', users: 45 },
+      { month: 'Mar', users: 60 },
+      { month: 'Apr', users: 50 },
+      { month: 'May', users: 70 },
+      { month: 'Jun', users: 90 },
     ];
 
     return (
