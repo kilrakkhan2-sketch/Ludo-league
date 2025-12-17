@@ -21,6 +21,8 @@ export type UserProfile = {
   referredBy?: string;
   referralEarnings?: number;
   friends?: string[];
+  matchesPlayed?: number;
+  matchesWon?: number;
 };
 
 export type Match = {

@@ -62,11 +62,6 @@ export default function ProfilePage() {
   const router = useRouter();
   
   const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
-  const { data: matches, loading: matchesLoading } = useCollection<Match>('matches', {
-      where: user?.uid ? ['players', 'array-contains', user.uid] : undefined,
-      orderBy: ['createdAt', 'desc'],
-      limit: 50
-  });
   const { data: transactions, loading: txLoading } = useCollection<Transaction>(
     user ? `users/${user.uid}/transactions` : '',
     {
@@ -126,15 +121,15 @@ export default function ProfilePage() {
   };
 
 
-  const loading = userLoading || profileLoading || matchesLoading || txLoading;
+  const loading = userLoading || profileLoading || txLoading;
 
   if (loading || !profile) {
       return <AppShell pageTitle="My Profile"><ProfileLoadingSkeleton /></AppShell>
   }
 
   // Calculate stats
-  const matchesPlayed = matches.length;
-  const matchesWon = matches.filter((m: Match) => m.winnerId === user?.uid).length;
+  const matchesPlayed = profile.matchesPlayed || 0;
+  const matchesWon = profile.matchesWon || 0;
   const winRate = matchesPlayed > 0 ? Math.round((matchesWon / matchesPlayed) * 100) : 0;
   const totalWinnings = transactions
     .filter((t: Transaction) => t.type === 'prize' || t.type === 'win')
@@ -197,36 +192,10 @@ export default function ProfilePage() {
             </Card>
 
             {/* History Section */}
-            <Tabs defaultValue="matches">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="matches">Match History</TabsTrigger>
+            <Tabs defaultValue="transactions">
+                <TabsList className="grid w-full grid-cols-1">
                     <TabsTrigger value="transactions">Wallet History</TabsTrigger>
                 </TabsList>
-                <TabsContent value="matches">
-                    <Card>
-                        <CardContent className="p-4 space-y-2">
-                            {matches.length === 0 && <p className='text-muted-foreground text-center py-8'>No matches played yet.</p>}
-                            {matches.slice(0,5).map((match: Match) => (
-                                <div key={match.id} className='flex items-center justify-between p-3 rounded-lg bg-muted/50'>
-                                    <div>
-                                        <p className='font-semibold'>{match.title}</p>
-                                        <p className='text-xs text-muted-foreground'>
-                                            {format(match.createdAt.toDate(), 'PP')} ({formatDistanceToNow(match.createdAt.toDate(), { addSuffix: true })})
-                                        </p>
-                                    </div>
-                                    <div className='text-right'>
-                                         {match.winnerId === user?.uid ? (
-                                            <p className='font-bold text-success'>WIN</p>
-                                        ) : (
-                                            <p className='font-bold text-destructive'>LOSS</p>
-                                        )}
-                                        <p className='text-sm text-muted-foreground'>₹{match.prizePool}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
                 <TabsContent value="transactions">
                      <Card>
                         <CardContent className="p-4 space-y-2">

@@ -4,7 +4,7 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { useCollection, useUser, useDoc } from "@/firebase";
-import type { Match, UserProfile, Transaction } from "@/types";
+import type { Match, UserProfile } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Bell, MessageCircle, PlusCircle, Swords } from "lucide-react";
 import Link from "next/link";
@@ -145,14 +145,10 @@ export default function DashboardPage() {
         orderBy: ['createdAt', 'desc']
     });
     
-    const { data: transactions, loading: txLoading } = useCollection<Transaction>(
-        user ? `users/${user.uid}/transactions` : '', { orderBy: ['createdAt', 'desc'], limit: 100 }
-    );
-
     const loading = userLoading || profileLoading;
     
-    const matchesPlayed = transactions.filter(t => t.type === 'entry_fee').length;
-    const matchesWon = transactions.filter(t => t.type === 'win' || t.type === 'prize').length;
+    const matchesPlayed = profile?.matchesPlayed || 0;
+    const matchesWon = profile?.matchesWon || 0;
     const winRate = matchesPlayed > 0 ? `${((matchesWon / matchesPlayed) * 100).toFixed(0)}%` : "0%";
 
     return (
@@ -186,9 +182,9 @@ export default function DashboardPage() {
                     <section>
                         <h2 className="text-lg font-bold mb-3">Quick Stats</h2>
                         <div className="grid grid-cols-3 gap-3 sm:gap-4">
-                            <StatCard title="Total Matches" value={matchesPlayed} loading={txLoading}/>
-                            <StatCard title="Wins" value={matchesWon} loading={txLoading} />
-                            <StatCard title="Win Rate" value={winRate} loading={txLoading} />
+                            <StatCard title="Total Matches" value={matchesPlayed} loading={loading}/>
+                            <StatCard title="Wins" value={matchesWon} loading={loading} />
+                            <StatCard title="Win Rate" value={winRate} loading={loading} />
                         </div>
                     </section>
                     

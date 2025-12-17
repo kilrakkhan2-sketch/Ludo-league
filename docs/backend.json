@@ -18,7 +18,9 @@
         "referralCode": { "type": "string", "description": "The user's unique referral code." },
         "referredBy": { "type": "string", "description": "The referral code of the user who referred them." },
         "referralEarnings": { "type": "number", "description": "Total earnings from referrals." },
-        "friends": { "type": "array", "items": { "type": "string" }, "description": "Array of user IDs who are friends."}
+        "friends": { "type": "array", "items": { "type": "string" }, "description": "Array of user IDs who are friends."},
+        "matchesPlayed": { "type": "number", "description": "Total number of matches played by the user." },
+        "matchesWon": { "type": "number", "description": "Total number of matches won by the user." }
       },
       "required": ["uid", "name", "email", "role"]
     },

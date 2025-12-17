@@ -1,6 +1,7 @@
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -10,6 +11,8 @@ interface UserData {
     walletBalance?: number;
     rating?: number;
     xp?: number;
+    matchesPlayed?: number;
+    matchesWon?: number;
     [key: string]: any;
 }
 
@@ -162,33 +165,27 @@ export const onMatchResultUpdate = functions.firestore
             functions.logger.error("Missing or invalid winnerId/prizePool", { id: matchId });
             return null;
         }
-
-        const winnerRef = db.collection("users").doc(winnerId);
-        const transactionRef = db.collection(`users/${winnerId}/transactions`).doc();
         
         try {
             await db.runTransaction(async (t) => {
+                const winnerRef = db.collection("users").doc(winnerId);
                 const winnerDoc = await t.get(winnerRef);
                 if (!winnerDoc.exists) {
                     throw new Error(`Winner user ${winnerId} not found.`);
                 }
                 const winnerData = winnerDoc.data() as UserData;
-                const currentBalance = winnerData.walletBalance || 0;
-                const currentRating = winnerData.rating || 1000;
-                const currentXp = winnerData.xp || 0;
 
-                const newBalance = currentBalance + prizePool;
-                const newRating = currentRating + 10;
-                const newXp = currentXp + 25;
-                
-                // 1. Update winner's balance, rating, and XP
+                // 1. Update winner's balance, rating, xp, and stats
                 t.update(winnerRef, { 
-                    walletBalance: newBalance,
-                    rating: newRating,
-                    xp: newXp 
+                    walletBalance: FieldValue.increment(prizePool),
+                    rating: FieldValue.increment(10),
+                    xp: FieldValue.increment(25),
+                    matchesPlayed: FieldValue.increment(1),
+                    matchesWon: FieldValue.increment(1)
                 });
                 
                 // 2. Create prize transaction for winner
+                const transactionRef = db.collection(`users/${winnerId}/transactions`).doc();
                 t.set(transactionRef, {
                     amount: prizePool,
                     type: "prize",
@@ -198,17 +195,15 @@ export const onMatchResultUpdate = functions.firestore
                     createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 });
 
-                // 3. Update ratings for all other players (losers)
+                // 3. Update stats and ratings for all other players (losers)
                 const loserIds = players.filter((pId: string) => pId !== winnerId);
                 for (const loserId of loserIds) {
                     const loserRef = db.collection("users").doc(loserId);
-                    const loserDoc = await t.get(loserRef);
-                    if (loserDoc.exists) {
-                        const loserData = loserDoc.data() as UserData;
-                        const loserRating = loserData.rating || 1000;
-                        const newLoserRating = Math.max(0, loserRating - 5); // Don't go below 0
-                        t.update(loserRef, { rating: newLoserRating });
-                    }
+                    // We can update loser stats without fetching them first using FieldValue
+                    t.update(loserRef, {
+                         rating: FieldValue.increment(-5),
+                         matchesPlayed: FieldValue.increment(1)
+                    });
                 }
             });
             functions.logger.info(`Prize money, rating, and XP updated for match ${matchId}.`);
