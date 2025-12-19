@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AppShell } from "@/components/layout/AppShell";
@@ -99,7 +100,7 @@ const MatchCard = ({ match }: { match: Match }) => {
 
 export default function OpenMatchesPage() {
   const { data: matches, loading } = useCollection<Match>("matches", {
-    where: ["status", "==", "open"],
+    where: [["status", "==", "open"], ["privacy", "==", "public"]],
     orderBy: ["createdAt", "desc"],
     limit: 12,
   });

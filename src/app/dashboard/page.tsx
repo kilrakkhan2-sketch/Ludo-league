@@ -140,7 +140,7 @@ export default function DashboardPage() {
     });
 
     const { data: openMatches, loading: openMatchesLoading } = useCollection<Match>('matches', {
-        where: [['status', '==', 'open']],
+        where: [['status', '==', 'open'], ['privacy', '==', 'public']],
         limit: 10,
         orderBy: ['createdAt', 'desc']
     });
