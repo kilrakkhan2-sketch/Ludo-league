@@ -78,7 +78,7 @@ const PlayerListLobby = ({ match, players }: { match: Match, players: UserProfil
                      <div key={p.id} className="flex items-center justify-between p-3 bg-card border-2 border-green-500 rounded-lg shadow-sm">
                         <div className="flex items-center gap-3">
                             <Avatar>
-                                <AvatarImage src={p.photoURL || undefined} />
+                                <AvatarImage src={p.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${p.uid}`} />
                                 <AvatarFallback>{p.displayName?.[0]}</AvatarFallback>
                             </Avatar>
                             <div>
@@ -445,9 +445,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
 
     let title;
     let content;
-
-    const isFull = match.players.length >= match.maxPlayers;
-
+    
     if (match.status === 'completed') {
         title = 'Match Completed';
         content = <MatchCompleted match={match} players={players} />;
@@ -458,6 +456,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
         title = 'Game in Progress';
         content = <MatchOngoing match={match} />;
     } else if (match.status === 'open') {
+        const isFull = match.players.length >= match.maxPlayers;
         if (isFull) {
             title = 'Ready to Start';
             content = <MatchJoined match={match} players={players} />;
