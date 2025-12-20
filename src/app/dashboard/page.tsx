@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Trophy } from "lucide-react";
+import { useMemo } from "react";
 
 const StatCard = ({ title, value, loading }: { title: string, value: string | number, loading: boolean }) => (
     <div className="bg-card p-3 rounded-lg shadow-sm text-center">
@@ -139,11 +140,14 @@ export default function DashboardPage() {
         orderBy: ['createdAt', 'desc']
     });
 
-    const { data: openMatches, loading: openMatchesLoading } = useCollection<Match>('matches', {
+    const { data: openMatchesData, loading: openMatchesLoading } = useCollection<Match>('matches', {
         where: [['status', '==', 'open'], ['privacy', '==', 'public']],
         limit: 10,
-        orderBy: ['createdAt', 'desc']
     });
+
+    const openMatches = useMemo(() => {
+        return [...openMatchesData].sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+    }, [openMatchesData]);
     
     const loading = userLoading || profileLoading;
     

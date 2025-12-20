@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useCollection, useUser } from "@/firebase";
 import type { Match } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useMemo } from "react";
 
 const MatchCardSkeleton = () => (
     <Card className="flex flex-col">
@@ -99,11 +100,14 @@ const MatchCard = ({ match }: { match: Match }) => {
 }
 
 export default function OpenMatchesPage() {
-  const { data: matches, loading } = useCollection<Match>("matches", {
+  const { data: matchesData, loading } = useCollection<Match>("matches", {
     where: [["status", "==", "open"], ["privacy", "==", "public"]],
-    orderBy: ["createdAt", "desc"],
     limit: 12,
   });
+
+  const matches = useMemo(() => {
+    return [...matchesData].sort((a,b) => b.createdAt.seconds - a.createdAt.seconds);
+  }, [matchesData]);
 
   const Skeletons = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
