@@ -66,7 +66,7 @@ const MatchCard = ({ match }: { match: Match }) => {
             {Array.from({ length: match.players.length }).map((_, i) => (
               <Avatar key={i} className="h-6 w-6 border-2 border-background">
                 <AvatarImage
-                  src={`https://api.dicebear.com/7.x/adventurer/svg?seed=player${match.id}-${i}`}
+                  src={`https://api.dicebear.com/7.x/adventurer/svg?seed=player${'match.id'}-${i}`}
                 />
                 <AvatarFallback>P{i + 1}</AvatarFallback>
               </Avatar>
@@ -90,7 +90,7 @@ const MatchCard = ({ match }: { match: Match }) => {
             <p className="text-lg font-bold">₹{match.prizePool || match.entryFee * match.players.length * 0.9}</p>
           </div>
            <Button asChild disabled={isFull || hasJoined}>
-             <Link href={`/match/${match.id}`}>
+             <Link href={`/match/${'match.id'}`}>
                 {hasJoined ? 'View' : 'Join'}
              </Link>
           </Button>
@@ -101,12 +101,17 @@ const MatchCard = ({ match }: { match: Match }) => {
 
 export default function OpenMatchesPage() {
   const { data: matchesData, loading } = useCollection<Match>("matches", {
-    where: [["status", "==", "open"], ["privacy", "==", "public"]],
+    where: [["status", "==", "open"]],
     limit: 12,
   });
 
   const matches = useMemo(() => {
-    return [...matchesData].sort((a,b) => b.createdAt.seconds - a.createdAt.seconds);
+    // Sort matches by creation time, handling cases where createdAt might be null initially
+    return [...matchesData].sort((a, b) => {
+      const timeA = a.createdAt?.seconds || 0;
+      const timeB = b.createdAt?.seconds || 0;
+      return timeB - timeA;
+    });
   }, [matchesData]);
 
   const Skeletons = () => (

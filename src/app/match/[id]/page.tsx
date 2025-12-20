@@ -411,30 +411,14 @@ const MatchCompleted = ({ match, players }: { match: Match, players: UserProfile
 export default function MatchPage({ params }: { params: { id: string } }) {
   const { user, loading: userLoading } = useUser();
   const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
-  const { firestore } = useFirebase();
 
   const { data: match, loading: matchLoading } = useDoc<Match>(`matches/${params.id}`);
   
-  const [players, setPlayers] = useState<UserProfile[]>([]);
-  const [playersLoading, setPlayersLoading] = useState(true);
+  const { data: playersData, loading: playersLoading } = useCollection<UserProfile>(
+    match ? `matches/${params.id}/players` : ''
+  );
 
-  useEffect(() => {
-    if (match?.players && match.players.length > 0 && firestore) {
-      const fetchPlayers = async () => {
-        setPlayersLoading(true);
-        const playersRef = collection(firestore, 'users');
-        const q = query(playersRef, where('uid', 'in', match.players));
-        const snapshot = await getDocs(q);
-        const playersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
-        setPlayers(playersData);
-        setPlayersLoading(false);
-      };
-      fetchPlayers();
-    } else if (match) { // If match exists but has no players or an empty player array
-        setPlayers([]);
-        setPlayersLoading(false);
-    }
-  }, [match, firestore]);
+  const players = useMemo(() => playersData || [], [playersData]);
 
   const loading = matchLoading || playersLoading || userLoading || profileLoading;
 
