@@ -542,9 +542,7 @@ export const createMatch = functions.https.onCall(async (data, context) => {
         if (error instanceof functions.https.HttpsError) {
             throw error;
         } else {
-            throw new functions.https.HttpsError("internal", "An unexpected error occurred.");
+            throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the match.");
         }
     }
 });
-
-    

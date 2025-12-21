@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -58,17 +59,6 @@ export default function CreateMatchPage() {
 
     setIsSubmitting(true);
     
-    // The createMatch function will be re-enabled or modified in a future step
-    // For now, this logic is prepared for when it's ready.
-    toast({
-      variant: 'destructive',
-      title: 'Functionality Disabled',
-      description: 'Match creation is temporarily disabled while we upgrade the system.',
-    });
-    setIsSubmitting(false);
-
-    // TODO: Re-enable the following code once the `createMatch` cloud function is rebuilt.
-    /*
     const functions = getFunctions();
     const createMatchCloudFunction = httpsCallable(functions, 'createMatch');
 
@@ -93,7 +83,6 @@ export default function CreateMatchPage() {
     } finally {
       setIsSubmitting(false);
     }
-    */
   };
   
   const matchesGloballyDisabled = maintenanceSettings?.areMatchesDisabled || false;
