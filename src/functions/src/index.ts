@@ -54,6 +54,19 @@ const isTimeInDisabledRange = (startTimeStr?: string, endTimeStr?: string): bool
     }
 };
 
+// Helper function to send a personal notification
+const sendNotification = (userId: string, title: string, body: string, link?: string) => {
+    if (!userId) return;
+    const notification = {
+        title,
+        body,
+        isRead: false,
+        createdAt: FieldValue.serverTimestamp(),
+        link: link || null,
+    };
+    return db.collection(`users/${userId}/personal_notifications`).add(notification);
+};
+
 
 // =================================================================
 //  USER & ROLE MANAGEMENT FUNCTIONS
@@ -209,6 +222,9 @@ export const onDepositStatusChange = functions.firestore
             }
         });
         functions.logger.info(`Deposit processed for ${userId}. Daily stats for ${upiAccountId} updated.`);
+        // Send notification to the user
+        await sendNotification(userId, 'Deposit Approved', `Your deposit of ₹${amount} has been successfully added to your wallet.`);
+
     } catch (error) {
         functions.logger.error(`Transaction failed for deposit ${context.params.depositId}:`, error);
         await change.after.ref.update({ status: "failed", error: (error as Error).message });
@@ -244,6 +260,7 @@ export const onWithdrawalStatusChange = functions.firestore
                 t.update(transactionRef, { status: 'failed', description: 'Withdrawal request rejected by admin' });
             });
             functions.logger.info(`Withdrawal ${withdrawalId} for user ${userId} was rejected and funds were refunded.`);
+            await sendNotification(userId, 'Withdrawal Rejected', `Your withdrawal request for ₹${amount} was rejected. The amount has been refunded to your wallet.`);
         } catch (error) {
             functions.logger.error(`Failed to refund user ${userId} for rejected withdrawal ${withdrawalId}:`, error);
         }
@@ -259,7 +276,7 @@ export const onMatchResultUpdate = functions.firestore
     const { matchId } = context.params;
 
     if (beforeData.status !== 'completed' && afterData.status === 'completed' && afterData.winnerId) {
-        const { winnerId, prizePool, players } = afterData;
+        const { winnerId, prizePool, players, title } = afterData;
 
         if (!winnerId || !prizePool || prizePool <= 0) {
             functions.logger.error("Missing or invalid winnerId/prizePool", { id: matchId });
@@ -306,6 +323,13 @@ export const onMatchResultUpdate = functions.firestore
                 }
             });
             functions.logger.info(`Prize money, rating, and XP updated for match ${matchId}.`);
+            // Send notifications
+            await sendNotification(winnerId, 'You Won!', `Congratulations! You won ₹${prizePool} in the match "${title}".`, `/match/${matchId}`);
+            const loserIds = players.filter((pId: string) => pId !== winnerId);
+            for (const loserId of loserIds) {
+                 await sendNotification(loserId, 'Match Result', `The match "${title}" has ended. Better luck next time!`, `/match/${matchId}`);
+            }
+
         } catch (error) {
             functions.logger.error(`Failed to process results for match ${matchId}:`, error);
             await change.after.ref.update({ status: "error", error: (error as Error).message });

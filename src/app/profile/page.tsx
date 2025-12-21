@@ -12,8 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import type { UserProfile, Match, Transaction } from '@/types';
-import { Upload, Crown, Swords, Wallet, TrendingUp, Percent, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import type { UserProfile, Match, Transaction, PersonalNotification } from '@/types';
+import { Upload, Crown, Swords, Wallet, TrendingUp, Percent, LogOut, Settings as SettingsIcon, BellDot, Bell } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, formatDistanceToNow } from 'date-fns';
 import { getAuth, signOut, updateProfile } from 'firebase/auth';
@@ -64,6 +64,14 @@ export default function ProfilePage() {
   const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
   const { data: transactions, loading: txLoading } = useCollection<Transaction>(
     user ? `users/${user.uid}/transactions` : '',
+    {
+      orderBy: ['createdAt', 'desc'],
+      limit: 50
+    }
+  );
+  
+   const { data: notifications, loading: notificationsLoading } = useCollection<PersonalNotification>(
+    user ? `users/${user.uid}/personal_notifications` : '',
     {
       orderBy: ['createdAt', 'desc'],
       limit: 50
@@ -121,7 +129,7 @@ export default function ProfilePage() {
   };
 
 
-  const loading = userLoading || profileLoading || txLoading;
+  const loading = userLoading || profileLoading || txLoading || notificationsLoading;
 
   if (loading || !profile) {
       return <AppShell pageTitle="My Profile"><ProfileLoadingSkeleton /></AppShell>
@@ -134,6 +142,8 @@ export default function ProfilePage() {
   const totalWinnings = transactions
     .filter((t: Transaction) => t.type === 'prize' || t.type === 'win')
     .reduce((sum: number, t: Transaction) => sum + t.amount, 0);
+    
+  const hasUnreadNotifications = notifications.some(n => !n.isRead);
 
 
   return (
@@ -193,8 +203,14 @@ export default function ProfilePage() {
 
             {/* History Section */}
             <Tabs defaultValue="transactions">
-                <TabsList className="grid w-full grid-cols-1">
+                <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="transactions">Wallet History</TabsTrigger>
+                    <TabsTrigger value="notifications">
+                        <div className="relative">
+                            Notifications
+                            {hasUnreadNotifications && <span className="absolute -top-1 -right-3 h-2 w-2 rounded-full bg-primary" />}
+                        </div>
+                    </TabsTrigger>
                 </TabsList>
                 <TabsContent value="transactions">
                      <Card>
@@ -211,6 +227,25 @@ export default function ProfilePage() {
                                      <p className={`font-bold text-lg ${tx.amount > 0 ? 'text-success' : 'text-destructive'}`}>
                                         {tx.amount > 0 ? '+' : ''}₹{tx.amount.toFixed(0)}
                                     </p>
+                                </div>
+                            ))}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                 <TabsContent value="notifications">
+                     <Card>
+                        <CardContent className="p-4 space-y-2">
+                            {notifications.length === 0 && <p className='text-muted-foreground text-center py-8'>No notifications found.</p>}
+                            {notifications.slice(0,10).map((n: PersonalNotification) => (
+                                <div key={n.id} className='flex items-start gap-3 p-3 rounded-lg bg-muted/50'>
+                                     {!n.isRead && <div className="mt-1 h-2 w-2 rounded-full bg-primary shrink-0" />}
+                                     <div className={n.isRead ? 'pl-4' : ''}>
+                                        <p className='font-semibold'>{n.title}</p>
+                                        <p className='text-sm text-muted-foreground'>{n.body}</p>
+                                        <p className='text-xs text-muted-foreground mt-1'>
+                                           {n.createdAt && n.createdAt.toDate ? formatDistanceToNow(n.createdAt.toDate(), { addSuffix: true }) : 'N/A'}
+                                        </p>
+                                    </div>
                                 </div>
                             ))}
                         </CardContent>
