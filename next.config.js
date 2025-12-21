@@ -1,10 +1,10 @@
 /** @type {import('next').NextConfig} */
 
-const pwa_disabled = process.env.NODE_ENV === 'development';
-
 const withPWA = require('@ducanh2912/next-pwa').default({
   dest: 'public',
-  disable: pwa_disabled,
+  disable: process.env.NODE_ENV === 'development',
+  register: true,
+  skipWaiting: true,
   runtimeCaching: [
     {
       // Match all API routes
