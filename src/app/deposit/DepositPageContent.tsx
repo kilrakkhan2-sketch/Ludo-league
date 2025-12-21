@@ -43,7 +43,7 @@ export default function DepositPageContent() {
   useEffect(() => {
     if (paymentAccounts && paymentAccounts.length > 0) {
         // Find the first account that is under its daily limit
-        const availableAccount = paymentAccounts.find(acc => acc.dailyAmountReceived < acc.dailyLimit);
+        const availableAccount = paymentAccounts.find(acc => (acc.dailyAmountReceived || 0) < acc.dailyLimit);
         setActiveUpiAccount(availableAccount || null);
     } else if (!settingsLoading) {
         setActiveUpiAccount(null);

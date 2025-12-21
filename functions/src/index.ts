@@ -1,5 +1,4 @@
 
-
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
@@ -248,6 +247,7 @@ export const onDepositStatusChange = functions.firestore
     }
 
     const userRef = db.collection("users").doc(userId);
+    const upiAccountRef = db.collection('upi-accounts').doc(upiAccountId);
     const commissionSettingsRef = db.collection('settings').doc('commission');
 
 
@@ -263,7 +263,13 @@ export const onDepositStatusChange = functions.firestore
             // 1. Credit the user's wallet.
             t.update(userRef, { walletBalance: FieldValue.increment(amount) });
             
-            // 2. Create a transaction log for the deposit.
+            // 2. Update the UPI account's daily stats
+            t.update(upiAccountRef, {
+                dailyAmountReceived: FieldValue.increment(amount),
+                dailyTransactionCount: FieldValue.increment(1)
+            });
+
+            // 3. Create a transaction log for the deposit.
             const depositTxRef = db.collection(`users/${userId}/transactions`).doc();
             t.set(depositTxRef, {
                 amount: amount,
@@ -274,7 +280,7 @@ export const onDepositStatusChange = functions.firestore
                 relatedId: context.params.depositId,
             });
 
-            // 3. Handle referral commission if the user was referred and commission is enabled.
+            // 4. Handle referral commission if the user was referred and commission is enabled.
             if (userData.referredBy && commissionSettings?.isEnabled && typeof commissionSettings.rate === 'number' && commissionSettings.rate > 0) {
                 const referrerQuery = db.collection('users').where('referralCode', '==', userData.referredBy).limit(1);
                 const referrerSnapshot = await t.get(referrerQuery);

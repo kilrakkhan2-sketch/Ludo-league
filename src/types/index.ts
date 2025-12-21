@@ -1,4 +1,5 @@
 
+
 export type UserProfile = {
   id: string;
   uid: string;
@@ -214,5 +215,3 @@ export type PersonalNotification = {
     createdAt: any;
     link?: string;
 };
-
-    

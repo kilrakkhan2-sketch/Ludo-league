@@ -171,17 +171,6 @@
         "userId": {
           "type": "string"
         },
-        "position": {
-          "type": "number",
-          "description": "1, 2, 3, or 4"
-        },
-        "winStatus": {
-          "type": "string",
-          "enum": [
-            "win",
-            "loss"
-          ]
-        },
         "confirmedPosition": {
           "type": "number"
         },
@@ -216,8 +205,6 @@
       },
       "required": [
         "userId",
-        "position",
-        "winStatus",
         "screenshotUrl",
         "submittedAt"
       ]
@@ -911,5 +898,3 @@
     }
   }
 }
-
-    
