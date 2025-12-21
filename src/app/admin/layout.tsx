@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 // Define which roles can access which paths
 const rolePermissions: { [key: string]: (UserProfile['role'])[] } = {
   '/admin/deposits': ['superadmin', 'deposit_admin'],
-  '/admin/withdrawals': ['superadmin', 'deposit_admin'], // Assuming deposit admins handle withdrawals too
+  '/admin/withdrawals': ['superadmin', 'deposit_admin'],
   '/admin/matches': ['superadmin', 'match_admin'],
   '/admin/results': ['superadmin', 'match_admin'],
   // Only superadmin can manage users, roles, and settings
@@ -19,6 +19,7 @@ const rolePermissions: { [key: string]: (UserProfile['role'])[] } = {
   '/admin/manage-admins': ['superadmin'],
   '/admin/settings': ['superadmin'],
   '/admin/transactions': ['superadmin'],
+  '/admin/kyc': ['superadmin'], // KYC is a superadmin task
 };
 
 const AccessDenied = () => (
