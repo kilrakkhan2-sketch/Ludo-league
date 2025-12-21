@@ -26,7 +26,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useFirebase } from '@/firebase/provider';
 import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, UserCredential } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { customAlphabet } from 'nanoid';
 
 const formSchema = z
@@ -35,6 +35,7 @@ const formSchema = z
     email: z.string().email('Invalid email address'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
     confirmPassword: z.string(),
+    referralCode: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -53,6 +54,7 @@ export default function SignupPage() {
       email: '',
       password: '',
       confirmPassword: '',
+      referralCode: '',
     },
   });
 
@@ -96,6 +98,23 @@ export default function SignupPage() {
     }
 
     try {
+        let referredByCode: string | undefined = undefined;
+        // Validate referral code if provided
+        if (values.referralCode) {
+            const usersRef = collection(firestore, "users");
+            const q = query(usersRef, where("referralCode", "==", values.referralCode));
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.empty) {
+                toast({
+                    variant: "destructive",
+                    title: "Invalid Referral Code",
+                    description: "The referral code you entered does not exist.",
+                });
+                return;
+            }
+            referredByCode = values.referralCode;
+        }
+        
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
       
@@ -119,6 +138,7 @@ export default function SignupPage() {
         rating: 1000,
         xp: 0,
         referralCode: referralCode,
+        referredBy: referredByCode, // Set the referredBy field
         createdAt: serverTimestamp(),
       });
 
@@ -232,6 +252,19 @@ export default function SignupPage() {
                     <FormLabel>Confirm Password</FormLabel>
                     <FormControl>
                       <Input type="password" placeholder="••••••••" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="referralCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Referral Code (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter referral code" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

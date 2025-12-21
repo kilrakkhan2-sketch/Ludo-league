@@ -455,16 +455,13 @@ export const createMatch = functions.https.onCall(async (data, context) => {
     }
 
     // 2. Data Validation
-    const { title, entryFee, prizePool, maxPlayers, privacy } = data;
+    const { title, entryFee, maxPlayers, privacy } = data;
     
     if (!title || typeof title !== "string" || title.length === 0 || title.length > 50) {
         throw new functions.https.HttpsError("invalid-argument", "Match title is required and must be 50 characters or less.");
     }
     if (typeof entryFee !== "number" || entryFee < 0) {
         throw new functions.https.HttpsError("invalid-argument", "A valid, non-negative entry fee is required.");
-    }
-    if (typeof prizePool !== "number" || prizePool < 0) {
-        throw new functions.https.HttpsError("invalid-argument", "A valid prize pool is required.");
     }
     if (maxPlayers !== 2 && maxPlayers !== 4) {
         throw new functions.https.HttpsError("invalid-argument", "Max players must be either 2 or 4.");
@@ -507,6 +504,10 @@ export const createMatch = functions.https.onCall(async (data, context) => {
                     relatedId: matchRef.id,
                 });
             }
+            
+            // D. Calculate prize pool (e.g., 90% of entry fee for a 2-player match)
+            // This can be adjusted or made more dynamic.
+            const prizePool = (entryFee * maxPlayers) * 0.9;
 
             // D. Create the new match document
             t.set(matchRef, {
