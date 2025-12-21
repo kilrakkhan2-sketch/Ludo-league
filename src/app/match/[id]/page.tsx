@@ -137,8 +137,7 @@ const MatchOpen = ({ match, profile, players }: { match: Match, profile: UserPro
                 const newBalance = userDoc.data().walletBalance - currentMatch.entryFee;
                 transaction.update(userRef, { walletBalance: newBalance });
                 
-                const newPrizePool = currentMatch.entryFee * (currentMatch.players.length + 1) * 0.9;
-                transaction.update(matchRef, { players: arrayUnion(user.uid), prizePool: newPrizePool });
+                transaction.update(matchRef, { players: arrayUnion(user.uid) });
 
                 const txRef = doc(collection(firestore, `users/${user.uid}/transactions`));
                 transaction.set(txRef, {
@@ -378,8 +377,10 @@ const MatchVerification = () => {
 
 
 const MatchCompleted = ({ match, players }: { match: Match, players: UserProfile[] }) => {
+    const { user } = useUser();
     const { width, height } = useWindowSize();
     const winner = players.find(p => p.id === match.winnerId);
+    const isWinner = user?.uid === winner?.uid;
     const [isClient, setIsClient] = useState(false);
 
     useEffect(() => {
@@ -388,7 +389,7 @@ const MatchCompleted = ({ match, players }: { match: Match, players: UserProfile
     
     return (
          <div className="p-4 space-y-4">
-            {isClient && winner && <Confetti width={width} height={height} recycle={false} />}
+            {isClient && isWinner && <Confetti width={width} height={height} recycle={false} numberOfPieces={500} tweenDuration={5000} />}
             <Card className="text-center bg-gradient-to-b from-primary to-purple-800 text-primary-foreground">
                 <CardHeader>
                     <CardTitle className="text-2xl">Congratulations, {winner?.displayName || 'Winner'}!</CardTitle>

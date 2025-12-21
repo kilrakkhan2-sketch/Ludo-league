@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCollection, useCollectionCount } from "@/firebase";
 import type { Match, UserProfile } from "@/types";
-import { Users, Sword, CircleArrowUp, Landmark, Hourglass, ShieldCheck, FileKey, BadgeCheck } from 'lucide-react';
+import { Users, Sword, CircleArrowUp, Landmark, FileKey, BadgeCheck } from 'lucide-react';
 import { useMemo } from "react";
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
@@ -82,15 +82,15 @@ export default function AdminDashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Pending Deposits" value={pendingDeposits} icon={CircleArrowUp} loading={pendingLoading} href="/admin/deposits" />
         <StatCard title="Pending Withdrawals" value={pendingWithdrawals} icon={Landmark} loading={pendingLoading} href="/admin/withdrawals" />
-        <StatCard title="Pending KYC" value={pendingKyc} icon={FileKey} loading={pendingKycLoading} href="/admin/kyc" />
-        <StatCard title="Pending Matches" value={pendingMatches} icon={BadgeCheck} loading={pendingMatchesLoading} href="/admin/matches" />
+        <StatCard title="Pending KYC" value={pendingKyc} icon={FileKey} loading={pendingLoading} href="/admin/kyc" />
+        <StatCard title="Pending Matches" value={pendingMatches} icon={BadgeCheck} loading={pendingLoading} href="/admin/matches" />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Users" value={totalUsers} icon={Users} loading={loading} />
-        <StatCard title="Total Matches Played" value={totalMatches} icon={Sword} loading={loading} />
-        <StatCard title="Total Deposits" value={`₹${totalDeposits.toLocaleString()}`} icon={CircleArrowUp} loading={loading} />
-        <StatCard title="Total Withdrawals" value={`₹${totalWithdrawals.toLocaleString()}`} icon={Landmark} loading={loading} />
+        <StatCard title="Total Users" value={totalUsers} icon={Users} loading={loading} href="/admin/users" />
+        <StatCard title="Total Matches Played" value={totalMatches} icon={Sword} loading={loading} href="/admin/matches" />
+        <StatCard title="Total Deposits" value={`₹${totalDeposits.toLocaleString()}`} icon={CircleArrowUp} loading={loading} href="/admin/transactions"/>
+        <StatCard title="Total Withdrawals" value={`₹${totalWithdrawals.toLocaleString()}`} icon={Landmark} loading={loading} href="/admin/transactions" />
       </div>
       <div className="grid gap-4 md:grid-cols-2">
           <Card>

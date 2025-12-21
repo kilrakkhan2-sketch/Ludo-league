@@ -12,8 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import type { UserProfile, Match, Transaction, PersonalNotification } from '@/types';
-import { Upload, Crown, Swords, Wallet, TrendingUp, Percent, LogOut, Settings as SettingsIcon, BellDot, Bell } from 'lucide-react';
+import type { UserProfile, Transaction, PersonalNotification } from '@/types';
+import { Upload, Crown, Swords, Wallet, TrendingUp, Percent, LogOut, Settings as SettingsIcon, Bell } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, formatDistanceToNow } from 'date-fns';
 import { getAuth, signOut, updateProfile } from 'firebase/auth';
@@ -182,7 +182,7 @@ export default function ProfilePage() {
                     </Link>
                     <Link href="/kyc" className="p-3 bg-muted rounded-lg hover:bg-primary/10 transition-colors">
                         <p className="font-bold">KYC Verification</p>
-                         <p className={`text-xs ${profile.isVerified ? 'text-success' : 'text-destructive'}`}>{profile.isVerified ? 'Completed' : 'Pending'}</p>
+                         <p className={`text-xs font-semibold ${profile.isVerified ? 'text-success' : 'text-destructive'}`}>{profile.isVerified ? 'Completed' : 'Pending'}</p>
                     </Link>
                 </CardContent>
             </Card>

@@ -32,12 +32,13 @@ export function useUser(): AuthState {
     let unsubscribeFirestore: Unsubscribe | undefined;
 
     const unsubscribeAuth = onIdTokenChanged(auth, (authUser) => {
-      // If there's an existing firestore listener, unsubscribe from it first.
+      // If there's an existing firestore listener, unsubscribe from it first to prevent leaks.
       if (unsubscribeFirestore) {
         unsubscribeFirestore();
       }
 
       if (authUser) {
+        // User is logged in. Set user object and start fetching profile.
         setState(prevState => ({ ...prevState, user: authUser, loading: true }));
         
         const userDocRef = doc(firestore, 'users', authUser.uid);
@@ -46,6 +47,7 @@ export function useUser(): AuthState {
             const profileData = { id: docSnapshot.id, ...docSnapshot.data() } as UserProfile;
             setState(prevState => ({ ...prevState, userData: profileData, loading: false }));
           } else {
+             // This case might happen if the Firestore doc creation fails after signup.
             setState(prevState => ({ ...prevState, userData: null, loading: false }));
           }
         }, (error) => {
@@ -54,7 +56,7 @@ export function useUser(): AuthState {
         });
 
       } else {
-        // User logged out, clear everything.
+        // User logged out. Clean up everything.
         setState({ user: null, userData: null, loading: false });
       }
     });

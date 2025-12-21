@@ -296,17 +296,8 @@ export const onDepositStatusChange = functions.firestore
                 relatedId: context.params.depositId,
             });
 
-            // 3. Update the historical stats on the main UPI account document.
-            t.update(upiAccountRef, {
-                totalTransactions: FieldValue.increment(1),
-                totalAmountReceived: FieldValue.increment(amount)
-            });
-
-            // 4. Update the daily stats in the subcollection.
-            const currentDailyAmount = dailyStatDoc.exists ? dailyStatDoc.data()?.amount || 0 : 0;
-            const newDailyAmount = currentDailyAmount + amount;
-
-            if (dailyStatDoc.exists) {
+            // 3. Update the daily stats in the subcollection.
+             if (dailyStatDoc.exists) {
                 t.update(dailyStatRef, {
                     amount: FieldValue.increment(amount),
                     transactionCount: FieldValue.increment(1)
@@ -317,14 +308,8 @@ export const onDepositStatusChange = functions.firestore
                     transactionCount: 1
                 });
             }
-            
-            // 5. Check if the daily limit is reached and deactivate if necessary.
-            if (newDailyAmount >= upiAccountData.dailyLimit) {
-                t.update(upiAccountRef, { isActive: false });
-                functions.logger.info(`UPI Account ${upiAccountId} reached its daily limit and was deactivated.`);
-            }
 
-            // 6. Handle referral commission if the user was referred and commission is enabled.
+            // 4. Handle referral commission if the user was referred and commission is enabled.
             if (userData.referredBy && commissionSettings?.isEnabled && commissionSettings.rate > 0) {
                 const referrerQuery = db.collection('users').where('referralCode', '==', userData.referredBy).limit(1);
                 const referrerSnapshot = await t.get(referrerQuery);
@@ -505,8 +490,7 @@ export const createMatch = functions.https.onCall(async (data, context) => {
                 });
             }
             
-            // D. Calculate prize pool (e.g., 90% of entry fee for a 2-player match)
-            // This can be adjusted or made more dynamic.
+            // D. Calculate prize pool (e.g., 90% of total pot)
             const prizePool = (entryFee * maxPlayers) * 0.9;
 
             // D. Create the new match document

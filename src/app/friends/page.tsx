@@ -33,9 +33,9 @@ export default function FriendsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // My friends
-  const friendIds = useMemo(() => currentUserProfile?.friends || [], [currentUserProfile]);
+  const friendIds = useMemo(() => currentUserProfile?.friends?.length ? currentUserProfile.friends : ['_'], [currentUserProfile]);
   const { data: friends, loading: friendsLoading } = useCollection<UserProfile>('users', {
-    where: friendIds.length > 0 ? ['uid', 'in', friendIds] : undefined
+    where: ['uid', 'in', friendIds]
   });
 
   // Incoming friend requests
@@ -43,9 +43,9 @@ export default function FriendsPage() {
       where: [['to', '==', user?.uid || ''], ['status', '==', 'pending']]
   });
   
-  const requestSenderIds = useMemo(() => requests.map(r => r.from), [requests]);
+  const requestSenderIds = useMemo(() => requests.length > 0 ? requests.map(r => r.from) : ['_'], [requests]);
   const { data: requestSenders, loading: sendersLoading } = useCollection<UserProfile>('users', {
-    where: requestSenderIds.length > 0 ? ['uid', 'in', requestSenderIds] : undefined
+    where: ['uid', 'in', requestSenderIds]
   });
   
   const requestSendersMap = useMemo(() => {
@@ -132,9 +132,8 @@ export default function FriendsPage() {
   }
 
   const handleChallengeFriend = (friendId: string) => {
-    // Navigate to create match page, potentially with friend pre-selected
-    router.push('/create-match?private=true&invite=' + friendId);
-    toast({ title: "Challenge!", description: "Creating a private match..."});
+    // Navigate to create match page, with friend pre-selected for a private match
+    router.push(`/create-match?private=true&invite=${friendId}`);
   }
   
   const loading = friendsLoading || requestsLoading || sendersLoading;

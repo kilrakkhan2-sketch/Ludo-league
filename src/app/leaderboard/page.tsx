@@ -16,6 +16,7 @@ import { Trophy } from "lucide-react";
 import { useCollection } from "@/firebase";
 import { UserProfile } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useMemo } from "react";
 
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1)
@@ -24,7 +25,7 @@ function RankBadge({ rank }: { rank: number }) {
         <Trophy className="w-4 h-4" />
       </Badge>
     );
-  if (rank === 2) return <Badge className="bg-slate-400 text-white w-8 h-8 flex items-center justify-center text-sm font-bold">{rank}</Badge>;
+  if (rank === 2) return <Badge className="bg-gray-400 text-white w-8 h-8 flex items-center justify-center text-sm font-bold">{rank}</Badge>;
   if (rank === 3) return <Badge className="bg-orange-500 text-white w-8 h-8 flex items-center justify-center text-sm font-bold">{rank}</Badge>;
   return <Badge variant="secondary" className="w-8 h-8 flex items-center justify-center text-sm font-bold">{rank}</Badge>;
 }
@@ -49,8 +50,12 @@ export default function LeaderboardPage() {
         limit: 100,
     });
 
-    const sortedPlayers = players.sort((a,b) => (b.rating || 0) - (a.rating || 0))
-        .map((p, i) => ({...p, rank: i + 1}));
+    const sortedPlayers = useMemo(() => {
+        if (!players) return [];
+        return [...players]
+            .sort((a,b) => (b.rating || 0) - (a.rating || 0))
+            .map((p, i) => ({...p, rank: i + 1}));
+    }, [players]);
 
   return (
     <AppShell pageTitle="Leaderboard">
@@ -93,7 +98,7 @@ export default function LeaderboardPage() {
                     <TableCell className="text-right font-semibold text-primary">
                       {player.rating || 1000}
                     </TableCell>
-                    <TableCell className="text-right text-muted-foreground">{player.rank || 0}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{player.matchesWon || 0}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

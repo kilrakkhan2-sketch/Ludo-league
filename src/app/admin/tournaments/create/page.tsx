@@ -1,6 +1,5 @@
 "use client";
 
-import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,7 +25,6 @@ import { useFirebase, useUser } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { AdminShell } from "@/components/layout/AdminShell";
 
 export default function AdminCreateTournamentPage() {
   const { firestore } = useFirebase();
@@ -55,7 +53,7 @@ export default function AdminCreateTournamentPage() {
     setIsSubmitting(true);
 
     try {
-        const docRef = await addDoc(collection(firestore, "tournaments"), {
+        await addDoc(collection(firestore, "tournaments"), {
             name,
             description,
             prizePool: Number(prizePool),
