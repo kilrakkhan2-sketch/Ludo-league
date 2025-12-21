@@ -117,4 +117,3 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
 
   return { data, loading, error };
 }
-

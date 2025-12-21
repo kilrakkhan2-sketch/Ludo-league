@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useCollection } from "@/firebase";
+import { useCollection, useCollectionGroup } from "@/firebase";
 import type { Transaction, UserProfile } from "@/types";
 import {
   Table,
@@ -18,14 +18,13 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function AdminTransactionsPage() {
-  const { data: transactions, loading: txLoading } = useCollection<Transaction>('transactions', { 
+  const { data: transactions, loading: txLoading } = useCollectionGroup<Transaction>('transactions', { 
     orderBy: ['createdAt', 'desc'], 
     limit: 50, 
-    isCollectionGroup: true 
   });
   
   const userIds = useMemo(() => {
-    if (!transactions) return ['_'];
+    if (!transactions || transactions.length === 0) return ['_']; // Firestore 'in' query needs a non-empty array
     const ids = new Set(transactions.map((tx: Transaction) => tx.userId));
     return ids.size > 0 ? Array.from(ids) : ['_'];
   }, [transactions]);
@@ -34,16 +33,19 @@ export default function AdminTransactionsPage() {
       where: ['uid', 'in', userIds]
   });
   
-  const usersMap = useMemo(() => new Map(users.map((u: UserProfile) => [u.uid, u])), [users]);
+  const usersMap = useMemo(() => {
+    if (!users) return new Map();
+    return new Map(users.map((u: UserProfile) => [u.uid, u]));
+  }, [users]);
 
-  const loading = txLoading || usersLoading;
+  const loading = txLoading || (usersLoading && transactions.length > 0);
 
   const SkeletonRow = () => (
     <TableRow>
       <TableCell><Skeleton className="h-5 w-24" /></TableCell>
       <TableCell><Skeleton className="h-5 w-16" /></TableCell>
       <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-      <TableCell className="text-right"><Skeleton className="h-5 w-12" /></TableCell>
+      <TableCell className="text-right"><Skeleton className="h-5 w-12 ml-auto" /></TableCell>
     </TableRow>
   )
 
@@ -68,7 +70,7 @@ export default function AdminTransactionsPage() {
                 </TableRow>
                 </TableHeader>
                 <TableBody>
-                {loading && transactions.length === 0 ? (
+                {loading ? (
                     <>
                     <SkeletonRow />
                     <SkeletonRow />
@@ -76,7 +78,8 @@ export default function AdminTransactionsPage() {
                     <SkeletonRow />
                     <SkeletonRow />
                     </>
-                ) : transactions.map((tx: Transaction) => {
+                ) : transactions.length > 0 ? (
+                  transactions.map((tx: Transaction) => {
                     const user = usersMap.get(tx.userId);
                     return (
                     <TableRow key={tx.id}>
@@ -92,7 +95,12 @@ export default function AdminTransactionsPage() {
                         {tx.amount > 0 ? '+' : ''}₹{tx.amount.toLocaleString()}
                     </TableCell>
                     </TableRow>
-                )})}
+                )})
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">No transactions found.</TableCell>
+                  </TableRow>
+                )}
                 </TableBody>
             </Table>
         </CardContent>
