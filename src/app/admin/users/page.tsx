@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { AdminShell } from "@/components/layout/AdminShell";
 import {
   Table,
   TableBody,
@@ -48,7 +47,8 @@ export default function AdminUsersPage() {
   }, [users, searchTerm]);
 
   return (
-    <AdminShell pageTitle="Users">
+    <div className="space-y-6">
+        <h1 className="text-3xl font-bold font-headline">Users</h1>
         <Card>
             <CardHeader>
                 <CardTitle>All Users</CardTitle>
@@ -100,6 +100,6 @@ export default function AdminUsersPage() {
                 </Table>
             </CardContent>
         </Card>
-    </AdminShell>
+    </div>
   );
 }

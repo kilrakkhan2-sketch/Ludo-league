@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { AdminShell } from "@/components/layout/AdminShell";
 import {
   Table,
   TableBody,
@@ -20,14 +19,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-const matchStatuses = ['all', 'open', 'in-progress', 'completed', 'disputed', 'cancelled'];
+const matchStatuses = ['all', 'open', 'ongoing', 'completed', 'verification', 'cancelled'];
 
 const getStatusVariant = (status: string) => {
   switch (status) {
     case 'open': return 'secondary';
-    case 'in-progress': return 'default';
-    case 'completed': return 'success';
-    case 'disputed': return 'destructive';
+    case 'ongoing': return 'default';
+    case 'completed': 'default';
+    case 'verification': return 'destructive';
     case 'cancelled': return 'outline';
     default: return 'default';
   }
@@ -57,26 +56,27 @@ export default function AdminMatchesPage() {
   const filteredMatches = useMemo(() => {
     if (!matches) return [];
     return matches.filter(match => 
-        match.title?.toLowerCase().includes(searchTerm.toLowerCase())
+        (match.title?.toLowerCase().includes(searchTerm.toLowerCase()) || match.id.includes(searchTerm))
     );
   }, [matches, searchTerm]);
 
   return (
-    <AdminShell pageTitle="Matches">
+    <>
+        <h1 className="text-3xl font-bold font-headline">Matches</h1>
         <Card>
             <CardHeader>
                 <CardTitle>Manage Matches</CardTitle>
                 <div className="flex items-center justify-between pt-4">
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-2 overflow-x-auto pb-2">
                         {matchStatuses.map(status => (
-                            <Button key={status} size="sm" variant={statusFilter === status ? 'default' : 'outline'} onClick={() => setStatusFilter(status)} className="capitalize">
+                            <Button key={status} size="sm" variant={statusFilter === status ? 'default' : 'outline'} onClick={() => setStatusFilter(status)} className="capitalize shrink-0">
                                 {status}
                             </Button>
                         ))}
                     </div>
-                    <div className="w-1/3">
+                    <div className="w-full max-w-xs ml-4">
                         <Input 
-                            placeholder='Search by title...'
+                            placeholder='Search by title or ID...'
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -87,7 +87,7 @@ export default function AdminMatchesPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Title</TableHead>
+                            <TableHead>Title & ID</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Entry Fee</TableHead>
                             <TableHead>Players</TableHead>
@@ -106,7 +106,10 @@ export default function AdminMatchesPage() {
                         )}
                         {!loading && filteredMatches.map(match => (
                             <TableRow key={match.id}>
-                                <TableCell>{match.title}</TableCell>
+                                <TableCell>
+                                    <div className="font-medium">{match.title}</div>
+                                    <div className="text-xs text-muted-foreground font-mono">{match.id}</div>
+                                </TableCell>
                                 <TableCell><Badge variant={getStatusVariant(match.status)} className="capitalize">{match.status}</Badge></TableCell>
                                 <TableCell>₹{match.entryFee}</TableCell>
                                 <TableCell>{match.players.length} / {match.maxPlayers}</TableCell>
@@ -122,6 +125,6 @@ export default function AdminMatchesPage() {
                 </Table>
             </CardContent>
         </Card>
-    </AdminShell>
+    </>
   );
 }
