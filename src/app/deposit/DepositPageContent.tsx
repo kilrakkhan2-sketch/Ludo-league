@@ -16,6 +16,9 @@ import type { UpiAccount } from '@/types';
 import { ArrowLeft, UploadCloud, Copy } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { cn } from '@/lib/utils';
+
 
 // The page that uses this component should wrap it in <Suspense>
 export default function DepositPageContent() {
@@ -31,6 +34,7 @@ export default function DepositPageContent() {
       where: ['isActive', '==', true]
   });
 
+  const [selectedUpiId, setSelectedUpiId] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState('');
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,11 +51,11 @@ export default function DepositPageContent() {
   };
 
   const handleSubmit = async () => {
-    if (!amount || !transactionId || !screenshot || !user || !firestore) {
+    if (!amount || !transactionId || !screenshot || !user || !firestore || !selectedUpiId) {
       toast({
         variant: 'destructive',
         title: 'Missing Information',
-        description: 'Please fill out all fields and upload a screenshot.',
+        description: 'Please select the UPI ID you paid to, fill out all fields, and upload a screenshot.',
       });
       return;
     }
@@ -69,6 +73,7 @@ export default function DepositPageContent() {
         amount: parseInt(amount, 10),
         transactionId,
         screenshotUrl,
+        upiAccountId: selectedUpiId, // Save the selected UPI account ID
         status: 'pending',
         createdAt: Timestamp.now(),
       });
@@ -142,14 +147,27 @@ export default function DepositPageContent() {
                  {settingsLoading ? (
                     <Skeleton className="h-8 w-full" />
                 ) : paymentAccounts && paymentAccounts.length > 0 ? (
-                  <div className="text-center space-y-3">
-                    <Label className="text-muted-foreground">Pay to any of the UPI IDs below</Label>
-                    {paymentAccounts.map(acc => (
-                        <div key={acc.id} onClick={() => copyToClipboard(acc.upiId)} className="font-mono tracking-wider bg-muted p-3 rounded-lg flex items-center justify-between cursor-pointer">
-                            <span>{acc.upiId}</span>
-                            <Copy className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                    ))}
+                  <div className="space-y-3">
+                    <Label className="text-muted-foreground text-center block">1. Pay to any of the UPI IDs below</Label>
+                     <RadioGroup onValueChange={setSelectedUpiId} className="space-y-2">
+                        {paymentAccounts.map(acc => (
+                            <div key={acc.id}>
+                                <RadioGroupItem value={acc.id} id={acc.id} className="sr-only" />
+                                <Label htmlFor={acc.id} className={cn(
+                                    "font-mono tracking-wider bg-muted p-3 rounded-lg flex items-center justify-between cursor-pointer border-2 border-transparent",
+                                    selectedUpiId === acc.id && "border-primary bg-primary/10"
+                                )}>
+                                    <div>
+                                        <p className='text-sm text-foreground font-sans'>{acc.displayName}</p>
+                                        <p>{acc.upiId}</p>
+                                    </div>
+                                    <Button size="icon" variant="ghost" onClick={() => copyToClipboard(acc.upiId)}>
+                                        <Copy className="h-4 w-4 text-muted-foreground" />
+                                    </Button>
+                                </Label>
+                            </div>
+                        ))}
+                    </RadioGroup>
                   </div>
                 ) : (
                     <Alert variant="destructive">
@@ -160,7 +178,7 @@ export default function DepositPageContent() {
               </div>
           </div>
           <div className="bg-card p-6 rounded-lg shadow-md">
-            <h2 className="text-lg font-semibold mb-4">Submit Payment Details</h2>
+            <h2 className="text-lg font-semibold mb-4">2. Submit Payment Details</h2>
             <div className="space-y-4">
               <div>
                 <Label htmlFor="transactionId">Transaction ID / UPI Reference No.</Label>
@@ -189,7 +207,7 @@ export default function DepositPageContent() {
           </div>
       </main>
       <footer className="p-4 sticky bottom-0 bg-background border-t">
-        <Button onClick={handleSubmit} className="w-full text-lg py-6" disabled={isSubmitting || !screenshot || !transactionId || paymentAccounts.length === 0}>
+        <Button onClick={handleSubmit} className="w-full text-lg py-6" disabled={isSubmitting || !screenshot || !transactionId || paymentAccounts.length === 0 || !selectedUpiId}>
             {isSubmitting ? 'Submitting...' : 'Submit Deposit Request'}
         </Button>
       </footer>

@@ -77,10 +77,11 @@
         "amount": { "type": "number" },
         "transactionId": { "type": "string" },
         "screenshotURL": { "type": "string", "format": "uri" },
+        "upiAccountId": { "type": "string", "description": "The ID of the upi-account document used for the payment." },
         "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["userId", "amount", "transactionId", "screenshotURL", "status", "createdAt"]
+      "required": ["userId", "amount", "transactionId", "screenshotURL", "status", "createdAt", "upiAccountId"]
     },
     "WithdrawalRequest": {
       "title": "Withdrawal Request",

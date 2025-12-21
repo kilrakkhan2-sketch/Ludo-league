@@ -1,5 +1,6 @@
 
 
+
 export type UserProfile = {
   id: string;
   uid: string;
@@ -68,6 +69,7 @@ export type DepositRequest = {
   amount: number;
   transactionId: string;
   screenshotUrl: string;
+  upiAccountId: string;
   status: "pending" | "approved" | "rejected";
   createdAt: any; // Can be server timestamp
   processedAt?: any;

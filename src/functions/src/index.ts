@@ -1,3 +1,4 @@
+
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
@@ -15,6 +16,7 @@ interface UserData {
     xp?: number;
     matchesPlayed?: number;
     matchesWon?: number;
+    name?: string;
     [key: string]: any;
 }
 
@@ -113,7 +115,7 @@ export const onDepositStatusChange = functions.firestore
         return null;
     }
     
-    const { userId, amount } = afterData;
+    const { userId, amount, upiAccountId } = afterData;
     if (!userId || !amount || amount <= 0) {
         functions.logger.error("Missing or invalid userId/amount", { id: context.params.depositId });
         return null;
@@ -143,7 +145,16 @@ export const onDepositStatusChange = functions.firestore
                 relatedId: context.params.depositId,
             });
 
-            // 3. Handle referral commission if the user was referred.
+            // 3. Update the UPI account stats if upiAccountId is provided.
+            if (upiAccountId) {
+                const upiAccountRef = db.collection('upi-accounts').doc(upiAccountId);
+                t.update(upiAccountRef, {
+                    totalTransactions: FieldValue.increment(1),
+                    totalAmountReceived: FieldValue.increment(amount)
+                });
+            }
+
+            // 4. Handle referral commission if the user was referred.
             if (userData.referredBy) {
                 const referrerQuery = db.collection('users').where('referralCode', '==', userData.referredBy).limit(1);
                 const referrerSnapshot = await t.get(referrerQuery);

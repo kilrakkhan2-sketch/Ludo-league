@@ -182,6 +182,7 @@ export default function UpiManagementPage() {
                                     <TableHead>Display Name</TableHead>
                                     <TableHead>UPI ID</TableHead>
                                     <TableHead>Total Transactions</TableHead>
+                                    <TableHead>Total Received</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
@@ -189,7 +190,7 @@ export default function UpiManagementPage() {
                             <TableBody>
                                 {accounts.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-24 text-center">
+                                        <TableCell colSpan={6} className="h-24 text-center">
                                             No UPI accounts configured.
                                         </TableCell>
                                     </TableRow>
@@ -199,6 +200,7 @@ export default function UpiManagementPage() {
                                             <TableCell className="font-medium">{acc.displayName}</TableCell>
                                             <TableCell className="font-mono">{acc.upiId}</TableCell>
                                             <TableCell>{acc.totalTransactions || 0}</TableCell>
+                                            <TableCell className="font-semibold">₹{acc.totalAmountReceived?.toLocaleString() || 0}</TableCell>
                                             <TableCell>
                                                 <div className='flex items-center gap-2'>
                                                   <Switch 
