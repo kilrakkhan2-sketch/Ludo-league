@@ -48,8 +48,8 @@ export type MatchResult = {
   userId: string;
   screenshotUrl: string;
   submittedAt: any;
-  confirmedPosition?: number;
-  confirmedWinStatus?: 'win' | 'loss';
+  confirmedPosition: number;
+  confirmedWinStatus: 'win' | 'loss';
   confirmedAt?: any;
   status: 'submitted' | 'confirmed' | 'mismatch' | 'locked';
 };
@@ -188,8 +188,11 @@ export type Tournament = {
   id: string;
   name: string;
   description: string;
+  bannerUrl?: string;
   prizePool: number;
   entryFee: number;
+  commissionRate: number;
+  prizeDistribution?: { rank: number; percentage: number }[];
   startDate: any;
   endDate: any;
   status: 'upcoming' | 'live' | 'completed';

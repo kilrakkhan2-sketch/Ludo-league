@@ -20,6 +20,11 @@ service firebase.storage {
       let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
       return userRole == 'deposit_admin' || userRole == 'superadmin';
     }
+
+     function isMatchAdmin() {
+      let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return userRole == 'match_admin' || userRole == 'superadmin';
+    }
     
     match /profile-pictures/{userId}/{allPaths=**} {
       allow read: if true;
@@ -41,7 +46,10 @@ service firebase.storage {
       // Allow write if user is authenticated and part of the match's player list
       allow write: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
     }
+
+    match /tournament-banners/{fileName} {
+      allow read: if true;
+      allow write: if isMatchAdmin() || isSuperAdmin();
+    }
   }
 }
-
-    

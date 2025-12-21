@@ -299,7 +299,7 @@ export const onDepositStatusChange = functions.firestore
                         amount: commissionAmount,
                         type: "referral_bonus",
                         status: "completed",
-                        description: `${commissionPercentage}% commission from ${userData.name || 'a referred user'}\'s deposit.`,
+                        description: `${commissionPercentage}% commission from ${userData.name || 'a referred user'}'s deposit.`,
                         createdAt: FieldValue.serverTimestamp(),
                         relatedId: context.params.depositId,
                     });
@@ -457,7 +457,7 @@ export const onMatchResultUpdate = functions.firestore
 });
 
 // =================================================================
-//  MATCH CREATION & MANAGEMENT
+//  MATCH & TOURNAMENT CREATION
 // =================================================================
 export const createMatch = functions.https.onCall(async (data, context) => {
     // 1. Authentication Check
@@ -550,5 +550,54 @@ export const createMatch = functions.https.onCall(async (data, context) => {
         } else {
             throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the match.");
         }
+    }
+});
+
+
+export const createTournament = functions.https.onCall(async (data, context) => {
+    // 1. Authentication & Authorization Check
+    if (!context.auth || !['superadmin', 'match_admin'].includes(context.auth.token.role)) {
+        throw new functions.https.HttpsError("permission-denied", "You must be an admin to create a tournament.");
+    }
+    const adminUid = context.auth.uid;
+
+    // 2. Data Validation
+    const { name, description, entryFee, maxPlayers, commissionRate, prizeDistribution, startDate, endDate, bannerUrl } = data;
+    if (!name || !description || typeof entryFee !== 'number' || typeof maxPlayers !== 'number' || typeof commissionRate !== 'number' || !prizeDistribution || !startDate) {
+        throw new functions.https.HttpsError("invalid-argument", "Missing required tournament information.");
+    }
+    
+    // 3. Calculate final prize pool after commission
+    const totalCollection = entryFee * maxPlayers;
+    const adminCommission = totalCollection * commissionRate;
+    const finalPrizePool = totalCollection - adminCommission;
+    
+    try {
+        const tournamentRef = await db.collection("tournaments").add({
+            name,
+            description,
+            entryFee,
+            maxPlayers,
+            commissionRate,
+            prizePool: finalPrizePool,
+            prizeDistribution,
+            startDate: admin.firestore.Timestamp.fromDate(new Date(startDate)),
+            endDate: endDate ? admin.firestore.Timestamp.fromDate(new Date(endDate)) : null,
+            bannerUrl: bannerUrl || null,
+            status: 'upcoming',
+            players: [],
+            creatorId: adminUid,
+            createdAt: FieldValue.serverTimestamp()
+        });
+
+        return {
+            status: "success",
+            message: "Tournament created successfully!",
+            tournamentId: tournamentRef.id,
+        };
+
+    } catch (error) {
+        functions.logger.error(`Failed to create tournament by admin ${adminUid}:`, error);
+        throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the tournament.");
     }
 });

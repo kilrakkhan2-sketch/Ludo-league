@@ -655,11 +655,19 @@
         "description": {
           "type": "string"
         },
+        "bannerUrl": {
+          "type": "string",
+          "format": "uri"
+        },
         "prizePool": {
           "type": "number"
         },
         "entryFee": {
           "type": "number"
+        },
+        "commissionRate": {
+          "type": "number",
+          "description": "Admin commission rate, e.g., 0.1 for 10%"
         },
         "startDate": {
           "type": "string",

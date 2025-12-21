@@ -90,12 +90,11 @@ const TournamentCard = ({ tournament }: { tournament: Tournament }) => {
 
     return (
         <Card className="overflow-hidden hover:shadow-lg transition-shadow bg-card">
-            {tournamentCardImage && (
             <div className="relative h-40 w-full">
                 <Image
-                src={`${tournamentCardImage.imageUrl.replace('&w=1080', '&w=600')}`}
-                alt={tournamentCardImage.description}
-                data-ai-hint={tournamentCardImage.imageHint}
+                src={tournament.bannerUrl || tournamentCardImage?.imageUrl || ''}
+                alt={tournament.name}
+                data-ai-hint="tournament banner"
                 fill
                 className="object-cover"
                 />
@@ -113,7 +112,6 @@ const TournamentCard = ({ tournament }: { tournament: Tournament }) => {
                     <p className="text-xs opacity-80">Entry: ₹{tournament.entryFee}</p>
                 </div>
             </div>
-            )}
             <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2 text-muted-foreground">
@@ -143,7 +141,7 @@ const TournamentCard = ({ tournament }: { tournament: Tournament }) => {
 
 export default function TournamentsPage() {
   const { user } = useUser();
-  const { data: profile } = useDoc<UserProfile>(user ? `users/${user.uid}` : null);
+  const { data: profile } = useDoc<UserProfile>(user ? `users/${user.uid}` : undefined);
   const { data: tournaments, loading } = useCollection<Tournament>('tournaments', {
       orderBy: ['startDate', 'desc']
   });
