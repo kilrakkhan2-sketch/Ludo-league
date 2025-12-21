@@ -12,7 +12,7 @@ export function useDoc<T>(path: string | undefined | null) {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    // If the path is not provided, don't fetch anything.
+    // If the path is not provided or is an empty string, don't fetch anything.
     if (!db || !path) {
       setData(null);
       setLoading(false);
