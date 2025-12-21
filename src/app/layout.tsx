@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "LudoLeague",
   description: "The ultimate platform for competitive Ludo.",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
@@ -17,9 +20,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="manifest" href="/manifest.json" />
-      </head>
       <body className={cn("font-body antialiased")}>
         <FirebaseClientProvider>
           {children}

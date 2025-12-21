@@ -41,7 +41,7 @@ service cloud.firestore {
       allow create: if isOwner(userId)
                     && request.resource.data.role == 'user'
                     && request.resource.data.walletBalance == 0;
-      allow update: if 
+      allow update: if
         (
           (isOwner(userId) &&
           !('role' in request.resource.data.diff(resource.data).affectedKeys()) &&
@@ -51,7 +51,7 @@ service cloud.firestore {
           // Allow adding a friend
           request.resource.data.friends == resource.data.friends.concat(request.resource.data.friends[resource.data.friends.size()])
         );
-          
+
       allow delete: if isSuperAdmin();
 
       match /transactions/{transactionId} {
@@ -64,7 +64,8 @@ service cloud.firestore {
     // ------------------ MATCHES & TOURNAMENTS ------------------
     match /matches/{matchId} {
 
-      allow read: if isSignedIn();
+      allow list: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.status == 'open' || request.auth.uid in resource.data.players);
 
       allow create: if isSignedIn()
                     && request.auth.uid == request.resource.data.creatorId

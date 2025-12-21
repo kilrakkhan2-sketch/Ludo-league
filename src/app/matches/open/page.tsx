@@ -100,19 +100,11 @@ const MatchCard = ({ match }: { match: Match }) => {
 }
 
 export default function OpenMatchesPage() {
-  const { data: matchesData, loading } = useCollection<Match>("matches", {
+  const { data: matches, loading } = useCollection<Match>("matches", {
     where: [["status", "==", "open"]],
+    // orderBy: [["createdAt", "desc"]], // Temporarily removed for debugging
     limit: 12,
   });
-
-  const matches = useMemo(() => {
-    // Sort matches by creation time, handling cases where createdAt might be null initially
-    return [...matchesData].sort((a, b) => {
-      const timeA = a.createdAt?.seconds || 0;
-      const timeB = b.createdAt?.seconds || 0;
-      return timeB - timeA;
-    });
-  }, [matchesData]);
 
   const Skeletons = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

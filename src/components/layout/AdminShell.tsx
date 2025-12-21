@@ -1,38 +1,26 @@
 
 'use client';
 
-import { ReactNode, useEffect } from "react";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarFooter,
-} from "@/components/ui/sidebar";
-import {
-  LayoutGrid,
-  Wallet,
-  User,
-  LogOut,
-  Search,
-  Users,
-  Settings,
-  Shield,
+  Bell,
+  Home,
+  LineChart,
   Package,
-  ArrowLeft,
-  Banknote,
-  ClipboardList,
-  Menu,
-} from "lucide-react";
-import Link from "next/link";
-import Image from "next/image";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+  Package2,
+  ShoppingCart,
+  Users,
+} from 'lucide-react';
+import Link from 'next/link';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,197 +28,118 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "../ui/input";
-import { useUser, useDoc } from "@/firebase";
-import { getAuth, signOut } from "firebase/auth";
-import { useRouter } from "next/navigation";
-import { useToast } from "@/hooks/use-toast";
-import type { UserProfile } from "@/types";
-import { Skeleton } from "../ui/skeleton";
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { AppShell } from './AppShell';
+import { useUser } from '@/firebase';
+import { useMemo } from 'react';
 
-const allNavItems = [
-  { href: "/admin/dashboard", icon: LayoutGrid, label: "Dashboard", roles: ['superadmin', 'deposit_admin', 'match_admin'] },
-  { href: "/admin/users", icon: Users, label: "Users", roles: ['superadmin'] },
-  { href: "/admin/manage-admins", icon: Shield, label: "Manage Admins", roles: ['superadmin'] },
-  { href: "/admin/matches", icon: Package, label: "Matches", roles: ['superadmin', 'match_admin'] },
-  { href: "/admin/results", icon: ClipboardList, label: "Results", roles: ['superadmin', 'match_admin'] },
-  { href: "/admin/deposits", icon: Banknote, label: "Deposits", roles: ['superadmin', 'deposit_admin'] },
-  { href: "/admin/withdrawals", icon: Wallet, label: "Withdrawals", roles: ['superadmin', 'deposit_admin'] },
-  { href: "/admin/settings", icon: Settings, label: "Settings", roles: ['superadmin'] },
+const adminNavItems = [
+  { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
+  { href: '/admin/users', icon: Users, label: 'Users' },
+  { href: '/admin/matches', icon: Package, label: 'Matches' },
 ];
 
-export function AdminShell({ children }: { children: ReactNode }) {
-  const { user, loading: userLoading, claims } = useUser();
-  const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
-  const router = useRouter();
-  const { toast } = useToast();
+export function AdminShell({ children, pageTitle }: { children: React.ReactNode, pageTitle: string }) {
+  const { user, claims, loading } = useUser();
+  
+  const isAdmin = useMemo(() => 
+    claims?.role && ['superadmin', 'deposit_admin', 'match_admin'].includes(claims.role as string)
+  , [claims]);
 
-  const isAdmin = claims?.role && ['superadmin', 'deposit_admin', 'match_admin'].includes(claims.role);
-
-  useEffect(() => {
-    if (!userLoading) {
-      if (!user) {
-        // Not logged in, redirect to login
-        router.push('/login');
-      } else if (!isAdmin) {
-        // Logged in, but not an admin, redirect to dashboard
-        toast({
-          variant: 'destructive',
-          title: 'Unauthorized',
-          description: 'You do not have permission to access this page.',
-        });
-        router.push('/dashboard');
-      }
-    }
-  }, [user, userLoading, isAdmin, router, toast]);
-
-  const handleLogout = async () => {
-    const auth = getAuth();
-    try {
-      await signOut(auth);
-      toast({
-        title: "Logged Out",
-        description: "You have been successfully logged out.",
-      });
-      router.push('/login');
-    } catch (error) {
-       toast({
-        variant: "destructive",
-        title: "Logout Failed",
-        description: "Could not log you out. Please try again.",
-      });
-    }
-  };
-
-  const loading = userLoading || profileLoading;
-  const userRole = claims?.role;
-
-  const navItems = allNavItems.filter(item => {
-      if (!userRole) return false;
-      return item.roles.includes(userRole);
-  });
-
-  if (loading || !isAdmin) {
+  if (loading) {
     return (
-        <div className="flex h-screen items-center justify-center bg-background">
-            <p>Loading...</p>
+        <AppShell pageTitle="Loading...">
+            <div className="flex items-center justify-center h-full">
+                <p>Loading admin section...</p>
+            </div>
+        </AppShell>
+    )
+  }
+
+  if (!isAdmin) {
+    return (
+      <AppShell pageTitle="Access Denied">
+        <div className="flex flex-col items-center justify-center h-full text-center">
+          <h1 className="text-2xl font-bold">Access Denied</h1>
+          <p className="text-muted-foreground">
+            You do not have permission to view this page.
+          </p>
         </div>
+      </AppShell>
     );
   }
 
   return (
-    <SidebarProvider>
-      <Sidebar collapsible="icon">
-        <SidebarContent className="bg-card">
-          <SidebarHeader>
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-primary rounded-lg">
-                 <Image src="/favicon.ico" alt="LudoLeague Admin Logo" width={24} height={24} />
-              </div>
-              <h1 className="text-xl font-bold font-headline text-primary">
-                Admin Panel
-              </h1>
-            </div>
-          </SidebarHeader>
-          <SidebarMenu>
-            {loading ? (
-                <div className="p-2 space-y-2">
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                </div>
-            ) : (
-                <>
-                    {navItems.map((item) => (
-                      <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton href={item.href} tooltip={item.label}>
-                          <item.icon />
-                          <span>{item.label}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                </>
-            )}
-          </SidebarMenu>
-          <SidebarFooter>
-            <SidebarMenu>
-                <SidebarMenuItem>
-                    <SidebarMenuButton href="/dashboard" tooltip="Back to App" className="text-muted-foreground hover:text-foreground">
-                        <ArrowLeft />
-                        <span>Back to App</span>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </SidebarMenu>
-
-            {loading ? (
-                <div className="flex items-center gap-2 p-2">
-                    <Skeleton className="h-8 w-8 rounded-full" />
-                    <div className="flex-grow group-data-[collapsible=icon]:hidden space-y-1">
-                        <Skeleton className="h-4 w-24" />
-                        <Skeleton className="h-3 w-32" />
-                    </div>
-                </div>
-            ) : user ? (
-                <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button
-                    variant="ghost"
-                    className="justify-start w-full gap-2 p-2 h-auto"
-                    >
-                    <Avatar className="h-8 w-8">
-                        <AvatarImage
-                        src={profile?.photoURL || undefined}
-                        alt={profile?.displayName || 'Admin'}
-                        />
-                        <AvatarFallback>{profile?.displayName?.charAt(0) || user.email?.charAt(0) || 'A'}</AvatarFallback>
-                    </Avatar>
-                    <div className="text-left overflow-hidden group-data-[collapsible=icon]:hidden">
-                        <p className="font-medium truncate">{profile?.displayName || 'Admin User'}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                        {user.email}
-                        </p>
-                    </div>
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 mb-2" align="end" forceMount>
-                    <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{profile?.displayName || 'Admin User'}</p>
-                        <p className="text-xs leading-none text-muted-foreground">
-                        {user.email}
-                        </p>
-                    </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-                </DropdownMenu>
-            ) : (
-                <Button asChild className="w-full">
-                    <Link href="/login">Login</Link>
-                </Button>
-            )}
-        </SidebarFooter>
-        </SidebarContent>
-        <SidebarInset>
-          <header className="flex items-center justify-between p-4 bg-card border-b md:justify-end">
-            <div className="md:hidden">
-                <SidebarTrigger>
-                    <Menu />
-                </SidebarTrigger>
-            </div>
-            <div className="relative w-full max-w-xs ml-auto">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search..." className="pl-9" />
-            </div>
-          </header>
-          <main className="flex-1 p-4 lg:p-6 bg-background/95">{children}</main>
-        </SidebarInset>
-      </Sidebar>
-    </SidebarProvider>
+    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
+      <div className="hidden border-r bg-muted/40 md:block">
+        <div className="flex h-full max-h-screen flex-col gap-2">
+          <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+            <Link href="/" className="flex items-center gap-2 font-semibold">
+              <Package2 className="h-6 w-6" />
+              <span className="">LudoLeague</span>
+            </Link>
+          </div>
+          <div className="flex-1">
+            <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+              {adminNavItems.map(({ href, icon: Icon, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-col">
+        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0 md:hidden"
+              >
+                <Users className="h-5 w-5" />
+                <span className="sr-only">Toggle navigation menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="flex flex-col">
+              <nav className="grid gap-2 text-lg font-medium">
+                <Link
+                  href="#"
+                  className="flex items-center gap-2 text-lg font-semibold"
+                >
+                  <Package2 className="h-6 w-6" />
+                  <span className="sr-only">LudoLeague</span>
+                </Link>
+                {adminNavItems.map(({ href, icon: Icon, label }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <Icon className="h-5 w-5" />
+                    {label}
+                  </Link>
+                ))}
+              </nav>
+            </SheetContent>
+          </Sheet>
+          <div className="w-full flex-1">
+            <h1 className="text-xl font-semibold">{pageTitle}</h1>
+          </div>
+        </header>
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
+          {children}
+        </main>
+      </div>
+    </div>
   );
 }

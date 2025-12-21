@@ -55,10 +55,13 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
   , [claims]);
 
   const navItems = useMemo(() => {
-    const items = [...baseNavItems];
+    let items = [...baseNavItems];
     if (isAdmin) {
       // Add Admin item at a specific position, e.g., before Profile
-      items.splice(3, 0, { href: "/admin/dashboard", icon: Shield, label: "Admin" });
+      const profileIndex = items.findIndex(item => item.href === '/profile');
+      if (profileIndex !== -1) {
+        items.splice(profileIndex, 0, { href: "/admin/dashboard", icon: Shield, label: "Admin" });
+      }
     }
     return items;
   }, [isAdmin]);
