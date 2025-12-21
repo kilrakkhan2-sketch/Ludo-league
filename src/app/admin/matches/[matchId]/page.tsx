@@ -3,9 +3,9 @@
 
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useCollection, useDoc, useUser } from '@/firebase';
+import { useCollection, useDoc } from '@/firebase';
 import { Match, UserProfile } from '@/types';
-import { doc, writeBatch, Timestamp, runTransaction, updateDoc } from 'firebase/firestore';
+import { doc, Timestamp, runTransaction, updateDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,9 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CircleAlert, ArrowLeft } from 'lucide-react';
+import { CircleAlert, ArrowLeft, Trophy } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
+import { Label } from '@/components/ui/label';
 
 const getStatusVariant = (status: string) => {
   switch (status) {
@@ -75,7 +76,11 @@ export default function AdminMatchDetailsPage() {
             
             for (const playerId of match.players) {
                 const playerRef = doc(firestore, 'users', playerId);
-                transaction.update(playerRef, { walletBalance: 'walletBalance' in (await transaction.get(playerRef)).data()! ? ((await transaction.get(playerRef)).data()!.walletBalance || 0) + match.entryFee : match.entryFee });
+                const playerDoc = await transaction.get(playerRef);
+                if (playerDoc.exists()) {
+                    const currentBalance = playerDoc.data().walletBalance || 0;
+                    transaction.update(playerRef, { walletBalance: currentBalance + match.entryFee });
+                }
             }
 
             transaction.update(matchRef, { status: 'cancelled', processedAt: Timestamp.now() });
@@ -95,6 +100,7 @@ export default function AdminMatchDetailsPage() {
     setIsSubmitting(true);
     try {
         const matchRef = doc(firestore, "matches", matchId);
+        // The onMatchResultUpdate cloud function will handle prize distribution and stat updates.
         await updateDoc(matchRef, {
             status: "completed",
             winnerId: winner,
@@ -182,13 +188,15 @@ export default function AdminMatchDetailsPage() {
                             <Label>Declare Winner</Label>
                             <Select onValueChange={setWinner} value={winner}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select a player" />
+                                    <SelectValue placeholder="Select a player to award prize" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {players.map(p => <SelectItem key={p.id} value={p.id}>{p.displayName}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Button onClick={handleDeclareWinner} disabled={isSubmitting || !winner} className="w-full">Declare Winner</Button>
+                            <Button onClick={handleDeclareWinner} disabled={isSubmitting || !winner} className="w-full">
+                               <Trophy className="mr-2 h-4 w-4" /> Declare Winner
+                            </Button>
                         </div>
                     )}
                      {(match.status === 'open' || match.status === 'ongoing') && (

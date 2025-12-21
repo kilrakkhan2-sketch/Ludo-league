@@ -13,7 +13,7 @@ import {
   LogOut,
   UserCog,
   FileBadge,
-  Megaphone // New Icon for Announcements
+  Megaphone
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -40,11 +40,10 @@ const superAdminNav = [
   { href: '/admin/users', icon: Users, label: 'All Users' },
   { href: '/admin/manage-admins', icon: UserCog, label: 'Manage Roles' },
   { href: '/admin/matches', icon: Award, label: 'Matches' },
-  { href: '/admin/results', icon: Package, label: 'Verify Results' },
   { href: '/admin/deposits', icon: CircleArrowUp, label: 'Deposits' },
   { href: '/admin/withdrawals', icon: Landmark, label: 'Withdrawals' },
   { href: '/admin/kyc', icon: FileBadge, label: 'KYC Management' },
-  { href: '/admin/announcements', icon: Megaphone, label: 'Announcements' }, // New Announcements Link
+  { href: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
   { href: '/admin/transactions', icon: Wallet, label: 'Transactions' },
   { href: '/admin/settings', icon: Settings, label: 'Site Settings' },
 ];
@@ -58,7 +57,6 @@ const depositAdminNav = [
 const matchAdminNav = [
   { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
   { href: '/admin/matches', icon: Award, label: 'Matches' },
-  { href: '/admin/results', icon: Package, label: 'Verify Results' },
 ];
 
 
