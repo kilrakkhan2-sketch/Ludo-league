@@ -1,3 +1,4 @@
+
 /** @type {import('next').NextConfig} */
 
 const withPWA = require('@ducanh2912/next-pwa').default({
@@ -39,7 +40,22 @@ const withPWA = require('@ducanh2912/next-pwa').default({
 });
 
 const nextConfig = {
-  // Your Next.js configuration options here.
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.dicebear.com',
+      }
+    ],
+  },
 };
 
 module.exports = withPWA(nextConfig);
