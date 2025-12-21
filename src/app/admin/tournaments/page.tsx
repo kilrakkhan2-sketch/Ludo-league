@@ -6,10 +6,9 @@ import { Button } from '@/components/ui/button';
 import { useCollection, useUser, useDoc } from '@/firebase';
 import { Tournament, UserProfile } from '@/types';
 import { format } from 'date-fns';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { PlusCircle, Users, Award, Calendar } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 
@@ -42,45 +41,51 @@ export default function AdminTournamentsPage() {
                 <Link href="/admin/tournaments/create"><PlusCircle className="mr-2 h-4 w-4" />Create Tournament</Link>
             </Button>
         </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>All Tournaments</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Entry / Prize</TableHead>
-                  <TableHead>Players</TableHead>
-                  <TableHead>Start Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                    <TableRow><TableCell colSpan={6} className="text-center h-24">Loading tournaments...</TableCell></TableRow>
-                ) : tournaments.length === 0 ? (
-                   <TableRow><TableCell colSpan={6} className="text-center h-24">No tournaments created yet.</TableCell></TableRow>
-                ) : tournaments.map((t: Tournament) => {
-                  return (
-                    <TableRow key={t.id}>
-                      <TableCell className="font-medium">{t.name}</TableCell>
-                      <TableCell><Badge variant={getStatusVariant(t.status)}>{t.status}</Badge></TableCell>
-                       <TableCell>₹{t.entryFee} / ₹{t.prizePool}</TableCell>
-                       <TableCell>{t.players.length} / {t.maxPlayers}</TableCell>
-                      <TableCell>{t.startDate ? format((t.startDate as any).toDate(), 'dd MMM yyyy') : 'N/A'}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="outline" size="sm" disabled>Manage</Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-           </CardContent>
-        </Card>
+        
+        {loading ? (
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Skeleton className="h-64 w-full" />
+                <Skeleton className="h-64 w-full" />
+             </div>
+        ) : tournaments.length === 0 ? (
+           <div className="text-center py-12">
+                <p className="text-muted-foreground">No tournaments created yet.</p>
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {tournaments.map((t: Tournament) => (
+                    <Card key={t.id} className="flex flex-col">
+                        <CardHeader>
+                            <div className="flex justify-between items-start">
+                                <CardTitle>{t.name}</CardTitle>
+                                <Badge variant={getStatusVariant(t.status)}>{t.status}</Badge>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="flex-grow space-y-3">
+                           <div className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground flex items-center gap-2"><Award className="h-4 w-4" /> Prize Pool</span>
+                                <span className="font-semibold">₹{t.prizePool}</span>
+                            </div>
+                             <div className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground">Entry Fee</span>
+                                <span className="font-semibold">₹{t.entryFee}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground flex items-center gap-2"><Users className="h-4 w-4" /> Players</span>
+                                <span className="font-semibold">{t.players.length} / {t.maxPlayers}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground flex items-center gap-2"><Calendar className="h-4 w-4" /> Starts</span>
+                                <span className="font-semibold">{t.startDate ? format((t.startDate as any).toDate(), 'dd MMM yyyy') : 'N/A'}</span>
+                            </div>
+                        </CardContent>
+                        <CardFooter>
+                            <Button variant="outline" size="sm" className="w-full" disabled>Manage</Button>
+                        </CardFooter>
+                    </Card>
+                ))}
+            </div>
+        )}
       </div>
   );
 }

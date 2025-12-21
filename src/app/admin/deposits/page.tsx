@@ -7,12 +7,11 @@ import { useCollection, useDoc } from '@/firebase';
 import { doc, writeBatch, Timestamp } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { DepositRequest, UserProfile } from '@/types';
-import { format } from 'date-fns';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { format, formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Eye, CheckCircle, XCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useUser } from '@/firebase';
@@ -109,46 +108,45 @@ export default function AdminDepositsPage() {
   return (
       <div className="space-y-6">
         <h1 className="text-3xl font-bold font-headline">Manage Deposits</h1>
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-                <CardTitle>Deposit Requests</CardTitle>
-                <div className="flex space-x-2">
-                    <Button size="sm" variant={statusFilter === 'pending' ? 'default' : 'outline'} onClick={() => setStatusFilter('pending')}>Pending</Button>
-                    <Button size="sm" variant={statusFilter === 'approved' ? 'default' : 'outline'} onClick={() => setStatusFilter('approved')}>Approved</Button>
-                    <Button size="sm" variant={statusFilter === 'rejected' ? 'default' : 'outline'} onClick={() => setStatusFilter('rejected')}>Rejected</Button>
-                </div>
+        
+        <div className="flex space-x-2 border-b pb-4">
+            <Button size="sm" variant={statusFilter === 'pending' ? 'default' : 'outline'} onClick={() => setStatusFilter('pending')}>Pending</Button>
+            <Button size="sm" variant={statusFilter === 'approved' ? 'default' : 'outline'} onClick={() => setStatusFilter('approved')}>Approved</Button>
+            <Button size="sm" variant={statusFilter === 'rejected' ? 'default' : 'outline'} onClick={() => setStatusFilter('rejected')}>Rejected</Button>
+        </div>
+        
+        {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-48 w-full" />
             </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Date</TableHead>
-                  {statusFilter !== 'pending' && <TableHead>Processed By</TableHead>}
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center"><Skeleton className="h-8 w-full" /></TableCell></TableRow>
-                ) : deposits.length === 0 ? (
-                   <TableRow><TableCell colSpan={6} className="text-center h-24">No {statusFilter} deposits found.</TableCell></TableRow>
-                ) : deposits.map((deposit: DepositRequest) => {
-                  return (
-                    <TableRow key={deposit.id}>
-                      <TableCell><UserCell userId={deposit.userId} /></TableCell>
-                      <TableCell className="font-medium">₹{deposit.amount.toLocaleString()}</TableCell>
-                      <TableCell>{deposit.createdAt ? format((deposit.createdAt as Timestamp).toDate(), 'dd MMM yyyy, HH:mm') : 'N/A'}</TableCell>
-                      {statusFilter !== 'pending' && <TableCell><ProcessorCell userId={deposit.processedBy} /></TableCell>}
-                      <TableCell><Badge variant={getStatusVariant(deposit.status)}>{deposit.status}</Badge></TableCell>
-                      <TableCell className="text-right">
-                          <Dialog open={selectedDeposit?.id === deposit.id} onOpenChange={(isOpen) => !isOpen && setSelectedDeposit(null)}>
+        ) : deposits.length === 0 ? (
+            <div className="text-center py-12">
+                <p className="text-muted-foreground">No {statusFilter} deposits found.</p>
+            </div>
+        ) : (
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {deposits.map((deposit: DepositRequest) => (
+                    <Card key={deposit.id} className="flex flex-col">
+                        <CardHeader>
+                            <div className="flex justify-between items-start">
+                                <CardTitle className="text-2xl font-bold">₹{deposit.amount.toLocaleString()}</CardTitle>
+                                <Badge variant={getStatusVariant(deposit.status)}>{deposit.status}</Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground"><UserCell userId={deposit.userId} /></div>
+                        </CardHeader>
+                        <CardContent className="flex-grow space-y-2 text-sm">
+                            <p><strong>Date:</strong> {deposit.createdAt ? format((deposit.createdAt as Timestamp).toDate(), 'dd MMM, HH:mm') : 'N/A'}</p>
+                            <p className='truncate'><strong>Ref ID:</strong> {deposit.transactionId}</p>
+                            {statusFilter !== 'pending' && <p><strong>Processed By:</strong> <ProcessorCell userId={deposit.processedBy} /></p>}
+                        </CardContent>
+                        <CardFooter>
+                           <Dialog open={selectedDeposit?.id === deposit.id} onOpenChange={(isOpen) => !isOpen && setSelectedDeposit(null)}>
                               <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={() => setSelectedDeposit(deposit)}><Eye className="h-4 w-4" /></Button>
+                                <Button variant="outline" className="w-full" onClick={() => setSelectedDeposit(deposit)}>
+                                    <Eye className="mr-2 h-4 w-4" />Review
+                                </Button>
                               </DialogTrigger>
                               <DialogContent className="max-w-2xl grid-cols-1 md:grid-cols-2 grid gap-6">
                                   <div>
@@ -167,9 +165,9 @@ export default function AdminDepositsPage() {
                                         </div>
                                        )}
                                       {deposit.status === 'pending' && (
-                                          <DialogFooter className="pt-4">
-                                              <Button variant="destructive" onClick={() => handleRejectDeposit(deposit)} disabled={isSubmitting}><XCircle className="h-4 w-4 mr-2"/>Reject</Button>
-                                              <Button onClick={() => handleApproveDeposit(deposit)} disabled={isSubmitting}><CheckCircle className="h-4 w-4 mr-2"/>Approve</Button>
+                                          <DialogFooter className="pt-4 flex-col sm:flex-row gap-2">
+                                              <Button className='w-full' variant="destructive" onClick={() => handleRejectDeposit(deposit)} disabled={isSubmitting}><XCircle className="mr-2 h-4 w-4"/>Reject</Button>
+                                              <Button className='w-full' onClick={() => handleApproveDeposit(deposit)} disabled={isSubmitting}><CheckCircle className="mr-2 h-4 w-4"/>Approve</Button>
                                           </DialogFooter>
                                       )}
                                   </div>
@@ -178,14 +176,11 @@ export default function AdminDepositsPage() {
                                   </div>
                               </DialogContent>
                           </Dialog>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-           </CardContent>
-        </Card>
+                        </CardFooter>
+                    </Card>
+                ))}
+             </div>
+        )}
       </div>
   );
 }

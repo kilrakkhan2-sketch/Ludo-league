@@ -7,15 +7,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -38,6 +31,9 @@ import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { Banknote, UserCog } from "lucide-react";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
 
 export default function ManageAdminsPage() {
   const { data: users, loading } = useCollection<UserProfile>('users');
@@ -105,7 +101,6 @@ export default function ManageAdminsPage() {
       case 'superadmin':
         return 'destructive';
       case 'deposit_admin':
-        return 'default';
       case 'withdrawal_admin':
         return 'default';
       case 'match_admin':
@@ -126,48 +121,51 @@ export default function ManageAdminsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? <p>Loading users...</p> : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Wallet Balance</TableHead>
-                  <TableHead>Current Role</TableHead>
-                  <TableHead>Change Role</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          {loading ? (
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Skeleton className="h-40 w-full" />
+                <Skeleton className="h-40 w-full" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {users.map((user: UserProfile) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.displayName}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>₹{user.walletBalance?.toLocaleString() || 0}</TableCell>
-                    <TableCell>
-                        <Badge variant={getRoleBadgeVariant(user.role)}>
-                            {user.role}
-                        </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Select 
-                        defaultValue={user.role}
-                        onValueChange={(newRole) => handleRoleChange(user.id, newRole)}
-                        disabled={user.role === 'superadmin' && user.id !== currentUser?.uid || isSubmitting}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Select a role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="user">User</SelectItem>
-                          <SelectItem value="deposit_admin">Deposit Admin</SelectItem>
-                          <SelectItem value="withdrawal_admin">Withdrawal Admin</SelectItem>
-                          <SelectItem value="match_admin">Match Admin</SelectItem>
-                          <SelectItem value="superadmin">Super Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell className="text-right">
+                  <Card key={user.id}>
+                    <CardHeader className="flex flex-row items-center gap-4">
+                       <Avatar className="h-12 w-12">
+                          <AvatarImage src={user.photoURL || undefined} />
+                          <AvatarFallback>{user.displayName?.[0]}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-bold">{user.displayName}</p>
+                          <p className="text-sm text-muted-foreground">{user.email}</p>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                         <div>
+                            <Label className="text-xs">Role</Label>
+                            <Select 
+                                defaultValue={user.role}
+                                onValueChange={(newRole) => handleRoleChange(user.id, newRole)}
+                                disabled={user.role === 'superadmin' && user.id !== currentUser?.uid || isSubmitting}
+                            >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="user">User</SelectItem>
+                                  <SelectItem value="deposit_admin">Deposit Admin</SelectItem>
+                                  <SelectItem value="withdrawal_admin">Withdrawal Admin</SelectItem>
+                                  <SelectItem value="match_admin">Match Admin</SelectItem>
+                                  <SelectItem value="superadmin">Super Admin</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label className="text-xs">Balance</Label>
+                            <p className="font-semibold">₹{user.walletBalance?.toLocaleString() || 0}</p>
+                        </div>
+                    </CardContent>
+                    <CardFooter>
                        <Dialog open={selectedUser?.id === user.id} onOpenChange={(isOpen) => {
                            if (!isOpen) {
                                setSelectedUser(null);
@@ -205,11 +203,10 @@ export default function ManageAdminsPage() {
                             </DialogFooter>
                           </DialogContent>
                        </Dialog>
-                    </TableCell>
-                  </TableRow>
+                    </CardFooter>
+                  </Card>
                 ))}
-              </TableBody>
-            </Table>
+            </div>
           )}
         </CardContent>
       </Card>

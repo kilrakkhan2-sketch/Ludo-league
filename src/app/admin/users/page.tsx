@@ -2,36 +2,31 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCollection } from "@/firebase";
 import { UserProfile } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { format } from 'date-fns';
+import { Wallet } from 'lucide-react';
 
-const UserRowSkeleton = () => (
-    <TableRow>
-        <TableCell className="w-1/2">
+const UserCardSkeleton = () => (
+    <Card>
+        <CardHeader>
             <div className="flex items-center gap-4">
-                <Skeleton className="h-10 w-10 rounded-full" />
-                <div className="space-y-1">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="space-y-2">
                     <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-48" />
+                    <Skeleton className="h-3 w-40" />
                 </div>
             </div>
-        </TableCell>
-        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-        <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-    </TableRow>
+        </CardHeader>
+        <CardContent className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-28" />
+        </CardContent>
+    </Card>
 );
 
 export default function AdminUsersPage() {
@@ -61,43 +56,41 @@ export default function AdminUsersPage() {
                 </div>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-1/2">User</TableHead>
-                            <TableHead>Wallet Balance</TableHead>
-                            <TableHead>Joined</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {loading && (
-                            <>
-                                <UserRowSkeleton />
-                                <UserRowSkeleton />
-                                <UserRowSkeleton />
-                                <UserRowSkeleton />
-                            </>
-                        )}
-                        {!loading && filteredUsers.map(user => (
-                            <TableRow key={user.id}>
-                                <TableCell>
+                 {loading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <UserCardSkeleton />
+                        <UserCardSkeleton />
+                        <UserCardSkeleton />
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredUsers.map(user => (
+                            <Card key={user.id}>
+                                <CardHeader>
                                     <div className="flex items-center gap-4 font-medium">
-                                        <Avatar className="h-10 w-10">
+                                        <Avatar className="h-12 w-12">
                                             <AvatarImage src={user.photoURL || undefined} />
                                             <AvatarFallback>{user.displayName?.[0] || user.email?.[0]}</AvatarFallback>
                                         </Avatar>
                                         <div>
-                                            <div>{user.displayName}</div>
-                                            <div className="text-sm text-muted-foreground">{user.email}</div>
+                                            <div className="font-semibold">{user.displayName}</div>
+                                            <div className="text-sm text-muted-foreground truncate">{user.email}</div>
                                         </div>
                                     </div>
-                                </TableCell>
-                                <TableCell>₹{user.walletBalance?.toLocaleString() || 0}</TableCell>
-                                <TableCell>{user.createdAt ? format((user.createdAt as any).toDate(), 'dd MMM yyyy') : 'N/A'}</TableCell>
-                            </TableRow>
+                                </CardHeader>
+                                <CardContent className="space-y-1 text-sm">
+                                   <div className="flex items-center gap-2">
+                                     <Wallet className="h-4 w-4 text-muted-foreground" />
+                                     <span>Balance: ₹{user.walletBalance?.toLocaleString() || 0}</span>
+                                   </div>
+                                   <p className="text-xs text-muted-foreground pt-1">
+                                    Joined: {user.createdAt ? format((user.createdAt as any).toDate(), 'dd MMM yyyy') : 'N/A'}
+                                   </p>
+                                </CardContent>
+                            </Card>
                         ))}
-                    </TableBody>
-                </Table>
+                    </div>
+                )}
             </CardContent>
         </Card>
     </div>

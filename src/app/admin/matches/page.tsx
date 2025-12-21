@@ -16,8 +16,9 @@ import { Match } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Users, Trophy } from 'lucide-react';
 
 const matchStatuses = ['all', 'open', 'ongoing', 'processing', 'verification', 'disputed', 'completed', 'cancelled'];
 
@@ -34,17 +35,6 @@ const getStatusVariant = (status: string) => {
   }
 };
 
-
-const MatchRowSkeleton = () => (
-    <TableRow>
-        <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-        <TableCell><Skeleton className="h-6 w-16" /></TableCell>
-        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-        <TableCell><Skeleton className="h-4 w-12" /></TableCell>
-        <TableCell><Skeleton className="h-4 w-12" /></TableCell>
-        <TableCell><Skeleton className="h-10 w-20" /></TableCell>
-    </TableRow>
-);
 
 export default function AdminMatchesPage() {
   const [statusFilter, setStatusFilter] = useState('all');
@@ -65,20 +55,21 @@ export default function AdminMatchesPage() {
   }, [matches, searchTerm]);
 
   return (
-    <>
+    <div className="space-y-6">
         <h1 className="text-3xl font-bold font-headline">Matches</h1>
+        
         <Card>
             <CardHeader>
                 <CardTitle>Manage Matches</CardTitle>
-                <div className="flex items-center justify-between pt-4">
-                    <div className="flex space-x-2 overflow-x-auto pb-2">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
+                    <div className="flex space-x-2 overflow-x-auto pb-2 w-full">
                         {matchStatuses.map(status => (
                             <Button key={status} size="sm" variant={statusFilter === status ? 'default' : 'outline'} onClick={() => setStatusFilter(status)} className="capitalize shrink-0">
                                 {status.replace('_', ' ')}
                             </Button>
                         ))}
                     </div>
-                    <div className="w-full max-w-xs ml-4">
+                    <div className="w-full sm:w-auto sm:max-w-xs">
                         <Input 
                             placeholder='Search by title or ID...'
                             value={searchTerm}
@@ -88,47 +79,51 @@ export default function AdminMatchesPage() {
                 </div>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Title & ID</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Entry Fee</TableHead>
-                            <TableHead>Players</TableHead>
-                            <TableHead>Prize</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {loading && (
-                            <>
-                                <MatchRowSkeleton />
-                                <MatchRowSkeleton />
-                                <MatchRowSkeleton />
-                                <MatchRowSkeleton />
-                            </>
-                        )}
-                        {!loading && filteredMatches.map(match => (
-                            <TableRow key={match.id}>
-                                <TableCell>
-                                    <div className="font-medium">{match.title}</div>
-                                    <div className="text-xs text-muted-foreground font-mono">{match.id}</div>
-                                </TableCell>
-                                <TableCell><Badge variant={getStatusVariant(match.status)} className="capitalize">{match.status.replace('_', ' ')}</Badge></TableCell>
-                                <TableCell>₹{match.entryFee}</TableCell>
-                                <TableCell>{match.players.length} / {match.maxPlayers}</TableCell>
-                                <TableCell>₹{match.prizePool}</TableCell>
-                                <TableCell className="text-right">
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href={`/admin/matches/${match.id}`}>Manage</Link>
+               {loading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Skeleton className="h-48 w-full" />
+                        <Skeleton className="h-48 w-full" />
+                    </div>
+                ) : filteredMatches.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {filteredMatches.map(match => (
+                            <Card key={match.id}>
+                                <CardHeader>
+                                    <div className='flex justify-between items-start'>
+                                        <CardTitle className="truncate">{match.title}</CardTitle>
+                                        <Badge variant={getStatusVariant(match.status)} className="capitalize">{match.status.replace('_', ' ')}</Badge>
+                                    </div>
+                                    <CardDescription className="font-mono text-xs truncate">{match.id}</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-muted-foreground">Entry:</span>
+                                        <span className="font-semibold">₹{match.entryFee}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-muted-foreground">Prize:</span>
+                                        <span className="font-semibold">₹{match.prizePool}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <Users className="h-4 w-4 text-muted-foreground" />
+                                        <span>{match.players.length} / {match.maxPlayers} Players</span>
+                                    </div>
+                                </CardContent>
+                                <CardFooter>
+                                    <Button asChild variant="outline" size="sm" className="w-full">
+                                        <Link href={`/admin/matches/${match.id}`}>Manage Match</Link>
                                     </Button>
-                                </TableCell>
-                            </TableRow>
+                                </CardFooter>
+                            </Card>
                         ))}
-                    </TableBody>
-                </Table>
+                    </div>
+                ) : (
+                    <div className="text-center py-12">
+                        <p className="text-muted-foreground">No {statusFilter} matches found.</p>
+                    </div>
+                )}
             </CardContent>
         </Card>
-    </>
+    </div>
   );
 }
