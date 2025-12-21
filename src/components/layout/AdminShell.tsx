@@ -51,6 +51,7 @@ const superAdminNav = [
   { href: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
   { href: '/admin/transactions', icon: Wallet, label: 'Transactions' },
   { href: '/admin/status', icon: Power, label: 'App Status' },
+  { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
 const depositAdminNav = [

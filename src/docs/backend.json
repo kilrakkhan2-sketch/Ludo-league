@@ -145,6 +145,15 @@
         "matchesEndTime": { "type": "string", "description": "Time to stop disabling match creation (HH:mm)." }
       }
     },
+    "CommissionSettings": {
+      "title": "Commission Settings",
+      "description": "Global settings for referral commissions.",
+      "type": "object",
+      "properties": {
+        "isEnabled": { "type": "boolean", "description": "If true, referral commissions are active." },
+        "rate": { "type": "number", "description": "The commission rate (e.g., 0.05 for 5%)." }
+      }
+    },
     "KycRequest": {
       "title": "KYC Request",
       "description": "A user's request for KYC verification.",
@@ -200,7 +209,7 @@
         "maxPlayers": { "type": "number" },
         "creatorId": { "type": "string" }
       },
-      "required": ["name", "prizePool", "entryFee", "startDate", "status", "players", "maxPlayers"]
+      "required": ["name", "prizePool", "entryFee", "startDate", "status", "players", "maxPlayers", "creatorId"]
     },
     "Announcement": {
         "title": "Announcement",
@@ -268,6 +277,10 @@
     "/settings/maintenance": {
         "schema": { "$ref": "#/entities/MaintenanceSettings" },
         "description": "Controls app-wide maintenance and feature status."
+    },
+    "/settings/commission": {
+        "schema": { "$ref": "#/entities/CommissionSettings" },
+        "description": "Controls app-wide referral commission settings."
     },
     "/kyc-requests/{kycId}": {
       "schema": { "$ref": "#/entities/KycRequest" },

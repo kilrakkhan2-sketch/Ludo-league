@@ -3,6 +3,7 @@
 
 
 
+
 export type UserProfile = {
   id: string;
   uid: string;
@@ -127,6 +128,12 @@ export type MaintenanceSettings = {
   matchesStartTime?: string;
   matchesEndTime?: string;
 };
+
+export type CommissionSettings = {
+    id: string;
+    isEnabled: boolean;
+    rate: number; // e.g., 0.05 for 5%
+}
 
 
 export type Message = {

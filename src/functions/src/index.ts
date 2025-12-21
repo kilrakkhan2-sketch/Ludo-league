@@ -28,6 +28,11 @@ interface MaintenanceSettings {
   [key: string]: any;
 }
 
+interface CommissionSettings {
+    isEnabled?: boolean;
+    rate?: number;
+}
+
 interface UpiAccount {
     dailyLimit: number;
 }
@@ -141,6 +146,8 @@ export const onDepositStatusChange = functions.firestore
     const upiAccountRef = db.collection('upi-accounts').doc(upiAccountId);
     const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })).toISOString().split('T')[0]; // YYYY-MM-DD
     const dailyStatRef = upiAccountRef.collection('daily_stats').doc(today);
+    const commissionSettingsRef = db.collection('settings').doc('commission');
+
 
     try {
         await db.runTransaction(async (t) => {
@@ -153,6 +160,8 @@ export const onDepositStatusChange = functions.firestore
             const upiAccountData = upiAccountDoc.data() as UpiAccount;
             
             const dailyStatDoc = await t.get(dailyStatRef);
+            const commissionSettingsDoc = await t.get(commissionSettingsRef);
+            const commissionSettings = commissionSettingsDoc.data() as CommissionSettings | undefined;
 
             // 1. Credit the user's wallet.
             t.update(userRef, { walletBalance: FieldValue.increment(amount) });
@@ -196,25 +205,26 @@ export const onDepositStatusChange = functions.firestore
                 functions.logger.info(`UPI Account ${upiAccountId} reached its daily limit and was deactivated.`);
             }
 
-            // 6. Handle referral commission if the user was referred.
-            if (userData.referredBy) {
+            // 6. Handle referral commission if the user was referred and commission is enabled.
+            if (userData.referredBy && commissionSettings?.isEnabled && commissionSettings.rate > 0) {
                 const referrerQuery = db.collection('users').where('referralCode', '==', userData.referredBy).limit(1);
                 const referrerSnapshot = await t.get(referrerQuery);
                 if (!referrerSnapshot.empty) {
                     const referrerDoc = referrerSnapshot.docs[0];
                     const referrerRef = referrerDoc.ref;
-                    const commissionAmount = amount * 0.05; // 5% commission
+                    const commissionAmount = amount * commissionSettings.rate; // Dynamic commission rate
 
                     t.update(referrerRef, {
                         walletBalance: FieldValue.increment(commissionAmount),
                         referralEarnings: FieldValue.increment(commissionAmount)
                     });
                     const commissionTxRef = db.collection(`users/${referrerDoc.id}/transactions`).doc();
+                    const commissionPercentage = (commissionSettings.rate * 100).toFixed(0);
                     t.set(commissionTxRef, {
                         amount: commissionAmount,
                         type: "referral_bonus",
                         status: "completed",
-                        description: `5% commission from ${userData.name || 'a referred user'}'s deposit.`,
+                        description: `${commissionPercentage}% commission from ${userData.name || 'a referred user'}'s deposit.`,
                         createdAt: FieldValue.serverTimestamp(),
                         relatedId: context.params.depositId,
                     });
