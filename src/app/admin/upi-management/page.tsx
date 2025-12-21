@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useCollection } from '@/firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -15,17 +15,19 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UpiAccount } from '@/types';
+import { UpiAccount, UpiDailyStat } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-
+import { Progress } from '@/components/ui/progress';
+import { format } from 'date-fns';
 
 const UpiAccountForm = ({ account, onSave, onOpenChange }: { account?: UpiAccount | null, onSave: () => void, onOpenChange: (open: boolean) => void }) => {
     const { firestore } = useFirebase();
     const { toast } = useToast();
     const [upiId, setUpiId] = useState(account?.upiId || '');
     const [displayName, setDisplayName] = useState(account?.displayName || '');
+    const [dailyLimit, setDailyLimit] = useState(account?.dailyLimit || 50000);
     const [isActive, setIsActive] = useState(account?.isActive ?? true);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -35,18 +37,23 @@ const UpiAccountForm = ({ account, onSave, onOpenChange }: { account?: UpiAccoun
             return;
         }
         setIsSubmitting(true);
+        const dataToSave = {
+            upiId,
+            displayName,
+            dailyLimit: Number(dailyLimit),
+            isActive,
+        };
+
         try {
             if (account) {
                 // Update existing account
                 const docRef = doc(firestore, 'upi-accounts', account.id);
-                await updateDoc(docRef, { upiId, displayName, isActive });
+                await updateDoc(docRef, dataToSave);
                 toast({ title: 'UPI Account Updated' });
             } else {
                 // Create new account
                 await addDoc(collection(firestore, 'upi-accounts'), {
-                    upiId,
-                    displayName,
-                    isActive,
+                    ...dataToSave,
                     totalTransactions: 0,
                     totalAmountReceived: 0,
                     createdAt: serverTimestamp(),
@@ -82,11 +89,15 @@ const UpiAccountForm = ({ account, onSave, onOpenChange }: { account?: UpiAccoun
                     <Label htmlFor="upiId">UPI ID</Label>
                     <Input id="upiId" value={upiId} onChange={(e) => setUpiId(e.target.value)} placeholder="e.g., your-id@okhdfcbank" />
                 </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="dailyLimit">Daily Limit (₹)</Label>
+                    <Input id="dailyLimit" type="number" value={dailyLimit} onChange={(e) => setDailyLimit(Number(e.target.value))} placeholder="e.g., 50000" />
+                </div>
                  <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
                     <div className="space-y-0.5">
                         <Label htmlFor="is-active">Active for Payments</Label>
                          <p className="text-[0.8rem] text-muted-foreground">
-                            If enabled, users will see this UPI ID on the deposit page.
+                            If enabled, users will see this UPI ID.
                         </p>
                     </div>
                     <Switch
@@ -106,6 +117,59 @@ const UpiAccountForm = ({ account, onSave, onOpenChange }: { account?: UpiAccoun
     );
 }
 
+const UpiAccountRow = ({ account }: { account: UpiAccount }) => {
+    const { firestore } = useFirebase();
+    const [dailyData, setDailyData] = useState<UpiDailyStat | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!firestore) return;
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const dailyStatRef = doc(firestore, 'upi-accounts', account.id, 'daily_stats', today);
+        
+        const unsubscribe = onSnapshot(doc(firestore, dailyStatRef), (doc) => {
+            if (doc.exists()) {
+                setDailyData(doc.data() as UpiDailyStat);
+            } else {
+                setDailyData({ amount: 0, transactionCount: 0 });
+            }
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [firestore, account.id]);
+    
+    const amountToday = dailyData?.amount || 0;
+    const progress = account.dailyLimit > 0 ? (amountToday / account.dailyLimit) * 100 : 0;
+    const limitReached = amountToday >= account.dailyLimit;
+
+    return (
+         <TableRow>
+            <TableCell>
+                <div className="font-medium">{account.displayName}</div>
+                <div className="text-xs text-muted-foreground font-mono">{account.upiId}</div>
+            </TableCell>
+            <TableCell>
+                <div className='space-y-2'>
+                    <Progress value={progress} className="h-2" />
+                    <p className='text-xs text-muted-foreground'>
+                        ₹{amountToday.toLocaleString()} / ₹{account.dailyLimit.toLocaleString()}
+                    </p>
+                </div>
+            </TableCell>
+            <TableCell className="text-center">{dailyData?.transactionCount || 0}</TableCell>
+            <TableCell>
+                <Badge variant={limitReached ? 'destructive' : (account.isActive ? 'default' : 'secondary')}>
+                    {limitReached ? 'Limit Reached' : (account.isActive ? 'Active' : 'Inactive')}
+                </Badge>
+            </TableCell>
+            <TableCell className="text-right">
+                {/* Actions can be re-enabled if needed, handled by parent component now */}
+            </TableCell>
+        </TableRow>
+    )
+}
+
 export default function UpiManagementPage() {
     const { data: accounts, loading } = useCollection<UpiAccount>('upi-accounts', { orderBy: ['createdAt', 'desc'] });
     const { firestore } = useFirebase();
@@ -122,17 +186,6 @@ export default function UpiManagementPage() {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
         }
     };
-
-    const handleToggleActive = async (account: UpiAccount) => {
-        if (!firestore) return;
-        const newStatus = !account.isActive;
-        try {
-            await updateDoc(doc(firestore, 'upi-accounts', account.id), { isActive: newStatus });
-            toast({ title: 'Status Updated', description: `${account.displayName} is now ${newStatus ? 'active' : 'inactive'}.` });
-        } catch(e) {
-             toast({ variant: 'destructive', title: 'Error', description: 'Could not update status.' });
-        }
-    }
     
     const openFormForEdit = (account: UpiAccount) => {
         setSelectedAccount(account);
@@ -166,7 +219,7 @@ export default function UpiManagementPage() {
                 <CardHeader>
                     <CardTitle>Configured UPI Accounts</CardTitle>
                     <CardDescription>
-                        Manage the UPI IDs used to receive payments from users.
+                        Manage and track the performance of UPI IDs used for receiving payments.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -179,10 +232,9 @@ export default function UpiManagementPage() {
                          <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Display Name</TableHead>
-                                    <TableHead>UPI ID</TableHead>
-                                    <TableHead>Total Transactions</TableHead>
-                                    <TableHead>Total Received</TableHead>
+                                    <TableHead>Account</TableHead>
+                                    <TableHead className="w-[300px]">Today's Progress</TableHead>
+                                    <TableHead className="text-center">Today's Txns</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
@@ -190,34 +242,36 @@ export default function UpiManagementPage() {
                             <TableBody>
                                 {accounts.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="h-24 text-center">
+                                        <TableCell colSpan={5} className="h-24 text-center">
                                             No UPI accounts configured.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     accounts.map(acc => (
-                                        <TableRow key={acc.id}>
-                                            <TableCell className="font-medium">{acc.displayName}</TableCell>
-                                            <TableCell className="font-mono">{acc.upiId}</TableCell>
-                                            <TableCell>{acc.totalTransactions || 0}</TableCell>
-                                            <TableCell className="font-semibold">₹{acc.totalAmountReceived?.toLocaleString() || 0}</TableCell>
-                                            <TableCell>
-                                                <div className='flex items-center gap-2'>
-                                                  <Switch 
-                                                    checked={acc.isActive} 
-                                                    onCheckedChange={() => handleToggleActive(acc)}
-                                                    aria-label="Toggle account status"
-                                                  />
-                                                  <Badge variant={acc.isActive ? 'default' : 'secondary'}>
-                                                    {acc.isActive ? 'Active' : 'Inactive'}
-                                                  </Badge>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon" onClick={() => openFormForEdit(acc)}><Edit className="h-4 w-4" /></Button>
-                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(acc.id)}><Trash2 className="h-4 w-4" /></Button>
-                                            </TableCell>
-                                        </TableRow>
+                                      <TableRow key={acc.id}>
+                                        <TableCell>
+                                            <div className="font-medium">{acc.displayName}</div>
+                                            <div className="text-xs text-muted-foreground font-mono">{acc.upiId}</div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className='space-y-2'>
+                                                <Progress value={(acc.dailyAmountReceived / acc.dailyLimit) * 100} className="h-2" />
+                                                <p className='text-xs text-muted-foreground'>
+                                                    ₹{acc.dailyAmountReceived.toLocaleString()} / ₹{acc.dailyLimit.toLocaleString()}
+                                                </p>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-center">{acc.dailyTransactionCount || 0}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={acc.dailyAmountReceived >= acc.dailyLimit ? 'destructive' : (acc.isActive ? 'default' : 'secondary')}>
+                                                {acc.dailyAmountReceived >= acc.dailyLimit ? 'Limit Reached' : (acc.isActive ? 'Active' : 'Inactive')}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="icon" onClick={() => openFormForEdit(acc)}><Edit className="h-4 w-4" /></Button>
+                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(acc.id)}><Trash2 className="h-4 w-4" /></Button>
+                                        </TableCell>
+                                    </TableRow>
                                     ))
                                 )}
                             </TableBody>

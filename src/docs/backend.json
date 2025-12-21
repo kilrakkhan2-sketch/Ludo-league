@@ -76,12 +76,12 @@
         "userId": { "type": "string" },
         "amount": { "type": "number" },
         "transactionId": { "type": "string" },
-        "screenshotURL": { "type": "string", "format": "uri" },
+        "screenshotUrl": { "type": "string", "format": "uri" },
         "upiAccountId": { "type": "string", "description": "The ID of the upi-account document used for the payment." },
         "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["userId", "amount", "transactionId", "screenshotURL", "status", "createdAt", "upiAccountId"]
+      "required": ["userId", "amount", "transactionId", "screenshotUrl", "status", "createdAt", "upiAccountId"]
     },
     "WithdrawalRequest": {
       "title": "Withdrawal Request",
@@ -105,11 +105,24 @@
         "upiId": { "type": "string", "description": "The UPI ID (e.g., user@okicici)." },
         "displayName": { "type": "string", "description": "A friendly name for the account (e.g., 'Primary UPI')." },
         "isActive": { "type": "boolean", "description": "Whether this account is currently active for receiving payments." },
-        "totalTransactions": { "type": "number", "description": "A counter for total transactions received." },
-        "totalAmountReceived": { "type": "number", "description": "The total amount received through this UPI ID." },
+        "dailyLimit": { "type": "number", "description": "The daily receiving limit for this UPI ID." },
+        "dailyAmountReceived": { "type": "number", "description": "The total amount received today. This should be reset daily." },
+        "dailyTransactionCount": { "type": "number", "description": "The total number of transactions received today." },
+        "totalTransactions": { "type": "number", "description": "A counter for total transactions received historically." },
+        "totalAmountReceived": { "type": "number", "description": "The total amount received through this UPI ID historically." },
         "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of when the account was added." }
       },
-      "required": ["upiId", "displayName", "isActive"]
+      "required": ["upiId", "displayName", "isActive", "dailyLimit"]
+    },
+     "UpiDailyStat": {
+      "title": "UPI Daily Stat",
+      "description": "Tracks daily statistics for a single UPI account.",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number", "description": "Total amount received on this day." },
+        "transactionCount": { "type": "number", "description": "Total number of transactions on this day." }
+      },
+      "required": ["amount", "transactionCount"]
     },
     "MaintenanceSettings": {
       "title": "Maintenance Settings",
@@ -247,6 +260,10 @@
     "/upi-accounts/{accountId}": {
       "schema": { "$ref": "#/entities/UpiAccount" },
       "description": "Stores all configurable UPI accounts for receiving payments."
+    },
+     "/upi-accounts/{accountId}/daily_stats/{date}": {
+      "schema": { "$ref": "#/entities/UpiDailyStat" },
+      "description": "Stores daily transaction statistics for a UPI account. Date format is YYYY-MM-DD."
     },
     "/settings/maintenance": {
         "schema": { "$ref": "#/entities/MaintenanceSettings" },

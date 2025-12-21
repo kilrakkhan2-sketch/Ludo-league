@@ -1,6 +1,7 @@
 
 
 
+
 export type UserProfile = {
   id: string;
   uid: string;
@@ -95,10 +96,18 @@ export type UpiAccount = {
   upiId: string;
   displayName: string;
   isActive: boolean;
+  dailyLimit: number;
+  dailyAmountReceived: number;
+  dailyTransactionCount: number;
   totalTransactions: number;
   totalAmountReceived: number;
   createdAt: any;
 };
+
+export type UpiDailyStat = {
+  amount: number;
+  transactionCount: number;
+}
 
 export type MaintenanceSettings = {
   id: string;

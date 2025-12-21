@@ -11,7 +11,10 @@ service cloud.firestore {
     }
 
     function isServer() {
-      return request.auth.token.firebase.sign_in_provider == "firebase";
+      // In callable functions, there is no sign_in_provider. We identify server-side
+      // operations by checking if the auth token is verified. This is a simplification.
+      // A more robust way would be a custom claim for service accounts if needed.
+      return request.auth.token.firebase.sign_in_provider == null || request.auth.token.firebase.sign_in_provider == "firebase";
     }
 
     function isSuperAdmin() {
@@ -56,7 +59,7 @@ service cloud.firestore {
 
       match /transactions/{transactionId} {
         allow read: if isOwner(userId) || isSuperAdmin();
-        allow create: if isOwner(userId) || isDepositAdmin();
+        allow create: if isOwner(userId) || isDepositAdmin() || isServer();
         allow update, delete: if false;
       }
     }
@@ -140,7 +143,13 @@ service cloud.firestore {
     
     match /upi-accounts/{accountId} {
         allow read: if isSignedIn();
-        allow write: if isSuperAdmin();
+        allow write: if isSuperAdmin() || isServer();
+
+        // Rules for daily statistics subcollection
+        match /daily_stats/{date} {
+          allow read: if isSuperAdmin();
+          allow write: if isServer(); // Only server (cloud functions) can update daily stats
+        }
     }
 
     match /settings/{settingId} {

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { addDoc, collection, Timestamp } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import type { UpiAccount } from '@/types';
-import { ArrowLeft, UploadCloud, Copy } from 'lucide-react';
+import { ArrowLeft, UploadCloud, Copy, RefreshCw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -30,11 +30,27 @@ export default function DepositPageContent() {
 
   const amount = searchParams ? searchParams.get('amount') : null;
 
+  // Find the first UPI account that is active and has not reached its daily limit.
   const { data: paymentAccounts, loading: settingsLoading } = useCollection<UpiAccount>('upi-accounts', {
-      where: ['isActive', '==', true]
+      where: [
+        ['isActive', '==', true],
+      ],
+      orderBy: ['createdAt', 'asc']
   });
+  
+  const [activeUpiAccount, setActiveUpiAccount] = useState<UpiAccount | null | undefined>(undefined);
 
-  const [selectedUpiId, setSelectedUpiId] = useState<string | null>(null);
+  useEffect(() => {
+    if (paymentAccounts && paymentAccounts.length > 0) {
+        // Find the first account that is under its daily limit
+        const availableAccount = paymentAccounts.find(acc => acc.dailyAmountReceived < acc.dailyLimit);
+        setActiveUpiAccount(availableAccount || null);
+    } else if (!settingsLoading) {
+        setActiveUpiAccount(null);
+    }
+  }, [paymentAccounts, settingsLoading]);
+
+
   const [transactionId, setTransactionId] = useState('');
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,11 +67,11 @@ export default function DepositPageContent() {
   };
 
   const handleSubmit = async () => {
-    if (!amount || !transactionId || !screenshot || !user || !firestore || !selectedUpiId) {
+    if (!amount || !transactionId || !screenshot || !user || !firestore || !activeUpiAccount) {
       toast({
         variant: 'destructive',
         title: 'Missing Information',
-        description: 'Please select the UPI ID you paid to, fill out all fields, and upload a screenshot.',
+        description: 'Please fill out all fields and upload a screenshot.',
       });
       return;
     }
@@ -73,7 +89,7 @@ export default function DepositPageContent() {
         amount: parseInt(amount, 10),
         transactionId,
         screenshotUrl,
-        upiAccountId: selectedUpiId, // Save the selected UPI account ID
+        upiAccountId: activeUpiAccount.id, // Save the selected UPI account ID
         status: 'pending',
         createdAt: Timestamp.now(),
       });
@@ -144,35 +160,26 @@ export default function DepositPageContent() {
                     <p className="text-muted-foreground">Amount to pay</p>
                     <p className="text-4xl font-bold">₹{amount}</p>
                 </div>
-                 {settingsLoading ? (
-                    <Skeleton className="h-8 w-full" />
-                ) : paymentAccounts && paymentAccounts.length > 0 ? (
+                 {activeUpiAccount === undefined ? (
+                    <Skeleton className="h-20 w-full" />
+                ) : activeUpiAccount ? (
                   <div className="space-y-3">
-                    <Label className="text-muted-foreground text-center block">1. Pay to any of the UPI IDs below</Label>
-                     <RadioGroup onValueChange={setSelectedUpiId} className="space-y-2">
-                        {paymentAccounts.map(acc => (
-                            <div key={acc.id}>
-                                <RadioGroupItem value={acc.id} id={acc.id} className="sr-only" />
-                                <Label htmlFor={acc.id} className={cn(
-                                    "font-mono tracking-wider bg-muted p-3 rounded-lg flex items-center justify-between cursor-pointer border-2 border-transparent",
-                                    selectedUpiId === acc.id && "border-primary bg-primary/10"
-                                )}>
-                                    <div>
-                                        <p className='text-sm text-foreground font-sans'>{acc.displayName}</p>
-                                        <p>{acc.upiId}</p>
-                                    </div>
-                                    <Button size="icon" variant="ghost" onClick={() => copyToClipboard(acc.upiId)}>
-                                        <Copy className="h-4 w-4 text-muted-foreground" />
-                                    </Button>
-                                </Label>
-                            </div>
-                        ))}
-                    </RadioGroup>
+                    <Label className="text-muted-foreground text-center block">1. Pay to the UPI ID below</Label>
+                    <div className={cn( "font-mono tracking-wider bg-muted p-3 rounded-lg flex items-center justify-between cursor-pointer border-2 border-primary bg-primary/10" )}>
+                        <div>
+                            <p className='text-sm text-foreground font-sans'>{activeUpiAccount.displayName}</p>
+                            <p>{activeUpiAccount.upiId}</p>
+                        </div>
+                        <Button size="icon" variant="ghost" onClick={() => copyToClipboard(activeUpiAccount.upiId)}>
+                            <Copy className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                    </div>
                   </div>
                 ) : (
                     <Alert variant="destructive">
-                      <AlertTitle>Payments Disabled</AlertTitle>
-                      <AlertDescription>Deposits are temporarily unavailable. Please try again later.</AlertDescription>
+                      <RefreshCw className="h-4 w-4" />
+                      <AlertTitle>Payments Temporarily Unavailable</AlertTitle>
+                      <AlertDescription>All our payment gateways are currently busy. Please try again in a few moments.</AlertDescription>
                     </Alert>
                 )}
               </div>
@@ -207,7 +214,7 @@ export default function DepositPageContent() {
           </div>
       </main>
       <footer className="p-4 sticky bottom-0 bg-background border-t">
-        <Button onClick={handleSubmit} className="w-full text-lg py-6" disabled={isSubmitting || !screenshot || !transactionId || paymentAccounts.length === 0 || !selectedUpiId}>
+        <Button onClick={handleSubmit} className="w-full text-lg py-6" disabled={isSubmitting || !screenshot || !transactionId || !activeUpiAccount}>
             {isSubmitting ? 'Submitting...' : 'Submit Deposit Request'}
         </Button>
       </footer>

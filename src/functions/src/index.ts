@@ -28,6 +28,10 @@ interface MaintenanceSettings {
   [key: string]: any;
 }
 
+interface UpiAccount {
+    dailyLimit: number;
+}
+
 
 // Helper function to check if current time is within a disabled time range.
 const isTimeInDisabledRange = (startTimeStr?: string, endTimeStr?: string): boolean => {
@@ -110,28 +114,34 @@ export const onDepositStatusChange = functions.firestore
     const beforeData = change.before.data();
     const afterData = change.after.data();
 
-    // Only proceed if the status changed to 'approved' from something else.
     if (beforeData.status === "approved" || afterData.status !== "approved") {
         return null;
     }
     
     const { userId, amount, upiAccountId } = afterData;
-    if (!userId || !amount || amount <= 0) {
-        functions.logger.error("Missing or invalid userId/amount", { id: context.params.depositId });
+    if (!userId || !amount || amount <= 0 || !upiAccountId) {
+        functions.logger.error("Missing or invalid userId, amount, or upiAccountId", { id: context.params.depositId });
         return null;
     }
 
     const userRef = db.collection("users").doc(userId);
+    const upiAccountRef = db.collection('upi-accounts').doc(upiAccountId);
+    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })).toISOString().split('T')[0]; // YYYY-MM-DD
+    const dailyStatRef = upiAccountRef.collection('daily_stats').doc(today);
 
     try {
         await db.runTransaction(async (t) => {
             const userDoc = await t.get(userRef);
-            if (!userDoc.exists) {
-                throw new Error(`User ${userId} not found.`);
-            }
+            if (!userDoc.exists) throw new Error(`User ${userId} not found.`);
             const userData = userDoc.data() as UserData;
             
-            // 1. Credit the user's wallet for the deposit amount.
+            const upiAccountDoc = await t.get(upiAccountRef);
+            if (!upiAccountDoc.exists) throw new Error(`UPI Account ${upiAccountId} not found.`);
+            const upiAccountData = upiAccountDoc.data() as UpiAccount;
+            
+            const dailyStatDoc = await t.get(dailyStatRef);
+
+            // 1. Credit the user's wallet.
             t.update(userRef, { walletBalance: FieldValue.increment(amount) });
             
             // 2. Create a transaction log for the deposit.
@@ -145,32 +155,47 @@ export const onDepositStatusChange = functions.firestore
                 relatedId: context.params.depositId,
             });
 
-            // 3. Update the UPI account stats if upiAccountId is provided.
-            if (upiAccountId) {
-                const upiAccountRef = db.collection('upi-accounts').doc(upiAccountId);
-                t.update(upiAccountRef, {
-                    totalTransactions: FieldValue.increment(1),
-                    totalAmountReceived: FieldValue.increment(amount)
+            // 3. Update the historical stats on the main UPI account document.
+            t.update(upiAccountRef, {
+                totalTransactions: FieldValue.increment(1),
+                totalAmountReceived: FieldValue.increment(amount)
+            });
+
+            // 4. Update the daily stats in the subcollection.
+            const currentDailyAmount = dailyStatDoc.exists ? dailyStatDoc.data()?.amount || 0 : 0;
+            const newDailyAmount = currentDailyAmount + amount;
+
+            if (dailyStatDoc.exists) {
+                t.update(dailyStatRef, {
+                    amount: FieldValue.increment(amount),
+                    transactionCount: FieldValue.increment(1)
+                });
+            } else {
+                t.set(dailyStatRef, {
+                    amount: amount,
+                    transactionCount: 1
                 });
             }
+            
+            // 5. Check if the daily limit is reached and deactivate if necessary.
+            if (newDailyAmount >= upiAccountData.dailyLimit) {
+                t.update(upiAccountRef, { isActive: false });
+                functions.logger.info(`UPI Account ${upiAccountId} reached its daily limit and was deactivated.`);
+            }
 
-            // 4. Handle referral commission if the user was referred.
+            // 6. Handle referral commission if the user was referred.
             if (userData.referredBy) {
                 const referrerQuery = db.collection('users').where('referralCode', '==', userData.referredBy).limit(1);
                 const referrerSnapshot = await t.get(referrerQuery);
-
                 if (!referrerSnapshot.empty) {
                     const referrerDoc = referrerSnapshot.docs[0];
                     const referrerRef = referrerDoc.ref;
                     const commissionAmount = amount * 0.05; // 5% commission
 
-                    // A. Credit the referrer's wallet and referral earnings.
                     t.update(referrerRef, {
                         walletBalance: FieldValue.increment(commissionAmount),
                         referralEarnings: FieldValue.increment(commissionAmount)
                     });
-
-                    // B. Create a transaction log for the referral bonus.
                     const commissionTxRef = db.collection(`users/${referrerDoc.id}/transactions`).doc();
                     t.set(commissionTxRef, {
                         amount: commissionAmount,
@@ -183,7 +208,7 @@ export const onDepositStatusChange = functions.firestore
                 }
             }
         });
-        functions.logger.info(`Deposit of ${amount} for user ${userId} and any applicable commissions processed successfully.`);
+        functions.logger.info(`Deposit processed for ${userId}. Daily stats for ${upiAccountId} updated.`);
     } catch (error) {
         functions.logger.error(`Transaction failed for deposit ${context.params.depositId}:`, error);
         await change.after.ref.update({ status: "failed", error: (error as Error).message });
