@@ -1,3 +1,4 @@
+
 export type UserProfile = {
   id: string;
   uid: string;
@@ -32,21 +33,26 @@ export type Match = {
   creatorId: string;
   players: string[];
   roomCode: string | null;
-  status: "open" | "ongoing" | "verification" | "completed" | "disputed";
+  status: "open" | "ongoing" | "processing" | "verification" | "completed" | "disputed";
+  resultStage?: "none" | "stage1" | "stage2" | "verified";
+  autoPayoutAllowed?: boolean;
   createdAt: any;
   startedAt: any | null;
   completedAt: any | null;
   winnerId?: string;
-  results?: MatchResult[]; // This might be a subcollection in practice
 };
 
 export type MatchResult = {
   id: string;
   userId: string;
   position: number;
-  status: 'won' | 'lost';
+  winStatus: 'win' | 'loss';
   screenshotUrl: string;
   submittedAt: any;
+  confirmedPosition?: number;
+  confirmedWinStatus?: 'win' | 'loss';
+  confirmedAt?: any;
+  status: 'submitted' | 'confirmed' | 'mismatch' | 'locked';
 };
 
 export type Transaction = {
@@ -210,3 +216,5 @@ export type PersonalNotification = {
     createdAt: any;
     link?: string;
 };
+
+    

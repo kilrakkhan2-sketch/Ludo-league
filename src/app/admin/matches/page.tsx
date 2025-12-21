@@ -19,14 +19,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-const matchStatuses = ['all', 'open', 'ongoing', 'verification', 'disputed', 'completed', 'cancelled'];
+const matchStatuses = ['all', 'open', 'ongoing', 'processing', 'verification', 'disputed', 'completed', 'cancelled'];
 
 const getStatusVariant = (status: string) => {
   switch (status) {
     case 'open': return 'secondary';
     case 'ongoing': return 'default';
+    case 'processing': return 'destructive';
+    case 'verification': return 'destructive';
     case 'completed': return 'outline';
-    case 'verification': return 'default';
     case 'disputed': return 'destructive';
     case 'cancelled': return 'outline';
     default: return 'default';
@@ -129,3 +130,5 @@ export default function AdminMatchesPage() {
     </>
   );
 }
+
+    

@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -120,10 +121,23 @@
           "enum": [
             "open",
             "ongoing",
-            "result_pending",
+            "processing",
+            "verification",
             "completed",
             "disputed"
           ]
+        },
+        "resultStage": {
+          "type": "string",
+          "enum": [
+            "none",
+            "stage1",
+            "stage2",
+            "verified"
+          ]
+        },
+        "autoPayoutAllowed": {
+          "type": "boolean"
         },
         "createdAt": {
           "type": "string",
@@ -161,7 +175,17 @@
           "type": "number",
           "description": "1, 2, 3, or 4"
         },
-        "result": {
+        "winStatus": {
+          "type": "string",
+          "enum": [
+            "win",
+            "loss"
+          ]
+        },
+        "confirmedPosition": {
+          "type": "number"
+        },
+        "confirmedWinStatus": {
           "type": "string",
           "enum": [
             "win",
@@ -175,12 +199,25 @@
         "submittedAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "confirmedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "submitted",
+            "confirmed",
+            "mismatch",
+            "locked"
+          ]
         }
       },
       "required": [
         "userId",
         "position",
-        "result",
+        "winStatus",
         "screenshotUrl",
         "submittedAt"
       ]
@@ -874,3 +911,5 @@
     }
   }
 }
+
+    

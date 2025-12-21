@@ -1,3 +1,4 @@
+
 'use client';
 
 import { doc, runTransaction, updateDoc, arrayUnion, Timestamp, collection, getDocs, query, where, writeBatch, setDoc } from 'firebase/firestore';
@@ -6,7 +7,7 @@ import { Match, UserProfile, MatchResult } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, Trophy, Swords, Calendar, Hourglass, ClipboardCopy, Upload, Crown, ArrowLeft, CheckCircle, Plus, Info, ShieldAlert } from 'lucide-react';
+import { Users, Trophy, Swords, Calendar, Hourglass, ClipboardCopy, Upload, Crown, ArrowLeft, CheckCircle, Plus, Info, ShieldAlert, BadgeInfo } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -110,12 +111,12 @@ const ResultSubmissionForm = ({ match }: { match: Match }) => {
     const { firestore, storage } = useFirebase();
     const { toast } = useToast();
     const [position, setPosition] = useState<string>('');
-    const [result, setResult] = useState<'won' | 'lost' | ''>('');
+    const [winStatus, setWinStatus] = useState<'win' | 'loss' | ''>('');
     const [screenshot, setScreenshot] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async () => {
-        if (!user || !firestore || !storage || !position || !result || !screenshot) {
+        if (!user || !firestore || !storage || !position || !winStatus || !screenshot) {
             toast({ variant: 'destructive', title: 'Missing Information', description: 'Please select your position, result, and upload a screenshot.' });
             return;
         }
@@ -129,12 +130,13 @@ const ResultSubmissionForm = ({ match }: { match: Match }) => {
             await setDoc(resultRef, {
                 userId: user.uid,
                 position: parseInt(position, 10),
-                status: result,
+                winStatus: winStatus,
                 screenshotUrl,
-                submittedAt: Timestamp.now()
+                submittedAt: Timestamp.now(),
+                status: 'submitted',
             });
 
-            toast({ title: 'Result Submitted', description: 'Your result has been recorded and is pending verification.' });
+            toast({ title: 'Result Submitted', description: 'Your result has been recorded. Please wait for confirmation.' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Submission Failed', description: error.message });
         } finally {
@@ -167,13 +169,13 @@ const ResultSubmissionForm = ({ match }: { match: Match }) => {
                      <div className="space-y-4 pt-4 border-t">
                         <div className="space-y-2">
                             <Label className="font-semibold">Step 2: Confirm Result & Upload Proof</Label>
-                             <RadioGroup value={result} onValueChange={(v) => setResult(v as 'won'|'lost')}>
+                             <RadioGroup value={winStatus} onValueChange={(v) => setWinStatus(v as 'win'|'loss')}>
                                 <div className="flex gap-4">
                                      <Label htmlFor="res-won" className="flex-1 flex items-center gap-2 cursor-pointer border rounded-md p-3 text-sm has-[:checked]:bg-green-500 has-[:checked]:text-white has-[:checked]:border-green-600 transition-colors">
-                                        <RadioGroupItem value="won" id="res-won" /> I WON
+                                        <RadioGroupItem value="win" id="res-won" /> I WON
                                     </Label>
                                      <Label htmlFor="res-lost" className="flex-1 flex items-center gap-2 cursor-pointer border rounded-md p-3 text-sm has-[:checked]:bg-destructive has-[:checked]:text-white has-[:checked]:border-destructive transition-colors">
-                                        <RadioGroupItem value="lost" id="res-lost" /> I LOST
+                                        <RadioGroupItem value="loss" id="res-lost" /> I LOST
                                     </Label>
                                 </div>
                             </RadioGroup>
@@ -196,7 +198,7 @@ const ResultSubmissionForm = ({ match }: { match: Match }) => {
                 )}
             </CardContent>
             <CardFooter>
-                <Button className="w-full" onClick={handleSubmit} disabled={!position || !result || !screenshot || isSubmitting}>
+                <Button className="w-full" onClick={handleSubmit} disabled={!position || !winStatus || !screenshot || isSubmitting}>
                     {isSubmitting ? 'Submitting...' : 'Submit Final Result'}
                 </Button>
             </CardFooter>
@@ -207,11 +209,10 @@ const ResultSubmissionForm = ({ match }: { match: Match }) => {
 const MatchOngoingContent = ({ match, players, results }: { match: Match, players: UserProfile[], results: MatchResult[] }) => {
     const { user } = useUser();
     const { toast } = useToast();
-    const [isStarting, setIsStarting] = useState(false);
     
-    const userHasSubmittedResult = useMemo(() => {
-        if (!user) return true;
-        return results.some(r => r.userId === user.uid);
+    const userResult = useMemo(() => {
+        if (!user) return null;
+        return results.find(r => r.userId === user.uid);
     }, [user, results]);
 
     const copyRoomCode = () => {
@@ -235,8 +236,6 @@ const MatchOngoingContent = ({ match, players, results }: { match: Match, player
                                 <span>{match.roomCode}</span>
                                 <ClipboardCopy className="h-6 w-6 text-muted-foreground" />
                             </div>
-                        ) : user?.uid === match.creatorId ? (
-                            <p className='text-muted-foreground'>Please enter the room code in the input below once you have created it in Ludo King.</p>
                         ) : (
                             <div className="flex items-center gap-2 text-muted-foreground">
                                 <Hourglass className="h-4 w-4 animate-spin" />
@@ -246,7 +245,7 @@ const MatchOngoingContent = ({ match, players, results }: { match: Match, player
                     </CardContent>
                 </Card>
 
-                {userHasSubmittedResult ? (
+                {userResult ? (
                     <Alert>
                         <CheckCircle className="h-4 w-4" />
                         <AlertTitle>Result Submitted</AlertTitle>
@@ -271,33 +270,11 @@ const MatchOpenContent = ({ match, players }: { match: Match, players: UserProfi
 
     const hasJoined = useMemo(() => user && match.players.includes(user.uid), [user, match.players]);
 
-    const handleJoinMatch = async () => {
-        setIsJoining(true);
-        // This logic will be implemented in the next step.
-        toast({ title: "Joining functionality coming soon!" });
-        setIsJoining(false);
-    };
-
     return (
         <div className="flex flex-col flex-grow">
             <main className="flex-grow p-4 space-y-4">
                 <PlayerList match={match} players={players} />
             </main>
-            <footer className="p-4 sticky bottom-0 bg-background border-t">
-                {hasJoined ? (
-                    <Alert>
-                        <Info className="h-4 w-4" />
-                        <AlertTitle>You have joined!</AlertTitle>
-                        <AlertDescription>
-                            Waiting for other players. The match will begin once full.
-                        </AlertDescription>
-                    </Alert>
-                ) : (
-                    <Button onClick={handleJoinMatch} disabled={isJoining} className="w-full text-lg py-6">
-                        {isJoining ? 'Joining...' : `Join for ₹${match.entryFee}`}
-                    </Button>
-                )}
-            </footer>
         </div>
     );
 };
@@ -336,12 +313,26 @@ export default function MatchPage({ params }: { params: { id: string } }) {
             title = 'Match In Progress';
             content = <MatchOngoingContent match={match} players={players} results={results} />;
             break;
+        case 'processing':
+             title = 'Processing Results';
+             content = (
+                <div className="p-4">
+                    <Alert>
+                        <Hourglass className="h-4 w-4" />
+                        <AlertTitle>Results Submitted</AlertTitle>
+                        <AlertDescription>
+                            All results have been submitted. Please wait a few moments for confirmation and final verification.
+                        </AlertDescription>
+                    </Alert>
+                </div>
+            )
+            break;
         case 'verification':
              title = 'Verifying Results';
              content = (
                 <div className="p-4">
                     <Alert>
-                        <Hourglass className="h-4 w-4" />
+                        <BadgeInfo className="h-4 w-4" />
                         <AlertTitle>Results Pending Verification</AlertTitle>
                         <AlertDescription>
                             All results have been submitted and are now being verified by our team. Please be patient.
@@ -384,3 +375,5 @@ export default function MatchPage({ params }: { params: { id: string } }) {
   
   return <div className="bg-muted/30">{renderContent()}</div>;
 }
+
+    

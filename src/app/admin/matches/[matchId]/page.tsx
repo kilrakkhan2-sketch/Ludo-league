@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useCollection, useDoc } from '@/firebase';
-import { Match, UserProfile } from '@/types';
+import { Match, UserProfile, MatchResult } from '@/types';
 import { doc, Timestamp, runTransaction, updateDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ const getStatusVariant = (status: string) => {
   switch (status) {
     case 'open': return 'secondary';
     case 'ongoing': return 'default';
+    case 'processing': return 'destructive';
     case 'completed': 'default';
     case 'verification': return 'destructive';
     case 'cancelled': return 'outline';
@@ -56,6 +57,7 @@ export default function AdminMatchDetailsPage() {
   const [winner, setWinner] = useState('');
 
   const { data: match, loading: matchLoading } = useDoc<Match>(`matches/${matchId}`);
+  const { data: results, loading: resultsLoading } = useCollection<MatchResult>(`matches/${matchId}/results`);
   
   const playerIds = useMemo(() => {
       if (!match?.players) return ['_']; 
@@ -65,6 +67,14 @@ export default function AdminMatchDetailsPage() {
   const { data: players, loading: playersLoading } = useCollection<UserProfile>('users', {
       where: ['uid', 'in', playerIds]
   });
+  
+  const resultsMap = useMemo(() => {
+    const map = new Map<string, MatchResult>();
+    if (results) {
+      results.forEach(result => map.set(result.userId, result));
+    }
+    return map;
+  }, [results])
 
   const handleCancelMatch = async () => {
     if (!firestore || !match) return;
@@ -116,7 +126,7 @@ export default function AdminMatchDetailsPage() {
     }
   };
 
-  const loading = matchLoading || playersLoading;
+  const loading = matchLoading || playersLoading || resultsLoading;
 
   if (loading) {
     return <LoadingSkeleton />;
@@ -162,19 +172,26 @@ export default function AdminMatchDetailsPage() {
              <Card>
                 <CardHeader><CardTitle>Submitted Results</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                    {match.results && match.results.length > 0 ? match.results.map((result, index) => {
-                       const player = players.find(p => p.id === result.userId);
+                    {players.length > 0 ? players.map((player) => {
+                       const result = resultsMap.get(player.id);
                        return (
-                           <div key={index} className="border p-4 rounded-lg">
-                                <p><strong>Player:</strong> {player?.displayName || 'Unknown'}</p>
-                                <p><strong>Claimed Status:</strong> <Badge variant={result.status === 'won' ? 'default' : 'destructive'}>{result.status}</Badge></p>
-                                <p><strong>Screenshot:</strong></p>
-                                <div className="relative aspect-video w-full max-w-md mt-2 rounded-md overflow-hidden border">
-                                    <Image src={result.screenshotUrl} alt={`Result from ${player?.displayName}`} layout="fill" objectFit="contain" />
-                                </div>
+                           <div key={player.id} className="border p-4 rounded-lg">
+                               <p className='font-bold text-lg'>{player.displayName}</p>
+                               {result ? (
+                                   <div className='mt-2 space-y-3'>
+                                        <p><strong>Initial Submission:</strong> Position {result.position} ({result.winStatus})</p>
+                                        { result.status === 'confirmed' && <p><strong>Confirmed Submission:</strong> Position {result.confirmedPosition} ({result.confirmedWinStatus})</p>}
+                                        <p><strong>Screenshot:</strong></p>
+                                        <div className="relative aspect-video w-full max-w-sm mt-2 rounded-md overflow-hidden border">
+                                            <Image src={result.screenshotUrl} alt={`Result from ${player?.displayName}`} layout="fill" objectFit="contain" />
+                                        </div>
+                                   </div>
+                               ) : (
+                                   <p className='text-muted-foreground mt-1'>Waiting for player to submit result.</p>
+                               )}
                            </div>
                        )
-                    }) : <p className="text-muted-foreground">No results have been submitted for this match yet.</p>}
+                    }) : <p className="text-muted-foreground">No players in this match.</p>}
                 </CardContent>
             </Card>
             <AdminChatRoom contextPath={`matches/${matchId}`} />
@@ -185,7 +202,7 @@ export default function AdminMatchDetailsPage() {
                     <CardTitle>Admin Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    { (match.status === 'verification') && (
+                    { (match.status === 'verification' || match.status === 'disputed') && (
                         <div className='space-y-2'>
                             <Label>Declare Winner</Label>
                             <Select onValueChange={setWinner} value={winner}>
@@ -224,3 +241,5 @@ export default function AdminMatchDetailsPage() {
     </div>
   );
 }
+
+    
