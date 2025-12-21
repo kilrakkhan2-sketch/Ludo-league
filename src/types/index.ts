@@ -8,6 +8,7 @@
 
 
 
+
 export type UserProfile = {
   id: string;
   uid: string;
@@ -39,19 +40,11 @@ export type Match = {
   title: string;
   entryFee: number;
   maxPlayers: number;
-  privacy: "public" | "private";
-  ludoKingCode?: string;
   status: "open" | "ongoing" | "completed" | "cancelled" | "verification";
   players: string[];
   createdAt: any; // Can be server timestamp
   winnerId?: string;
   prizePool?: number;
-  results?: {
-      userId: string;
-      screenshotUrl: string;
-      status: 'won' | 'lost';
-      submittedAt: any;
-  }[];
   winnerDeclaredBy?: string;
 };
 

@@ -116,45 +116,6 @@ const MatchOpen = ({ match, profile, players }: { match: Match, profile: UserPro
     const alreadyJoined = match.players.includes(user?.uid || '');
     const isFull = match.players.length >= match.maxPlayers;
     const isCreator = match.creatorId === user?.uid;
-    
-    const handleJoinMatch = async () => {
-        if (!user || !profile || !firestore) return;
-        setIsJoining(true);
-        try {
-            await runTransaction(firestore, async (transaction) => {
-                const userRef = doc(firestore, 'users', user.uid);
-                const matchRef = doc(firestore, 'matches', match.id);
-
-                const userDoc = await transaction.get(userRef);
-                const matchDoc = await transaction.get(matchRef);
-
-                if (!userDoc.exists() || !matchDoc.exists()) throw new Error("User or match not found");
-                
-                const currentMatch = matchDoc.data() as Match;
-                if (currentMatch.players.length >= currentMatch.maxPlayers) throw new Error("Match is already full");
-                if ((userDoc.data().walletBalance || 0) < currentMatch.entryFee) throw new Error("Insufficient balance");
-
-                const newBalance = userDoc.data().walletBalance - currentMatch.entryFee;
-                transaction.update(userRef, { walletBalance: newBalance });
-                
-                transaction.update(matchRef, { players: arrayUnion(user.uid) });
-
-                const txRef = doc(collection(firestore, `users/${user.uid}/transactions`));
-                transaction.set(txRef, {
-                    matchId: match.id,
-                    amount: -currentMatch.entryFee,
-                    type: 'entry_fee',
-                    description: `Entry fee for "${currentMatch.title}"`,
-                    createdAt: Timestamp.now(),
-                    status: 'completed',
-                });
-            });
-            toast({ title: 'Successfully Joined!', description: `You are now in the match "${match.title}".` });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Could Not Join', description: error.message });
-        }
-        setIsJoining(false);
-    };
 
     return (
         <div className="flex flex-col flex-grow">
@@ -162,20 +123,12 @@ const MatchOpen = ({ match, profile, players }: { match: Match, profile: UserPro
                 <PlayerListLobby match={match} players={players} />
             </main>
             <footer className="p-4 sticky bottom-0 bg-background border-t space-y-2">
-                 {!alreadyJoined && !isFull && (
-                    <Button className="w-full text-lg py-6 bg-gradient-to-r from-primary to-purple-600" onClick={handleJoinMatch} disabled={isJoining || (profile?.walletBalance || 0) < match.entryFee}>
-                        {isJoining ? 'Joining...' : `Join for ₹${match.entryFee}`}
-                    </Button>
-                )}
                  {isCreator && match.players.length < match.maxPlayers &&
                     <div className='text-center p-4 bg-muted rounded-lg'>
                         <p className='font-bold'>Waiting for players...</p>
                         <p className='text-sm text-muted-foreground'>The match will begin once all slots are filled.</p>
                     </div>
                 }
-                 <Button variant="outline" className="w-full text-lg py-6">
-                    Invite Friends
-                </Button>
             </footer>
         </div>
     );
@@ -184,46 +137,13 @@ const MatchOpen = ({ match, profile, players }: { match: Match, profile: UserPro
 
 const MatchJoined = ({ match, players }: { match: Match, players: UserProfile[] }) => {
     const { user } = useUser();
-    const { firestore } = useFirebase();
-    const { toast } = useToast();
-    const [roomCode, setRoomCode] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const isCreator = match.creatorId === user?.uid;
-
-    const handleRoomCodeSubmit = async () => {
-        if (!firestore || !isCreator || !roomCode) return;
-        setIsSubmitting(true);
-        try {
-            const matchRef = doc(firestore, 'matches', match.id);
-            await updateDoc(matchRef, { ludoKingCode: roomCode, status: 'ongoing' });
-            toast({ title: 'Room Code Shared!', description: 'The match is now ready to start.' });
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not share the room code.' });
-        }
-        setIsSubmitting(false);
-    };
 
     return (
         <div className="flex flex-col flex-grow">
             <main className="flex-grow p-4 space-y-4">
                 <PlayerListLobby match={match} players={players} />
-                 {isCreator ? (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Enter Room Code</CardTitle>
-                            <CardDescription>Another player has joined. Please enter the Ludo King room code to start the match.</CardDescription>
-                        </CardHeader>
-                        <CardContent className='space-y-2'>
-                             <Label htmlFor="room-code">Ludo King Room Code</Label>
-                             <Input id="room-code" value={roomCode} onChange={(e) => setRoomCode(e.target.value.toUpperCase())} placeholder="e.g., 12345678" />
-                        </CardContent>
-                        <CardFooter>
-                            <Button className="w-full" onClick={handleRoomCodeSubmit} disabled={isSubmitting || !roomCode}>
-                                {isSubmitting ? 'Sharing...' : 'Share Code & Start'}
-                            </Button>
-                        </CardFooter>
-                    </Card>
-                 ) : (
+                 {!isCreator && (
                     <div className='text-center p-8 bg-card rounded-lg'>
                         <p className='font-bold text-lg'>Waiting for Room Code</p>
                         <p className='text-sm text-muted-foreground'>The match creator is setting up the room. The code will appear here shortly.</p>
@@ -236,125 +156,15 @@ const MatchJoined = ({ match, players }: { match: Match, players: UserProfile[] 
 
 
 const MatchOngoing = ({ match }: { match: Match }) => {
-    const { user } = useUser();
-    const { firestore } = useFirebase();
-    const { toast } = useToast();
-    const [screenshot, setScreenshot] = useState<File | null>(null);
-    const [resultStatus, setResultStatus] = useState<'won' | 'lost' | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    
-    const hasSubmitted = match.results?.some(r => r.userId === user?.uid);
-
-     const copyRoomCode = () => {
-        if (!match.ludoKingCode) return;
-        navigator.clipboard.writeText(match.ludoKingCode);
-        toast({ title: 'Room Code Copied!' });
-    };
-
-    const handleResultSubmit = async () => {
-        if (!user || !firestore || !screenshot || !resultStatus) {
-             toast({ variant: 'destructive', title: 'Missing Information', description: 'Please select your status and upload a screenshot.' });
-             return;
-        }
-        setIsSubmitting(true);
-        try {
-            const storage = getStorage();
-            const screenshotRef = ref(storage, `match-results/${match.id}/${user.uid}_${screenshot.name}`);
-            await uploadBytes(screenshotRef, screenshot);
-            const screenshotUrl = await getDownloadURL(screenshotRef);
-
-            const matchRef = doc(firestore, 'matches', match.id);
-            const resultData = { 
-                userId: user.uid, 
-                screenshotUrl, 
-                status: resultStatus,
-                submittedAt: Timestamp.now() 
-            };
-            
-            // Atomically update the match document
-            await updateDoc(matchRef, { 
-                results: arrayUnion(resultData),
-                status: 'verification' 
-            });
-
-            toast({ title: 'Result Submitted', description: 'Your result is now awaiting verification from the admin.' });
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Submission Failed', description: 'Could not submit your result.' });
-        }
-        setIsSubmitting(false);
-    };
-
-    if (hasSubmitted) {
-        return (
-             <div className="p-8 text-center space-y-4">
-                 <Card className="bg-green-100 text-green-900">
-                    <CardHeader>
-                        <CardTitle>Result Submitted</CardTitle>
-                        <CardDescription className="text-green-800">You have successfully submitted your result. The match admin will verify it shortly. You can now leave this page.</CardDescription>
-                    </CardHeader>
-                </Card>
-            </div>
-        );
-    }
-
     return (
         <div className="p-4 space-y-6">
             <Card>
                 <CardContent className="p-6 text-center space-y-4">
-                     <p className="text-sm text-muted-foreground">Ludo King Room Code</p>
-                     <div className="flex items-center justify-center gap-4">
-                        <p className="text-3xl font-mono tracking-widest">{match.ludoKingCode}</p>
-                        <Button variant="ghost" size="icon" onClick={copyRoomCode}><ClipboardCopy /></Button>
-                     </div>
+                     <p className="text-sm text-muted-foreground">Match is in progress</p>
                      <p className='text-sm text-muted-foreground max-w-xs mx-auto'>
-                         Use this code to join the private room in Ludo King. The game is now ongoing.
+                         The game is now ongoing. The creator will submit results once it's finished.
                      </p>
                 </CardContent>
-            </Card>
-
-            <Card className="bg-card">
-                <CardHeader>
-                    <CardTitle>Submit Your Result</CardTitle>
-                    <CardDescription>The match is complete. Please select your status and upload a screenshot of the victory/loss screen.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div>
-                        <Label className='font-semibold'>1. Select your final status</Label>
-                        <RadioGroup onValueChange={(val: 'won' | 'lost') => setResultStatus(val)} className='mt-2 grid grid-cols-2 gap-4'>
-                            <div>
-                                <RadioGroupItem value="won" id="r-won" className='sr-only' />
-                                <Label htmlFor='r-won' className='flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 font-bold text-2xl hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground [&:has([data-state=checked])]:border-primary'>
-                                    I WON
-                                </Label>
-                            </div>
-                             <div>
-                                <RadioGroupItem value="lost" id="r-lost" className='sr-only' />
-                                <Label htmlFor='r-lost' className='flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 font-bold text-2xl hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-destructive peer-data-[state=checked]:bg-destructive peer-data-[state=checked]:text-destructive-foreground [&:has([data-state=checked])]:border-destructive'>
-                                    I LOST
-                                </Label>
-                            </div>
-                        </RadioGroup>
-                    </div>
-                     <div>
-                        <Label className='font-semibold'>2. Upload winning screenshot</Label>
-                        <label htmlFor="screenshot-upload" className="mt-2 flex flex-col items-center justify-center w-full h-32 border-2 border-border border-dashed rounded-lg cursor-pointer bg-muted hover:bg-muted/50">
-                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                <Upload className="w-8 h-8 mb-3 text-muted-foreground" />
-                                {screenshot ? (
-                                    <p className="font-semibold text-primary">{screenshot.name}</p>
-                                ) : (
-                                    <p className="text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span></p>
-                                )}
-                            </div>
-                            <Input id="screenshot-upload" type="file" className="hidden" onChange={(e) => setScreenshot(e.target.files ? e.target.files[0] : null)} accept="image/*" />
-                        </label>
-                    </div>
-                </CardContent>
-                <CardFooter>
-                    <Button className="w-full bg-gradient-to-r from-primary to-purple-600" onClick={handleResultSubmit} disabled={isSubmitting || !screenshot || !resultStatus}>
-                        {isSubmitting ? 'Uploading...' : 'Submit Result for Verification'}
-                    </Button>
-                </CardFooter>
             </Card>
              <ChatRoom matchId={match.id} />
         </div>
@@ -368,7 +178,7 @@ const MatchVerification = () => {
              <Card className="bg-blue-100 text-blue-900">
                 <CardHeader>
                     <CardTitle>Result Pending Verification</CardTitle>
-                    <CardDescription className="text-blue-800">Your submitted result is awaiting verification from the admin. You will be notified once the prize money is distributed.</CardDescription>
+                    <CardDescription className="text-blue-800">The result is awaiting verification from the admin. You will be notified once the prize money is distributed.</CardDescription>
                 </CardHeader>
             </Card>
         </div>

@@ -89,9 +89,9 @@ const MatchCard = ({ match }: { match: Match }) => {
             <Trophy className="h-5 w-5 text-yellow-500" />
             <p className="text-lg font-bold">₹{match.prizePool || match.entryFee * match.players.length * 0.9}</p>
           </div>
-           <Button asChild disabled={isFull || hasJoined}>
+           <Button asChild>
              <Link href={`/match/${match.id}`}>
-                {hasJoined ? 'View' : 'Join'}
+                View
              </Link>
           </Button>
         </CardFooter>
@@ -133,11 +133,8 @@ export default function OpenMatchesPage() {
             <Trophy className="mx-auto h-12 w-12 text-muted-foreground" />
             <h3 className="mt-2 text-sm font-semibold text-foreground">No open matches</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              No open matches available right now. Why not create one?
+              No open matches available right now.
             </p>
-             <Button className="mt-4" asChild>
-                <Link href="/create-match"><PlusCircle className="mr-2 h-4 w-4"/>Create a Match</Link>
-            </Button>
           </div>
         )}
       </div>

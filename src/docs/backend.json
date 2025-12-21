@@ -32,28 +32,13 @@
         "creatorId": { "type": "string" },
         "title": { "type": "string" },
         "entryFee": { "type": "number" },
+        "prizePool": { "type": "number" },
         "maxPlayers": { "type": "number" },
-        "privacy": { "type": "string", "enum": ["public", "private"] },
-        "roomCode": { "type": "string" },
         "status": { "type": "string", "enum": ["open", "ongoing", "completed", "cancelled", "verification"] },
         "players": { "type": "array", "items": { "type": "string" } },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "results": {
-          "type": "array",
-          "description": "Stores the results submitted by players.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "userId": { "type": "string" },
-              "screenshotUrl": { "type": "string", "format": "uri" },
-              "status": { "type": "string", "enum": ["won", "lost"] },
-              "submittedAt": { "type": "string", "format": "date-time" }
-            },
-            "required": ["userId", "screenshotUrl", "status", "submittedAt"]
-          }
-        }
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["creatorId", "title", "entryFee", "maxPlayers", "privacy", "status", "players", "createdAt"]
+      "required": ["creatorId", "title", "entryFee", "maxPlayers", "status", "players", "createdAt"]
     },
     "Message": {
         "title": "Message",
@@ -233,7 +218,7 @@
         "maxPlayers": { "type": "number" },
         "creatorId": { "type": "string" }
       },
-      "required": ["name", "prizePool", "entryFee", "startDate", "status", "players", "maxPlayers", "creatorId"]
+      "required": ["name", "prizePool", "entryFee", "startDate", "status", "players", "maxPlayers"]
     },
     "Announcement": {
         "title": "Announcement",

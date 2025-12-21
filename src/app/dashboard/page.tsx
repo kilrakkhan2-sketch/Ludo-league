@@ -93,9 +93,9 @@ const MatchCard = ({ match }: { match: Match }) => {
             <Trophy className="h-5 w-5 text-yellow-500" />
             <p className="text-lg font-bold">₹{match.prizePool || match.entryFee * match.players.length * 0.9}</p>
           </div>
-           <Button asChild disabled={isFull && !hasJoined}>
+           <Button asChild>
              <Link href={`/match/${match.id}`}>
-                {hasJoined ? 'View' : 'Join'}
+                View
              </Link>
           </Button>
         </CardFooter>
@@ -186,9 +186,6 @@ const MatchSection = ({ title, matches, loading, emptyMessage, viewAllLink }: { 
         ) : (
             <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg bg-card">
                 <p className="text-muted-foreground mb-2">{emptyMessage}</p>
-                <Button asChild>
-                    <Link href="/create-match"><PlusCircle className="mr-2 h-4 w-4"/>Create a Match</Link>
-                </Button>
             </div>
         )}
     </section>
@@ -207,7 +204,7 @@ export default function DashboardPage() {
 
     // 2. Fetch all public, open matches
     const { data: openMatchesData, loading: openMatchesLoading } = useCollection<Match>('matches', {
-        where: [['status', '==', 'open'], ['privacy', '==', 'public']],
+        where: [['status', '==', 'open']],
         limit: 10
     });
 
