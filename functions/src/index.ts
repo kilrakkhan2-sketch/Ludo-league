@@ -319,57 +319,59 @@ export const autoVerifyResults = functions.firestore
         const matchRef = db.collection('matches').doc(matchId);
 
         try {
-            const matchDoc = await matchRef.get();
-            if (!matchDoc.exists) return null;
-            const matchData = matchDoc.data();
-            if (!matchData) return null;
-            
-            // Set match status to processing as soon as the first result is in
-            if (matchData.status === 'ongoing') {
-                await matchRef.update({ status: 'processing' });
-            }
+            await db.runTransaction(async (transaction) => {
+                const matchDoc = await transaction.get(matchRef);
+                if (!matchDoc.exists) return null;
+                const matchData = matchDoc.data();
+                if (!matchData) return null;
 
-            // If match is already processed, do nothing.
-            if (['completed', 'disputed', 'verification'].includes(matchData.status)) {
-                return null;
-            }
-
-            const resultsSnapshot = await matchRef.collection('results').get();
-            const submittedResults = resultsSnapshot.docs.map(doc => doc.data() as MatchResult);
-
-            // Check if all players have submitted their results.
-            if (submittedResults.length !== matchData.maxPlayers) {
-                return null; // Wait for all results
-            }
-
-            // --- AUTO-VERIFICATION LOGIC ---
-            const positions = new Set<number>();
-            const winners = new Set<string>();
-
-            for (const result of submittedResults) {
-                if (result.confirmedPosition) {
-                    positions.add(result.confirmedPosition);
+                // If match is already processed, do nothing.
+                if (['completed', 'disputed', 'verification'].includes(matchData.status)) {
+                    return null;
                 }
-                if (result.confirmedWinStatus === 'win') {
-                    winners.add(result.userId);
+                
+                // Set match status to processing as soon as the first result is in
+                if (matchData.status === 'ongoing') {
+                    transaction.update(matchRef, { status: 'processing' });
                 }
-            }
 
-            // CHECK 1: Duplicate positions submitted (e.g., two 1st places)
-            const hasDuplicatePositions = positions.size !== submittedResults.length;
-            
-            // CHECK 2: More than one winner claimed
-            const hasMultipleWinners = winners.size > 1;
+                const resultsSnapshot = await matchRef.collection('results').get();
+                const submittedResults = resultsSnapshot.docs.map(doc => doc.data() as MatchResult);
 
-            if (hasDuplicatePositions || hasMultipleWinners) {
-                // If any check fails, mark as disputed for admin review.
-                await matchRef.update({ status: 'disputed' });
-                functions.logger.info(`Match ${matchId} marked as disputed due to result conflict.`);
-            } else {
-                // If all checks pass, mark for admin verification.
-                await matchRef.update({ status: 'verification' });
-                functions.logger.info(`Match ${matchId} pending verification.`);
-            }
+                // Check if all players have submitted their results.
+                if (submittedResults.length !== matchData.maxPlayers) {
+                    return null; // Wait for all results
+                }
+
+                // --- AUTO-VERIFICATION LOGIC ---
+                const positions = new Set<number>();
+                const winners = new Set<string>();
+
+                for (const result of submittedResults) {
+                    if (result.confirmedPosition) {
+                        positions.add(result.confirmedPosition);
+                    }
+                    if (result.confirmedWinStatus === 'win') {
+                        winners.add(result.userId);
+                    }
+                }
+
+                // CHECK 1: Duplicate positions submitted (e.g., two 1st places)
+                const hasDuplicatePositions = positions.size !== submittedResults.length;
+                
+                // CHECK 2: More than one winner claimed
+                const hasMultipleWinners = winners.size > 1;
+
+                if (hasDuplicatePositions || hasMultipleWinners) {
+                    // If any check fails, mark as disputed for admin review.
+                    transaction.update(matchRef, { status: 'disputed' });
+                    functions.logger.info(`Match ${matchId} marked as disputed due to result conflict.`);
+                } else {
+                    // If all checks pass, mark for admin verification.
+                    transaction.update(matchRef, { status: 'verification' });
+                    functions.logger.info(`Match ${matchId} pending verification.`);
+                }
+            });
         } catch (error) {
             functions.logger.error(`Error processing results for match ${matchId}:`, error);
             await matchRef.update({ status: 'disputed', error: (error as Error).message });
@@ -544,3 +546,5 @@ export const createMatch = functions.https.onCall(async (data, context) => {
         }
     }
 });
+
+    
