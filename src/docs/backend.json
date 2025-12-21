@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "UserProfile": {
@@ -6,152 +5,494 @@
       "description": "Represents a user's public and private profile data.",
       "type": "object",
       "properties": {
-        "uid": { "type": "string", "description": "The user's unique ID from Firebase Auth." },
-        "name": { "type": "string", "description": "The user's full name." },
-        "email": { "type": "string", "format": "email", "description": "The user's email address." },
-        "phone": { "type": "string", "description": "The user's phone number." },
-        "username": { "type": "string", "description": "The user's unique username." },
-        "photoURL": { "type": "string", "format": "uri", "description": "URL of the user's profile picture." },
-        "walletBalance": { "type": "number", "description": "The user's current wallet balance." },
-        "isVerified": { "type": "boolean", "description": "KYC verification status." },
-        "role": { "type": "string", "description": "The user's role in the system.", "enum": ["superadmin", "deposit_admin", "withdrawal_admin", "match_admin", "user"] },
-        "referralCode": { "type": "string", "description": "The user's unique referral code." },
-        "referredBy": { "type": "string", "description": "The referral code of the user who referred them." },
-        "referralEarnings": { "type": "number", "description": "Total earnings from referrals." },
-        "friends": { "type": "array", "items": { "type": "string" }, "description": "Array of user IDs who are friends."},
-        "matchesPlayed": { "type": "number", "description": "Total number of matches played by the user." },
-        "matchesWon": { "type": "number", "description": "Total number of matches won by the user." }
+        "uid": {
+          "type": "string",
+          "description": "The user's unique ID from Firebase Auth."
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The user's phone number."
+        },
+        "username": {
+          "type": "string",
+          "description": "The user's unique username."
+        },
+        "photoURL": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the user's profile picture."
+        },
+        "walletBalance": {
+          "type": "number",
+          "description": "The user's current wallet balance."
+        },
+        "isVerified": {
+          "type": "boolean",
+          "description": "KYC verification status."
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's role in the system.",
+          "enum": [
+            "superadmin",
+            "deposit_admin",
+            "withdrawal_admin",
+            "match_admin",
+            "user"
+          ]
+        },
+        "referralCode": {
+          "type": "string",
+          "description": "The user's unique referral code."
+        },
+        "referredBy": {
+          "type": "string",
+          "description": "The referral code of the user who referred them."
+        },
+        "referralEarnings": {
+          "type": "number",
+          "description": "Total earnings from referrals."
+        },
+        "friends": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of user IDs who are friends."
+        },
+        "matchesPlayed": {
+          "type": "number",
+          "description": "Total number of matches played by the user."
+        },
+        "matchesWon": {
+          "type": "number",
+          "description": "Total number of matches won by the user."
+        }
       },
-      "required": ["uid", "name", "email", "role"]
+      "required": [
+        "uid",
+        "name",
+        "email",
+        "role"
+      ]
     },
     "Match": {
       "title": "Match",
       "description": "Represents a Ludo match created by a user.",
       "type": "object",
       "properties": {
-        "creatorId": { "type": "string" },
-        "title": { "type": "string" },
-        "entryFee": { "type": "number" },
-        "prizePool": { "type": "number" },
-        "maxPlayers": { "type": "number" },
-        "status": { "type": "string", "enum": ["open", "ongoing", "completed", "cancelled", "verification"] },
-        "players": { "type": "array", "items": { "type": "string" } },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "title": {
+          "type": "string"
+        },
+        "entryFee": {
+          "type": "number"
+        },
+        "prizePool": {
+          "type": "number"
+        },
+        "maxPlayers": {
+          "type": "number"
+        },
+        "creatorId": {
+          "type": "string"
+        },
+        "players": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "roomCode": {
+          "type": "string",
+          "description": "Ludo King room code"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "ongoing",
+            "result_pending",
+            "completed",
+            "disputed"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
       },
-      "required": ["creatorId", "title", "entryFee", "maxPlayers", "status", "players", "createdAt"]
+      "required": [
+        "title",
+        "entryFee",
+        "prizePool",
+        "maxPlayers",
+        "creatorId",
+        "players",
+        "status",
+        "createdAt"
+      ]
+    },
+    "MatchResult": {
+      "title": "Match Result",
+      "description": "Represents a result submitted by a player for a match.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
+        },
+        "position": {
+          "type": "number",
+          "description": "1, 2, 3, or 4"
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "win",
+            "loss"
+          ]
+        },
+        "screenshotUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "submittedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "userId",
+        "position",
+        "result",
+        "screenshotUrl",
+        "submittedAt"
+      ]
     },
     "Message": {
-        "title": "Message",
-        "description": "A single message in a chat.",
-        "type": "object",
-        "properties": {
-            "userId": { "type": "string" },
-            "text": { "type": "string" },
-            "createdAt": { "type": "string", "format": "date-time" }
+      "title": "Message",
+      "description": "A single message in a chat.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
         },
-        "required": ["userId", "text", "createdAt"]
+        "text": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "userId",
+        "text",
+        "createdAt"
+      ]
     },
     "AdminChatMessage": {
       "title": "Admin Chat Message",
       "description": "A message in a private admin chat.",
       "type": "object",
       "properties": {
-        "userId": { "type": "string" },
-        "userName": { "type": "string" },
-        "text": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "userId": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
       },
-      "required": ["userId", "userName", "text", "createdAt"]
+      "required": [
+        "userId",
+        "userName",
+        "text",
+        "createdAt"
+      ]
     },
     "Transaction": {
       "title": "Transaction",
       "description": "Represents a wallet transaction.",
       "type": "object",
       "properties": {
-        "userId": { "type": "string" },
-        "type": { "type": "string", "enum": ["deposit", "withdrawal", "entry_fee", "prize", "referral_bonus"] },
-        "amount": { "type": "number" },
-        "status": { "type": "string", "enum": ["pending", "completed", "failed"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "userId": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "deposit",
+            "withdrawal",
+            "entry_fee",
+            "prize",
+            "referral_bonus"
+          ]
+        },
+        "amount": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "completed",
+            "failed"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
       },
-      "required": ["userId", "type", "amount", "status", "createdAt"]
+      "required": [
+        "userId",
+        "type",
+        "amount",
+        "status",
+        "createdAt"
+      ]
     },
     "DepositRequest": {
       "title": "Deposit Request",
       "description": "A user's request to deposit funds.",
       "type": "object",
       "properties": {
-        "userId": { "type": "string" },
-        "amount": { "type": "number" },
-        "transactionId": { "type": "string" },
-        "screenshotUrl": { "type": "string", "format": "uri" },
-        "upiAccountId": { "type": "string", "description": "The ID of the upi-account document used for the payment." },
-        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "userId": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "transactionId": {
+          "type": "string"
+        },
+        "screenshotUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "upiAccountId": {
+          "type": "string",
+          "description": "The ID of the upi-account document used for the payment."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "approved",
+            "rejected"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
       },
-      "required": ["userId", "amount", "transactionId", "screenshotUrl", "status", "createdAt", "upiAccountId"]
+      "required": [
+        "userId",
+        "amount",
+        "transactionId",
+        "screenshotUrl",
+        "status",
+        "createdAt",
+        "upiAccountId"
+      ]
     },
     "WithdrawalRequest": {
       "title": "Withdrawal Request",
       "description": "A user's request to withdraw funds.",
       "type": "object",
       "properties": {
-        "userId": { "type": "string" },
-        "amount": { "type": "number" },
-        "method": { "type": "string" },
-        "details": { "type": "string" },
-        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "processedBy": { "type": "string", "description": "The UID of the admin who processed the request." }
+        "userId": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "method": {
+          "type": "string"
+        },
+        "details": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "approved",
+            "rejected"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "processedBy": {
+          "type": "string",
+          "description": "The UID of the admin who processed the request."
+        }
       },
-      "required": ["userId", "amount", "method", "details", "status", "createdAt"]
+      "required": [
+        "userId",
+        "amount",
+        "method",
+        "details",
+        "status",
+        "createdAt"
+      ]
     },
     "UpiAccount": {
       "title": "UPI Account",
       "description": "Represents a UPI account for receiving payments.",
       "type": "object",
       "properties": {
-        "upiId": { "type": "string", "description": "The UPI ID (e.g., user@okicici)." },
-        "displayName": { "type": "string", "description": "A friendly name for the account (e.g., 'Primary UPI')." },
-        "isActive": { "type": "boolean", "description": "Whether this account is currently active for receiving payments." },
-        "dailyLimit": { "type": "number", "description": "The daily receiving limit for this UPI ID." },
-        "dailyAmountReceived": { "type": "number", "description": "The total amount received today. This should be reset daily." },
-        "dailyTransactionCount": { "type": "number", "description": "The total number of transactions received today." },
-        "totalTransactions": { "type": "number", "description": "A counter for total transactions received historically." },
-        "totalAmountReceived": { "type": "number", "description": "The total amount received through this UPI ID historically." },
-        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of when the account was added." }
+        "upiId": {
+          "type": "string",
+          "description": "The UPI ID (e.g., user@okicici)."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "A friendly name for the account (e.g., 'Primary UPI')."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether this account is currently active for receiving payments."
+        },
+        "dailyLimit": {
+          "type": "number",
+          "description": "The daily receiving limit for this UPI ID."
+        },
+        "dailyAmountReceived": {
+          "type": "number",
+          "description": "The total amount received today. This should be reset daily."
+        },
+        "dailyTransactionCount": {
+          "type": "number",
+          "description": "The total number of transactions received today."
+        },
+        "totalTransactions": {
+          "type": "number",
+          "description": "A counter for total transactions received historically."
+        },
+        "totalAmountReceived": {
+          "type": "number",
+          "description": "The total amount received through this UPI ID historically."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of when the account was added."
+        }
       },
-      "required": ["upiId", "displayName", "isActive", "dailyLimit"]
+      "required": [
+        "upiId",
+        "displayName",
+        "isActive",
+        "dailyLimit"
+      ]
     },
-     "UpiDailyStat": {
+    "UpiDailyStat": {
       "title": "UPI Daily Stat",
       "description": "Tracks daily statistics for a single UPI account.",
       "type": "object",
       "properties": {
-        "amount": { "type": "number", "description": "Total amount received on this day." },
-        "transactionCount": { "type": "number", "description": "Total number of transactions on this day." }
+        "amount": {
+          "type": "number",
+          "description": "Total amount received on this day."
+        },
+        "transactionCount": {
+          "type": "number",
+          "description": "Total number of transactions on this day."
+        }
       },
-      "required": ["amount", "transactionCount"]
+      "required": [
+        "amount",
+        "transactionCount"
+      ]
     },
     "MaintenanceSettings": {
       "title": "Maintenance Settings",
       "description": "Controls the app's maintenance mode and feature availability.",
       "type": "object",
       "properties": {
-        "isAppDisabled": { "type": "boolean", "description": "If true, the entire app is in maintenance mode." },
-        "appDisabledMessage": { "type": "string", "description": "Message to display when the app is disabled." },
-        "areDepositsDisabled": { "type": "boolean", "description": "If true, users cannot initiate new deposits." },
-        "depositsTimeScheduled": { "type": "boolean", "description": "Enable time-based disabling for deposits." },
-        "depositsStartTime": { "type": "string", "description": "Time to start disabling deposits (HH:mm)." },
-        "depositsEndTime": { "type": "string", "description": "Time to stop disabling deposits (HH:mm)." },
-        "areWithdrawalsDisabled": { "type": "boolean", "description": "If true, users cannot request withdrawals." },
-        "withdrawalsTimeScheduled": { "type": "boolean", "description": "Enable time-based disabling for withdrawals." },
-        "withdrawalsStartTime": { "type": "string", "description": "Time to start disabling withdrawals (HH:mm)." },
-        "withdrawalsEndTime": { "type": "string", "description": "Time to stop disabling withdrawals (HH:mm)." },
-        "areMatchesDisabled": { "type": "boolean", "description": "If true, users cannot create new matches." },
-        "matchesTimeScheduled": { "type": "boolean", "description": "Enable time-based disabling for match creation." },
-        "matchesStartTime": { "type": "string", "description": "Time to start disabling match creation (HH:mm)." },
-        "matchesEndTime": { "type": "string", "description": "Time to stop disabling match creation (HH:mm)." }
+        "isAppDisabled": {
+          "type": "boolean",
+          "description": "If true, the entire app is in maintenance mode."
+        },
+        "appDisabledMessage": {
+          "type": "string",
+          "description": "Message to display when the app is disabled."
+        },
+        "areDepositsDisabled": {
+          "type": "boolean",
+          "description": "If true, users cannot initiate new deposits."
+        },
+        "depositsTimeScheduled": {
+          "type": "boolean",
+          "description": "Enable time-based disabling for deposits."
+        },
+        "depositsStartTime": {
+          "type": "string",
+          "description": "Time to start disabling deposits (HH:mm)."
+        },
+        "depositsEndTime": {
+          "type": "string",
+          "description": "Time to stop disabling deposits (HH:mm)."
+        },
+        "areWithdrawalsDisabled": {
+          "type": "boolean",
+          "description": "If true, users cannot request withdrawals."
+        },
+        "withdrawalsTimeScheduled": {
+          "type": "boolean",
+          "description": "Enable time-based disabling for withdrawals."
+        },
+        "withdrawalsStartTime": {
+          "type": "string",
+          "description": "Time to start disabling withdrawals (HH:mm)."
+        },
+        "withdrawalsEndTime": {
+          "type": "string",
+          "description": "Time to stop disabling withdrawals (HH:mm)."
+        },
+        "areMatchesDisabled": {
+          "type": "boolean",
+          "description": "If true, users cannot create new matches."
+        },
+        "matchesTimeScheduled": {
+          "type": "boolean",
+          "description": "Enable time-based disabling for match creation."
+        },
+        "matchesStartTime": {
+          "type": "string",
+          "description": "Time to start disabling match creation (HH:mm)."
+        },
+        "matchesEndTime": {
+          "type": "string",
+          "description": "Time to stop disabling match creation (HH:mm)."
+        }
       }
     },
     "CommissionSettings": {
@@ -159,8 +500,14 @@
       "description": "Global settings for referral commissions.",
       "type": "object",
       "properties": {
-        "isEnabled": { "type": "boolean", "description": "If true, referral commissions are active." },
-        "rate": { "type": "number", "description": "The commission rate (e.g., 0.05 for 5%)." }
+        "isEnabled": {
+          "type": "boolean",
+          "description": "If true, referral commissions are active."
+        },
+        "rate": {
+          "type": "number",
+          "description": "The commission rate (e.g., 0.05 for 5%)."
+        }
       }
     },
     "KycRequest": {
@@ -168,164 +515,362 @@
       "description": "A user's request for KYC verification.",
       "type": "object",
       "properties": {
-        "userId": { "type": "string" },
-        "fullName": { "type": "string" },
-        "documentType": { "type": "string" },
-        "documentNumber": { "type": "string" },
-        "documentUrl": { "type": "string", "format": "uri" },
-        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "userId": {
+          "type": "string"
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "documentType": {
+          "type": "string"
+        },
+        "documentNumber": {
+          "type": "string"
+        },
+        "documentUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "approved",
+            "rejected"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
       },
-      "required": ["userId", "fullName", "documentType", "documentNumber", "documentUrl", "status", "createdAt"]
+      "required": [
+        "userId",
+        "fullName",
+        "documentType",
+        "documentNumber",
+        "documentUrl",
+        "status",
+        "createdAt"
+      ]
     },
     "Referral": {
       "title": "Referral",
       "description": "Tracks a referral between two users.",
       "type": "object",
       "properties": {
-        "referrerId": { "type": "string", "description": "User who referred" },
-        "referredId": { "type": "string", "description": "User who was referred" },
-        "status": { "type": "string", "enum": ["pending", "completed"], "description": "Completed after referred user plays first game" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "referrerId": {
+          "type": "string",
+          "description": "User who referred"
+        },
+        "referredId": {
+          "type": "string",
+          "description": "User who was referred"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "completed"
+          ],
+          "description": "Completed after referred user plays first game"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
       },
-      "required": ["referrerId", "referredId", "status", "createdAt"]
+      "required": [
+        "referrerId",
+        "referredId",
+        "status",
+        "createdAt"
+      ]
     },
     "FriendRequest": {
       "title": "Friend Request",
       "description": "Represents a friend request between two users.",
       "type": "object",
       "properties": {
-        "from": { "type": "string", "description": "The UID of the user sending the request." },
-        "to": { "type": "string", "description": "The UID of the user receiving the request." },
-        "status": { "type": "string", "enum": ["pending", "accepted", "declined"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "from": {
+          "type": "string",
+          "description": "The UID of the user sending the request."
+        },
+        "to": {
+          "type": "string",
+          "description": "The UID of the user receiving the request."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "accepted",
+            "declined"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
       },
-      "required": ["from", "to", "status", "createdAt"]
+      "required": [
+        "from",
+        "to",
+        "status",
+        "createdAt"
+      ]
     },
     "Tournament": {
       "title": "Tournament",
       "description": "Represents a multi-match tournament event.",
       "type": "object",
       "properties": {
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "prizePool": { "type": "number" },
-        "entryFee": { "type": "number" },
-        "startDate": { "type": "string", "format": "date-time" },
-        "endDate": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["upcoming", "live", "completed"] },
-        "players": { "type": "array", "items": { "type": "string" } },
-        "maxPlayers": { "type": "number" },
-        "creatorId": { "type": "string" }
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "prizePool": {
+          "type": "number"
+        },
+        "entryFee": {
+          "type": "number"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "upcoming",
+            "live",
+            "completed"
+          ]
+        },
+        "players": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxPlayers": {
+          "type": "number"
+        },
+        "creatorId": {
+          "type": "string"
+        }
       },
-      "required": ["name", "prizePool", "entryFee", "startDate", "status", "players", "maxPlayers"]
+      "required": [
+        "name",
+        "prizePool",
+        "entryFee",
+        "startDate",
+        "status",
+        "players",
+        "maxPlayers"
+      ]
     },
     "Announcement": {
-        "title": "Announcement",
-        "description": "Represents a global news update or notification for all users.",
-        "type": "object",
-        "properties": {
-          "title": { "type": "string" },
-          "content": { "type": "string" },
-          "type": { "type": "string", "enum": ["News", "Promo", "Update", "Warning"] },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "link": { "type": "string", "format": "uri", "description": "An optional link for more details." }
+      "title": "Announcement",
+      "description": "Represents a global news update or notification for all users.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
         },
-        "required": ["title", "content", "type", "createdAt"]
+        "content": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "News",
+            "Promo",
+            "Update",
+            "Warning"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "link": {
+          "type": "string",
+          "format": "uri",
+          "description": "An optional link for more details."
+        }
+      },
+      "required": [
+        "title",
+        "content",
+        "type",
+        "createdAt"
+      ]
     },
     "PersonalNotification": {
-        "title": "Personal Notification",
-        "description": "A notification sent to a specific user.",
-        "type": "object",
-        "properties": {
-            "title": { "type": "string" },
-            "body": { "type": "string" },
-            "isRead": { "type": "boolean" },
-            "createdAt": { "type": "string", "format": "date-time" },
-            "link": { "type": "string", "format": "uri" }
+      "title": "Personal Notification",
+      "description": "A notification sent to a specific user.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
         },
-        "required": ["title", "body", "isRead", "createdAt"]
+        "body": {
+          "type": "string"
+        },
+        "isRead": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "link": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "title",
+        "body",
+        "isRead",
+        "createdAt"
+      ]
     }
   },
   "auth": {
-    "providers": ["email", "phone", "google.com"]
+    "providers": [
+      "email",
+      "phone",
+      "google.com"
+    ]
   },
   "firestore": {
     "/users/{userId}": {
-      "schema": { "$ref": "#/entities/UserProfile" },
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
       "description": "Stores user profile information."
     },
     "/matches/{matchId}": {
-      "schema": { "$ref": "#/entities/Match" },
+      "schema": {
+        "$ref": "#/entities/Match"
+      },
       "description": "Stores all created matches."
     },
-    "/matches/{matchId}/messages/{messageId}": {
-        "schema": { "$ref": "#/entities/Message"},
-        "description": "Stores messages for a specific match chat."
+    "/matches/{matchId}/results/{userId}": {
+      "schema": {
+        "$ref": "#/entities/MatchResult"
+      },
+      "description": "Stores result submissions for a specific match."
     },
-     "/matches/{matchId}/admin-chat/{messageId}": {
-      "schema": { "$ref": "#/entities/AdminChatMessage" },
+    "/matches/{matchId}/messages/{messageId}": {
+      "schema": {
+        "$ref": "#/entities/Message"
+      },
+      "description": "Stores messages for a specific match chat."
+    },
+    "/matches/{matchId}/admin-chat/{messageId}": {
+      "schema": {
+        "$ref": "#/entities/AdminChatMessage"
+      },
       "description": "Private chat for admins about a specific match."
     },
     "/tournaments/{tournamentId}": {
-      "schema": { "$ref": "#/entities/Tournament" },
+      "schema": {
+        "$ref": "#/entities/Tournament"
+      },
       "description": "Stores all created tournaments."
     },
     "/users/{userId}/transactions/{transactionId}": {
-      "schema": { "$ref": "#/entities/Transaction" },
+      "schema": {
+        "$ref": "#/entities/Transaction"
+      },
       "description": "Stores a user's wallet transactions."
     },
     "/deposit-requests/{depositId}": {
-      "schema": { "$ref": "#/entities/DepositRequest" },
+      "schema": {
+        "$ref": "#/entities/DepositRequest"
+      },
       "description": "Stores all deposit requests for admin verification."
     },
-     "/deposit-requests/{depositId}/admin-chat/{messageId}": {
-      "schema": { "$ref": "#/entities/AdminChatMessage" },
+    "/deposit-requests/{depositId}/admin-chat/{messageId}": {
+      "schema": {
+        "$ref": "#/entities/AdminChatMessage"
+      },
       "description": "Private chat for admins about a specific deposit request."
     },
     "/withdrawal-requests/{withdrawalId}": {
-      "schema": { "$ref": "#/entities/WithdrawalRequest" },
+      "schema": {
+        "$ref": "#/entities/WithdrawalRequest"
+      },
       "description": "Stores all withdrawal requests for admin verification."
     },
-     "/withdrawal-requests/{withdrawalId}/admin-chat/{messageId}": {
-      "schema": { "$ref": "#/entities/AdminChatMessage" },
+    "/withdrawal-requests/{withdrawalId}/admin-chat/{messageId}": {
+      "schema": {
+        "$ref": "#/entities/AdminChatMessage"
+      },
       "description": "Private chat for admins about a specific withdrawal request."
     },
     "/upi-accounts/{accountId}": {
-      "schema": { "$ref": "#/entities/UpiAccount" },
+      "schema": {
+        "$ref": "#/entities/UpiAccount"
+      },
       "description": "Stores all configurable UPI accounts for receiving payments."
     },
-     "/upi-accounts/{accountId}/daily_stats/{date}": {
-      "schema": { "$ref": "#/entities/UpiDailyStat" },
+    "/upi-accounts/{accountId}/daily_stats/{date}": {
+      "schema": {
+        "$ref": "#/entities/UpiDailyStat"
+      },
       "description": "Stores daily transaction statistics for a UPI account. Date format is YYYY-MM-DD."
     },
     "/settings/maintenance": {
-        "schema": { "$ref": "#/entities/MaintenanceSettings" },
-        "description": "Controls app-wide maintenance and feature status."
+      "schema": {
+        "$ref": "#/entities/MaintenanceSettings"
+      },
+      "description": "Controls app-wide maintenance and feature status."
     },
     "/settings/commission": {
-        "schema": { "$ref": "#/entities/CommissionSettings" },
-        "description": "Controls app-wide referral commission settings."
+      "schema": {
+        "$ref": "#/entities/CommissionSettings"
+      },
+      "description": "Controls app-wide referral commission settings."
     },
     "/kyc-requests/{kycId}": {
-      "schema": { "$ref": "#/entities/KycRequest" },
+      "schema": {
+        "$ref": "#/entities/KycRequest"
+      },
       "description": "Stores all KYC requests for admin verification."
     },
     "/referrals/{referralId}": {
-      "schema": { "$ref": "#/entities/Referral" },
+      "schema": {
+        "$ref": "#/entities/Referral"
+      },
       "description": "Stores referral tracking information."
     },
     "/friend-requests/{requestId}": {
-      "schema": { "$ref": "#/entities/FriendRequest" },
+      "schema": {
+        "$ref": "#/entities/FriendRequest"
+      },
       "description": "Stores friend requests between users."
     },
     "/announcements/{announcementId}": {
-        "schema": { "$ref": "#/entities/Announcement" },
-        "description": "Stores global announcements for all users."
+      "schema": {
+        "$ref": "#/entities/Announcement"
+      },
+      "description": "Stores global announcements for all users."
     },
     "/users/{userId}/personal_notifications/{notificationId}": {
-        "schema": { "$ref": "#/entities/PersonalNotification" },
-        "description": "Stores notifications specific to a user."
+      "schema": {
+        "$ref": "#/entities/PersonalNotification"
+      },
+      "description": "Stores notifications specific to a user."
     }
   }
 }

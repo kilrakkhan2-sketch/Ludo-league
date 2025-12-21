@@ -33,8 +33,6 @@ const StatCard = ({ title, value, loading }: { title: string, value: string | nu
 
 
 const MatchCard = ({ match }: { match: Match }) => {
-    const { user } = useUser();
-    const hasJoined = user ? match.players.includes(user.uid) : false;
     const isFull = match.players.length >= match.maxPlayers;
 
     const getStatusVariant = (status: Match['status']) => {
@@ -42,7 +40,8 @@ const MatchCard = ({ match }: { match: Match }) => {
             case 'open': return isFull ? 'destructive' : 'secondary';
             case 'ongoing': return 'default';
             case 'completed': return 'outline';
-            case 'verification': return 'destructive';
+            case 'disputed': return 'destructive';
+            case 'result_pending': return 'default';
             default: return 'default';
         }
     }
@@ -61,7 +60,7 @@ const MatchCard = ({ match }: { match: Match }) => {
               variant={getStatusVariant(match.status)}
               className="capitalize"
             >
-              {isFull && match.status === 'open' ? 'Full' : match.status}
+              {isFull && match.status === 'open' ? 'Full' : match.status.replace('_', ' ')}
             </Badge>
           </div>
         </CardHeader>
@@ -91,7 +90,7 @@ const MatchCard = ({ match }: { match: Match }) => {
         <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-4">
           <div className="flex items-center gap-1.5">
             <Trophy className="h-5 w-5 text-yellow-500" />
-            <p className="text-lg font-bold">₹{match.prizePool || match.entryFee * match.players.length * 0.9}</p>
+            <p className="text-lg font-bold">₹{match.prizePool}</p>
           </div>
            <Button asChild>
              <Link href={`/match/${match.id}`}>
@@ -196,21 +195,24 @@ export default function DashboardPage() {
     const { user, loading: userLoading } = useUser();
     const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
     
-    // 1. Fetch user's active matches (open or ongoing)
+    // My Active Matches (User has joined and match is not completed/disputed)
     const { data: myMatches, loading: myMatchesLoading } = useCollection<Match>('matches', {
-        where: user?.uid ? [['players', 'array-contains', user.uid], ['status', 'in', ['open', 'ongoing']]] : undefined,
+        where: user?.uid ? [
+            ['players', 'array-contains', user.uid], 
+            ['status', 'in', ['open', 'ongoing', 'result_pending']]
+        ] : undefined,
         limit: 10,
     });
 
-    // 2. Fetch all public, open matches
+    // All public, open matches (that the user hasn't joined)
     const { data: openMatchesData, loading: openMatchesLoading } = useCollection<Match>('matches', {
         where: [['status', '==', 'open']],
         limit: 10
     });
 
-    // 3. Filter out matches the user is already in from the open matches list
+    // Filter out matches the user is already in from the open matches list
     const openMatches = useMemo(() => {
-        if (!openMatchesData || !myMatches) return [];
+        if (!openMatchesData || !myMatches) return openMatchesData || [];
         const myMatchIds = new Set(myMatches.map(m => m.id));
         return openMatchesData.filter(match => !myMatchIds.has(match.id));
     }, [openMatchesData, myMatches]);

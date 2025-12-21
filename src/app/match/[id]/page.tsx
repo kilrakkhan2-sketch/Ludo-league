@@ -1,4 +1,3 @@
-
 'use client';
 
 import { doc, runTransaction, updateDoc, arrayUnion, Timestamp, collection, getDocs, query, where, writeBatch } from 'firebase/firestore';
@@ -7,7 +6,7 @@ import { Match, UserProfile } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, Trophy, Swords, Calendar, Hourglass, ClipboardCopy, Upload, Crown, ArrowLeft, CheckCircle, Plus } from 'lucide-react';
+import { Users, Trophy, Swords, Calendar, Hourglass, ClipboardCopy, Upload, Crown, ArrowLeft, CheckCircle, Plus, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -22,6 +21,7 @@ import Confetti from 'react-confetti';
 import { useWindowSize } from 'react-use';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const MatchPageHeader = ({ title, showBackButton = true }: { title: string, showBackButton?: boolean }) => {
     const router = useRouter();
@@ -64,18 +64,18 @@ const MatchPageSkeleton = () => (
     </>
 )
 
-const PlayerListLobby = ({ match, players }: { match: Match, players: UserProfile[] }) => {
+const PlayerList = ({ match, players, title = "Players" }: { match: Match, players: UserProfile[], title?: string }) => {
     const emptySlots = Array.from({ length: Math.max(0, match.maxPlayers - players.length) });
 
     return (
-        <Card className="bg-transparent shadow-none border-0">
+        <Card>
             <CardHeader className="text-center">
-                <CardDescription>Players</CardDescription>
-                <CardTitle className="text-2xl">{players.length} / {match.maxPlayers}</CardTitle>
+                <CardTitle className="text-2xl">{title}</CardTitle>
+                <CardDescription>{players.length} / {match.maxPlayers} joined</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
                 {players.map(p => (
-                     <div key={p.id} className="flex items-center justify-between p-3 bg-card border-2 border-green-500 rounded-lg shadow-sm">
+                     <div key={p.id} className="flex items-center justify-between p-3 bg-muted rounded-lg shadow-sm">
                         <div className="flex items-center gap-3">
                             <Avatar>
                                 <AvatarImage src={p.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${p.uid}`} />
@@ -83,10 +83,9 @@ const PlayerListLobby = ({ match, players }: { match: Match, players: UserProfil
                             </Avatar>
                             <div>
                                 <p className="font-semibold">{p.displayName}</p>
-                                <p className="text-xs text-muted-foreground">{p.uid === match.creatorId ? 'Creator - Ready' : 'Ready'}</p>
+                                <p className="text-xs text-muted-foreground">{p.uid === match.creatorId ? 'Creator' : 'Player'}</p>
                             </div>
                         </div>
-                        <CheckCircle className="h-5 w-5 text-green-500" />
                     </div>
                 ))}
                  {emptySlots.map((_, index) => (
@@ -107,127 +106,49 @@ const PlayerListLobby = ({ match, players }: { match: Match, players: UserProfil
 };
 
 
-const MatchOpen = ({ match, profile, players }: { match: Match, profile: UserProfile, players: UserProfile[] }) => {
+const MatchOpenContent = ({ match, players }: { match: Match, players: UserProfile[] }) => {
     const { user } = useUser();
-    const { firestore } = useFirebase();
     const { toast } = useToast();
     const [isJoining, setIsJoining] = useState(false);
 
-    const alreadyJoined = match.players.includes(user?.uid || '');
-    const isFull = match.players.length >= match.maxPlayers;
-    const isCreator = match.creatorId === user?.uid;
+    const hasJoined = useMemo(() => user && match.players.includes(user.uid), [user, match.players]);
+
+    const handleJoinMatch = async () => {
+        setIsJoining(true);
+        // This logic will be implemented in the next step.
+        toast({ title: "Joining functionality coming soon!" });
+        setIsJoining(false);
+    };
 
     return (
         <div className="flex flex-col flex-grow">
             <main className="flex-grow p-4 space-y-4">
-                <PlayerListLobby match={match} players={players} />
+                <PlayerList match={match} players={players} />
             </main>
-            <footer className="p-4 sticky bottom-0 bg-background border-t space-y-2">
-                 {isCreator && match.players.length < match.maxPlayers &&
-                    <div className='text-center p-4 bg-muted rounded-lg'>
-                        <p className='font-bold'>Waiting for players...</p>
-                        <p className='text-sm text-muted-foreground'>The match will begin once all slots are filled.</p>
-                    </div>
-                }
+            <footer className="p-4 sticky bottom-0 bg-background border-t">
+                {hasJoined ? (
+                    <Alert>
+                        <Info className="h-4 w-4" />
+                        <AlertTitle>You have joined!</AlertTitle>
+                        <AlertDescription>
+                            Waiting for other players. The match will begin once full.
+                        </AlertDescription>
+                    </Alert>
+                ) : (
+                    <Button onClick={handleJoinMatch} disabled={isJoining} className="w-full text-lg py-6">
+                        {isJoining ? 'Joining...' : `Join for ₹${match.entryFee}`}
+                    </Button>
+                )}
             </footer>
         </div>
     );
 };
 
-
-const MatchJoined = ({ match, players }: { match: Match, players: UserProfile[] }) => {
-    const { user } = useUser();
-    const isCreator = match.creatorId === user?.uid;
-
-    return (
-        <div className="flex flex-col flex-grow">
-            <main className="flex-grow p-4 space-y-4">
-                <PlayerListLobby match={match} players={players} />
-                 {!isCreator && (
-                    <div className='text-center p-8 bg-card rounded-lg'>
-                        <p className='font-bold text-lg'>Waiting for Room Code</p>
-                        <p className='text-sm text-muted-foreground'>The match creator is setting up the room. The code will appear here shortly.</p>
-                    </div>
-                 )}
-            </main>
-        </div>
-    );
-};
-
-
-const MatchOngoing = ({ match }: { match: Match }) => {
-    return (
-        <div className="p-4 space-y-6">
-            <Card>
-                <CardContent className="p-6 text-center space-y-4">
-                     <p className="text-sm text-muted-foreground">Match is in progress</p>
-                     <p className='text-sm text-muted-foreground max-w-xs mx-auto'>
-                         The game is now ongoing. The creator will submit results once it's finished.
-                     </p>
-                </CardContent>
-            </Card>
-             <ChatRoom matchId={match.id} />
-        </div>
-    );
-};
-
-
-const MatchVerification = () => {
-    return (
-         <div className="p-8 text-center space-y-4">
-             <Card className="bg-blue-100 text-blue-900">
-                <CardHeader>
-                    <CardTitle>Result Pending Verification</CardTitle>
-                    <CardDescription className="text-blue-800">The result is awaiting verification from the admin. You will be notified once the prize money is distributed.</CardDescription>
-                </CardHeader>
-            </Card>
-        </div>
-    );
-};
-
-
-const MatchCompleted = ({ match, players }: { match: Match, players: UserProfile[] }) => {
-    const { user } = useUser();
-    const { width, height } = useWindowSize();
-    const winner = players.find(p => p.id === match.winnerId);
-    const isWinner = user?.uid === winner?.uid;
-    const [isClient, setIsClient] = useState(false);
-
-    useEffect(() => {
-        setIsClient(true);
-    }, []);
-    
-    return (
-         <div className="p-4 space-y-4">
-            {isClient && isWinner && <Confetti width={width} height={height} recycle={false} numberOfPieces={500} tweenDuration={5000} />}
-            <Card className="text-center bg-gradient-to-b from-primary to-purple-800 text-primary-foreground">
-                <CardHeader>
-                    <CardTitle className="text-2xl">Congratulations, {winner?.displayName || 'Winner'}!</CardTitle>
-                    <CardDescription className="text-primary-foreground/80">The match is complete and prizes have been distributed.</CardDescription>
-                </CardHeader>
-                 <CardContent>
-                    <p className="text-sm">You won</p>
-                    <p className="text-4xl font-bold">₹{match.prizePool?.toLocaleString()}</p>
-                </CardContent>
-            </Card>
-            <div className="flex justify-center">
-                <Button asChild>
-                    <Link href="/dashboard">Back to Dashboard</Link>
-                </Button>
-            </div>
-         </div>
-    )
-};
-
-
 export default function MatchPage({ params }: { params: { id: string } }) {
-  const { user, loading: userLoading } = useUser();
-  const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
-
   const { data: match, loading: matchLoading } = useDoc<Match>(`matches/${params.id}`);
   
   const playerIds = useMemo(() => {
-      if (!match?.players) return ['_']; 
+      if (!match?.players) return ['_']; // Firestore 'in' query requires a non-empty array
       return match.players.length > 0 ? match.players : ['_'];
   }, [match]);
 
@@ -237,37 +158,25 @@ export default function MatchPage({ params }: { params: { id: string } }) {
 
   const players = useMemo(() => playersData || [], [playersData]);
 
-  const loading = matchLoading || playersLoading || userLoading || profileLoading;
+  const loading = matchLoading || playersLoading;
 
   const renderContent = () => {
-    if (loading || !match || !profile) {
+    if (loading || !match) {
       return <MatchPageSkeleton />;
     }
 
-    let title;
+    let title = "Match Details";
     let content;
-    
-    if (match.status === 'completed') {
-        title = 'Match Completed';
-        content = <MatchCompleted match={match} players={players} />;
-    } else if (match.status === 'verification') {
-        title = 'Awaiting Verification';
-        content = <MatchVerification />;
-    } else if (match.status === 'ongoing') {
-        title = 'Game in Progress';
-        content = <MatchOngoing match={match} />;
-    } else if (match.status === 'open') {
-        const isFull = match.players.length >= match.maxPlayers;
-        if (isFull) {
-            title = 'Ready to Start';
-            content = <MatchJoined match={match} players={players} />;
-        } else {
+
+    switch(match.status) {
+        case 'open':
             title = 'Waiting for Players';
-            content = <MatchOpen match={match} profile={profile} players={players} />;
-        }
-    } else {
-        title = 'Match Status Unknown';
-        content = <div className="p-8 text-center">Could not determine match status.</div>;
+            content = <MatchOpenContent match={match} players={players} />;
+            break;
+        default:
+            title = "Match: " + match.status.replace('_', ' ');
+            content = <div className="p-4"><PlayerList match={match} players={players} title={`Status: ${match.status}`} /></div>
+            break;
     }
     
     return (

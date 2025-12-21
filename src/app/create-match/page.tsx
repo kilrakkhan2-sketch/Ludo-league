@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ArrowLeft, Gamepad2, Users, Shield } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useDoc } from '@/firebase';
 import type { MaintenanceSettings } from '@/types';
 import { isTimeInDisabledRange } from '@/components/layout/MaintenanceShield';
@@ -24,7 +24,7 @@ export default function CreateMatchPage() {
   const [title, setTitle] = useState('');
   const [entryFee, setEntryFee] = useState('50');
   const [customFee, setCustomFee] = useState('');
-  const [maxPlayers, setMaxPlayers] = useState(2);
+  const [maxPlayers, setMaxPlayers] = useState('2');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleFeeChange = (value: string) => {
@@ -52,26 +52,31 @@ export default function CreateMatchPage() {
     }
 
     if (!title.trim()) {
-      toast({ variant: 'destructive', title: 'Missing Information', description: 'Please fill out all fields.' });
+      toast({ variant: 'destructive', title: 'Missing Information', description: 'Please provide a match title.' });
       return;
     }
 
     setIsSubmitting(true);
     
+    // The createMatch function will be re-enabled or modified in a future step
+    // For now, this logic is prepared for when it's ready.
+    toast({
+      variant: 'destructive',
+      title: 'Functionality Disabled',
+      description: 'Match creation is temporarily disabled while we upgrade the system.',
+    });
+    setIsSubmitting(false);
+
+    // TODO: Re-enable the following code once the `createMatch` cloud function is rebuilt.
+    /*
     const functions = getFunctions();
     const createMatchCloudFunction = httpsCallable(functions, 'createMatch');
 
     try {
-      // Prize pool will be calculated dynamically as players join
-      const initialPrizePool = finalFee * 0.9; 
-
       const result = await createMatchCloudFunction({
         title,
         entryFee: finalFee,
-        prizePool: initialPrizePool,
-        maxPlayers,
-        status: 'open',
-        privacy: 'public',
+        maxPlayers: parseInt(maxPlayers),
       });
 
       toast({ title: 'Match Created!', description: 'Your match is now live and waiting for players.' });
@@ -88,6 +93,7 @@ export default function CreateMatchPage() {
     } finally {
       setIsSubmitting(false);
     }
+    */
   };
   
   const matchesGloballyDisabled = maintenanceSettings?.areMatchesDisabled || false;
@@ -129,7 +135,7 @@ export default function CreateMatchPage() {
                     <h2 className="font-semibold text-lg">Entry Details</h2>
                 </div>
                 <div className="pl-9 space-y-3">
-                    <Label>Entry Fee</Label>
+                    <Label>Entry Fee (₹)</Label>
                     <RadioGroup value={entryFee} onValueChange={handleFeeChange} className="flex items-center gap-2 flex-wrap">
                         {feeOptions.map(fee => (
                         <Label key={fee} htmlFor={`fee-${fee}`} className="flex items-center gap-2 cursor-pointer border rounded-md px-3 py-2 text-sm has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary transition-colors">
@@ -155,7 +161,7 @@ export default function CreateMatchPage() {
                 </div>
             </div>
 
-             {/* Step 3: Advanced Settings (Simplified) */}
+             {/* Step 3: Game Settings */}
             <div className="space-y-4">
                  <div className="flex items-center gap-3">
                     <div className="flex-shrink-0 bg-primary text-primary-foreground h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold">3</div>
@@ -163,7 +169,7 @@ export default function CreateMatchPage() {
                 </div>
                  <div className="pl-9 space-y-3">
                     <Label>Max Players</Label>
-                    <RadioGroup value={maxPlayers.toString()} onValueChange={val => setMaxPlayers(parseInt(val))} className="flex items-center gap-2 mt-2">
+                    <RadioGroup value={maxPlayers} onValueChange={setMaxPlayers} className="flex items-center gap-2 mt-2">
                         <Label htmlFor="players-2" className="flex items-center gap-2 cursor-pointer border rounded-md px-3 py-2 text-sm has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary transition-colors">
                         <RadioGroupItem value="2" id="players-2" />
                         2 Players

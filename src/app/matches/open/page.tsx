@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AppShell } from "@/components/layout/AppShell";
@@ -13,12 +12,11 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Users, Trophy, PlusCircle } from "lucide-react";
+import { Users, Trophy } from "lucide-react";
 import Link from "next/link";
-import { useCollection, useUser } from "@/firebase";
+import { useCollection } from "@/firebase";
 import type { Match } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMemo } from "react";
 
 const MatchCardSkeleton = () => (
     <Card className="flex flex-col">
@@ -38,8 +36,6 @@ const MatchCardSkeleton = () => (
 );
 
 const MatchCard = ({ match }: { match: Match }) => {
-    const { user } = useUser();
-    const hasJoined = user ? match.players.includes(user.uid) : false;
     const isFull = match.players.length >= match.maxPlayers;
 
     return (
@@ -53,9 +49,7 @@ const MatchCard = ({ match }: { match: Match }) => {
               </CardDescription>
             </div>
             <Badge
-              variant={
-                isFull ? "destructive" : "secondary"
-              }
+              variant={isFull ? "destructive" : "secondary"}
             >
               {isFull ? 'Full' : 'Open'}
             </Badge>
@@ -63,10 +57,10 @@ const MatchCard = ({ match }: { match: Match }) => {
         </CardHeader>
         <CardContent className="p-4 pt-0 flex-grow">
           <div className="flex items-center -space-x-2 mb-2">
-            {Array.from({ length: match.players.length }).map((_, i) => (
-              <Avatar key={i} className="h-6 w-6 border-2 border-background">
+            {match.players.map((playerId, i) => (
+              <Avatar key={playerId} className="h-6 w-6 border-2 border-background">
                 <AvatarImage
-                  src={`https://api.dicebear.com/7.x/adventurer/svg?seed=player${match.id}-${i}`}
+                  src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${playerId}`}
                 />
                 <AvatarFallback>P{i + 1}</AvatarFallback>
               </Avatar>
@@ -87,7 +81,7 @@ const MatchCard = ({ match }: { match: Match }) => {
         <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-4">
           <div className="flex items-center gap-1.5">
             <Trophy className="h-5 w-5 text-yellow-500" />
-            <p className="text-lg font-bold">₹{match.prizePool || match.entryFee * match.players.length * 0.9}</p>
+            <p className="text-lg font-bold">₹{match.prizePool}</p>
           </div>
            <Button asChild>
              <Link href={`/match/${match.id}`}>
@@ -118,9 +112,9 @@ export default function OpenMatchesPage() {
   return (
     <AppShell pageTitle="Open Matches" showBackButton>
       <div className="p-4 space-y-6">
-        {loading && matches.length === 0 ? (
+        {loading && (!matches || matches.length === 0) ? (
           <Skeletons />
-        ) : matches.length > 0 ? (
+        ) : matches && matches.length > 0 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {matches.map((match: Match) => (
@@ -133,8 +127,11 @@ export default function OpenMatchesPage() {
             <Trophy className="mx-auto h-12 w-12 text-muted-foreground" />
             <h3 className="mt-2 text-sm font-semibold text-foreground">No open matches</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              No open matches available right now.
+              No open matches available right now. Why not create one?
             </p>
+             <Button className="mt-4" asChild>
+                <Link href="/create-match">Create a Match</Link>
+             </Button>
           </div>
         )}
       </div>

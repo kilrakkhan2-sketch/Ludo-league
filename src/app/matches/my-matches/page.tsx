@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AppShell } from "@/components/layout/AppShell";
@@ -18,6 +17,7 @@ import Link from "next/link";
 import { useCollection, useUser } from "@/firebase";
 import type { Match } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useMemo } from "react";
 
 const MatchCardSkeleton = () => (
     <Card className="flex flex-col">
@@ -43,7 +43,8 @@ const MatchCard = ({ match }: { match: Match }) => {
             case 'open': return 'secondary';
             case 'ongoing': return 'default';
             case 'completed': return 'outline';
-            case 'verification': return 'destructive';
+            case 'disputed': return 'destructive';
+            case 'result_pending': return 'default';
             default: return 'default';
         }
     }
@@ -60,17 +61,18 @@ const MatchCard = ({ match }: { match: Match }) => {
             </div>
             <Badge
               variant={getStatusVariant(match.status)}
+              className="capitalize"
             >
-              {match.status}
+              {match.status.replace('_', ' ')}
             </Badge>
           </div>
         </CardHeader>
         <CardContent className="p-4 pt-0 flex-grow">
           <div className="flex items-center -space-x-2 mb-2">
-            {Array.from({ length: match.players.length }).map((_, i) => (
-              <Avatar key={i} className="h-6 w-6 border-2 border-background">
+            {match.players.map((playerId, i) => (
+              <Avatar key={playerId} className="h-6 w-6 border-2 border-background">
                 <AvatarImage
-                  src={`https://api.dicebear.com/7.x/adventurer/svg?seed=player${match.id}-${i}`}
+                  src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${playerId}`}
                 />
                 <AvatarFallback>P{i + 1}</AvatarFallback>
               </Avatar>
@@ -91,11 +93,11 @@ const MatchCard = ({ match }: { match: Match }) => {
         <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-4">
           <div className="flex items-center gap-1.5">
             <Trophy className="h-5 w-5 text-yellow-500" />
-            <p className="text-lg font-bold">₹{match.prizePool || match.entryFee * match.players.length * 0.9}</p>
+            <p className="text-lg font-bold">₹{match.prizePool}</p>
           </div>
            <Button asChild>
              <Link href={`/match/${match.id}`}>
-                {match.status === 'open' ? 'Join' : 'View'}
+                View
              </Link>
           </Button>
         </CardFooter>
@@ -106,7 +108,10 @@ const MatchCard = ({ match }: { match: Match }) => {
 export default function MyMatchesPage() {
   const { user } = useUser();
   const { data: matches, loading } = useCollection<Match>('matches', {
-    where: user?.uid ? ['players', 'array-contains', user.uid] : undefined,
+    where: user?.uid ? [
+        ['players', 'array-contains', user.uid],
+        ['status', 'in', ['open', 'ongoing', 'result_pending']]
+    ] : undefined,
     orderBy: ['createdAt', 'desc'],
     limit: 12
   });
@@ -120,9 +125,9 @@ export default function MyMatchesPage() {
   )
 
   return (
-    <AppShell pageTitle="My Matches" showBackButton>
+    <AppShell pageTitle="My Active Matches" showBackButton>
       <div className="p-4 space-y-6">
-        {loading && matches.length === 0 ? <Skeletons /> : matches.length > 0 ? (
+        {loading && (!matches || matches.length === 0) ? <Skeletons /> : matches && matches.length > 0 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {matches.map((match: Match) => (
@@ -133,9 +138,9 @@ export default function MyMatchesPage() {
         ) : (
           <div className="text-center py-12 px-4 border-2 border-dashed rounded-lg bg-card mt-8">
              <Trophy className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-2 text-sm font-semibold text-foreground">No matches found</h3>
+            <h3 className="mt-2 text-sm font-semibold text-foreground">No active matches found</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              You haven't joined or created any matches yet.
+              You haven't joined or created any matches that are currently active.
             </p>
           </div>
         )}

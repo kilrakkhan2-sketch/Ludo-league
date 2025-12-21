@@ -1,14 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
 export type UserProfile = {
   id: string;
   uid: string;
@@ -36,16 +25,27 @@ export type UserProfile = {
 
 export type Match = {
   id: string;
-  creatorId: string;
   title: string;
   entryFee: number;
+  prizePool: number;
   maxPlayers: number;
-  status: "open" | "ongoing" | "completed" | "cancelled" | "verification";
+  creatorId: string;
   players: string[];
-  createdAt: any; // Can be server timestamp
+  roomCode: string | null;
+  status: "open" | "ongoing" | "result_pending" | "completed" | "disputed";
+  createdAt: any;
+  startedAt: any | null;
+  completedAt: any | null;
   winnerId?: string;
-  prizePool?: number;
-  winnerDeclaredBy?: string;
+};
+
+export type MatchResult = {
+  id: string;
+  userId: string;
+  position: number;
+  result: 'win' | 'loss';
+  screenshotUrl: string;
+  submittedAt: any;
 };
 
 export type Transaction = {
