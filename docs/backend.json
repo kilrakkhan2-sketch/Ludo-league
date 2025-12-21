@@ -112,7 +112,17 @@
         "isAppDisabled": { "type": "boolean", "description": "If true, the entire app is in maintenance mode." },
         "appDisabledMessage": { "type": "string", "description": "Message to display when the app is disabled." },
         "areDepositsDisabled": { "type": "boolean", "description": "If true, users cannot initiate new deposits." },
-        "areWithdrawalsDisabled": { "type": "boolean", "description": "If true, users cannot request withdrawals." }
+        "depositsTimeScheduled": { "type": "boolean", "description": "Enable time-based disabling for deposits." },
+        "depositsStartTime": { "type": "string", "description": "Time to start disabling deposits (HH:mm)." },
+        "depositsEndTime": { "type": "string", "description": "Time to stop disabling deposits (HH:mm)." },
+        "areWithdrawalsDisabled": { "type": "boolean", "description": "If true, users cannot request withdrawals." },
+        "withdrawalsTimeScheduled": { "type": "boolean", "description": "Enable time-based disabling for withdrawals." },
+        "withdrawalsStartTime": { "type": "string", "description": "Time to start disabling withdrawals (HH:mm)." },
+        "withdrawalsEndTime": { "type": "string", "description": "Time to stop disabling withdrawals (HH:mm)." },
+        "areMatchesDisabled": { "type": "boolean", "description": "If true, users cannot create new matches." },
+        "matchesTimeScheduled": { "type": "boolean", "description": "Enable time-based disabling for match creation." },
+        "matchesStartTime": { "type": "string", "description": "Time to start disabling match creation (HH:mm)." },
+        "matchesEndTime": { "type": "string", "description": "Time to stop disabling match creation (HH:mm)." }
       }
     },
     "KycRequest": {

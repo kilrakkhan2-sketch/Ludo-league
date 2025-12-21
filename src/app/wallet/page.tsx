@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AppShell } from "@/components/layout/AppShell";
@@ -44,6 +43,7 @@ import React, { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/BottomNav";
+import { isTimeInDisabledRange } from "@/components/layout/MaintenanceShield";
 
 const getTransactionIcon = (type: Transaction['type']) => {
     switch (type) {
@@ -144,8 +144,13 @@ export default function WalletPage() {
     .filter((t: Transaction) => t.type === 'prize' || t.type === 'win')
     .reduce((sum, t) => sum + t.amount, 0);
     
-  const depositsDisabled = maintenanceSettings?.areDepositsDisabled || false;
-  const withdrawalsDisabled = maintenanceSettings?.areWithdrawalsDisabled || false;
+  const depositsGloballyDisabled = maintenanceSettings?.areDepositsDisabled || false;
+  const depositsTimeDisabled = maintenanceSettings?.depositsTimeScheduled && isTimeInDisabledRange(maintenanceSettings.depositsStartTime, maintenanceSettings.depositsEndTime);
+  const areDepositsDisabled = depositsGloballyDisabled || depositsTimeDisabled;
+
+  const withdrawalsGloballyDisabled = maintenanceSettings?.areWithdrawalsDisabled || false;
+  const withdrawalsTimeDisabled = maintenanceSettings?.withdrawalsTimeScheduled && isTimeInDisabledRange(maintenanceSettings.withdrawalsStartTime, maintenanceSettings.withdrawalsEndTime);
+  const areWithdrawalsDisabled = withdrawalsGloballyDisabled || withdrawalsTimeDisabled;
 
   return (
     <AppShell pageTitle="Wallet" showBackButton>
@@ -172,12 +177,12 @@ export default function WalletPage() {
 
         <div className="p-4 space-y-6 pb-20">
             <div className="grid grid-cols-2 gap-4">
-                <Button className="py-6 text-base bg-green-500 hover:bg-green-600 text-white" onClick={() => router.push('/add-money')} disabled={depositsDisabled}>
+                <Button className="py-6 text-base bg-green-500 hover:bg-green-600 text-white" onClick={() => router.push('/add-money')} disabled={areDepositsDisabled}>
                   <Upload className="mr-2 h-5 w-5" /> Deposit
                 </Button>
                  <Dialog>
                   <DialogTrigger asChild>
-                    <Button variant="destructive" className="py-6 text-base bg-red-500 hover:bg-red-600" disabled={withdrawalsDisabled}>
+                    <Button variant="destructive" className="py-6 text-base bg-red-500 hover:bg-red-600" disabled={areWithdrawalsDisabled}>
                       <Download className="mr-2 h-5 w-5" /> Withdraw
                     </Button>
                   </DialogTrigger>

@@ -1,4 +1,3 @@
-
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
@@ -18,6 +17,37 @@ interface UserData {
     matchesWon?: number;
     [key: string]: any;
 }
+
+interface MaintenanceSettings {
+  areMatchesDisabled?: boolean;
+  matchesTimeScheduled?: boolean;
+  matchesStartTime?: string;
+  matchesEndTime?: string;
+  [key: string]: any;
+}
+
+
+// Helper function to check if current time is within a disabled time range.
+const isTimeInDisabledRange = (startTimeStr?: string, endTimeStr?: string): boolean => {
+    if (!startTimeStr || !endTimeStr) return false;
+
+    // Use a specific timezone, e.g., 'Asia/Kolkata' for IST
+    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const [startHours, startMinutes] = startTimeStr.split(':').map(Number);
+    const startTotalMinutes = startHours * 60 + startMinutes;
+
+    const [endHours, endMinutes] = endTimeStr.split(':').map(Number);
+    const endTotalMinutes = endHours * 60 + endMinutes;
+
+    if (startTotalMinutes > endTotalMinutes) { // Overnight range
+        return currentMinutes >= startTotalMinutes || currentMinutes < endTotalMinutes;
+    } else { // Same-day range
+        return currentMinutes >= startTotalMinutes && currentMinutes < endTotalMinutes;
+    }
+};
+
 
 // =================================================================
 //  USER & ROLE MANAGEMENT FUNCTIONS
@@ -254,6 +284,18 @@ export const onMatchResultUpdate = functions.firestore
 // =================================================================
 
 export const createMatch = functions.https.onCall(async (data, context) => {
+    // 0. Server-side validation for maintenance mode
+    const maintenanceRef = db.collection('settings').doc('maintenance');
+    const maintenanceDoc = await maintenanceRef.get();
+    const maintenanceSettings = maintenanceDoc.data() as MaintenanceSettings | undefined;
+
+    const matchesGloballyDisabled = maintenanceSettings?.areMatchesDisabled || false;
+    const matchesTimeDisabled = maintenanceSettings?.matchesTimeScheduled && isTimeInDisabledRange(maintenanceSettings.matchesStartTime, maintenanceSettings.matchesEndTime);
+    
+    if (matchesGloballyDisabled || matchesTimeDisabled) {
+        throw new functions.https.HttpsError("failed-precondition", "Match creation is temporarily disabled. Please try again later.");
+    }
+
     // 1. Authentication Check
     if (!context.auth) {
         throw new functions.https.HttpsError("unauthenticated", "You must be logged in to create a match.");

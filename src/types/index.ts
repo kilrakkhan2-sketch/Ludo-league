@@ -1,6 +1,5 @@
 
 
-
 export type UserProfile = {
   id: string;
   uid: string;
@@ -99,8 +98,19 @@ export type MaintenanceSettings = {
   isAppDisabled?: boolean;
   appDisabledMessage?: string;
   areDepositsDisabled?: boolean;
+  depositsTimeScheduled?: boolean;
+  depositsStartTime?: string; // e.g., "22:00"
+  depositsEndTime?: string; // e.g., "10:00"
   areWithdrawalsDisabled?: boolean;
+  withdrawalsTimeScheduled?: boolean;
+  withdrawalsStartTime?: string;
+  withdrawalsEndTime?: string;
+  areMatchesDisabled?: boolean;
+  matchesTimeScheduled?: boolean;
+  matchesStartTime?: string;
+  matchesEndTime?: string;
 };
+
 
 export type Message = {
     id: string;

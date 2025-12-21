@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useDoc } from "@/firebase";
@@ -28,6 +27,31 @@ const MaintenanceScreen = ({ message }: { message?: string }) => (
     </div>
 );
 
+// Helper function to check if current time is within a disabled time range.
+// Handles overnight ranges (e.g., 22:00 to 10:00).
+export const isTimeInDisabledRange = (startTimeStr?: string, endTimeStr?: string): boolean => {
+    if (!startTimeStr || !endTimeStr) return false;
+
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const [startHours, startMinutes] = startTimeStr.split(':').map(Number);
+    const startTotalMinutes = startHours * 60 + startMinutes;
+
+    const [endHours, endMinutes] = endTimeStr.split(':').map(Number);
+    const endTotalMinutes = endHours * 60 + endMinutes;
+
+    // Case 1: Overnight range (e.g., 22:00 - 10:00)
+    if (startTotalMinutes > endTotalMinutes) {
+        return currentMinutes >= startTotalMinutes || currentMinutes < endTotalMinutes;
+    } 
+    // Case 2: Same-day range (e.g., 10:00 - 17:00)
+    else {
+        return currentMinutes >= startTotalMinutes && currentMinutes < endTotalMinutes;
+    }
+};
+
+
 export function MaintenanceShield({ children }: { children: React.ReactNode }) {
     const { data: settings, loading } = useDoc<MaintenanceSettings>('settings/maintenance');
 
@@ -39,5 +63,7 @@ export function MaintenanceShield({ children }: { children: React.ReactNode }) {
         return <MaintenanceScreen message={settings.appDisabledMessage} />;
     }
 
+    // We can pass the settings down via context if multiple child components need them,
+    // but for now, the check happens here and at the feature-specific pages.
     return <>{children}</>;
 }

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -10,12 +9,17 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ArrowLeft, Gamepad2, Users, Shield } from 'lucide-react';
+import { useDoc } from '@/firebase';
+import type { MaintenanceSettings } from '@/types';
+import { isTimeInDisabledRange } from '@/components/layout/MaintenanceShield';
 
 const feeOptions = [10, 50, 100];
 
 export default function CreateMatchPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { data: maintenanceSettings, loading: maintenanceLoading } = useDoc<MaintenanceSettings>('settings/maintenance');
+
 
   const [title, setTitle] = useState('');
   const [entryFee, setEntryFee] = useState('50');
@@ -85,6 +89,11 @@ export default function CreateMatchPage() {
       setIsSubmitting(false);
     }
   };
+  
+  const matchesGloballyDisabled = maintenanceSettings?.areMatchesDisabled || false;
+  const matchesTimeDisabled = maintenanceSettings?.matchesTimeScheduled && isTimeInDisabledRange(maintenanceSettings.matchesStartTime, maintenanceSettings.matchesEndTime);
+  const areMatchesDisabled = matchesGloballyDisabled || matchesTimeDisabled;
+
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -169,8 +178,8 @@ export default function CreateMatchPage() {
         </main>
         
         <footer className="p-4 sticky bottom-0 bg-background border-t">
-             <Button onClick={handleCreateMatch} className="w-full text-lg py-6 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating Match...' : 'Create Match'}
+             <Button onClick={handleCreateMatch} className="w-full text-lg py-6 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90" disabled={isSubmitting || areMatchesDisabled}>
+              {isSubmitting ? 'Creating Match...' : (areMatchesDisabled ? 'Match Creation Disabled' : 'Create Match')}
             </Button>
         </footer>
     </div>
