@@ -102,7 +102,7 @@ const MatchCard = ({ match }: { match: Match }) => {
 export default function OpenMatchesPage() {
   const { data: matches, loading } = useCollection<Match>("matches", {
     where: [["status", "==", "open"]],
-    // orderBy: [["createdAt", "desc"]], // Temporarily removed for debugging
+    orderBy: [["createdAt", "desc"]],
     limit: 12,
   });
 

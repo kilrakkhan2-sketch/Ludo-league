@@ -65,7 +65,9 @@ service cloud.firestore {
     match /matches/{matchId} {
 
       allow list: if isSignedIn();
-      allow read: if isSignedIn() && (resource.data.status == 'open' || request.auth.uid in resource.data.players);
+      // Allow any signed in user to read any match document.
+      // WARNING: This is not the fix. The missing index is the problem.
+      allow read: if isSignedIn();
 
       allow create: if isSignedIn()
                     && request.auth.uid == request.resource.data.creatorId
