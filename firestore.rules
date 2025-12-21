@@ -51,8 +51,8 @@ service cloud.firestore {
           !('walletBalance' in request.resource.data.diff(resource.data).affectedKeys()))
           || isSuperAdmin()
         ) || (
-          // Allow adding a friend
-          request.resource.data.friends == resource.data.friends.concat(request.resource.data.friends[resource.data.friends.size()])
+          // Allow adding or removing a friend
+          (request.resource.data.friends.hasAny(resource.data.friends) || resource.data.friends.hasAny(request.resource.data.friends))
         );
 
       allow delete: if isSuperAdmin();
@@ -102,8 +102,14 @@ service cloud.firestore {
 
     match /tournaments/{tournamentId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isMatchAdmin() || isSuperAdmin();
+      allow create: if isSignedIn(); // Any signed-in user can create a tournament
+      allow update: if isSignedIn() && 
+                    (
+                        // Allow a user to join a tournament (add themselves to players array)
+                        (request.resource.data.players.hasOnly([request.auth.uid]) && !(request.auth.uid in resource.data.players))
+                        || isMatchAdmin() || isSuperAdmin()
+                    );
+      allow delete: if isMatchAdmin() || isSuperAdmin();
     }
 
     // ------------------ FRIEND REQUESTS ------------------

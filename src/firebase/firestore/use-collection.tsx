@@ -108,7 +108,11 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
         setLoading(false);
         setError(null);
     }, (err: any) => {
-      console.error(`Error fetching collection from path: ${path}`, err);
+      // Don't log "Query requires an index" as an error in the console.
+      // Firestore's offline persistence will show this often, and it's not a critical error.
+      if (!err.message.includes("Query requires an index")) {
+          console.error(`Error fetching collection from path: ${path}`, err);
+      }
       setError(err);
       setLoading(false);
     });

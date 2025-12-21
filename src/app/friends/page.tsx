@@ -18,14 +18,16 @@ import { useUser, useCollection, useDoc, useFirebase } from "@/firebase";
 import type { UserProfile, FriendRequest } from "@/types";
 import { useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { collection, query, where, addDoc, writeBatch, doc, arrayUnion, serverTimestamp, getDocs } from "firebase/firestore";
+import { collection, query, where, addDoc, writeBatch, doc, arrayUnion, serverTimestamp, getDocs, arrayRemove } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRouter } from "next/navigation";
 
 export default function FriendsPage() {
   const { user } = useUser();
   const { data: currentUserProfile } = useDoc<UserProfile>(user ? `users/${user.uid}` : "");
   const { firestore } = useFirebase();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [usernameQuery, setUsernameQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -111,6 +113,29 @@ export default function FriendsPage() {
           toast({ variant: 'destructive', title: 'Action failed', description: 'Could not process the request.' });
       }
   }
+
+  const handleRemoveFriend = async (friendId: string) => {
+    if (!firestore || !user || !window.confirm("Are you sure you want to remove this friend?")) return;
+    try {
+        const batch = writeBatch(firestore);
+        const currentUserRef = doc(firestore, 'users', user.uid);
+        const friendUserRef = doc(firestore, 'users', friendId);
+
+        batch.update(currentUserRef, { friends: arrayRemove(friendId) });
+        batch.update(friendUserRef, { friends: arrayRemove(user.uid) });
+
+        await batch.commit();
+        toast({ title: "Friend Removed" });
+    } catch(error: any) {
+        toast({ variant: "destructive", title: "Failed to remove friend", description: error.message });
+    }
+  }
+
+  const handleChallengeFriend = (friendId: string) => {
+    // Navigate to create match page, potentially with friend pre-selected
+    router.push('/create-match?private=true&invite=' + friendId);
+    toast({ title: "Challenge!", description: "Creating a private match..."});
+  }
   
   const loading = friendsLoading || requestsLoading || sendersLoading;
 
@@ -162,10 +187,10 @@ export default function FriendsPage() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" onClick={() => handleChallengeFriend(friend.id)}>
                         <MessageSquarePlus className="h-5 w-5" />
                       </Button>
-                      <Button variant="outline" size="icon">
+                      <Button variant="outline" size="icon" onClick={() => handleRemoveFriend(friend.id)}>
                         <UserX className="h-5 w-5" />
                       </Button>
                     </div>
