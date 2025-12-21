@@ -19,14 +19,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-const matchStatuses = ['all', 'open', 'ongoing', 'completed', 'verification', 'cancelled'];
+const matchStatuses = ['all', 'open', 'ongoing', 'verification', 'disputed', 'completed', 'cancelled'];
 
 const getStatusVariant = (status: string) => {
   switch (status) {
     case 'open': return 'secondary';
     case 'ongoing': return 'default';
-    case 'completed': 'default';
-    case 'verification': return 'destructive';
+    case 'completed': return 'outline';
+    case 'verification': return 'default';
+    case 'disputed': return 'destructive';
     case 'cancelled': return 'outline';
     default: return 'default';
   }
@@ -70,7 +71,7 @@ export default function AdminMatchesPage() {
                     <div className="flex space-x-2 overflow-x-auto pb-2">
                         {matchStatuses.map(status => (
                             <Button key={status} size="sm" variant={statusFilter === status ? 'default' : 'outline'} onClick={() => setStatusFilter(status)} className="capitalize shrink-0">
-                                {status}
+                                {status.replace('_', ' ')}
                             </Button>
                         ))}
                     </div>
@@ -110,7 +111,7 @@ export default function AdminMatchesPage() {
                                     <div className="font-medium">{match.title}</div>
                                     <div className="text-xs text-muted-foreground font-mono">{match.id}</div>
                                 </TableCell>
-                                <TableCell><Badge variant={getStatusVariant(match.status)} className="capitalize">{match.status}</Badge></TableCell>
+                                <TableCell><Badge variant={getStatusVariant(match.status)} className="capitalize">{match.status.replace('_', ' ')}</Badge></TableCell>
                                 <TableCell>₹{match.entryFee}</TableCell>
                                 <TableCell>{match.players.length} / {match.maxPlayers}</TableCell>
                                 <TableCell>₹{match.prizePool}</TableCell>

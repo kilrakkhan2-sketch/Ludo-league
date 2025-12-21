@@ -32,18 +32,19 @@ export type Match = {
   creatorId: string;
   players: string[];
   roomCode: string | null;
-  status: "open" | "ongoing" | "result_pending" | "completed" | "disputed";
+  status: "open" | "ongoing" | "verification" | "completed" | "disputed";
   createdAt: any;
   startedAt: any | null;
   completedAt: any | null;
   winnerId?: string;
+  results?: MatchResult[]; // This might be a subcollection in practice
 };
 
 export type MatchResult = {
   id: string;
   userId: string;
   position: number;
-  result: 'win' | 'loss';
+  status: 'won' | 'lost';
   screenshotUrl: string;
   submittedAt: any;
 };

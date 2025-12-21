@@ -34,31 +34,13 @@ interface CommissionSettings {
     rate?: number;
 }
 
-interface UpiAccount {
-    dailyLimit: number;
+interface MatchResult {
+    userId: string;
+    position: number;
+    status: 'win' | 'loss';
+    screenshotUrl: string;
+    submittedAt: any;
 }
-
-
-// Helper function to check if current time is within a disabled time range.
-const isTimeInDisabledRange = (startTimeStr?: string, endTimeStr?: string): boolean => {
-    if (!startTimeStr || !endTimeStr) return false;
-
-    // Use a specific timezone, e.g., 'Asia/Kolkata' for IST
-    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-    const [startHours, startMinutes] = startTimeStr.split(':').map(Number);
-    const startTotalMinutes = startHours * 60 + startMinutes;
-
-    const [endHours, endMinutes] = endTimeStr.split(':').map(Number);
-    const endTotalMinutes = endHours * 60 + endMinutes;
-
-    if (startTotalMinutes > endTotalMinutes) { // Overnight range
-        return currentMinutes >= startTotalMinutes || currentMinutes < endTotalMinutes;
-    } else { // Same-day range
-        return currentMinutes >= startTotalMinutes && currentMinutes < endTotalMinutes;
-    }
-};
 
 // Helper function to send a personal notification
 const sendNotification = (userId: string, title: string, body: string, link?: string) => {
@@ -141,17 +123,18 @@ export const approveWithdrawal = functions.https.onCall(async (data, context) =>
 
     const adminUid = context.auth.uid;
     const requestRef = db.collection('withdrawal-requests').doc(withdrawalId);
-    const adminRef = db.collection('users').doc(adminUid);
     
     // 3. Perform transaction
     try {
-        await db.runTransaction(async (t) => {
-            const requestDoc = await t.get(requestRef);
-            if (!requestDoc.exists) throw new Error('Withdrawal request not found.');
-            const requestData = requestDoc.data();
-            if (requestData?.status !== 'pending') throw new Error('This request has already been processed.');
+        const requestDoc = await requestRef.get();
+        if (!requestDoc.exists) throw new Error('Withdrawal request not found.');
+        const requestData = requestDoc.data();
+        if (requestData?.status !== 'pending') throw new Error('This request has already been processed.');
 
-            const { amount, userId } = requestData;
+        const { amount, userId } = requestData;
+        
+        await db.runTransaction(async (t) => {
+            const adminRef = db.collection('users').doc(adminUid);
             const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
             const userTxSnapshot = await t.get(userTxQuery);
             const userTxRef = userTxSnapshot.docs[0]?.ref;
@@ -173,6 +156,7 @@ export const approveWithdrawal = functions.https.onCall(async (data, context) =>
         });
 
         functions.logger.info(`Withdrawal ${withdrawalId} approved by admin ${adminUid}.`);
+        await sendNotification(userId, 'Withdrawal Approved', `Your withdrawal request for ₹${amount} has been approved and processed.`);
         return { success: true, message: 'Withdrawal approved successfully.' };
         
     } catch (error) {
@@ -262,9 +246,6 @@ export const onDepositStatusChange = functions.firestore
     }
 
     const userRef = db.collection("users").doc(userId);
-    const upiAccountRef = db.collection('upi-accounts').doc(upiAccountId);
-    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })).toISOString().split('T')[0]; // YYYY-MM-DD
-    const dailyStatRef = upiAccountRef.collection('daily_stats').doc(today);
     const commissionSettingsRef = db.collection('settings').doc('commission');
 
 
@@ -274,10 +255,6 @@ export const onDepositStatusChange = functions.firestore
             if (!userDoc.exists) throw new Error(`User ${userId} not found.`);
             const userData = userDoc.data() as UserData;
             
-            const upiAccountDoc = await t.get(upiAccountRef);
-            if (!upiAccountDoc.exists) throw new Error(`UPI Account ${upiAccountId} not found.`);
-            
-            const dailyStatDoc = await t.get(dailyStatRef);
             const commissionSettingsDoc = await t.get(commissionSettingsRef);
             const commissionSettings = commissionSettingsDoc.data() as CommissionSettings | undefined;
 
@@ -295,20 +272,7 @@ export const onDepositStatusChange = functions.firestore
                 relatedId: context.params.depositId,
             });
 
-            // 3. Update the daily stats in the subcollection.
-             if (dailyStatDoc.exists) {
-                t.update(dailyStatRef, {
-                    amount: FieldValue.increment(amount),
-                    transactionCount: FieldValue.increment(1)
-                });
-            } else {
-                t.set(dailyStatRef, {
-                    amount: amount,
-                    transactionCount: 1
-                });
-            }
-
-            // 4. Handle referral commission if the user was referred and commission is enabled.
+            // 3. Handle referral commission if the user was referred and commission is enabled.
             if (userData.referredBy && commissionSettings?.isEnabled && commissionSettings.rate > 0) {
                 const referrerQuery = db.collection('users').where('referralCode', '==', userData.referredBy).limit(1);
                 const referrerSnapshot = await t.get(referrerQuery);
@@ -334,7 +298,7 @@ export const onDepositStatusChange = functions.firestore
                 }
             }
         });
-        functions.logger.info(`Deposit processed for ${userId}. Daily stats for ${upiAccountId} updated.`);
+        functions.logger.info(`Deposit processed for ${userId}.`);
         // Send notification to the user
         await sendNotification(userId, 'Deposit Approved', `Your deposit of ₹${amount} has been successfully added to your wallet.`);
 
@@ -344,6 +308,66 @@ export const onDepositStatusChange = functions.firestore
     }
     return null;
 });
+
+
+export const onResultSubmitted = functions.firestore
+    .document('matches/{matchId}/results/{userId}')
+    .onCreate(async (snap, context) => {
+        const { matchId } = context.params;
+        const matchRef = db.collection('matches').doc(matchId);
+
+        try {
+            const matchDoc = await matchRef.get();
+            if (!matchDoc.exists) return null;
+            const matchData = matchDoc.data();
+            if (!matchData) return null;
+
+            // If match is already processed, do nothing.
+            if (['completed', 'disputed', 'verification'].includes(matchData.status)) {
+                return null;
+            }
+
+            const resultsSnapshot = await matchRef.collection('results').get();
+            const submittedResults = resultsSnapshot.docs.map(doc => doc.data() as MatchResult);
+
+            // Check if all players have submitted their results.
+            if (submittedResults.length !== matchData.maxPlayers) {
+                return null; // Wait for all results
+            }
+
+            // --- AUTO-VERIFICATION LOGIC ---
+            const positions = new Set<number>();
+            const winners = new Set<string>();
+
+            for (const result of submittedResults) {
+                positions.add(result.position);
+                if (result.status === 'won') {
+                    winners.add(result.userId);
+                }
+            }
+
+            // CHECK 1: Duplicate positions submitted (e.g., two 1st places)
+            const hasDuplicatePositions = positions.size !== submittedResults.length;
+            
+            // CHECK 2: More than one winner claimed
+            const hasMultipleWinners = winners.size > 1;
+
+            if (hasDuplicatePositions || hasMultipleWinners) {
+                // If any check fails, mark as disputed for admin review.
+                await matchRef.update({ status: 'disputed' });
+                functions.logger.info(`Match ${matchId} marked as disputed due to result conflict.`);
+            } else {
+                // If all checks pass, mark for admin verification.
+                await matchRef.update({ status: 'verification' });
+                functions.logger.info(`Match ${matchId} pending verification.`);
+            }
+        } catch (error) {
+            functions.logger.error(`Error processing results for match ${matchId}:`, error);
+            await matchRef.update({ status: 'disputed', error: (error as Error).message });
+        }
+        
+        return null;
+    });
 
 export const onMatchResultUpdate = functions.firestore
     .document("matches/{matchId}")
@@ -413,4 +437,99 @@ export const onMatchResultUpdate = functions.firestore
         }
     }
     return null;
+});
+
+// =================================================================
+//  MATCH CREATION & MANAGEMENT
+// =================================================================
+export const createMatch = functions.https.onCall(async (data, context) => {
+    // 1. Authentication Check
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to create a match.");
+    }
+    const userId = context.auth.uid;
+
+    // 2. Maintenance Check
+    const maintenanceDoc = await db.collection('settings').doc('maintenance').get();
+    const maintenanceSettings = maintenanceDoc.data() as MaintenanceSettings;
+    if (maintenanceSettings?.areMatchesDisabled) {
+        throw new functions.https.HttpsError("unavailable", "Match creation is temporarily disabled by the admin.");
+    }
+     
+    // 3. Data Validation
+    const { title, entryFee, maxPlayers } = data;
+    if (!title || typeof title !== "string" || title.length === 0 || title.length > 50) {
+        throw new functions.https.HttpsError("invalid-argument", "Match title is required and must be 50 characters or less.");
+    }
+    if (typeof entryFee !== "number" || entryFee < 0) {
+        throw new functions.https.HttpsError("invalid-argument", "A valid, non-negative entry fee is required.");
+    }
+    if (maxPlayers !== 2 && maxPlayers !== 4) {
+        throw new functions.https.HttpsError("invalid-argument", "Max players must be either 2 or 4.");
+    }
+
+    // 4. Calculate Prize Pool (e.g., 90% of total entry fees)
+    const prizePool = (entryFee * maxPlayers) * 0.90;
+
+    const userRef = db.collection("users").doc(userId);
+    const matchRef = db.collection("matches").doc();
+
+    try {
+        const newMatchId = await db.runTransaction(async (t) => {
+            const userDoc = await t.get(userRef);
+            if (!userDoc.exists) {
+                throw new functions.https.HttpsError("not-found", "Your user profile does not exist.");
+            }
+            const userData = userDoc.data()!;
+            const currentBalance = userData.walletBalance || 0;
+            if (currentBalance < entryFee) {
+                throw new functions.https.HttpsError("failed-precondition", "Insufficient funds to create this match.");
+            }
+            
+            if (entryFee > 0) {
+                t.update(userRef, { walletBalance: FieldValue.increment(-entryFee) });
+                
+                const transactionRef = db.collection(`users/${userId}/transactions`).doc();
+                t.set(transactionRef, {
+                    amount: -entryFee,
+                    type: "entry_fee",
+                    status: "completed",
+                    description: `Entry fee for new match: ${title}`,
+                    createdAt: FieldValue.serverTimestamp(),
+                    relatedId: matchRef.id,
+                });
+            }
+            
+            t.set(matchRef, {
+                title,
+                entryFee,
+                prizePool,
+                maxPlayers,
+                creatorId: userId,
+                players: [userId],
+                status: 'open',
+                roomCode: null,
+                createdAt: FieldValue.serverTimestamp(),
+                startedAt: null,
+                completedAt: null,
+                winnerId: null,
+            });
+            
+            return matchRef.id;
+        });
+
+        return {
+            status: "success",
+            message: "Match created successfully!",
+            matchId: newMatchId,
+        };
+
+    } catch (error) {
+        functions.logger.error(`Failed to create match for user ${userId}:`, error);
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        } else {
+            throw new functions.https.HttpsError("internal", "An unexpected error occurred.");
+        }
+    }
 });

@@ -38,7 +38,7 @@ service firebase.storage {
 
     match /match-results/{matchId}/{fileName} {
         allow read: if isSignedIn();
-        allow write: if isSignedIn() && request.auth.uid in fileName;
+        allow write: if isSignedIn() && request.auth.uid == request.resource.metadata.userId;
     }
   }
 }
