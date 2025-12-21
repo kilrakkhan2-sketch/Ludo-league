@@ -17,7 +17,7 @@ export function useUser(): AuthState {
   const firestore = useFirestore();
 
   const [state, setState] = useState<AuthState>({
-    user: auth.currentUser,
+    user: auth?.currentUser || null,
     userData: null,
     loading: true,
   });
@@ -25,6 +25,10 @@ export function useUser(): AuthState {
   const user = state.user;
 
   useEffect(() => {
+    if (!auth) {
+        setState({ user: null, userData: null, loading: false });
+        return;
+    }
     const unsubscribeAuth = onIdTokenChanged(auth, (authUser) => {
        if (authUser) {
          setState(prevState => ({ ...prevState, user: authUser, loading: !prevState.userData }));

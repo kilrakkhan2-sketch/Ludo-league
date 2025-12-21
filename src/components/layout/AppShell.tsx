@@ -51,7 +51,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
   const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
 
   const isAdmin = useMemo(() => 
-    userData?.role && ['superadmin', 'deposit_admin', 'withdrawal_admin', 'match_admin'].includes(userData.role)
+    userData?.role && ['superadmin', 'deposit_admin', 'match_admin'].includes(userData.role)
   , [userData]);
 
   const navItems = useMemo(() => {
