@@ -1,4 +1,3 @@
-
 "use client";
 
 import { AppShell } from "@/components/layout/AppShell";
@@ -27,8 +26,9 @@ import { useFirebase, useUser } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { AdminShell } from "@/components/layout/AdminShell";
 
-export default function CreateTournamentPage() {
+export default function AdminCreateTournamentPage() {
   const { firestore } = useFirebase();
   const { user } = useUser();
   const { toast } = useToast();
@@ -71,7 +71,7 @@ export default function CreateTournamentPage() {
             title: "Tournament Created!",
             description: "Your new tournament is now listed.",
         });
-        router.push('/tournaments');
+        router.push('/admin/tournaments');
     } catch (error: any) {
         toast({
             variant: "destructive",
@@ -84,13 +84,13 @@ export default function CreateTournamentPage() {
   }
 
   return (
-    <AppShell pageTitle="Host New Tournament">
-      <div className="p-4 space-y-6">
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold font-headline">Create New Tournament</h1>
         <Card>
           <CardHeader>
             <CardTitle>Tournament Details</CardTitle>
             <CardDescription>
-              Set up your tournament and define the rules.
+              Set up the new tournament and define the rules.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -183,6 +183,5 @@ export default function CreateTournamentPage() {
           </CardContent>
         </Card>
       </div>
-    </AppShell>
   );
 }

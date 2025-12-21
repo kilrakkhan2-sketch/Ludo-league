@@ -43,6 +43,7 @@ const superAdminNav = [
   { href: '/admin/users', icon: Users, label: 'All Users' },
   { href: '/admin/manage-admins', icon: UserCog, label: 'Manage Roles' },
   { href: '/admin/matches', icon: Award, label: 'Matches' },
+  { href: '/admin/tournaments', icon: Shield, label: 'Tournaments' },
   { href: '/admin/deposits', icon: CircleArrowUp, label: 'Deposits' },
   { href: '/admin/withdrawals', icon: Landmark, label: 'Withdrawals' },
   { href: '/admin/upi-management', icon: Banknote, label: 'UPI Management' },
@@ -62,6 +63,7 @@ const matchAdminNav = [
   { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
   { href: '/admin/matches', icon: Award, label: 'Matches' },
   { href: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
+  { href: '/admin/tournaments', icon: Shield, label: 'Tournaments' },
 ];
 
 

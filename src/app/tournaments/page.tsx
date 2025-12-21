@@ -149,12 +149,6 @@ export default function TournamentsPage() {
   return (
     <AppShell pageTitle="Tournaments">
       <div className="p-4 space-y-6">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <Button asChild>
-            <Link href="/create-tournament"><PlusCircle className="mr-2 h-4 w-4" />Host Tournament</Link>
-          </Button>
-        </div>
-
         {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <TournamentCardSkeleton />
@@ -165,11 +159,8 @@ export default function TournamentsPage() {
                 <Award className="mx-auto h-12 w-12 text-muted-foreground" />
                 <h3 className="mt-4 text-lg font-semibold text-foreground">No Tournaments Found</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                There are no active or upcoming tournaments. Why not host one?
+                There are no active or upcoming tournaments right now.
                 </p>
-                 <Button className="mt-6" asChild>
-                    <Link href="/create-tournament"><PlusCircle className="mr-2 h-4 w-4"/>Host a Tournament</Link>
-                </Button>
             </div>
         ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

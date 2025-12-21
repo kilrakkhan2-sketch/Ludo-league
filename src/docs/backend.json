@@ -200,7 +200,7 @@
         "maxPlayers": { "type": "number" },
         "creatorId": { "type": "string" }
       },
-      "required": ["name", "prizePool", "entryFee", "startDate", "status", "players", "maxPlayers", "creatorId"]
+      "required": ["name", "prizePool", "entryFee", "startDate", "status", "players", "maxPlayers"]
     },
     "Announcement": {
         "title": "Announcement",
