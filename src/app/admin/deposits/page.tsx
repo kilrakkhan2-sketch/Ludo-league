@@ -15,7 +15,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, CheckCircle, XCircle } from 'lucide-react';
 import Image from 'next/image';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useUser } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -28,7 +27,6 @@ const getStatusVariant = (status: string) => {
   }
 };
 
-// This component fetches user data for a single user ID.
 const UserCell = ({ userId }: { userId: string }) => {
     const { data: user, loading } = useDoc<UserProfile>(`users/${userId}`);
     if (loading) return <Skeleton className="h-5 w-24" />;

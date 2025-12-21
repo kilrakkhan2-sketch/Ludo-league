@@ -46,21 +46,25 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     }
     
     const constraints: QueryConstraint[] = [];
+    let queryIsValid = true;
 
     if (optionsMemo?.where) {
         const whereClauses = Array.isArray(optionsMemo.where[0]) ? (optionsMemo.where as WhereClause[]) : ([optionsMemo.where] as WhereClause[]);
         
         for (const w of whereClauses) {
             const [_field, op, value] = w;
-            // Firestore 'in', 'not-in', and 'array-contains-any' queries require a non-empty array.
             if ( (op === 'in' || op === 'not-in' || op === 'array-contains-any') && (!Array.isArray(value) || value.length === 0) ) {
-                // This is an invalid query for Firestore. By returning null, we prevent an error and can handle it gracefully.
-                // An empty 'data' array will be returned for this query.
-                return null;
+                queryIsValid = false;
+                break;
             }
             constraints.push(where(...w));
         }
     }
+    
+    if (!queryIsValid) {
+        return null;
+    }
+
     if (optionsMemo?.orderBy) {
        if (Array.isArray(optionsMemo.orderBy[0])) {
             (optionsMemo.orderBy as OrderByClause[]).forEach(o => constraints.push(orderBy(o[0], o[1])));
@@ -69,6 +73,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
             constraints.push(orderBy(o[0], o[1]));
         }
     }
+
     if (optionsMemo?.limit) {
         constraints.push(limit(optionsMemo.limit));
     }
@@ -80,7 +85,6 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
 
   useEffect(() => {
     setLoading(true);
-    // Return early if the path is not provided, which can happen during initial renders.
     if (!path) {
         setData([]);
         setLoading(false);
@@ -89,8 +93,6 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
 
     const q = buildQuery();
 
-    // If the query is invalid (e.g., 'in' with an empty array), don't execute it.
-    // Set data to empty array and stop loading.
     if (!q) {
       setData([]);
       setLoading(false);
@@ -111,7 +113,6 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
       setLoading(false);
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [buildQuery, path]);
 
