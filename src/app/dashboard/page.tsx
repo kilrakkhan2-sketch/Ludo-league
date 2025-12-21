@@ -59,6 +59,7 @@ const MatchCard = ({ match }: { match: Match }) => {
             </div>
             <Badge
               variant={getStatusVariant(match.status)}
+              className="capitalize"
             >
               {isFull && match.status === 'open' ? 'Full' : match.status}
             </Badge>
@@ -66,10 +67,10 @@ const MatchCard = ({ match }: { match: Match }) => {
         </CardHeader>
         <CardContent className="p-4 pt-0 flex-grow">
           <div className="flex items-center -space-x-2 mb-2">
-            {Array.from({ length: match.players.length }).map((_, i) => (
-              <Avatar key={i} className="h-6 w-6 border-2 border-background">
+            {match.players.map((playerId, i) => (
+              <Avatar key={playerId} className="h-6 w-6 border-2 border-background">
                 <AvatarImage
-                  src={`https://api.dicebear.com/7.x/adventurer/svg?seed=player${match.id}-${i}`}
+                  src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${playerId}`}
                 />
                 <AvatarFallback>P{i + 1}</AvatarFallback>
               </Avatar>
@@ -173,8 +174,8 @@ const MatchSection = ({ title, matches, loading, emptyMessage, viewAllLink }: { 
         </div>
         {loading ? (
              <div className="flex space-x-4 overflow-x-auto pb-4">
-                <Skeleton className="shrink-0 w-72 h-48 rounded-lg" />
-                <Skeleton className="shrink-0 w-72 h-48 rounded-lg" />
+                <Skeleton className="shrink-0 w-72 h-52 rounded-lg" />
+                <Skeleton className="shrink-0 w-72 h-52 rounded-lg" />
              </div>
         ): matches.length > 0 ? (
             <div className="overflow-x-auto">
@@ -198,20 +199,24 @@ export default function DashboardPage() {
     const { user, loading: userLoading } = useUser();
     const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
     
+    // 1. Fetch user's active matches (open or ongoing)
     const { data: myMatches, loading: myMatchesLoading } = useCollection<Match>('matches', {
-        where: user?.uid ? [['players', 'array-contains', user.uid], ['status', '!=', 'completed']] : undefined,
+        where: user?.uid ? [['players', 'array-contains', user.uid], ['status', 'in', ['open', 'ongoing']]] : undefined,
         limit: 10,
     });
 
+    // 2. Fetch all public, open matches
     const { data: openMatchesData, loading: openMatchesLoading } = useCollection<Match>('matches', {
         where: [['status', '==', 'open'], ['privacy', '==', 'public']],
-        limit: 10,
+        limit: 10
     });
 
+    // 3. Filter out matches the user is already in from the open matches list
     const openMatches = useMemo(() => {
-        if (!openMatchesData) return [];
-        return [...openMatchesData].sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
-    }, [openMatchesData]);
+        if (!openMatchesData || !myMatches) return [];
+        const myMatchIds = new Set(myMatches.map(m => m.id));
+        return openMatchesData.filter(match => !myMatchIds.has(match.id));
+    }, [openMatchesData, myMatches]);
     
     const loading = userLoading || profileLoading;
     
@@ -270,7 +275,7 @@ export default function DashboardPage() {
                         title="Open Matches"
                         matches={openMatches}
                         loading={openMatchesLoading}
-                        emptyMessage="No open matches available."
+                        emptyMessage="No new open matches available."
                         viewAllLink="/matches/open"
                     />
 
@@ -279,3 +284,5 @@ export default function DashboardPage() {
         </AppShell>
     );
 }
+
+    
