@@ -12,7 +12,8 @@ import {
   Award,
   LogOut,
   UserCog,
-  FileBadge, // New Icon for KYC
+  FileBadge,
+  Megaphone // New Icon for Announcements
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -42,7 +43,8 @@ const superAdminNav = [
   { href: '/admin/results', icon: Package, label: 'Verify Results' },
   { href: '/admin/deposits', icon: CircleArrowUp, label: 'Deposits' },
   { href: '/admin/withdrawals', icon: Landmark, label: 'Withdrawals' },
-  { href: '/admin/kyc', icon: FileBadge, label: 'KYC Management' }, // New KYC Link
+  { href: '/admin/kyc', icon: FileBadge, label: 'KYC Management' },
+  { href: '/admin/announcements', icon: Megaphone, label: 'Announcements' }, // New Announcements Link
   { href: '/admin/transactions', icon: Wallet, label: 'Transactions' },
   { href: '/admin/settings', icon: Settings, label: 'Site Settings' },
 ];

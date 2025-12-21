@@ -142,3 +142,21 @@ export type Tournament = {
   maxPlayers: number;
   creatorId: string;
 };
+
+export type Announcement = {
+  id: string;
+  title: string;
+  content: string;
+  type: 'News' | 'Promo' | 'Update' | 'Warning';
+  createdAt: any;
+  link?: string;
+};
+
+export type PersonalNotification = {
+    id: string;
+    title: string;
+    body: string;
+    isRead: boolean;
+    createdAt: any;
+    link?: string;
+};

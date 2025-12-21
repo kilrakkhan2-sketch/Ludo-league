@@ -4,15 +4,16 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { useCollection, useUser, useDoc } from "@/firebase";
-import type { Match, UserProfile } from "@/types";
+import type { Match, UserProfile, Announcement } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bell, MessageCircle, PlusCircle, Swords } from "lucide-react";
+import { Bell, MessageCircle, PlusCircle, Swords, Rss } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Trophy } from "lucide-react";
 import { useMemo } from "react";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 
 const StatCard = ({ title, value, loading }: { title: string, value: string | number, loading: boolean }) => (
     <div className="bg-card p-3 rounded-lg shadow-sm text-center">
@@ -101,6 +102,69 @@ const MatchCard = ({ match }: { match: Match }) => {
     );
 }
 
+const NewsCarousel = () => {
+    const { data: announcements, loading } = useCollection<Announcement>('announcements', { orderBy: ['createdAt', 'desc'], limit: 5 });
+
+    if (loading) {
+        return (
+            <section>
+                <h2 className="text-lg font-bold mb-3">News & Updates</h2>
+                <Skeleton className="w-full h-32 rounded-lg" />
+            </section>
+        );
+    }
+    
+    if (announcements.length === 0) {
+        return null; // Don't render the section if there are no announcements
+    }
+
+    const getBadgeVariant = (type: Announcement['type']) => {
+        switch (type) {
+            case 'Promo': return 'default';
+            case 'Update': return 'secondary';
+            case 'Warning': return 'destructive';
+            default: return 'outline';
+        }
+    };
+
+    return (
+        <section>
+             <h2 className="text-lg font-bold mb-3">News & Updates</h2>
+             <Carousel
+                opts={{
+                    align: "start",
+                    loop: announcements.length > 1,
+                }}
+                className="w-full"
+            >
+                <CarouselContent>
+                    {announcements.map((ann) => (
+                        <CarouselItem key={ann.id}>
+                            <Card className="bg-card">
+                                <CardHeader>
+                                    <div className="flex justify-between items-start">
+                                        <CardTitle className="text-base">{ann.title}</CardTitle>
+                                        <Badge variant={getBadgeVariant(ann.type)}>{ann.type}</Badge>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-muted-foreground">{ann.content}</p>
+                                </CardContent>
+                            </Card>
+                        </CarouselItem>
+                    ))}
+                </CarouselContent>
+                {announcements.length > 1 && (
+                    <>
+                        <CarouselPrevious className="hidden sm:flex" />
+                        <CarouselNext className="hidden sm:flex" />
+                    </>
+                )}
+            </Carousel>
+        </section>
+    );
+};
+
 const MatchSection = ({ title, matches, loading, emptyMessage, viewAllLink }: { title: string, matches: Match[], loading: boolean, emptyMessage: string, viewAllLink?: string }) => (
     <section>
         <div className="flex justify-between items-center mb-3">
@@ -137,7 +201,6 @@ export default function DashboardPage() {
     const { data: myMatches, loading: myMatchesLoading } = useCollection<Match>('matches', {
         where: user?.uid ? [['players', 'array-contains', user.uid], ['status', '!=', 'completed']] : undefined,
         limit: 10,
-        orderBy: ['createdAt', 'desc']
     });
 
     const { data: openMatchesData, loading: openMatchesLoading } = useCollection<Match>('matches', {
@@ -146,6 +209,7 @@ export default function DashboardPage() {
     });
 
     const openMatches = useMemo(() => {
+        if (!openMatchesData) return [];
         return [...openMatchesData].sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
     }, [openMatchesData]);
     
@@ -183,6 +247,8 @@ export default function DashboardPage() {
                 </div>
                 
                 <div className="p-4 sm:p-6 space-y-6 sm:space-y-8 pb-20">
+                    <NewsCarousel />
+
                     <section>
                         <h2 className="text-lg font-bold mb-3">Quick Stats</h2>
                         <div className="grid grid-cols-3 gap-3 sm:gap-4">
@@ -194,7 +260,7 @@ export default function DashboardPage() {
                     
                      <MatchSection
                         title="My Active Matches"
-                        matches={myMatches}
+                        matches={myMatches || []}
                         loading={myMatchesLoading}
                         emptyMessage="You have no active matches."
                         viewAllLink="/matches/my-matches"
