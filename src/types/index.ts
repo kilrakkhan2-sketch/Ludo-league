@@ -6,6 +6,7 @@
 
 
 
+
 export type UserProfile = {
   id: string;
   uid: string;
@@ -185,7 +186,6 @@ export type Tournament = {
   status: 'upcoming' | 'live' | 'completed';
   players: string[];
   maxPlayers: number;
-  creatorId: string;
 };
 
 export type Announcement = {

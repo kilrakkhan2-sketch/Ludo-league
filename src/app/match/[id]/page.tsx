@@ -357,6 +357,7 @@ const MatchOngoing = ({ match }: { match: Match }) => {
                     </Button>
                 </CardFooter>
             </Card>
+             <ChatRoom matchId={match.id} />
         </div>
     );
 };
@@ -414,8 +415,13 @@ export default function MatchPage({ params }: { params: { id: string } }) {
 
   const { data: match, loading: matchLoading } = useDoc<Match>(`matches/${params.id}`);
   
+  const playerIds = useMemo(() => {
+      if (!match?.players) return ['_']; 
+      return match.players.length > 0 ? match.players : ['_'];
+  }, [match]);
+
   const { data: playersData, loading: playersLoading } = useCollection<UserProfile>(
-    match ? `matches/${params.id}/players` : ''
+    'users', { where: ['uid', 'in', playerIds] }
   );
 
   const players = useMemo(() => playersData || [], [playersData]);

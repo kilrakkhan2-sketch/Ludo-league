@@ -55,6 +55,17 @@
       },
       "required": ["creatorId", "title", "entryFee", "maxPlayers", "privacy", "status", "players", "createdAt"]
     },
+    "Message": {
+        "title": "Message",
+        "description": "A single message in a chat.",
+        "type": "object",
+        "properties": {
+            "userId": { "type": "string" },
+            "text": { "type": "string" },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["userId", "text", "createdAt"]
+    },
     "Transaction": {
       "title": "Transaction",
       "description": "Represents a wallet transaction.",
@@ -207,10 +218,9 @@
         "endDate": { "type": "string", "format": "date-time" },
         "status": { "type": "string", "enum": ["upcoming", "live", "completed"] },
         "players": { "type": "array", "items": { "type": "string" } },
-        "maxPlayers": { "type": "number" },
-        "creatorId": { "type": "string" }
+        "maxPlayers": { "type": "number" }
       },
-      "required": ["name", "prizePool", "entryFee", "startDate", "status", "players", "maxPlayers", "creatorId"]
+      "required": ["name", "prizePool", "entryFee", "startDate", "status", "players", "maxPlayers"]
     },
     "Announcement": {
         "title": "Announcement",
@@ -250,6 +260,10 @@
     "/matches/{matchId}": {
       "schema": { "$ref": "#/entities/Match" },
       "description": "Stores all created matches."
+    },
+    "/matches/{matchId}/messages/{messageId}": {
+        "schema": { "$ref": "#/entities/Message"},
+        "description": "Stores messages for a specific match chat."
     },
     "/tournaments/{tournamentId}": {
       "schema": { "$ref": "#/entities/Tournament" },
