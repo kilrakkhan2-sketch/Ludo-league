@@ -109,13 +109,16 @@ export default function AdminDepositsPage() {
         });
       await batch.commit();
       toast({ title: 'Success', description: 'Deposit has been rejected.' });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error rejecting deposit:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not reject deposit.' });
     } finally {
       setIsSubmitting(false);
     }
   };
+  
+  const isLoading = depositsLoading || usersLoading;
+
   return (
       <div className="space-y-6">
         <h1 className="text-3xl font-bold font-headline">Manage Deposits</h1>
@@ -143,7 +146,7 @@ export default function AdminDepositsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(depositsLoading || usersLoading) ? (
+                {isLoading ? (
                   <TableRow><TableCell colSpan={6} className="text-center"><Skeleton className="h-8 w-full" /></TableCell></TableRow>
                 ) : deposits.length === 0 ? (
                    <TableRow><TableCell colSpan={6} className="text-center h-24">No {statusFilter} deposits found.</TableCell></TableRow>
@@ -194,5 +197,3 @@ export default function AdminDepositsPage() {
       </div>
   );
 }
-
-    

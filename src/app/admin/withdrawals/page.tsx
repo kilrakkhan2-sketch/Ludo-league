@@ -75,7 +75,9 @@ export default function AdminWithdrawalsPage() {
 
   const usersMap = useMemo(() => {
     const map = new Map<string, UserProfile>();
-    usersData.forEach((user: UserProfile) => map.set(user.uid, user));
+    if (usersData) {
+        usersData.forEach((user: UserProfile) => map.set(user.uid, user));
+    }
     return map;
   }, [usersData]);
 
