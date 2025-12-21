@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { useCollection } from '@/firebase';
+import { useCollection, useDoc } from '@/firebase';
 import { doc, writeBatch, Timestamp } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { DepositRequest, UserProfile } from '@/types';
@@ -28,47 +28,33 @@ const getStatusVariant = (status: string) => {
   }
 };
 
+// This component fetches user data for a single user ID.
+const UserCell = ({ userId }: { userId: string }) => {
+    const { data: user, loading } = useDoc<UserProfile>(`users/${userId}`);
+    if (loading) return <Skeleton className="h-5 w-24" />;
+    return <>{user?.displayName || 'Unknown User'}</>;
+}
+const ProcessorCell = ({ userId }: { userId: string | undefined }) => {
+    const { data: user, loading } = useDoc<UserProfile>(userId ? `users/${userId}` : undefined);
+    if (!userId) return <>N/A</>;
+    if (loading) return <Skeleton className="h-5 w-24" />;
+    return <>{user?.displayName || 'Unknown'}</>;
+}
+
+
 export default function AdminDepositsPage() {
   const { firestore, app } = useFirebase();
   const { user: adminUser } = useUser();
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState('pending');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedDeposit, setSelectedDeposit] = useState<DepositRequest | null>(null);
+
 
   const { data: deposits, loading: depositsLoading } = useCollection<DepositRequest>('deposit-requests', {
     orderBy: ['createdAt', 'desc'],
     where: ['status', '==', statusFilter]
   });
-
-  const allUserIdsInView = useMemo(() => {
-    const ids = new Set<string>();
-    if (deposits) {
-        deposits.forEach((d: DepositRequest) => {
-            ids.add(d.userId);
-            if (d.processedBy) {
-                ids.add(d.processedBy);
-            }
-        });
-    }
-     // Ensure the list is not empty to prevent Firestore errors with 'in' queries
-    if (ids.size === 0) {
-        return ['_']; // Use a placeholder that won't match any documents
-    }
-    return Array.from(ids);
-  }, [deposits]);
-
-  const { data: users, loading: usersLoading } = useCollection<UserProfile>('users', { 
-    where: ['uid', 'in', allUserIdsInView] 
-  });
-
-  const usersMap = useMemo(() => {
-    const map = new Map<string, UserProfile>();
-    if (users) {
-        users.forEach((user: UserProfile) => map.set(user.uid, user));
-    }
-    return map;
-  }, [users]);
-
 
  const handleApproveDeposit = async (deposit: DepositRequest) => {
     if (!firestore || !adminUser) return;
@@ -93,6 +79,7 @@ export default function AdminDepositsPage() {
       toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not approve deposit.' });
     } finally {
       setIsSubmitting(false);
+      setSelectedDeposit(null);
     }
   };
 
@@ -114,10 +101,11 @@ export default function AdminDepositsPage() {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not reject deposit.' });
     } finally {
       setIsSubmitting(false);
+      setSelectedDeposit(null);
     }
   };
   
-  const isLoading = depositsLoading || usersLoading;
+  const isLoading = depositsLoading;
 
   return (
       <div className="space-y-6">
@@ -151,33 +139,33 @@ export default function AdminDepositsPage() {
                 ) : deposits.length === 0 ? (
                    <TableRow><TableCell colSpan={6} className="text-center h-24">No {statusFilter} deposits found.</TableCell></TableRow>
                 ) : deposits.map((deposit: DepositRequest) => {
-                  const user = usersMap.get(deposit.userId);
-                  const processor = deposit.processedBy ? usersMap.get(deposit.processedBy) : null;
                   return (
                     <TableRow key={deposit.id}>
-                      <TableCell>{user?.displayName || 'Unknown'}</TableCell>
+                      <TableCell><UserCell userId={deposit.userId} /></TableCell>
                       <TableCell className="font-medium">₹{deposit.amount.toLocaleString()}</TableCell>
                       <TableCell>{deposit.createdAt ? format((deposit.createdAt as Timestamp).toDate(), 'dd MMM yyyy, HH:mm') : 'N/A'}</TableCell>
-                      {statusFilter !== 'pending' && <TableCell>{processor?.displayName || 'N/A'}</TableCell>}
+                      {statusFilter !== 'pending' && <TableCell><ProcessorCell userId={deposit.processedBy} /></TableCell>}
                       <TableCell><Badge variant={getStatusVariant(deposit.status)}>{deposit.status}</Badge></TableCell>
                       <TableCell className="text-right">
-                          <Dialog>
+                          <Dialog open={selectedDeposit?.id === deposit.id} onOpenChange={(isOpen) => !isOpen && setSelectedDeposit(null)}>
                               <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" onClick={() => setSelectedDeposit(deposit)}><Eye className="h-4 w-4" /></Button>
                               </DialogTrigger>
                               <DialogContent className="max-w-md">
                                   <DialogHeader>
                                       <DialogTitle>Deposit Details</DialogTitle>
                                       <DialogDescription>Review the details and screenshot before taking action.</DialogDescription>
                                   </DialogHeader>
-                                  <div className='space-y-4'>
-                                      <p><strong>User:</strong> {user?.displayName} ({user?.email})</p>
-                                      <p><strong>Amount:</strong> <span className="font-bold text-lg">₹{deposit.amount}</span></p>
-                                      <p><strong>Transaction ID:</strong> <span className="font-mono bg-muted p-1 rounded">{deposit.transactionId}</span></p>
-                                       <div className="relative aspect-square w-full rounded-md overflow-hidden border">
-                                            <Image src={deposit.screenshotUrl} alt="Payment Screenshot" layout="fill" objectFit="contain" />
-                                        </div>
-                                  </div>
+                                   {selectedDeposit && (
+                                     <div className='space-y-4'>
+                                        <p><strong>User:</strong> <UserCell userId={selectedDeposit.userId} /></p>
+                                        <p><strong>Amount:</strong> <span className="font-bold text-lg">₹{selectedDeposit.amount}</span></p>
+                                        <p><strong>Transaction ID:</strong> <span className="font-mono bg-muted p-1 rounded">{selectedDeposit.transactionId}</span></p>
+                                         <div className="relative aspect-square w-full rounded-md overflow-hidden border">
+                                              <Image src={selectedDeposit.screenshotUrl} alt="Payment Screenshot" layout="fill" objectFit="contain" />
+                                          </div>
+                                    </div>
+                                   )}
                                   {deposit.status === 'pending' && (
                                       <DialogFooter className="pt-4">
                                           <Button variant="destructive" onClick={() => handleRejectDeposit(deposit)} disabled={isSubmitting}><XCircle className="h-4 w-4 mr-2"/>Reject</Button>
