@@ -75,7 +75,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
 
     // Find a matching permission entry for the current path
-    const permissionKey = Object.keys(rolePermissions).find(key => pathname.startsWith(key));
+    const permissionKey = Object.keys(rolePermissions).find(key => pathname?.startsWith(key));
     
     if (permissionKey) {
         const allowedRoles = rolePermissions[permissionKey];

@@ -5,8 +5,10 @@ const typescriptParser = require('@typescript-eslint/parser');
 
 module.exports = [
   {
+    ignores: ['functions/**', '.next/**', 'public/**'],
+  },
+  {
     files: ['**/*.ts', '**/*.tsx'],
-    ignores: ['functions/**', '.next/**'],
     plugins: {
       '@next/next': nextEslintPlugin,
       'react': reactPlugin,

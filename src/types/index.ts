@@ -33,7 +33,7 @@ export type Match = {
   creatorId: string;
   players: string[];
   roomCode: string | null;
-  status: "open" | "ongoing" | "processing" | "verification" | "completed" | "disputed";
+  status: "open" | "ongoing" | "processing" | "verification" | "completed" | "disputed" | "cancelled" | "result_pending";
   resultStage?: "none" | "stage1" | "stage2" | "verified";
   autoPayoutAllowed?: boolean;
   createdAt: any;

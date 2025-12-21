@@ -1,5 +1,4 @@
 
-
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
@@ -36,10 +35,12 @@ interface CommissionSettings {
 
 interface MatchResult {
     userId: string;
-    position: number;
-    winStatus: 'win' | 'loss';
+    confirmedPosition: number;
+    confirmedWinStatus: 'win' | 'loss';
     screenshotUrl: string;
     submittedAt: any;
+    confirmedAt: any;
+    status: 'submitted' | 'confirmed' | 'mismatch' | 'locked';
 }
 
 // Helper function to send a personal notification
@@ -273,7 +274,7 @@ export const onDepositStatusChange = functions.firestore
             });
 
             // 3. Handle referral commission if the user was referred and commission is enabled.
-            if (userData.referredBy && commissionSettings?.isEnabled && commissionSettings.rate > 0) {
+            if (userData.referredBy && commissionSettings?.isEnabled && typeof commissionSettings.rate === 'number' && commissionSettings.rate > 0) {
                 const referrerQuery = db.collection('users').where('referralCode', '==', userData.referredBy).limit(1);
                 const referrerSnapshot = await t.get(referrerQuery);
                 if (!referrerSnapshot.empty) {
@@ -291,7 +292,7 @@ export const onDepositStatusChange = functions.firestore
                         amount: commissionAmount,
                         type: "referral_bonus",
                         status: "completed",
-                        description: `${commissionPercentage}% commission from ${userData.name || 'a referred user'}'s deposit.`,
+                        description: `${commissionPercentage}% commission from ${userData.name || 'a referred user'}\'s deposit.`,
                         createdAt: FieldValue.serverTimestamp(),
                         relatedId: context.params.depositId,
                     });
@@ -310,7 +311,7 @@ export const onDepositStatusChange = functions.firestore
 });
 
 
-export const onResultSubmitted = functions.firestore
+export const autoVerifyResults = functions.firestore
     .document('matches/{matchId}/results/{userId}')
     .onCreate(async (snap, context) => {
         const { matchId } = context.params;
@@ -345,8 +346,8 @@ export const onResultSubmitted = functions.firestore
             const winners = new Set<string>();
 
             for (const result of submittedResults) {
-                positions.add(result.position);
-                if (result.winStatus === 'win') {
+                positions.add(result.confirmedPosition);
+                if (result.confirmedWinStatus === 'win') {
                     winners.add(result.userId);
                 }
             }
@@ -514,12 +515,12 @@ export const createMatch = functions.https.onCall(async (data, context) => {
                 players: [userId],
                 status: 'open',
                 roomCode: null,
+                resultStage: 'none',
+                autoPayoutAllowed: true,
                 createdAt: FieldValue.serverTimestamp(),
                 startedAt: null,
                 completedAt: null,
                 winnerId: null,
-                resultStage: 'none',
-                autoPayoutAllowed: true,
             });
             
             return matchRef.id;
@@ -540,5 +541,3 @@ export const createMatch = functions.https.onCall(async (data, context) => {
         }
     }
 });
-
-    

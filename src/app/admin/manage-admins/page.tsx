@@ -107,7 +107,7 @@ export default function ManageAdminsPage() {
       case 'deposit_admin':
         return 'default';
       case 'withdrawal_admin':
-        return 'success';
+        return 'default';
       case 'match_admin':
         return 'secondary';
       default:

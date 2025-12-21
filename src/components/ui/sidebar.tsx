@@ -566,20 +566,25 @@ const SidebarMenuButton = React.forwardRef<
     },
     ref
 ) => {
-    const Comp = href ? Link : (asChild ? Slot : "button");
     const { state, isMobile } = useSidebar()
 
-    const button = (
-        <Comp
-            ref={ref}
-            data-sidebar="menu-button"
-            data-size={size}
-            data-active={current}
-            className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-            href={href as any}
-            {...props}
-        />
-    )
+    const commonProps = {
+        "data-sidebar": "menu-button",
+        "data-size": size,
+        "data-active": current,
+        className: cn(sidebarMenuButtonVariants({ variant, size }), className),
+        ...props,
+    };
+
+    const button = href ? (
+        <Link href={href} {...commonProps} ref={ref as React.Ref<HTMLAnchorElement>}>
+            {props.children}
+        </Link>
+    ) : (
+        <button {...commonProps} ref={ref as React.Ref<HTMLButtonElement>}>
+            {props.children}
+        </button>
+    );
 
     if (!tooltip) {
         return button
@@ -774,5 +779,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-
-    

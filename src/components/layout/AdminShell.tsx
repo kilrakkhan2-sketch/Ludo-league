@@ -42,7 +42,7 @@ import Image from 'next/image';
 
 const NavItem = ({ href, icon: Icon, label, count }: { href: string; icon: React.ElementType; label: string, count?: number }) => {
   const pathname = usePathname();
-  const isActive = pathname.startsWith(href);
+  const isActive = pathname ? pathname.startsWith(href) : false;
 
   return (
     <SidebarMenuItem>
@@ -102,7 +102,7 @@ export function AdminShell({ children, pageTitle }: { children: React.ReactNode,
   };
 
   const navItems = getNavItems();
-  const currentNav = navItems.find(item => pathname.startsWith(item.href));
+  const currentNav = navItems.find(item => pathname && pathname.startsWith(item.href));
   const title = pageTitle || currentNav?.label || 'Admin Panel';
 
   return (

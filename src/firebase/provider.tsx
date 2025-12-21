@@ -5,12 +5,14 @@ import { FirebaseApp } from 'firebase/app';
 import { Auth } from 'firebase/auth';
 import { Firestore } from 'firebase/firestore';
 import { FirebaseStorage } from 'firebase/storage';
+import { Functions } from 'firebase/functions';
 
 interface FirebaseContextValue {
   app: FirebaseApp | null;
   auth: Auth | null;
   firestore: Firestore | null;
   storage: FirebaseStorage | null;
+  functions: Functions | null;
 }
 
 const FirebaseContext = createContext<FirebaseContextValue | undefined>(undefined);
@@ -67,4 +69,12 @@ export function useStorage() {
         throw new Error("Firebase Storage not available. Did you forget to wrap your component in FirebaseProvider?");
     }
     return storage;
+}
+
+export function useFunctions() {
+    const { functions } = useFirebase();
+    if (!functions) {
+        throw new Error("Firebase Functions not available. Did you forget to wrap your component in FirebaseProvider?");
+    }
+    return functions;
 }

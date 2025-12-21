@@ -24,7 +24,7 @@ const getStatusVariant = (status: string) => {
   switch (status) {
     case 'open': return 'secondary';
     case 'ongoing': return 'default';
-    case 'processing': return 'destructive';
+    case 'processing': return 'default';
     case 'completed': return 'outline';
     case 'verification': return 'destructive';
     case 'cancelled': return 'outline';
@@ -50,10 +50,24 @@ const LoadingSkeleton = () => (
 
 export default function AdminMatchDetailsPage() {
   const params = useParams();
+  const router = useRouter();
+
+  if (!params) {
+    return (
+        <div>
+            <Button variant="ghost" onClick={() => router.back()}><ArrowLeft className="mr-2 h-4 w-4"/> Back to Matches</Button>
+            <Alert variant="destructive" className="mt-4">
+                <CircleAlert className="h-4 w-4" />
+                <AlertTitle>Match Not Found</AlertTitle>
+                <AlertDescription>The requested match could not be found because of a missing match ID.</AlertDescription>
+            </Alert>
+        </div>
+    );
+  }
+
   const matchId = params.matchId as string;
   const { firestore } = useFirebase();
   const { toast } = useToast();
-  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [winner, setWinner] = useState('');
 
@@ -95,7 +109,7 @@ export default function AdminMatchDetailsPage() {
                 }
             }
 
-            transaction.update(matchRef, { status: 'cancelled', processedAt: Timestamp.now() });
+            transaction.update(matchRef, { status: 'cancelled', completedAt: Timestamp.now() });
         });
 
         toast({ title: 'Success', description: 'Match has been cancelled and players refunded.' });
@@ -116,6 +130,7 @@ export default function AdminMatchDetailsPage() {
         await updateDoc(matchRef, {
             status: "completed",
             winnerId: winner,
+            completedAt: Timestamp.now(),
         });
 
       toast({ title: 'Success', description: `Winner has been declared. The prize will be awarded automatically.` });
@@ -152,8 +167,8 @@ export default function AdminMatchDetailsPage() {
       const positions = new Map<number, number>();
       let winnerCount = 0;
       results.forEach(r => {
-          positions.set(r.position, (positions.get(r.position) || 0) + 1);
-          if (r.winStatus === 'win') {
+          positions.set(r.confirmedPosition, (positions.get(r.confirmedPosition) || 0) + 1);
+          if (r.confirmedWinStatus === 'win') {
               winnerCount++;
           }
       });
@@ -221,14 +236,14 @@ export default function AdminMatchDetailsPage() {
                             <tbody>
                                 {players.map(player => {
                                     const result = resultsMap.get(player.id);
-                                    const isWinner = result?.winStatus === 'win';
-                                    const isDisputed = results.filter(r => r.position === result?.position).length > 1;
+                                    const isWinner = result?.confirmedWinStatus === 'win';
+                                    const isDisputed = results.filter(r => r.confirmedPosition === result?.confirmedPosition).length > 1;
 
                                     return (
                                         <tr key={player.id} className="border-t">
                                             <td className="p-2 font-medium">{player.displayName}</td>
-                                            <td className={`p-2 font-semibold ${isDisputed ? 'text-destructive' : ''}`}>{result?.position ? `${result.position}${isDisputed ? ' ❌' : ''}` : 'N/A'}</td>
-                                            <td className={`p-2 font-semibold capitalize ${isWinner ? 'text-green-500' : 'text-gray-500'}`}>{result?.winStatus || 'N/A'}</td>
+                                            <td className={`p-2 font-semibold ${isDisputed ? 'text-destructive' : ''}`}>{result?.confirmedPosition ? `${result.confirmedPosition}${isDisputed ? ' ❌' : ''}` : 'N/A'}</td>
+                                            <td className={`p-2 font-semibold capitalize ${isWinner ? 'text-green-500' : 'text-gray-500'}`}>{result?.confirmedWinStatus || 'N/A'}</td>
                                             <td className="p-2">
                                                 {result?.screenshotUrl ? (
                                                     <a href={result.screenshotUrl} target="_blank" rel="noopener noreferrer">
@@ -307,5 +322,3 @@ export default function AdminMatchDetailsPage() {
     </div>
   );
 }
-
-    

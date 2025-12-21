@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useCollection } from '@/firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, getDoc, onSnapshot } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -127,7 +127,7 @@ const UpiAccountRow = ({ account }: { account: UpiAccount }) => {
         const today = format(new Date(), 'yyyy-MM-dd');
         const dailyStatRef = doc(firestore, 'upi-accounts', account.id, 'daily_stats', today);
         
-        const unsubscribe = onSnapshot(doc(firestore, dailyStatRef), (doc) => {
+        const unsubscribe = onSnapshot(dailyStatRef, (doc) => {
             if (doc.exists()) {
                 setDailyData(doc.data() as UpiDailyStat);
             } else {

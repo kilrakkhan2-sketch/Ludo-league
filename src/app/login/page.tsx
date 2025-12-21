@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -90,7 +91,8 @@ export default function LoginPage() {
         return;
     }
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      const credential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      await handleNewUserSetup(credential);
       toast({
         title: 'Signed In!',
         description: 'Welcome back.',

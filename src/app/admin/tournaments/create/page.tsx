@@ -15,7 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Info } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -25,6 +25,15 @@ import { useFirebase, useUser } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import PrizeDistributionModels from '@/lib/prize-distribution-models.json';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 
 export default function AdminCreateTournamentPage() {
   const { firestore } = useFirebase();
@@ -40,9 +49,12 @@ export default function AdminCreateTournamentPage() {
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [prizeModel, setPrizeModel] = useState<string>("winner-takes-all");
 
   const handleSubmit = async () => {
-    if (!firestore || !user || !name || !prizePool || !entryFee || !startDate || !maxPlayers) {
+    const selectedModel = PrizeDistributionModels.find(m => m.slug === prizeModel);
+
+    if (!firestore || !user || !name || !prizePool || !entryFee || !startDate || !maxPlayers || !selectedModel) {
         toast({
             variant: "destructive",
             title: "Missing Information",
@@ -64,6 +76,7 @@ export default function AdminCreateTournamentPage() {
             status: 'upcoming',
             players: [],
             creatorId: user.uid,
+            prizeDistribution: selectedModel.distribution,
         });
         toast({
             title: "Tournament Created!",
@@ -80,6 +93,8 @@ export default function AdminCreateTournamentPage() {
         setIsSubmitting(false);
     }
   }
+
+  const selectedModel = PrizeDistributionModels.find(m => m.slug === prizeModel);
 
   return (
       <div className="space-y-6">
@@ -106,10 +121,52 @@ export default function AdminCreateTournamentPage() {
                 <Input id="entry-fee" type="number" placeholder="e.g., 100" value={entryFee} onChange={(e) => setEntryFee(e.target.value)}/>
               </div>
             </div>
-             <div className="space-y-2">
-                <Label htmlFor="max-players">Max Players</Label>
-                <Input id="max-players" type="number" placeholder="e.g., 64" value={maxPlayers} onChange={(e) => setMaxPlayers(e.target.value)} />
-              </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                    <Label htmlFor="max-players">Max Players</Label>
+                    <Input id="max-players" type="number" placeholder="e.g., 64" value={maxPlayers} onChange={(e) => setMaxPlayers(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                    <Label>Prize Distribution Model</Label>
+                     <Select value={prizeModel} onValueChange={setPrizeModel}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select a model" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {PrizeDistributionModels.map(model => (
+                                <SelectItem key={model.slug} value={model.slug}>
+                                    {model.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+            {selectedModel && (
+                <div className="p-4 border rounded-lg bg-muted/40">
+                    <div className="flex items-center mb-2">
+                         <h4 className="font-semibold text-sm mr-2">Prize Breakdown</h4>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger>
+                                    <Info className="h-4 w-4 text-muted-foreground" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{selectedModel.description}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
+                    <div className="space-y-1.5 text-sm text-muted-foreground">
+                        {selectedModel.distribution.map(tier => (
+                            <div key={tier.rank} className="flex justify-between items-center">
+                                <span>Rank {tier.rank}</span>
+                                <span className="font-medium text-foreground">{tier.percentage}%</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Start Date</Label>

@@ -13,7 +13,6 @@ service cloud.firestore {
     function isServer() {
       // In callable functions, there is no sign_in_provider. We identify server-side
       // operations by checking if the auth token is verified. This is a simplification.
-      // A more robust way would be a custom claim for service accounts if needed.
       return request.auth.token.firebase.sign_in_provider == null || request.auth.token.firebase.sign_in_provider == "firebase";
     }
     
@@ -82,7 +81,7 @@ service cloud.firestore {
     match /matches/{matchId} {
 
       allow list: if isSignedIn();
-      allow read: if isSignedIn(); // Simplified rule as requested
+      allow read: if isSignedIn();
 
       allow create: if isSignedIn() && isServer(); // Only allow creation via cloud function
 
@@ -113,11 +112,17 @@ service cloud.firestore {
       }
       
        match /results/{userId} {
-        // Only a player in the match can create their own result document
-        allow create: if isSignedIn() && isOwner(userId) && request.auth.uid in resource.data.players;
-        allow read: if isSignedIn() && (request.auth.uid in resource.data.players || isMatchAdmin());
-        // Players can only update their own result, and only specific fields. Admin can update anything.
-        allow update: if (isSignedIn() && isOwner(userId)) || isMatchAdmin();
+        // Allow create if user is a player in the match
+        allow create: if isOwner(userId) && request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
+        allow read: if isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players || isMatchAdmin());
+        
+        // Allow update only for confirmation, and only once.
+        allow update: if isOwner(userId) 
+                      && resource.data.status == 'submitted' // Can only update a submitted result
+                      && request.resource.data.status == 'confirmed' // The only allowed status change
+                      && !('screenshotUrl' in request.resource.data.diff(resource.data).affectedKeys()) // Cannot change screenshot
+                      && !('submittedAt' in request.resource.data.diff(resource.data).affectedKeys()); // Cannot change submission time
+                      
         allow delete: if isMatchAdmin();
       }
       
@@ -192,11 +197,14 @@ service cloud.firestore {
         }
     }
 
+    match /settings/maintenance {
+      allow read: if true;
+      allow write: if isServer() || isSuperAdmin();
+    }
+
     match /settings/{settingId} {
       allow read: if isSignedIn();
       allow write: if isServer() || isSuperAdmin();
     }
   }
 }
-
-    

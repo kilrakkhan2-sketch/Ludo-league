@@ -28,7 +28,7 @@ export function ChatRoom({ matchId }: ChatRoomProps) {
   
   const playerIds = useMemo(() => {
     if (!messages || messages.length === 0) return ['_'];
-    return [...new Set(messages.map((m: Message) => m.userId))];
+    return Array.from(new Set(messages.map((m: Message) => m.userId)));
   }, [messages]);
 
   const { data: playerProfiles, loading: playersLoading } = useCollection<UserProfile>('users', { 
