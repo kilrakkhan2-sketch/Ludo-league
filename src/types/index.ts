@@ -33,7 +33,7 @@ export type Match = {
   creatorId: string;
   players: string[];
   roomCode: string | null;
-  status: "open" | "ongoing" | "processing" | "verification" | "completed" | "disputed" | "cancelled" | "result_pending";
+  status: "open" | "ongoing" | "processing" | "verification" | "completed" | "disputed" | "cancelled";
   resultStage?: "none" | "stage1" | "stage2" | "verified";
   autoPayoutAllowed?: boolean;
   createdAt: any;
@@ -45,8 +45,6 @@ export type Match = {
 export type MatchResult = {
   id: string;
   userId: string;
-  position: number;
-  winStatus: 'win' | 'loss';
   screenshotUrl: string;
   submittedAt: any;
   confirmedPosition?: number;

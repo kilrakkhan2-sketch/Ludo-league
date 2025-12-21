@@ -1,4 +1,5 @@
 
+
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
@@ -346,7 +347,9 @@ export const autoVerifyResults = functions.firestore
             const winners = new Set<string>();
 
             for (const result of submittedResults) {
-                positions.add(result.confirmedPosition);
+                if (result.confirmedPosition) {
+                    positions.add(result.confirmedPosition);
+                }
                 if (result.confirmedWinStatus === 'win') {
                     winners.add(result.userId);
                 }
