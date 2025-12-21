@@ -68,7 +68,7 @@ const matchAdminNav = [
 ];
 
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export function AdminShell({ children, pageTitle }: { children: React.ReactNode, pageTitle?: string }) {
   const { userData } = useUser();
   const router = useRouter();
   const pathname = usePathname();
@@ -87,7 +87,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   };
 
   const navItems = getNavItems();
-  const pageTitle = navItems.find(item => pathname.startsWith(item.href))?.label || 'Admin Panel';
+  const currentNav = navItems.find(item => pathname.startsWith(item.href));
+  const title = pageTitle || currentNav?.label || 'Admin Panel';
 
   return (
     <SidebarProvider>
@@ -105,7 +106,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 <SidebarMenuItem key={href}>
                     <SidebarMenuButton 
                         href={href}
-                        current={pathname === href}
+                        current={pathname.startsWith(href)}
                         tooltip={label}
                     >
                         <Icon />
@@ -127,7 +128,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col sm:pl-14">
             <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:py-4">
               <SidebarTrigger className="sm:hidden" />
-              <h1 className="text-xl font-semibold hidden sm:block">{pageTitle}</h1>
+              <h1 className="text-xl font-semibold hidden sm:block">{title}</h1>
                <div className="relative ml-auto flex-1 md:grow-0">
                   {/* Future Search Bar? */}
                </div>
@@ -144,7 +145,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     <DropdownMenuLabel>My Account</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => router.push('/settings')}>Settings</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push('/support')}>Support</DropdownMenuItem>
+                    <DropdownMenuItem>Support</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => router.push('/dashboard')}>Exit Admin Panel</DropdownMenuItem>
                 </DropdownMenuContent>

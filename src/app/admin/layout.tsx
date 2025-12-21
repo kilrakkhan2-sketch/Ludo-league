@@ -15,6 +15,7 @@ const rolePermissions: { [key: string]: (UserProfile['role'])[] } = {
   '/admin/withdrawals': ['superadmin', 'deposit_admin'],
   '/admin/matches': ['superadmin', 'match_admin'],
   '/admin/announcements': ['superadmin', 'match_admin'],
+  '/admin/tournaments': ['superadmin', 'match_admin'],
   // Only superadmin can manage sensitive areas
   '/admin/users': ['superadmin'],
   '/admin/manage-admins': ['superadmin'],
@@ -22,6 +23,7 @@ const rolePermissions: { [key: string]: (UserProfile['role'])[] } = {
   '/admin/transactions': ['superadmin'],
   '/admin/kyc': ['superadmin'],
   '/admin/upi-management': ['superadmin'],
+  '/admin/settings': ['superadmin'],
 };
 
 const AccessDenied = () => (
