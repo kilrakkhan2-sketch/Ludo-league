@@ -1,26 +1,30 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCollection } from "@/firebase";
+import { useCollection, useCollectionCount } from "@/firebase";
 import type { Match, UserProfile } from "@/types";
-import { Users, Sword, CircleArrowUp, Landmark } from 'lucide-react';
+import { Users, Sword, CircleArrowUp, Landmark, Hourglass, ShieldCheck, FileKey, BadgeCheck } from 'lucide-react';
 import { useMemo } from "react";
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
 
-const StatCard = ({ title, value, icon: Icon, loading }: { title: string, value: string | number, icon: React.ElementType, loading: boolean }) => (
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium">{title}</CardTitle>
-      <Icon className="h-4 w-4 text-muted-foreground" />
-    </CardHeader>
-    <CardContent>
-      {loading ? (
-        <div className="h-8 w-1/2 animate-pulse rounded-md bg-muted" />
-      ) : (
-        <div className="text-2xl font-bold">{value}</div>
-      )}
-    </CardContent>
+const StatCard = ({ title, value, icon: Icon, loading, href }: { title: string, value: string | number, icon: React.ElementType, loading: boolean, href?: string }) => (
+  <Card className="hover:bg-muted/50 transition-colors">
+    <Link href={href || '#'}>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">{title}</CardTitle>
+          <Icon className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <Skeleton className="h-8 w-1/2" />
+          ) : (
+            <div className="text-2xl font-bold">{value}</div>
+          )}
+        </CardContent>
+    </Link>
   </Card>
 );
 
@@ -29,6 +33,12 @@ export default function AdminDashboardPage() {
   const { data: matches, loading: matchesLoading } = useCollection<Match>("matches");
   const { data: deposits, loading: depositsLoading } = useCollection("deposit-requests", { where: ["status", "==", "approved"] });
   const { data: withdrawals, loading: withdrawalsLoading } = useCollection("withdrawal-requests", { where: ["status", "==", "approved"] });
+  
+  // Pending counts
+  const { count: pendingDeposits, loading: pendingDepositsLoading } = useCollectionCount("deposit-requests", { where: ["status", "==", "pending"] });
+  const { count: pendingWithdrawals, loading: pendingWithdrawalsLoading } = useCollectionCount("withdrawal-requests", { where: ["status", "==", "pending"] });
+  const { count: pendingKyc, loading: pendingKycLoading } = useCollectionCount("kyc-requests", { where: ["status", "==", "pending"] });
+  const { count: pendingMatches, loading: pendingMatchesLoading } = useCollectionCount("matches", { where: ["status", "==", "verification"] });
 
   const totalUsers = users?.length || 0;
   const totalMatches = matches?.length || 0;
@@ -36,6 +46,7 @@ export default function AdminDashboardPage() {
   const totalWithdrawals = useMemo(() => withdrawals?.reduce((acc: any, w: any) => acc + (w.amount || 0), 0) || 0, [withdrawals]);
 
   const loading = usersLoading || matchesLoading || depositsLoading || withdrawalsLoading;
+  const pendingLoading = pendingDepositsLoading || pendingWithdrawalsLoading || pendingKycLoading || pendingMatchesLoading;
   
   const revenueData = [
     { month: 'Jan', revenue: 2000 }, { month: 'Feb', revenue: 1800 },
@@ -68,6 +79,13 @@ export default function AdminDashboardPage() {
 
   return (
     <>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard title="Pending Deposits" value={pendingDeposits} icon={CircleArrowUp} loading={pendingLoading} href="/admin/deposits" />
+        <StatCard title="Pending Withdrawals" value={pendingWithdrawals} icon={Landmark} loading={pendingLoading} href="/admin/withdrawals" />
+        <StatCard title="Pending KYC" value={pendingKyc} icon={FileKey} loading={pendingKycLoading} href="/admin/kyc" />
+        <StatCard title="Pending Matches" value={pendingMatches} icon={BadgeCheck} loading={pendingMatchesLoading} href="/admin/matches" />
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Total Users" value={totalUsers} icon={Users} loading={loading} />
         <StatCard title="Total Matches Played" value={totalMatches} icon={Sword} loading={loading} />

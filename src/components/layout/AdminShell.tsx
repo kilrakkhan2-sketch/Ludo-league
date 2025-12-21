@@ -16,12 +16,13 @@ import {
   FileBadge,
   Megaphone,
   Power,
-  Banknote
+  Banknote,
+  BadgeCheck
 } from 'lucide-react';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
-import { useUser, useFirebase } from '@/firebase';
+import { useUser, useFirebase, useCollectionCount } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Sidebar,
@@ -33,43 +34,30 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarTrigger,
+  SidebarMenuBadge,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import Image from 'next/image';
 
-const superAdminNav = [
-  { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
-  { href: '/admin/users', icon: Users, label: 'All Users' },
-  { href: '/admin/manage-admins', icon: UserCog, label: 'Manage Roles' },
-  { href: '/admin/matches', icon: Award, label: 'Matches' },
-  { href: '/admin/tournaments', icon: Shield, label: 'Tournaments' },
-  { href: '/admin/deposits', icon: CircleArrowUp, label: 'Deposits' },
-  { href: '/admin/withdrawals', icon: Landmark, label: 'Withdrawals' },
-  { href: '/admin/upi-management', icon: Banknote, label: 'UPI Management' },
-  { href: '/admin/kyc', icon: FileBadge, label: 'KYC Management' },
-  { href: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
-  { href: '/admin/transactions', icon: Wallet, label: 'Transactions' },
-  { href: '/admin/status', icon: Power, label: 'App Status' },
-  { href: '/admin/settings', icon: Settings, label: 'Settings' },
-];
+const NavItem = ({ href, icon: Icon, label, count }: { href: string; icon: React.ElementType; label: string, count?: number }) => {
+  const pathname = usePathname();
+  const isActive = pathname.startsWith(href);
 
-const depositAdminNav = [
-  { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
-  { href: '/admin/deposits', icon: CircleArrowUp, label: 'Deposits' },
-];
-
-const withdrawalAdminNav = [
-  { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
-  { href: '/admin/withdrawals', icon: Landmark, label: 'Withdrawals' },
-];
-
-const matchAdminNav = [
-  { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
-  { href: '/admin/matches', icon: Award, label: 'Matches' },
-  { href: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
-  { href: '/admin/tournaments', icon: Shield, label: 'Tournaments' },
-];
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton 
+        href={href}
+        current={isActive}
+        tooltip={label}
+      >
+        <Icon />
+        <span>{label}</span>
+        {count !== undefined && count > 0 && <SidebarMenuBadge>{count}</SidebarMenuBadge>}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+};
 
 
 export function AdminShell({ children, pageTitle }: { children: React.ReactNode, pageTitle?: string }) {
@@ -77,16 +65,37 @@ export function AdminShell({ children, pageTitle }: { children: React.ReactNode,
   const router = useRouter();
   const pathname = usePathname();
 
+  const { count: pendingDeposits } = useCollectionCount("deposit-requests", { where: ["status", "==", "pending"] });
+  const { count: pendingWithdrawals } = useCollectionCount("withdrawal-requests", { where: ["status", "==", "pending"] });
+  const { count: pendingKyc } = useCollectionCount("kyc-requests", { where: ["status", "==", "pending"] });
+  const { count: pendingMatches } = useCollectionCount("matches", { where: ["status", "==", "verification"] });
+
   const getNavItems = () => {
+    const allNav = {
+        dashboard: { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
+        users: { href: '/admin/users', icon: Users, label: 'All Users' },
+        roles: { href: '/admin/manage-admins', icon: UserCog, label: 'Manage Roles' },
+        matches: { href: '/admin/matches', icon: Award, label: 'Matches', count: pendingMatches },
+        tournaments: { href: '/admin/tournaments', icon: Shield, label: 'Tournaments' },
+        deposits: { href: '/admin/deposits', icon: CircleArrowUp, label: 'Deposits', count: pendingDeposits },
+        withdrawals: { href: '/admin/withdrawals', icon: Landmark, label: 'Withdrawals', count: pendingWithdrawals },
+        upi: { href: '/admin/upi-management', icon: Banknote, label: 'UPI Management' },
+        kyc: { href: '/admin/kyc', icon: FileBadge, label: 'KYC Management', count: pendingKyc },
+        announcements: { href: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
+        transactions: { href: '/admin/transactions', icon: Wallet, label: 'Transactions' },
+        status: { href: '/admin/status', icon: Power, label: 'App Status' },
+        settings: { href: '/admin/settings', icon: Settings, label: 'Settings' },
+    };
+    
     switch (userData?.role) {
       case 'superadmin':
-        return superAdminNav;
+        return Object.values(allNav);
       case 'deposit_admin':
-        return depositAdminNav;
+        return [allNav.dashboard, allNav.deposits];
       case 'withdrawal_admin':
-        return withdrawalAdminNav;
+        return [allNav.dashboard, allNav.withdrawals];
       case 'match_admin':
-        return matchAdminNav;
+        return [allNav.dashboard, allNav.matches, allNav.announcements, allNav.tournaments];
       default:
         return [];
     }
@@ -108,18 +117,7 @@ export function AdminShell({ children, pageTitle }: { children: React.ReactNode,
               </Link>
             </SidebarHeader>
             <SidebarMenu>
-               {navItems.map(({ href, icon: Icon, label }) => (
-                <SidebarMenuItem key={href}>
-                    <SidebarMenuButton 
-                        href={href}
-                        current={pathname.startsWith(href)}
-                        tooltip={label}
-                    >
-                        <Icon />
-                        <span>{label}</span>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+               {navItems.map((item) => <NavItem key={item.href} {...item} />)}
             </SidebarMenu>
             <SidebarFooter>
                <Button variant="ghost" className="w-full justify-start gap-2" asChild>

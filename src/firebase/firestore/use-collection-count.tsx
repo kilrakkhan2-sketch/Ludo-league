@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { collection, getCountFromServer } from 'firebase/firestore';
+import { useState, useEffect, useMemo } from 'react';
+import { collection, query, where, getCountFromServer, QueryConstraint } from 'firebase/firestore';
 import { useFirebase } from '../provider';
 import { FirebaseError } from 'firebase/app';
 
@@ -11,18 +11,42 @@ interface UseCollectionCountResult {
   error: FirebaseError | null;
 }
 
-export function useCollectionCount(collectionName: string): UseCollectionCountResult {
+type WhereClause = readonly [string, any, any];
+
+interface QueryOptions {
+    where?: WhereClause | WhereClause[];
+}
+
+export function useCollectionCount(collectionName: string, options: QueryOptions = {}): UseCollectionCountResult {
   const { firestore } = useFirebase();
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<FirebaseError | null>(null);
 
+  const optionsMemo = useMemo(() => options, [JSON.stringify(options.where)]);
+
   useEffect(() => {
+    if (!firestore) {
+        setLoading(false);
+        return;
+    };
+    
+    setLoading(true);
+
     const getCount = async () => {
       try {
-        if (!firestore) throw new Error('Firestore not initialized');
+        const constraints: QueryConstraint[] = [];
+        if (optionsMemo.where) {
+            if (Array.isArray(optionsMemo.where[0])) {
+                (optionsMemo.where as WhereClause[]).forEach(w => constraints.push(where(...w)));
+            } else {
+                constraints.push(where(...(optionsMemo.where as WhereClause)));
+            }
+        }
+
         const coll = collection(firestore, collectionName);
-        const snapshot = await getCountFromServer(coll);
+        const q = query(coll, ...constraints);
+        const snapshot = await getCountFromServer(q);
         setCount(snapshot.data().count);
       } catch (err: any) {
         setError(err);
@@ -32,7 +56,7 @@ export function useCollectionCount(collectionName: string): UseCollectionCountRe
     };
 
     getCount();
-  }, [collectionName, firestore]);
+  }, [collectionName, firestore, optionsMemo]);
 
   return { count, loading, error };
 }
