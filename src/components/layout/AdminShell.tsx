@@ -2,38 +2,23 @@
 'use client';
 
 import {
-  Bell,
   Home,
-  LineChart,
   Package,
   Package2,
-  ShoppingCart,
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+  Sheet,
+  SheetContent,
+  SheetTrigger
+} from '@/components/ui/sheet';
 import { AppShell } from './AppShell';
-import { useUser } from '@/firebase';
-import { useMemo } from 'react';
+import { useFirebase, useUser } from '@/firebase';
+import { useEffect, useMemo, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
 
 const adminNavItems = [
   { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
@@ -42,19 +27,35 @@ const adminNavItems = [
 ];
 
 export function AdminShell({ children, pageTitle }: { children: React.ReactNode, pageTitle: string }) {
-  const { user, claims, loading } = useUser();
-  
-  const isAdmin = useMemo(() => 
-    claims?.role && ['superadmin', 'deposit_admin', 'match_admin'].includes(claims.role as string)
-  , [claims]);
+  const { user, loading: authLoading } = useUser();
+  const { firestore } = useFirebase();
+  const [role, setRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (loading) {
+  useEffect(() => {
+    const fetchRole = async () => {
+      if (user && firestore) {
+        const userDoc = await getDoc(doc(firestore, 'users', user.uid));
+        if (userDoc.exists()) {
+          setRole(userDoc.data().role);
+        }
+      }
+      setLoading(false);
+    };
+    fetchRole();
+  }, [user, firestore]);
+
+  const isAdmin = useMemo(() =>
+    role && ['superadmin', 'deposit_admin', 'match_admin'].includes(role)
+    , [role]);
+
+  if (authLoading || loading) {
     return (
-        <AppShell pageTitle="Loading...">
-            <div className="flex items-center justify-center h-full">
-                <p>Loading admin section...</p>
-            </div>
-        </AppShell>
+      <AppShell pageTitle="Loading...">
+        <div className="flex items-center justify-center h-full">
+          <p>Loading admin section...</p>
+        </div>
+      </AppShell>
     )
   }
 

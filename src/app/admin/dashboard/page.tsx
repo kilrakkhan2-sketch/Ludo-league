@@ -4,8 +4,8 @@
 import { AdminShell } from "@/components/layout/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCollection } from "@/firebase";
-import type { Match, User } from "@/types";
-import { Users, Sword, Shield, IndianRupee } from 'lucide-react';
+import type { Match, User, Deposit, Withdrawal } from "@/types";
+import { Users, Sword, IndianRupee, Landmark, CircleArrowUp } from 'lucide-react';
 
 const StatCard = ({ title, value, icon: Icon }) => (
   <Card>
@@ -22,21 +22,23 @@ const StatCard = ({ title, value, icon: Icon }) => (
 export default function AdminDashboardPage() {
   const { data: users, loading: usersLoading } = useCollection<User>("users");
   const { data: matches, loading: matchesLoading } = useCollection<Match>("matches");
+  const { data: deposits, loading: depositsLoading } = useCollection<Deposit>("deposits");
+  const { data: withdrawals, loading: withdrawalsLoading } = useCollection<Withdrawal>("withdrawals");
 
   const totalUsers = users.length;
   const totalMatches = matches.length;
-  const openMatches = matches.filter(m => m.status === 'open').length;
-  const totalPrizePool = matches.reduce((acc, m) => acc + (m.prizePool || 0), 0);
+  const totalDeposits = deposits.reduce((acc, d) => acc + (d.amount || 0), 0);
+  const totalWithdrawals = withdrawals.reduce((acc, w) => acc + (w.amount || 0), 0);
 
-  const loading = usersLoading || matchesLoading;
+  const loading = usersLoading || matchesLoading || depositsLoading || withdrawalsLoading;
 
   return (
     <AdminShell pageTitle="Dashboard">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Total Users" value={loading ? '...' : totalUsers} icon={Users} />
         <StatCard title="Total Matches" value={loading ? '...' : totalMatches} icon={Sword} />
-        <StatCard title="Open Matches" value={loading ? '...' : openMatches} icon={Shield} />
-        <StatCard title="Total Prize Pool" value={loading ? '...' : `₹${totalPrizePool}`} icon={IndianRupee} />
+        <StatCard title="Total Deposits" value={loading ? '...' : `₹${totalDeposits}`} icon={CircleArrowUp} />
+        <StatCard title="Total Withdrawals" value={loading ? '...' : `₹${totalWithdrawals}`} icon={Landmark} />
       </div>
     </AdminShell>
   );
