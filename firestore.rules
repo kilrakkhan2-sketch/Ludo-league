@@ -137,6 +137,11 @@ service cloud.firestore {
       allow create: if isServer() || (isSignedIn() && isOwner(request.resource.data.userId));
       allow update, delete: if isServer() || isSuperAdmin();
     }
+    
+    match /upi-accounts/{accountId} {
+        allow read: if isSignedIn();
+        allow write: if isSuperAdmin();
+    }
 
     match /settings/{settingId} {
       allow read: if isSignedIn();

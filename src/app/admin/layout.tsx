@@ -14,14 +14,14 @@ const rolePermissions: { [key: string]: (UserProfile['role'])[] } = {
   '/admin/deposits': ['superadmin', 'deposit_admin'],
   '/admin/withdrawals': ['superadmin', 'deposit_admin'],
   '/admin/matches': ['superadmin', 'match_admin'],
-  // Only superadmin can manage users, roles, and settings
+  '/admin/announcements': ['superadmin', 'match_admin'],
+  // Only superadmin can manage sensitive areas
   '/admin/users': ['superadmin'],
   '/admin/manage-admins': ['superadmin'],
-  '/admin/settings': ['superadmin'],
   '/admin/status': ['superadmin'],
   '/admin/transactions': ['superadmin'],
   '/admin/kyc': ['superadmin'],
-  '/admin/announcements': ['superadmin', 'match_admin'],
+  '/admin/upi-management': ['superadmin'],
 };
 
 const AccessDenied = () => (

@@ -7,13 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useDoc } from '@/firebase/firestore/use-doc';
+import { useCollection } from '@/firebase';
 import { useUser } from '@/firebase/auth/use-user';
 import { addDoc, collection, Timestamp } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import type { AppSettings } from '@/types';
-import { ArrowLeft, UploadCloud } from 'lucide-react';
+import type { UpiAccount } from '@/types';
+import { ArrowLeft, UploadCloud, Copy } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -27,11 +27,18 @@ export default function DepositPageContent() {
 
   const amount = searchParams ? searchParams.get('amount') : null;
 
-  const { data: paymentSettings, loading: settingsLoading } = useDoc<AppSettings>('settings/payment');
+  const { data: paymentAccounts, loading: settingsLoading } = useCollection<UpiAccount>('upi-accounts', {
+      where: ['isActive', '==', true]
+  });
 
   const [transactionId, setTransactionId] = useState('');
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: 'Copied to clipboard!', description: text });
+  }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -128,23 +135,28 @@ export default function DepositPageContent() {
         <div className="bg-card p-6 rounded-lg shadow-md">
             <h2 className="text-lg font-semibold mb-4 text-center">Scan & Pay</h2>
              <div className="space-y-4">
-               <div className="flex justify-center">
-                  <Skeleton className="w-48 h-48" />
-               </div>
-                {settingsLoading ? (
+                <div className='text-center pt-2'>
+                    <p className="text-muted-foreground">Amount to pay</p>
+                    <p className="text-4xl font-bold">₹{amount}</p>
+                </div>
+                 {settingsLoading ? (
                     <Skeleton className="h-8 w-full" />
-                ) : paymentSettings ? (
-                  <div className="text-center">
-                    <Label className="text-muted-foreground">or pay to UPI ID</Label>
-                    <p className="text-lg font-mono tracking-wider">{paymentSettings.upiId}</p>
+                ) : paymentAccounts && paymentAccounts.length > 0 ? (
+                  <div className="text-center space-y-3">
+                    <Label className="text-muted-foreground">Pay to any of the UPI IDs below</Label>
+                    {paymentAccounts.map(acc => (
+                        <div key={acc.id} onClick={() => copyToClipboard(acc.upiId)} className="font-mono tracking-wider bg-muted p-3 rounded-lg flex items-center justify-between cursor-pointer">
+                            <span>{acc.upiId}</span>
+                            <Copy className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                    ))}
                   </div>
                 ) : (
-                    <p className="text-center text-destructive">Could not load payment details.</p>
+                    <Alert variant="destructive">
+                      <AlertTitle>Payments Disabled</AlertTitle>
+                      <AlertDescription>Deposits are temporarily unavailable. Please try again later.</AlertDescription>
+                    </Alert>
                 )}
-                 <div className='text-center pt-2'>
-                    <p className="text-muted-foreground">Amount to pay</p>
-                    <p className="text-3xl font-bold">₹{amount}</p>
-                </div>
               </div>
           </div>
           <div className="bg-card p-6 rounded-lg shadow-md">
@@ -177,7 +189,7 @@ export default function DepositPageContent() {
           </div>
       </main>
       <footer className="p-4 sticky bottom-0 bg-background border-t">
-        <Button onClick={handleSubmit} className="w-full text-lg py-6" disabled={isSubmitting || !screenshot || !transactionId}>
+        <Button onClick={handleSubmit} className="w-full text-lg py-6" disabled={isSubmitting || !screenshot || !transactionId || paymentAccounts.length === 0}>
             {isSubmitting ? 'Submitting...' : 'Submit Deposit Request'}
         </Button>
       </footer>

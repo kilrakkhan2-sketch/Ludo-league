@@ -16,6 +16,7 @@ import {
   FileBadge,
   Megaphone,
   Power,
+  Banknote
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -44,6 +45,7 @@ const superAdminNav = [
   { href: '/admin/matches', icon: Award, label: 'Matches' },
   { href: '/admin/deposits', icon: CircleArrowUp, label: 'Deposits' },
   { href: '/admin/withdrawals', icon: Landmark, label: 'Withdrawals' },
+  { href: '/admin/upi-management', icon: Banknote, label: 'UPI Management' },
   { href: '/admin/kyc', icon: FileBadge, label: 'KYC Management' },
   { href: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
   { href: '/admin/transactions', icon: Wallet, label: 'Transactions' },

@@ -88,9 +88,14 @@ export type WithdrawalRequest = {
     processedBy?: string; // UID of the admin who processed it
 }
 
-export type AppSettings = {
+export type UpiAccount = {
   id: string;
-  upiId?: string;
+  upiId: string;
+  displayName: string;
+  isActive: boolean;
+  totalTransactions: number;
+  totalAmountReceived: number;
+  createdAt: any;
 };
 
 export type MaintenanceSettings = {

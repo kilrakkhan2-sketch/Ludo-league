@@ -96,12 +96,39 @@
       },
       "required": ["userId", "amount", "method", "details", "status", "createdAt"]
     },
-    "AppSettings": {
-      "title": "App Settings",
-      "description": "Global settings for the application.",
+    "UpiAccount": {
+      "title": "UPI Account",
+      "description": "Represents a UPI account for receiving payments.",
       "type": "object",
       "properties": {
-        "upiId": { "type": "string", "description": "The UPI ID for deposits." }
+        "upiId": { "type": "string", "description": "The UPI ID (e.g., user@okicici)." },
+        "displayName": { "type": "string", "description": "A friendly name for the account (e.g., 'Primary UPI')." },
+        "isActive": { "type": "boolean", "description": "Whether this account is currently active for receiving payments." },
+        "totalTransactions": { "type": "number", "description": "A counter for total transactions received." },
+        "totalAmountReceived": { "type": "number", "description": "The total amount received through this UPI ID." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of when the account was added." }
+      },
+      "required": ["upiId", "displayName", "isActive"]
+    },
+    "MaintenanceSettings": {
+      "title": "Maintenance Settings",
+      "description": "Controls the app's maintenance mode and feature availability.",
+      "type": "object",
+      "properties": {
+        "isAppDisabled": { "type": "boolean", "description": "If true, the entire app is in maintenance mode." },
+        "appDisabledMessage": { "type": "string", "description": "Message to display when the app is disabled." },
+        "areDepositsDisabled": { "type": "boolean", "description": "If true, users cannot initiate new deposits." },
+        "depositsTimeScheduled": { "type": "boolean", "description": "Enable time-based disabling for deposits." },
+        "depositsStartTime": { "type": "string", "description": "Time to start disabling deposits (HH:mm)." },
+        "depositsEndTime": { "type": "string", "description": "Time to stop disabling deposits (HH:mm)." },
+        "areWithdrawalsDisabled": { "type": "boolean", "description": "If true, users cannot request withdrawals." },
+        "withdrawalsTimeScheduled": { "type": "boolean", "description": "Enable time-based disabling for withdrawals." },
+        "withdrawalsStartTime": { "type": "string", "description": "Time to start disabling withdrawals (HH:mm)." },
+        "withdrawalsEndTime": { "type": "string", "description": "Time to stop disabling withdrawals (HH:mm)." },
+        "areMatchesDisabled": { "type": "boolean", "description": "If true, users cannot create new matches." },
+        "matchesTimeScheduled": { "type": "boolean", "description": "Enable time-based disabling for match creation." },
+        "matchesStartTime": { "type": "string", "description": "Time to start disabling match creation (HH:mm)." },
+        "matchesEndTime": { "type": "string", "description": "Time to stop disabling match creation (HH:mm)." }
       }
     },
     "KycRequest": {
@@ -216,9 +243,13 @@
       "schema": { "$ref": "#/entities/WithdrawalRequest" },
       "description": "Stores all withdrawal requests for admin verification."
     },
-    "/settings/payment": {
-      "schema": { "$ref": "#/entities/AppSettings" },
-      "description": "Stores app-wide payment settings like UPI ID."
+    "/upi-accounts/{accountId}": {
+      "schema": { "$ref": "#/entities/UpiAccount" },
+      "description": "Stores all configurable UPI accounts for receiving payments."
+    },
+    "/settings/maintenance": {
+        "schema": { "$ref": "#/entities/MaintenanceSettings" },
+        "description": "Controls app-wide maintenance and feature status."
     },
     "/kyc-requests/{kycId}": {
       "schema": { "$ref": "#/entities/KycRequest" },
