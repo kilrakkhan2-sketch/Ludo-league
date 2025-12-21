@@ -1,9 +1,9 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useCollection, useUser, useDoc } from '@/firebase';
-import { doc, Timestamp, runTransaction, collection, query, where, getDocs } from 'firebase/firestore';
-import { useFirebase } from '@/firebase/provider';
+import { useCollection, useUser } from '@/firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { WithdrawalRequest, UserProfile } from '@/types';
 import { format } from 'date-fns';
 import {
@@ -45,8 +45,7 @@ const getStatusVariant = (status: string) => {
 };
 
 export default function AdminWithdrawalsPage() {
-  const { firestore } = useFirebase();
-  const { userData: adminProfile, user: adminUser } = useUser();
+  const functions = getFunctions();
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState('pending');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,7 +57,7 @@ export default function AdminWithdrawalsPage() {
   });
 
   const allUserIdsInView = useMemo(() => {
-    if (!requests || requests.length === 0) return ['_']; // Firestore 'in' query needs a non-empty array
+    if (!requests || requests.length === 0) return ['_'];
     const ids = new Set<string>();
     requests.forEach((r: WithdrawalRequest) => {
         ids.add(r.userId);
@@ -80,65 +79,37 @@ export default function AdminWithdrawalsPage() {
     }
     return map;
   }, [usersData]);
-
-  const handleProcessRequest = async (request: WithdrawalRequest, action: 'approve' | 'reject') => {
-    if (!firestore || !adminUser || !adminProfile) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not process request. Admin not found.' });
-      return;
-    }
+  
+  const handleApprove = async (request: WithdrawalRequest) => {
     setIsSubmitting(true);
-    
     try {
-        await runTransaction(firestore, async (transaction) => {
-            const adminRef = doc(firestore, 'users', adminUser.uid);
-            const requestRef = doc(firestore, 'withdrawal-requests', request.id);
-            const userRef = doc(firestore, 'users', request.userId);
-
-            const adminDoc = await transaction.get(adminRef);
-            const adminData = adminDoc.data() as UserProfile;
-            
-            const userTransactionQuery = query(collection(firestore, `users/${request.userId}/transactions`), where('relatedId', '==', request.id));
-            const userTransactionsSnapshot = await getDocs(userTransactionQuery);
-            const userTransactionRef = userTransactionsSnapshot.docs[0]?.ref;
-
-            if (action === 'approve') {
-                transaction.update(requestRef, {
-                    status: 'approved',
-                    processedAt: Timestamp.now(),
-                    processedBy: adminUser.uid,
-                });
-
-                if (userTransactionRef) {
-                    transaction.update(userTransactionRef, { status: 'completed' });
-                }
-
-            } else { // 'reject'
-                transaction.update(requestRef, {
-                    status: 'rejected',
-                    processedAt: Timestamp.now(),
-                    processedBy: adminUser.uid,
-                });
-                
-                const userDoc = await transaction.get(userRef);
-                const userProfile = userDoc.data() as UserProfile;
-                const newUserBalance = (userProfile.walletBalance || 0) + request.amount;
-                transaction.update(userRef, { walletBalance: newUserBalance });
-                
-                if (userTransactionRef) {
-                    transaction.update(userTransactionRef, { status: 'failed', description: 'Withdrawal request rejected by admin.' });
-                }
-            }
-        });
-
-        toast({ title: 'Success', description: `Request has been ${action}ed.` });
-        setSelectedRequest(null);
-    } catch (error: any) {
-        console.error("Error processing withdrawal:", error);
-        toast({ variant: 'destructive', title: 'Processing Error', description: error.message || 'Could not process the request.' });
+      const approveWithdrawal = httpsCallable(functions, 'approveWithdrawal');
+      await approveWithdrawal({ withdrawalId: request.id });
+      toast({ title: 'Success', description: `Request has been approved.` });
+      setSelectedRequest(null);
+    } catch(error: any) {
+      console.error("Error approving withdrawal:", error);
+      toast({ variant: 'destructive', title: 'Processing Error', description: error.message || 'Could not process the request.' });
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   }
+  
+  const handleReject = async (request: WithdrawalRequest) => {
+     setIsSubmitting(true);
+    try {
+      const rejectWithdrawal = httpsCallable(functions, 'rejectWithdrawal');
+      await rejectWithdrawal({ withdrawalId: request.id });
+      toast({ title: 'Success', description: `Request has been rejected.` });
+      setSelectedRequest(null);
+    } catch(error: any) {
+      console.error("Error rejecting withdrawal:", error);
+      toast({ variant: 'destructive', title: 'Processing Error', description: error.message || 'Could not process the request.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
 
   const isLoading = loading || usersLoading;
 
@@ -178,7 +149,7 @@ export default function AdminWithdrawalsPage() {
                     const processor = req.processedBy ? usersMap.get(req.processedBy) : null;
                     return (
                     <TableRow key={req.id}>
-                    <TableCell>{req.createdAt ? format((req.createdAt as Timestamp).toDate(), 'dd MMM yyyy') : 'N/A'}</TableCell>
+                    <TableCell>{req.createdAt ? format((req.createdAt as any).toDate(), 'dd MMM yyyy') : 'N/A'}</TableCell>
                     <TableCell>
                         <div>{user?.name || req.userName}</div>
                         <div className="text-xs text-muted-foreground">{user?.email || req.userEmail}</div>
@@ -205,8 +176,8 @@ export default function AdminWithdrawalsPage() {
                                         </DialogHeader>
                                         <DialogFooter>
                                             <Button size="sm" variant="outline" onClick={() => setSelectedRequest(null)}>Cancel</Button>
-                                            <Button size="sm" variant="destructive" onClick={() => handleProcessRequest(selectedRequest, 'reject')} disabled={isSubmitting}><XCircle className="h-4 w-4 mr-2"/>Reject</Button>
-                                            <Button size="sm" onClick={() => handleProcessRequest(selectedRequest, 'approve')} disabled={isSubmitting}><CheckCircle className="h-4 w-4 mr-2"/>Approve</Button>
+                                            <Button size="sm" variant="destructive" onClick={() => handleReject(selectedRequest)} disabled={isSubmitting}><XCircle className="h-4 w-4 mr-2"/>Reject</Button>
+                                            <Button size="sm" onClick={() => handleApprove(selectedRequest)} disabled={isSubmitting}><CheckCircle className="h-4 w-4 mr-2"/>Approve</Button>
                                         </DialogFooter>
                                     </DialogContent>
                                 )}

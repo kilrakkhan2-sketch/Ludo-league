@@ -25,6 +25,11 @@ service cloud.firestore {
       let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
       return role == 'deposit_admin' || role == 'superadmin';
     }
+    
+    function isWithdrawalAdmin() {
+      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return role == 'withdrawal_admin' || role == 'superadmin';
+    }
 
     function isMatchAdmin() {
       let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
@@ -59,8 +64,12 @@ service cloud.firestore {
 
       match /transactions/{transactionId} {
         allow read: if isOwner(userId) || isSuperAdmin();
-        allow create: if isOwner(userId) || isDepositAdmin() || isServer();
+        allow create: if isOwner(userId) || isDepositAdmin() || isWithdrawalAdmin() || isServer();
         allow update, delete: if false;
+      }
+      
+      match /personal_notifications/{notificationId} {
+        allow read, write: if isOwner(userId);
       }
     }
 
@@ -135,9 +144,9 @@ service cloud.firestore {
     }
 
     match /withdrawal-requests/{withdrawalId} {
-       allow read: if isServer() || (isSignedIn() && (isOwner(resource.data.userId) || isDepositAdmin()));
+       allow read: if isServer() || (isSignedIn() && (isOwner(resource.data.userId) || isWithdrawalAdmin()));
       allow create: if isServer() || (isSignedIn() && isOwner(request.resource.data.userId));
-      allow update: if isServer() || isDepositAdmin();
+      allow update: if isServer() || isWithdrawalAdmin();
       allow delete: if isServer() || isSuperAdmin();
     }
 

@@ -1,4 +1,5 @@
 
+
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
@@ -123,6 +124,124 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
 });
 
 // =================================================================
+//  WITHDRAWAL MANAGEMENT FUNCTIONS
+// =================================================================
+
+export const approveWithdrawal = functions.https.onCall(async (data, context) => {
+    // 1. Check permissions
+    if (context.auth?.token.role !== 'withdrawal_admin' && context.auth?.token.role !== 'superadmin') {
+        throw new functions.https.HttpsError('permission-denied', 'Only withdrawal admins can approve requests.');
+    }
+    
+    // 2. Validate data
+    const { withdrawalId } = data;
+    if (!withdrawalId || typeof withdrawalId !== 'string') {
+        throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a "withdrawalId" argument.');
+    }
+
+    const adminUid = context.auth.uid;
+    const requestRef = db.collection('withdrawal-requests').doc(withdrawalId);
+    const adminRef = db.collection('users').doc(adminUid);
+    
+    // 3. Perform transaction
+    try {
+        await db.runTransaction(async (t) => {
+            const requestDoc = await t.get(requestRef);
+            if (!requestDoc.exists) throw new Error('Withdrawal request not found.');
+            const requestData = requestDoc.data();
+            if (requestData?.status !== 'pending') throw new Error('This request has already been processed.');
+
+            const { amount, userId } = requestData;
+            const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
+            const userTxSnapshot = await t.get(userTxQuery);
+            const userTxRef = userTxSnapshot.docs[0]?.ref;
+
+            // A. Update withdrawal request status
+            t.update(requestRef, {
+                status: 'approved',
+                processedAt: FieldValue.serverTimestamp(),
+                processedBy: adminUid,
+            });
+
+            // B. Update the user's transaction status to completed
+            if (userTxRef) {
+                t.update(userTxRef, { status: 'completed' });
+            }
+
+            // C. Deduct the amount from the admin's wallet as a ledger
+            t.update(adminRef, { walletBalance: FieldValue.increment(-amount) });
+        });
+
+        functions.logger.info(`Withdrawal ${withdrawalId} approved by admin ${adminUid}.`);
+        return { success: true, message: 'Withdrawal approved successfully.' };
+        
+    } catch (error) {
+        functions.logger.error(`Error approving withdrawal ${withdrawalId}:`, error);
+        if (error instanceof functions.https.HttpsError) throw error;
+        throw new functions.https.HttpsError('internal', (error as Error).message);
+    }
+});
+
+
+export const rejectWithdrawal = functions.https.onCall(async (data, context) => {
+    // 1. Check permissions
+    if (context.auth?.token.role !== 'withdrawal_admin' && context.auth?.token.role !== 'superadmin') {
+        throw new functions.https.HttpsError('permission-denied', 'Only withdrawal admins can reject requests.');
+    }
+    
+    // 2. Validate data
+    const { withdrawalId } = data;
+    if (!withdrawalId || typeof withdrawalId !== 'string') {
+        throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a "withdrawalId" argument.');
+    }
+
+    const adminUid = context.auth.uid;
+    const requestRef = db.collection('withdrawal-requests').doc(withdrawalId);
+    
+    try {
+        const requestDoc = await requestRef.get();
+        if (!requestDoc.exists) throw new functions.https.HttpsError('not-found', 'Withdrawal request not found.');
+        const requestData = requestDoc.data();
+        if (requestData?.status !== 'pending') throw new functions.https.HttpsError('failed-precondition', 'This request has already been processed.');
+        
+        const { userId, amount } = requestData;
+        const userRef = db.collection('users').doc(userId);
+        const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
+        
+        await db.runTransaction(async (t) => {
+            const userTxSnapshot = await t.get(userTxQuery);
+            const userTxRef = userTxSnapshot.docs[0]?.ref;
+        
+            // A. Update withdrawal request
+            t.update(requestRef, {
+                status: 'rejected',
+                processedAt: FieldValue.serverTimestamp(),
+                processedBy: adminUid,
+            });
+
+            // B. Refund the user
+            t.update(userRef, { walletBalance: FieldValue.increment(amount) });
+
+            // C. Mark user's transaction as failed
+            if (userTxRef) {
+                t.update(userTxRef, { status: 'failed', description: 'Withdrawal request rejected by admin' });
+            }
+        });
+
+        functions.logger.info(`Withdrawal ${withdrawalId} for user ${userId} was rejected and funds were refunded.`);
+        await sendNotification(userId, 'Withdrawal Rejected', `Your withdrawal request for ₹${amount} was rejected. The amount has been refunded to your wallet.`);
+        
+        return { success: true, message: 'Withdrawal rejected and funds refunded.' };
+
+    } catch (error) {
+        functions.logger.error(`Failed to refund user for rejected withdrawal ${withdrawalId}:`, error);
+        if (error instanceof functions.https.HttpsError) throw error;
+        throw new functions.https.HttpsError('internal', 'An unexpected error occurred while rejecting the withdrawal.');
+    }
+});
+
+
+// =================================================================
 //  FIRESTORE TRIGGERS (Automated Actions)
 // =================================================================
 
@@ -238,42 +357,6 @@ export const onDepositStatusChange = functions.firestore
     } catch (error) {
         functions.logger.error(`Transaction failed for deposit ${context.params.depositId}:`, error);
         await change.after.ref.update({ status: "failed", error: (error as Error).message });
-    }
-    return null;
-});
-
-
-export const onWithdrawalStatusChange = functions.firestore
-  .document("withdrawal-requests/{withdrawalId}")
-  .onUpdate(async (change, context) => {
-    const beforeData = change.before.data();
-    const afterData = change.after.data();
-    const { withdrawalId } = context.params;
-
-    if (beforeData.status !== "rejected" && afterData.status === "rejected") {
-        const { userId, amount } = afterData;
-        if (!userId || !amount) return null;
-
-        const userRef = db.collection("users").doc(userId);
-        const transactionRef = db.collection(`users/${userId}/transactions`).doc(withdrawalId);
-
-        try {
-            await db.runTransaction(async (t) => {
-                const userDoc = await t.get(userRef);
-                 if (!userDoc.exists) {
-                    throw new Error(`User ${userId} not found.`);
-                }
-                
-                // Refund the amount to the user's wallet
-                t.update(userRef, { walletBalance: FieldValue.increment(amount) });
-                // Mark the original transaction as failed
-                t.update(transactionRef, { status: 'failed', description: 'Withdrawal request rejected by admin' });
-            });
-            functions.logger.info(`Withdrawal ${withdrawalId} for user ${userId} was rejected and funds were refunded.`);
-            await sendNotification(userId, 'Withdrawal Rejected', `Your withdrawal request for ₹${amount} was rejected. The amount has been refunded to your wallet.`);
-        } catch (error) {
-            functions.logger.error(`Failed to refund user ${userId} for rejected withdrawal ${withdrawalId}:`, error);
-        }
     }
     return null;
 });

@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 // Define which roles can access which paths
 const rolePermissions: { [key: string]: (UserProfile['role'])[] } = {
   '/admin/deposits': ['superadmin', 'deposit_admin'],
-  '/admin/withdrawals': ['superadmin', 'deposit_admin'],
+  '/admin/withdrawals': ['superadmin', 'withdrawal_admin'],
   '/admin/matches': ['superadmin', 'match_admin'],
   '/admin/announcements': ['superadmin', 'match_admin'],
   '/admin/tournaments': ['superadmin', 'match_admin'],

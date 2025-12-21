@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -23,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCollection, useUser } from "@/firebase";
-import { doc, updateDoc, writeBatch, collection } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -105,8 +106,10 @@ export default function ManageAdminsPage() {
         return 'destructive';
       case 'deposit_admin':
         return 'default';
-      case 'match_admin':
+      case 'withdrawal_admin':
         return 'success';
+      case 'match_admin':
+        return 'secondary';
       default:
         return 'outline';
     }
@@ -158,6 +161,7 @@ export default function ManageAdminsPage() {
                         <SelectContent>
                           <SelectItem value="user">User</SelectItem>
                           <SelectItem value="deposit_admin">Deposit Admin</SelectItem>
+                          <SelectItem value="withdrawal_admin">Withdrawal Admin</SelectItem>
                           <SelectItem value="match_admin">Match Admin</SelectItem>
                           <SelectItem value="superadmin">Super Admin</SelectItem>
                         </SelectContent>

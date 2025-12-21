@@ -57,6 +57,10 @@ const superAdminNav = [
 const depositAdminNav = [
   { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
   { href: '/admin/deposits', icon: CircleArrowUp, label: 'Deposits' },
+];
+
+const withdrawalAdminNav = [
+  { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
   { href: '/admin/withdrawals', icon: Landmark, label: 'Withdrawals' },
 ];
 
@@ -79,6 +83,8 @@ export function AdminShell({ children, pageTitle }: { children: React.ReactNode,
         return superAdminNav;
       case 'deposit_admin':
         return depositAdminNav;
+      case 'withdrawal_admin':
+        return withdrawalAdminNav;
       case 'match_admin':
         return matchAdminNav;
       default:

@@ -14,7 +14,7 @@
         "photoURL": { "type": "string", "format": "uri", "description": "URL of the user's profile picture." },
         "walletBalance": { "type": "number", "description": "The user's current wallet balance." },
         "isVerified": { "type": "boolean", "description": "KYC verification status." },
-        "role": { "type": "string", "description": "The user's role in the system.", "enum": ["superadmin", "deposit_admin", "match_admin", "user"] },
+        "role": { "type": "string", "description": "The user's role in the system.", "enum": ["superadmin", "deposit_admin", "withdrawal_admin", "match_admin", "user"] },
         "referralCode": { "type": "string", "description": "The user's unique referral code." },
         "referredBy": { "type": "string", "description": "The referral code of the user who referred them." },
         "referralEarnings": { "type": "number", "description": "Total earnings from referrals." },
@@ -93,7 +93,8 @@
         "method": { "type": "string" },
         "details": { "type": "string" },
         "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "processedBy": { "type": "string", "description": "The UID of the admin who processed the request." }
       },
       "required": ["userId", "amount", "method", "details", "status", "createdAt"]
     },

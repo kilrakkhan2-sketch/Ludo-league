@@ -4,6 +4,7 @@
 
 
 
+
 export type UserProfile = {
   id: string;
   uid: string;
@@ -14,7 +15,7 @@ export type UserProfile = {
   photoURL?: string;
   walletBalance: number;
   isVerified: boolean;
-  role: 'superadmin' | 'deposit_admin' | 'match_admin' | 'user';
+  role: 'superadmin' | 'deposit_admin' | 'withdrawal_admin' | 'match_admin' | 'user';
   createdAt?: any;
   rating?: number;
   xp?: number;
