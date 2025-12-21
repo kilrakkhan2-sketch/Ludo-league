@@ -113,6 +113,11 @@ service cloud.firestore {
 
     // ------------------ OTHER COLLECTIONS ------------------
 
+    match /announcements/{announcementId} {
+      allow read: if isSignedIn();
+      allow write: if isMatchAdmin() || isSuperAdmin();
+    }
+
     match /deposit-requests/{depositId} {
       allow read: if isServer() || (isSignedIn() && (isOwner(resource.data.userId) || isDepositAdmin()));
       allow create: if isServer() || (isSignedIn() && isOwner(request.resource.data.userId));
