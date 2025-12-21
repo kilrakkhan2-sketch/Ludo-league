@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +6,7 @@ import type { Match, UserProfile } from "@/types";
 import { Users, Sword, CircleArrowUp, Landmark } from 'lucide-react';
 import { useMemo } from "react";
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
-import { ChartTooltipContent } from "@/components/ui/chart";
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 
 const StatCard = ({ title, value, icon: Icon, loading }: { title: string, value: string | number, icon: React.ElementType, loading: boolean }) => (
   <Card>
@@ -33,8 +32,8 @@ export default function AdminDashboardPage() {
 
   const totalUsers = users?.length || 0;
   const totalMatches = matches?.length || 0;
-  const totalDeposits = useMemo(() => deposits?.reduce((acc, d: any) => acc + (d.amount || 0), 0) || 0, [deposits]);
-  const totalWithdrawals = useMemo(() => withdrawals?.reduce((acc, w: any) => acc + (w.amount || 0), 0) || 0, [withdrawals]);
+  const totalDeposits = useMemo(() => deposits?.reduce((acc: any, d: any) => acc + (d.amount || 0), 0) || 0, [deposits]);
+  const totalWithdrawals = useMemo(() => withdrawals?.reduce((acc: any, w: any) => acc + (w.amount || 0), 0) || 0, [withdrawals]);
 
   const loading = usersLoading || matchesLoading || depositsLoading || withdrawalsLoading;
   
@@ -44,13 +43,27 @@ export default function AdminDashboardPage() {
     { month: 'May', revenue: 2300 }, { month: 'Jun', revenue: 3200 },
     { month: 'Jul', revenue: 3500 },
   ];
-  
+
   const registrationsData = [
     { month: 'Jan', users: 120 }, { month: 'Feb', users: 150 },
     { month: 'Mar', users: 170 }, { month: 'Apr', users: 210 },
     { month: 'May', users: 250 }, { month: 'Jun', users: 280 },
     { month: 'Jul', users: 310 },
   ];
+  
+  const revenueChartConfig = {
+    revenue: {
+      label: "Revenue",
+      color: "hsl(var(--primary))",
+    },
+  };
+  
+   const registrationChartConfig = {
+    users: {
+      label: "Users",
+      color: "hsl(var(--primary))",
+    },
+  };
 
 
   return (
@@ -67,7 +80,7 @@ export default function AdminDashboardPage() {
                   <CardTitle>Revenue Overview</CardTitle>
               </CardHeader>
               <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
+                  <ChartContainer config={revenueChartConfig} className="h-[300px] w-full">
                       <BarChart data={revenueData}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="month" />
@@ -75,7 +88,7 @@ export default function AdminDashboardPage() {
                           <Tooltip content={<ChartTooltipContent />} />
                           <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                       </BarChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
               </CardContent>
           </Card>
           <Card>
@@ -83,7 +96,7 @@ export default function AdminDashboardPage() {
                   <CardTitle>New User Registrations</CardTitle>
               </CardHeader>
               <CardContent>
-                   <ResponsiveContainer width="100%" height={300}>
+                   <ChartContainer config={registrationChartConfig} className="h-[300px] w-full">
                       <BarChart data={registrationsData}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="month" />
@@ -91,7 +104,7 @@ export default function AdminDashboardPage() {
                            <Tooltip content={<ChartTooltipContent />} />
                           <Bar dataKey="users" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                       </BarChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
               </CardContent>
           </Card>
       </div>
