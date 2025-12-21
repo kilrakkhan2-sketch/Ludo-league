@@ -49,7 +49,8 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     let queryIsValid = true;
 
     if (optionsMemo?.where) {
-        const whereClauses = Array.isArray(optionsMemo.where[0]) ? (optionsMemo.where as WhereClause[]) : ([optionsMemo.where] as WhereClause[]);
+        const isMultipleWheres = Array.isArray(optionsMemo.where[0]);
+        const whereClauses = isMultipleWheres ? (optionsMemo.where as WhereClause[]) : ([optionsMemo.where] as WhereClause[]);
         
         for (const w of whereClauses) {
             const [_field, op, value] = w;
