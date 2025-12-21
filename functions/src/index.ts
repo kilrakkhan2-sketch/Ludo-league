@@ -1,9 +1,60 @@
 
+
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 
 admin.initializeApp();
 const db = admin.firestore();
+
+// Type definitions for robust data handling
+interface UserData {
+    walletBalance?: number;
+    referralEarnings?: number;
+    referredBy?: string;
+    referralCode?: string;
+    rating?: number;
+    xp?: number;
+    matchesPlayed?: number;
+    matchesWon?: number;
+    name?: string;
+    [key: string]: any;
+}
+
+interface MaintenanceSettings {
+  areMatchesDisabled?: boolean;
+  matchesTimeScheduled?: boolean;
+  matchesStartTime?: string;
+  matchesEndTime?: string;
+  [key: string]: any;
+}
+
+interface CommissionSettings {
+    isEnabled?: boolean;
+    rate?: number;
+}
+
+interface MatchResult {
+    userId: string;
+    position: number;
+    winStatus: 'win' | 'loss';
+    screenshotUrl: string;
+    submittedAt: any;
+}
+
+// Helper function to send a personal notification
+const sendNotification = (userId: string, title: string, body: string, link?: string) => {
+    if (!userId) return;
+    const notification = {
+        title,
+        body,
+        isRead: false,
+        createdAt: FieldValue.serverTimestamp(),
+        link: link || null,
+    };
+    return db.collection(`users/${userId}/personal_notifications`).add(notification);
+};
+
 
 // =================================================================
 //  USER & ROLE MANAGEMENT FUNCTIONS
@@ -55,6 +106,126 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
 });
 
 // =================================================================
+//  WITHDRAWAL MANAGEMENT FUNCTIONS
+// =================================================================
+
+export const approveWithdrawal = functions.https.onCall(async (data, context) => {
+    // 1. Check permissions
+    if (context.auth?.token.role !== 'withdrawal_admin' && context.auth?.token.role !== 'superadmin') {
+        throw new functions.https.HttpsError('permission-denied', 'Only withdrawal admins can approve requests.');
+    }
+    
+    // 2. Validate data
+    const { withdrawalId } = data;
+    if (!withdrawalId || typeof withdrawalId !== 'string') {
+        throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a "withdrawalId" argument.');
+    }
+
+    const adminUid = context.auth.uid;
+    const requestRef = db.collection('withdrawal-requests').doc(withdrawalId);
+    
+    // 3. Perform transaction
+    try {
+        const requestDoc = await requestRef.get();
+        if (!requestDoc.exists) throw new Error('Withdrawal request not found.');
+        const requestData = requestDoc.data();
+        if (requestData?.status !== 'pending') throw new Error('This request has already been processed.');
+
+        const { amount, userId } = requestData;
+        
+        await db.runTransaction(async (t) => {
+            const adminRef = db.collection('users').doc(adminUid);
+            const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
+            const userTxSnapshot = await t.get(userTxQuery);
+            const userTxRef = userTxSnapshot.docs[0]?.ref;
+
+            // A. Update withdrawal request status
+            t.update(requestRef, {
+                status: 'approved',
+                processedAt: FieldValue.serverTimestamp(),
+                processedBy: adminUid,
+            });
+
+            // B. Update the user's transaction status to completed
+            if (userTxRef) {
+                t.update(userTxRef, { status: 'completed' });
+            }
+
+            // C. Deduct the amount from the admin's wallet as a ledger
+            t.update(adminRef, { walletBalance: FieldValue.increment(-amount) });
+        });
+
+        functions.logger.info(`Withdrawal ${withdrawalId} approved by admin ${adminUid}.`);
+        await sendNotification(userId, 'Withdrawal Approved', `Your withdrawal request for ₹${amount} has been approved and processed.`);
+        return { success: true, message: 'Withdrawal approved successfully.' };
+        
+    } catch (error) {
+        functions.logger.error(`Error approving withdrawal ${withdrawalId}:`, error);
+        if (error instanceof functions.https.HttpsError) throw error;
+        throw new functions.https.HttpsError('internal', (error as Error).message);
+    }
+});
+
+
+export const rejectWithdrawal = functions.https.onCall(async (data, context) => {
+    // 1. Check permissions
+    if (context.auth?.token.role !== 'withdrawal_admin' && context.auth?.token.role !== 'superadmin') {
+        throw new functions.https.HttpsError('permission-denied', 'Only withdrawal admins can reject requests.');
+    }
+    
+    // 2. Validate data
+    const { withdrawalId } = data;
+    if (!withdrawalId || typeof withdrawalId !== 'string') {
+        throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a "withdrawalId" argument.');
+    }
+
+    const adminUid = context.auth.uid;
+    const requestRef = db.collection('withdrawal-requests').doc(withdrawalId);
+    
+    try {
+        const requestDoc = await requestRef.get();
+        if (!requestDoc.exists) throw new functions.https.HttpsError('not-found', 'Withdrawal request not found.');
+        const requestData = requestDoc.data();
+        if (requestData?.status !== 'pending') throw new functions.https.HttpsError('failed-precondition', 'This request has already been processed.');
+        
+        const { userId, amount } = requestData;
+        const userRef = db.collection('users').doc(userId);
+        const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
+        
+        await db.runTransaction(async (t) => {
+            const userTxSnapshot = await t.get(userTxQuery);
+            const userTxRef = userTxSnapshot.docs[0]?.ref;
+        
+            // A. Update withdrawal request
+            t.update(requestRef, {
+                status: 'rejected',
+                processedAt: FieldValue.serverTimestamp(),
+                processedBy: adminUid,
+            });
+
+            // B. Refund the user
+            t.update(userRef, { walletBalance: FieldValue.increment(amount) });
+
+            // C. Mark user's transaction as failed
+            if (userTxRef) {
+                t.update(userTxRef, { status: 'failed', description: 'Withdrawal request rejected by admin' });
+            }
+        });
+
+        functions.logger.info(`Withdrawal ${withdrawalId} for user ${userId} was rejected and funds were refunded.`);
+        await sendNotification(userId, 'Withdrawal Rejected', `Your withdrawal request for ₹${amount} was rejected. The amount has been refunded to your wallet.`);
+        
+        return { success: true, message: 'Withdrawal rejected and funds refunded.' };
+
+    } catch (error) {
+        functions.logger.error(`Failed to refund user for rejected withdrawal ${withdrawalId}:`, error);
+        if (error instanceof functions.https.HttpsError) throw error;
+        throw new functions.https.HttpsError('internal', 'An unexpected error occurred while rejecting the withdrawal.');
+    }
+});
+
+
+// =================================================================
 //  FIRESTORE TRIGGERS (Automated Actions)
 // =================================================================
 
@@ -68,36 +239,69 @@ export const onDepositStatusChange = functions.firestore
         return null;
     }
     
-    const { userId, amount } = afterData;
-    if (!userId || !amount || amount <= 0) {
-        functions.logger.error("Missing or invalid userId/amount", { id: context.params.depositId });
+    const { userId, amount, upiAccountId } = afterData;
+    if (!userId || !amount || amount <= 0 || !upiAccountId) {
+        functions.logger.error("Missing or invalid userId, amount, or upiAccountId", { id: context.params.depositId });
         return null;
     }
 
     const userRef = db.collection("users").doc(userId);
-    const transactionRef = db.collection(`users/${userId}/transactions`).doc();
+    const commissionSettingsRef = db.collection('settings').doc('commission');
+
 
     try {
         await db.runTransaction(async (t) => {
             const userDoc = await t.get(userRef);
-            if (!userDoc.exists) {
-                throw new Error(`User ${userId} not found.`);
-            }
-            const currentBalance = userDoc.data()?.walletBalance || 0;
-            const newBalance = currentBalance + amount;
+            if (!userDoc.exists) throw new Error(`User ${userId} not found.`);
+            const userData = userDoc.data() as UserData;
             
-            t.update(userRef, { walletBalance: newBalance });
+            const commissionSettingsDoc = await t.get(commissionSettingsRef);
+            const commissionSettings = commissionSettingsDoc.data() as CommissionSettings | undefined;
+
+            // 1. Credit the user's wallet.
+            t.update(userRef, { walletBalance: FieldValue.increment(amount) });
             
-            t.set(transactionRef, {
+            // 2. Create a transaction log for the deposit.
+            const depositTxRef = db.collection(`users/${userId}/transactions`).doc();
+            t.set(depositTxRef, {
                 amount: amount,
                 type: "deposit",
                 status: "completed",
                 description: `Deposit of ₹${amount} approved.`,
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdAt: FieldValue.serverTimestamp(),
                 relatedId: context.params.depositId,
             });
+
+            // 3. Handle referral commission if the user was referred and commission is enabled.
+            if (userData.referredBy && commissionSettings?.isEnabled && commissionSettings.rate > 0) {
+                const referrerQuery = db.collection('users').where('referralCode', '==', userData.referredBy).limit(1);
+                const referrerSnapshot = await t.get(referrerQuery);
+                if (!referrerSnapshot.empty) {
+                    const referrerDoc = referrerSnapshot.docs[0];
+                    const referrerRef = referrerDoc.ref;
+                    const commissionAmount = amount * commissionSettings.rate; // Dynamic commission rate
+
+                    t.update(referrerRef, {
+                        walletBalance: FieldValue.increment(commissionAmount),
+                        referralEarnings: FieldValue.increment(commissionAmount)
+                    });
+                    const commissionTxRef = db.collection(`users/${referrerDoc.id}/transactions`).doc();
+                    const commissionPercentage = (commissionSettings.rate * 100).toFixed(0);
+                    t.set(commissionTxRef, {
+                        amount: commissionAmount,
+                        type: "referral_bonus",
+                        status: "completed",
+                        description: `${commissionPercentage}% commission from ${userData.name || 'a referred user'}'s deposit.`,
+                        createdAt: FieldValue.serverTimestamp(),
+                        relatedId: context.params.depositId,
+                    });
+                }
+            }
         });
-        functions.logger.info(`Deposit of ${amount} for user ${userId} completed successfully.`);
+        functions.logger.info(`Deposit processed for ${userId}.`);
+        // Send notification to the user
+        await sendNotification(userId, 'Deposit Approved', `Your deposit of ₹${amount} has been successfully added to your wallet.`);
+
     } catch (error) {
         functions.logger.error(`Transaction failed for deposit ${context.params.depositId}:`, error);
         await change.after.ref.update({ status: "failed", error: (error as Error).message });
@@ -105,35 +309,70 @@ export const onDepositStatusChange = functions.firestore
     return null;
 });
 
-export const onWithdrawalStatusChange = functions.firestore
-  .document("withdrawal-requests/{withdrawalId}")
-  .onUpdate(async (change, context) => {
-    const beforeData = change.before.data();
-    const afterData = change.after.data();
-    const { withdrawalId } = context.params;
 
-    if (beforeData.status !== "rejected" && afterData.status === "rejected") {
-        const { userId, amount } = afterData;
-        if (!userId || !amount) return null;
-
-        const userRef = db.collection("users").doc(userId);
-        const transactionRef = db.collection(`users/${userId}/transactions`).doc(withdrawalId);
+export const onResultSubmitted = functions.firestore
+    .document('matches/{matchId}/results/{userId}')
+    .onCreate(async (snap, context) => {
+        const { matchId } = context.params;
+        const matchRef = db.collection('matches').doc(matchId);
 
         try {
-            await db.runTransaction(async (t) => {
-                const userDoc = await t.get(userRef);
-                const currentBalance = userDoc.data()?.walletBalance || 0;
-                const newBalance = currentBalance + amount; // Refund the amount
-                t.update(userRef, { walletBalance: newBalance });
-                t.update(transactionRef, { status: 'failed', description: 'Withdrawal request rejected by admin' });
-            });
-            functions.logger.info(`Withdrawal ${withdrawalId} for user ${userId} was rejected and funds were refunded.`);
+            const matchDoc = await matchRef.get();
+            if (!matchDoc.exists) return null;
+            const matchData = matchDoc.data();
+            if (!matchData) return null;
+            
+            // Set match status to processing as soon as the first result is in
+            if (matchData.status === 'ongoing') {
+                await matchRef.update({ status: 'processing' });
+            }
+
+            // If match is already processed, do nothing.
+            if (['completed', 'disputed', 'verification'].includes(matchData.status)) {
+                return null;
+            }
+
+            const resultsSnapshot = await matchRef.collection('results').get();
+            const submittedResults = resultsSnapshot.docs.map(doc => doc.data() as MatchResult);
+
+            // Check if all players have submitted their results.
+            if (submittedResults.length !== matchData.maxPlayers) {
+                return null; // Wait for all results
+            }
+
+            // --- AUTO-VERIFICATION LOGIC ---
+            const positions = new Set<number>();
+            const winners = new Set<string>();
+
+            for (const result of submittedResults) {
+                positions.add(result.position);
+                if (result.winStatus === 'win') {
+                    winners.add(result.userId);
+                }
+            }
+
+            // CHECK 1: Duplicate positions submitted (e.g., two 1st places)
+            const hasDuplicatePositions = positions.size !== submittedResults.length;
+            
+            // CHECK 2: More than one winner claimed
+            const hasMultipleWinners = winners.size > 1;
+
+            if (hasDuplicatePositions || hasMultipleWinners) {
+                // If any check fails, mark as disputed for admin review.
+                await matchRef.update({ status: 'disputed' });
+                functions.logger.info(`Match ${matchId} marked as disputed due to result conflict.`);
+            } else {
+                // If all checks pass, mark for admin verification.
+                await matchRef.update({ status: 'verification' });
+                functions.logger.info(`Match ${matchId} pending verification.`);
+            }
         } catch (error) {
-            functions.logger.error(`Failed to refund user ${userId} for rejected withdrawal ${withdrawalId}:`, error);
+            functions.logger.error(`Error processing results for match ${matchId}:`, error);
+            await matchRef.update({ status: 'disputed', error: (error as Error).message });
         }
-    }
-    return null;
-});
+        
+        return null;
+    });
 
 export const onMatchResultUpdate = functions.firestore
     .document("matches/{matchId}")
@@ -143,62 +382,60 @@ export const onMatchResultUpdate = functions.firestore
     const { matchId } = context.params;
 
     if (beforeData.status !== 'completed' && afterData.status === 'completed' && afterData.winnerId) {
-        const { winnerId, prizePool, players } = afterData;
+        const { winnerId, prizePool, players, title } = afterData;
 
         if (!winnerId || !prizePool || prizePool <= 0) {
             functions.logger.error("Missing or invalid winnerId/prizePool", { id: matchId });
             return null;
         }
-
-        const winnerRef = db.collection("users").doc(winnerId);
-        const transactionRef = db.collection(`users/${winnerId}/transactions`).doc();
         
         try {
             await db.runTransaction(async (t) => {
+                const winnerRef = db.collection("users").doc(winnerId);
                 const winnerDoc = await t.get(winnerRef);
                 if (!winnerDoc.exists) {
                     throw new Error(`Winner user ${winnerId} not found.`);
                 }
-                const winnerData = winnerDoc.data()!;
-                const currentBalance = winnerData?.walletBalance || 0;
-                const currentRating = winnerData?.rating || 1000;
-                const currentXp = winnerData?.xp || 0;
 
-                const newBalance = currentBalance + prizePool;
-                const newRating = currentRating + 10;
-                const newXp = currentXp + 25;
-                
-                // 1. Update winner's balance, rating, and XP
+                // 1. Update winner's balance, rating, xp, and stats
                 t.update(winnerRef, { 
-                    walletBalance: newBalance,
-                    rating: newRating,
-                    xp: newXp 
+                    walletBalance: FieldValue.increment(prizePool),
+                    rating: FieldValue.increment(10),
+                    xp: FieldValue.increment(25),
+                    matchesPlayed: FieldValue.increment(1),
+                    matchesWon: FieldValue.increment(1)
                 });
                 
                 // 2. Create prize transaction for winner
+                const transactionRef = db.collection(`users/${winnerId}/transactions`).doc();
                 t.set(transactionRef, {
                     amount: prizePool,
                     type: "prize",
                     status: "completed",
                     description: `Prize money from match: ${afterData.title}`,
                     relatedId: matchId,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    createdAt: FieldValue.serverTimestamp(),
                 });
 
-                // 3. Update ratings for all other players (losers)
+                // 3. Update stats and ratings for all other players (losers)
                 const loserIds = players.filter((pId: string) => pId !== winnerId);
                 for (const loserId of loserIds) {
                     const loserRef = db.collection("users").doc(loserId);
-                    const loserDoc = await t.get(loserRef);
-                    if (loserDoc.exists) {
-                        const loserData = loserDoc.data()!;
-                        const loserRating = loserData?.rating || 1000;
-                        const newLoserRating = Math.max(0, loserRating - 5); // Don't go below 0
-                        t.update(loserRef, { rating: newLoserRating });
-                    }
+                    // We can update loser stats without fetching them first using FieldValue
+                    t.update(loserRef, {
+                         rating: FieldValue.increment(-5),
+                         matchesPlayed: FieldValue.increment(1)
+                    });
                 }
             });
             functions.logger.info(`Prize money, rating, and XP updated for match ${matchId}.`);
+            // Send notifications
+            await sendNotification(winnerId, 'You Won!', `Congratulations! You won ₹${prizePool} in the match "${title}".`, `/match/${matchId}`);
+            const loserIds = players.filter((pId: string) => pId !== winnerId);
+            for (const loserId of loserIds) {
+                 await sendNotification(loserId, 'Match Result', `The match "${title}" has ended. Better luck next time!`, `/match/${matchId}`);
+            }
+
         } catch (error) {
             functions.logger.error(`Failed to process results for match ${matchId}:`, error);
             await change.after.ref.update({ status: "error", error: (error as Error).message });
@@ -207,43 +444,40 @@ export const onMatchResultUpdate = functions.firestore
     return null;
 });
 
-
 // =================================================================
 //  MATCH CREATION & MANAGEMENT
 // =================================================================
-
 export const createMatch = functions.https.onCall(async (data, context) => {
     // 1. Authentication Check
     if (!context.auth) {
         throw new functions.https.HttpsError("unauthenticated", "You must be logged in to create a match.");
     }
+    const userId = context.auth.uid;
 
-    // 2. Data Validation
-    const { title, entryFee, prizePool, ludoKingCode, maxPlayers, privacy } = data;
-    
+    // 2. Maintenance Check
+    const maintenanceDoc = await db.collection('settings').doc('maintenance').get();
+    const maintenanceSettings = maintenanceDoc.data() as MaintenanceSettings;
+    if (maintenanceSettings?.areMatchesDisabled) {
+        throw new functions.https.HttpsError("unavailable", "Match creation is temporarily disabled by the admin.");
+    }
+     
+    // 3. Data Validation
+    const { title, entryFee, maxPlayers } = data;
     if (!title || typeof title !== "string" || title.length === 0 || title.length > 50) {
         throw new functions.https.HttpsError("invalid-argument", "Match title is required and must be 50 characters or less.");
     }
     if (typeof entryFee !== "number" || entryFee < 0) {
         throw new functions.https.HttpsError("invalid-argument", "A valid, non-negative entry fee is required.");
     }
-    if (typeof prizePool !== "number" || prizePool < 0) {
-        throw new functions.https.HttpsError("invalid-argument", "A valid prize pool is required.");
-    }
-    if (!ludoKingCode || typeof ludoKingCode !== "string") {
-        throw new functions.https.HttpsError("invalid-argument", "A valid Ludo King room code is required.");
-    }
     if (maxPlayers !== 2 && maxPlayers !== 4) {
         throw new functions.https.HttpsError("invalid-argument", "Max players must be either 2 or 4.");
     }
-    if (privacy && privacy !== 'public' && privacy !== 'private') {
-        throw new functions.https.HttpsError("invalid-argument", "Privacy must be either 'public' or 'private'.");
-    }
 
-    const userId = context.auth.uid;
+    // 4. Calculate Prize Pool (e.g., 90% of total entry fees)
+    const prizePool = (entryFee * maxPlayers) * 0.90;
+
     const userRef = db.collection("users").doc(userId);
     const matchRef = db.collection("matches").doc();
-    const transactionRef = db.collection(`users/${userId}/transactions`).doc();
 
     try {
         const newMatchId = await db.runTransaction(async (t) => {
@@ -251,44 +485,41 @@ export const createMatch = functions.https.onCall(async (data, context) => {
             if (!userDoc.exists) {
                 throw new functions.https.HttpsError("not-found", "Your user profile does not exist.");
             }
-
-            // A. Check user's balance
             const userData = userDoc.data()!;
             const currentBalance = userData.walletBalance || 0;
             if (currentBalance < entryFee) {
                 throw new functions.https.HttpsError("failed-precondition", "Insufficient funds to create this match.");
             }
-
-            // B. Deduct entry fee from creator's wallet (if any)
+            
             if (entryFee > 0) {
-                const newBalance = currentBalance - entryFee;
-                t.update(userRef, { walletBalance: newBalance });
-
-                // C. Create a transaction for the entry fee
+                t.update(userRef, { walletBalance: FieldValue.increment(-entryFee) });
+                
+                const transactionRef = db.collection(`users/${userId}/transactions`).doc();
                 t.set(transactionRef, {
                     amount: -entryFee,
-                    type: "entry-fee",
+                    type: "entry_fee",
                     status: "completed",
                     description: `Entry fee for new match: ${title}`,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    createdAt: FieldValue.serverTimestamp(),
                     relatedId: matchRef.id,
                 });
             }
-
-            // D. Create the new match document
+            
             t.set(matchRef, {
                 title,
                 entryFee,
                 prizePool,
-                ludoKingCode,
                 maxPlayers,
-                privacy: privacy || 'public',
                 creatorId: userId,
-                players: [userId], // Creator is the first player
-                playerCount: 1,
+                players: [userId],
                 status: 'open',
+                roomCode: null,
+                createdAt: FieldValue.serverTimestamp(),
+                startedAt: null,
+                completedAt: null,
                 winnerId: null,
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                resultStage: 'none',
+                autoPayoutAllowed: true,
             });
             
             return matchRef.id;
@@ -309,3 +540,5 @@ export const createMatch = functions.https.onCall(async (data, context) => {
         }
     }
 });
+
+    

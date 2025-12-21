@@ -291,7 +291,7 @@ export default function AdminMatchDetailsPage() {
                             </AlertDescription>
                         </Alert>
                      )}
-                     {match.status === 'open' || match.status === 'ongoing' && (
+                     {match.status === 'open' || match.status === 'ongoing' || match.status === 'processing' && (
                           <Alert>
                             <CircleAlert className="h-4 w-4" />
                             <AlertTitle>Match In Progress</AlertTitle>
@@ -307,3 +307,5 @@ export default function AdminMatchDetailsPage() {
     </div>
   );
 }
+
+    

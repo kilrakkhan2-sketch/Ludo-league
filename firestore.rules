@@ -84,25 +84,24 @@ service cloud.firestore {
       allow list: if isSignedIn();
       allow read: if isSignedIn(); // Simplified rule as requested
 
-      allow create: if isSignedIn()
-                    && request.auth.uid == request.resource.data.creatorId
-                    && request.resource.data.status == 'open'
-                    && request.resource.data.players == [request.auth.uid]
-                    && request.resource.data.createdAt == request.time;
+      allow create: if isSignedIn() && isServer(); // Only allow creation via cloud function
 
+      // Update rules
       allow update: if isSignedIn() && (
+                      // Player joining a match
                       (
                         resource.data.status == 'open' &&
                         request.resource.data.players == resource.data.players.concat(request.auth.uid) &&
                         !(request.auth.uid in resource.data.players) &&
-                        resource.data.players.size() < resource.data.maxPlayers
+                        resource.data.players.size() < resource.data.maxPlayers &&
+                        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee
                       ) ||
+                      // Creator setting the room code
                       (
-                        resource.data.status == 'open' &&
-                        request.resource.data.status == 'ongoing' &&
-                        request.auth.uid == resource.data.creatorId &&
-                        resource.data.players.size() >= 2 &&
-                        request.resource.data.players == resource.data.players
+                         resource.data.status == 'ongoing' &&
+                         request.auth.uid == resource.data.creatorId &&
+                         'roomCode' in request.resource.data.diff(resource.data).affectedKeys() &&
+                         request.resource.data.roomCode != resource.data.roomCode
                       ) ||
                       isMatchAdmin() || isSuperAdmin() || isServer()
                     );
@@ -111,6 +110,15 @@ service cloud.firestore {
 
       match /messages/{messageId} {
         allow read, write: if isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players);
+      }
+      
+       match /results/{userId} {
+        // Only a player in the match can create their own result document
+        allow create: if isSignedIn() && isOwner(userId) && request.auth.uid in resource.data.players;
+        allow read: if isSignedIn() && (request.auth.uid in resource.data.players || isMatchAdmin());
+        // Players can only update their own result, and only specific fields. Admin can update anything.
+        allow update: if (isSignedIn() && isOwner(userId)) || isMatchAdmin();
+        allow delete: if isMatchAdmin();
       }
       
       match /admin-chat/{messageId} {
@@ -190,3 +198,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

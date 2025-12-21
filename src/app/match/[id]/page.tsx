@@ -7,7 +7,7 @@ import { Match, UserProfile, MatchResult } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, Trophy, Swords, Calendar, Hourglass, ClipboardCopy, Upload, Crown, ArrowLeft, CheckCircle, Plus, Info, ShieldAlert, BadgeInfo } from 'lucide-react';
+import { Users, Trophy, Swords, Calendar, Hourglass, ClipboardCopy, Upload, Crown, ArrowLeft, CheckCircle, Plus, Info, ShieldAlert, BadgeInfo, Gamepad2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -206,14 +206,14 @@ const ResultSubmissionForm = ({ match }: { match: Match }) => {
     )
 }
 
-const MatchOngoingContent = ({ match, players, results }: { match: Match, players: UserProfile[], results: MatchResult[] }) => {
+const RoomCodeManager = ({ match }: { match: Match }) => {
     const { user } = useUser();
+    const { firestore } = useFirebase();
     const { toast } = useToast();
-    
-    const userResult = useMemo(() => {
-        if (!user) return null;
-        return results.find(r => r.userId === user.uid);
-    }, [user, results]);
+    const [roomCode, setRoomCode] = useState(match.roomCode || '');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const isCreator = user?.uid === match.creatorId;
 
     const copyRoomCode = () => {
         if (match.roomCode) {
@@ -221,29 +221,80 @@ const MatchOngoingContent = ({ match, players, results }: { match: Match, player
             toast({ title: 'Room Code Copied!' });
         }
     };
+    
+    const handleUpdateRoomCode = async () => {
+        if (!isCreator || !roomCode || !firestore) return;
+        setIsSubmitting(true);
+        try {
+            const matchRef = doc(firestore, 'matches', match.id);
+            await updateDoc(matchRef, { roomCode: roomCode });
+            toast({ title: 'Room Code Updated' });
+        } catch(e) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not update room code.'});
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+    
+    if (isCreator && !match.roomCode) {
+         return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Enter Ludo King Room Code</CardTitle>
+                    <CardDescription>Enter the code from Ludo King so other players can join.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex gap-2">
+                        <Input
+                            placeholder="e.g., 12345678"
+                            value={roomCode}
+                            onChange={(e) => setRoomCode(e.target.value)}
+                        />
+                        <Button onClick={handleUpdateRoomCode} disabled={isSubmitting || !roomCode}>
+                            {isSubmitting ? 'Saving...' : 'Save'}
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+        )
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Ludo King Room Code</CardTitle>
+                <CardDescription>Join this room in Ludo King to play.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {match.roomCode ? (
+                    <div className="font-mono tracking-widest text-2xl bg-muted p-4 rounded-lg flex items-center justify-between cursor-pointer" onClick={copyRoomCode}>
+                        <span>{match.roomCode}</span>
+                        <ClipboardCopy className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <Hourglass className="h-4 w-4 animate-spin" />
+                        <span>Waiting for creator to add room code...</span>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
+
+const MatchOngoingContent = ({ match, players, results }: { match: Match, players: UserProfile[], results: MatchResult[] }) => {
+    const { user } = useUser();
+    
+    const userResult = useMemo(() => {
+        if (!user) return null;
+        return results.find(r => r.userId === user.uid);
+    }, [user, results]);
 
     return (
         <div className="flex flex-col flex-grow">
             <main className="flex-grow p-4 space-y-4">
-                <Card>
-                     <CardHeader>
-                        <CardTitle>Ludo King Room Code</CardTitle>
-                        <CardDescription>Join this room in Ludo King to play.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {match.roomCode ? (
-                             <div className="font-mono tracking-widest text-2xl bg-muted p-4 rounded-lg flex items-center justify-between cursor-pointer" onClick={copyRoomCode}>
-                                <span>{match.roomCode}</span>
-                                <ClipboardCopy className="h-6 w-6 text-muted-foreground" />
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                                <Hourglass className="h-4 w-4 animate-spin" />
-                                <span>Waiting for creator to add room code...</span>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                <RoomCodeManager match={match} />
 
                 {userResult ? (
                     <Alert>
@@ -266,14 +317,71 @@ const MatchOngoingContent = ({ match, players, results }: { match: Match, player
 const MatchOpenContent = ({ match, players }: { match: Match, players: UserProfile[] }) => {
     const { user } = useUser();
     const { toast } = useToast();
+    const { firestore } = useFirebase();
     const [isJoining, setIsJoining] = useState(false);
 
     const hasJoined = useMemo(() => user && match.players.includes(user.uid), [user, match.players]);
+
+     const handleJoinMatch = async () => {
+        if (!user || !firestore || hasJoined) return;
+        setIsJoining(true);
+
+        const matchRef = doc(firestore, 'matches', match.id);
+        const userRef = doc(firestore, 'users', user.uid);
+
+        try {
+            await runTransaction(firestore, async (transaction) => {
+                const matchDoc = await transaction.get(matchRef);
+                const userDoc = await transaction.get(userRef);
+
+                if (!matchDoc.exists() || !userDoc.exists()) {
+                    throw new Error("Match or user does not exist.");
+                }
+
+                const matchData = matchDoc.data();
+                const userData = userDoc.data();
+
+                if (matchData.players.length >= matchData.maxPlayers) {
+                    throw new Error("Match is already full.");
+                }
+                if (userData.walletBalance < matchData.entryFee) {
+                    throw new Error("Insufficient wallet balance.");
+                }
+
+                // 1. Deduct entry fee
+                transaction.update(userRef, { walletBalance: userData.walletBalance - matchData.entryFee });
+
+                // 2. Add player to match
+                const updatedPlayers = [...matchData.players, user.uid];
+                transaction.update(matchRef, { players: updatedPlayers });
+
+                // 3. If match is now full, update status to 'ongoing'
+                if (updatedPlayers.length === matchData.maxPlayers) {
+                    transaction.update(matchRef, {
+                        status: 'ongoing',
+                        startedAt: Timestamp.now()
+                    });
+                }
+            });
+
+            toast({ title: "Successfully Joined!", description: `You have joined the match "${match.title}".` });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: "Could not join match", description: error.message });
+        } finally {
+            setIsJoining(false);
+        }
+    };
+
 
     return (
         <div className="flex flex-col flex-grow">
             <main className="flex-grow p-4 space-y-4">
                 <PlayerList match={match} players={players} />
+                 {!hasJoined && (
+                    <Button onClick={handleJoinMatch} disabled={isJoining} className="w-full">
+                        {isJoining ? 'Joining...' : `Join Match for ₹${match.entryFee}`}
+                    </Button>
+                )}
             </main>
         </div>
     );
@@ -282,6 +390,7 @@ const MatchOpenContent = ({ match, players }: { match: Match, players: UserProfi
 export default function MatchPage({ params }: { params: { id: string } }) {
   const { data: match, loading: matchLoading } = useDoc<Match>(`matches/${params.id}`);
   const { data: results, loading: resultsLoading } = useCollection<MatchResult>(`matches/${params.id}/results`);
+  const { width, height } = useWindowSize();
   
   const playerIds = useMemo(() => {
       if (!match?.players) return ['_'];
@@ -356,8 +465,14 @@ export default function MatchPage({ params }: { params: { id: string } }) {
             )
             break;
         case 'completed':
+            const winner = players.find(p => p.uid === match.winnerId);
             title = "Match Completed";
-            content = <PlayerList match={match} players={players} title={`Winner: ${players.find(p => p.uid === match.winnerId)?.displayName || 'N/A'}`} />
+            content = (
+                <div className="p-4 space-y-4">
+                    {winner && <Confetti width={width} height={height} recycle={false} numberOfPieces={400} />}
+                    <PlayerList match={match} players={players} title={winner ? `Winner: ${winner.displayName}` : 'Match Completed'} />
+                </div>
+            )
             break;
         default:
             title = "Match: " + match.status.replace('_', ' ');
@@ -375,5 +490,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
   
   return <div className="bg-muted/30">{renderContent()}</div>;
 }
+
+    
 
     
