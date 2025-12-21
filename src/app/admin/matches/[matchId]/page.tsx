@@ -25,9 +25,10 @@ const getStatusVariant = (status: string) => {
     case 'open': return 'secondary';
     case 'ongoing': return 'default';
     case 'processing': return 'destructive';
-    case 'completed': 'default';
+    case 'completed': return 'outline';
     case 'verification': return 'destructive';
     case 'cancelled': return 'outline';
+    case 'disputed': return 'destructive';
     default: return 'default';
   }
 };
@@ -145,6 +146,29 @@ export default function AdminMatchDetailsPage() {
     );
   }
 
+  const getFraudNote = () => {
+      if (match.status !== 'disputed') return null;
+
+      const positions = new Map<number, number>();
+      let winnerCount = 0;
+      results.forEach(r => {
+          positions.set(r.position, (positions.get(r.position) || 0) + 1);
+          if (r.winStatus === 'win') {
+              winnerCount++;
+          }
+      });
+
+      const duplicatePosition = Array.from(positions.entries()).find(([_, count]) => count > 1);
+      if (duplicatePosition) {
+          return `Multiple players selected position ${duplicatePosition[0]}.`;
+      }
+      if (winnerCount > 1) {
+          return `Multiple players claimed to be the winner.`;
+      }
+      
+      return 'Result conflict detected. Please review submissions carefully.';
+  }
+
   return (
     <div className="space-y-6">
         <div>
@@ -157,41 +181,67 @@ export default function AdminMatchDetailsPage() {
         <div className="lg:col-span-2 space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>Match Details</CardTitle>
-                    <CardDescription>ID: {match.id}</CardDescription>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <CardTitle>Match Details</CardTitle>
+                            <CardDescription>ID: {match.id}</CardDescription>
+                        </div>
+                        <Badge variant={getStatusVariant(match.status)} className="capitalize">{match.status}</Badge>
+                    </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div><p className="text-sm text-muted-foreground">Status</p><Badge variant={getStatusVariant(match.status)} className="capitalize">{match.status}</Badge></div>
-                        <div><p className="text-sm text-muted-foreground">Entry Fee</p><p className="font-semibold">₹{match.entryFee}</p></div>
-                        <div><p className="text-sm text-muted-foreground">Prize Pool</p><p className="font-semibold">₹{match.prizePool}</p></div>
-                        <div><p className="text-sm text-muted-foreground">Players</p><p className="font-semibold">{match.players.length} / {match.maxPlayers}</p></div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div><p className="text-muted-foreground">Entry Fee</p><p className="font-semibold">₹{match.entryFee}</p></div>
+                        <div><p className="text-muted-foreground">Prize Pool</p><p className="font-semibold">₹{match.prizePool}</p></div>
+                        <div><p className="text-muted-foreground">Players</p><p className="font-semibold">{match.players.length} / {match.maxPlayers}</p></div>
+                        <div><p className="text-muted-foreground">Created</p><p className="font-semibold">{match.createdAt ? new Date(match.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</p></div>
                     </div>
+                    {match.status === 'disputed' && (
+                        <Alert variant="destructive">
+                            <CircleAlert className="h-4 w-4" />
+                            <AlertTitle>Fraud Detected</AlertTitle>
+                            <AlertDescription>{getFraudNote()}</AlertDescription>
+                        </Alert>
+                    )}
                 </CardContent>
             </Card>
              <Card>
                 <CardHeader><CardTitle>Submitted Results</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                    {players.length > 0 ? players.map((player) => {
-                       const result = resultsMap.get(player.id);
-                       return (
-                           <div key={player.id} className="border p-4 rounded-lg">
-                               <p className='font-bold text-lg'>{player.displayName}</p>
-                               {result ? (
-                                   <div className='mt-2 space-y-3'>
-                                        <p><strong>Initial Submission:</strong> Position {result.position} ({result.winStatus})</p>
-                                        { result.status === 'confirmed' && <p><strong>Confirmed Submission:</strong> Position {result.confirmedPosition} ({result.confirmedWinStatus})</p>}
-                                        <p><strong>Screenshot:</strong></p>
-                                        <div className="relative aspect-video w-full max-w-sm mt-2 rounded-md overflow-hidden border">
-                                            <Image src={result.screenshotUrl} alt={`Result from ${player?.displayName}`} layout="fill" objectFit="contain" />
-                                        </div>
-                                   </div>
-                               ) : (
-                                   <p className='text-muted-foreground mt-1'>Waiting for player to submit result.</p>
-                               )}
-                           </div>
-                       )
-                    }) : <p className="text-muted-foreground">No players in this match.</p>}
+                <CardContent>
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="text-left text-sm text-muted-foreground">
+                                    <th className="p-2">Player</th>
+                                    <th className="p-2">Selected Position</th>
+                                    <th className="p-2">Win / Loss</th>
+                                    <th className="p-2">Screenshot</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {players.map(player => {
+                                    const result = resultsMap.get(player.id);
+                                    const isWinner = result?.winStatus === 'win';
+                                    const isDisputed = results.filter(r => r.position === result?.position).length > 1;
+
+                                    return (
+                                        <tr key={player.id} className="border-t">
+                                            <td className="p-2 font-medium">{player.displayName}</td>
+                                            <td className={`p-2 font-semibold ${isDisputed ? 'text-destructive' : ''}`}>{result?.position ? `${result.position}${isDisputed ? ' ❌' : ''}` : 'N/A'}</td>
+                                            <td className={`p-2 font-semibold capitalize ${isWinner ? 'text-green-500' : 'text-gray-500'}`}>{result?.winStatus || 'N/A'}</td>
+                                            <td className="p-2">
+                                                {result?.screenshotUrl ? (
+                                                    <a href={result.screenshotUrl} target="_blank" rel="noopener noreferrer">
+                                                        <Image src={result.screenshotUrl} alt={`Screenshot from ${player.displayName}`} width={80} height={45} className="rounded-md object-cover"/>
+                                                    </a>
+                                                ) : 'No Screenshot'}
+                                            </td>
+                                        </tr>
+                                    )
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
                 </CardContent>
             </Card>
             <AdminChatRoom contextPath={`matches/${matchId}`} />
@@ -203,27 +253,34 @@ export default function AdminMatchDetailsPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     { (match.status === 'verification' || match.status === 'disputed') && (
-                        <div className='space-y-2'>
-                            <Label>Declare Winner</Label>
-                            <Select onValueChange={setWinner} value={winner}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a player to award prize" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {players.map(p => <SelectItem key={p.id} value={p.id}>{p.displayName}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <Button onClick={handleDeclareWinner} disabled={isSubmitting || !winner} className="w-full">
-                               <Trophy className="mr-2 h-4 w-4" /> Declare Winner
-                            </Button>
+                        <div className='space-y-4'>
+                            <div className='space-y-2'>
+                                <Label>Declare Winner</Label>
+                                <Select onValueChange={setWinner} value={winner}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a player to award prize" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {players.map(p => <SelectItem key={p.id} value={p.id}>{p.displayName}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <Button onClick={handleDeclareWinner} disabled={isSubmitting || !winner} className="w-full">
+                                <Trophy className="mr-2 h-4 w-4" /> Declare Winner & Payout
+                                </Button>
+                            </div>
+
+                             <div className="relative">
+                                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                                <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">Or</span></div>
+                            </div>
+                            
+                            <div>
+                                <Button variant='destructive' onClick={handleCancelMatch} disabled={isSubmitting} className="w-full">Cancel Match & Refund Players</Button>
+                                <p className='text-xs text-muted-foreground pt-2'>This will refund the entry fee to all players and close the match.</p>
+                            </div>
                         </div>
                     )}
-                     {(match.status === 'open' || match.status === 'ongoing') && (
-                        <div>
-                             <Button variant='destructive' onClick={handleCancelMatch} disabled={isSubmitting} className="w-full">Cancel Match & Refund Players</Button>
-                             <p className='text-xs text-muted-foreground pt-2'>This will refund the entry fee to all players.</p>
-                        </div>
-                     )}
+                     
                      {(match.status === 'completed' || match.status === 'cancelled') && (
                         <Alert>
                             <CircleAlert className="h-4 w-4" />
@@ -234,6 +291,15 @@ export default function AdminMatchDetailsPage() {
                             </AlertDescription>
                         </Alert>
                      )}
+                     {match.status === 'open' || match.status === 'ongoing' && (
+                          <Alert>
+                            <CircleAlert className="h-4 w-4" />
+                            <AlertTitle>Match In Progress</AlertTitle>
+                            <AlertDescription>
+                                No actions can be taken until all results are submitted or the match is disputed.
+                            </AlertDescription>
+                        </Alert>
+                     )}
                 </CardContent>
             </Card>
         </div>
@@ -241,5 +307,3 @@ export default function AdminMatchDetailsPage() {
     </div>
   );
 }
-
-    

@@ -25,7 +25,7 @@ const getStatusVariant = (status: string) => {
   switch (status) {
     case 'open': return 'secondary';
     case 'ongoing': return 'default';
-    case 'processing': return 'destructive';
+    case 'processing': return 'default';
     case 'verification': return 'destructive';
     case 'completed': return 'outline';
     case 'disputed': return 'destructive';
@@ -51,7 +51,7 @@ export default function AdminMatchesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   
   const { data: matches, loading } = useCollection<Match>('matches', { 
-      orderBy: [['createdAt', 'desc']],
+      orderBy: ['createdAt', 'desc'],
       where: statusFilter !== 'all' ? ['status', '==', statusFilter] : undefined
     });
 
@@ -130,5 +130,3 @@ export default function AdminMatchesPage() {
     </>
   );
 }
-
-    
