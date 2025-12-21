@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ChatRoom } from '@/components/chat/ChatRoom';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -129,12 +129,15 @@ const ResultSubmissionForm = ({ match }: { match: Match }) => {
             const resultRef = doc(firestore, `matches/${match.id}/results`, user.uid);
             await setDoc(resultRef, {
                 userId: user.uid,
-                position: parseInt(position, 10),
-                winStatus: winStatus,
+                confirmedPosition: parseInt(position, 10),
+                confirmedWinStatus: winStatus,
                 screenshotUrl,
                 submittedAt: Timestamp.now(),
                 status: 'submitted',
             });
+            
+            const matchRef = doc(firestore, 'matches', match.id);
+            await updateDoc(matchRef, {status: 'processing'});
 
             toast({ title: 'Result Submitted', description: 'Your result has been recorded. Please wait for confirmation.' });
         } catch (error: any) {
@@ -389,7 +392,12 @@ const MatchOpenContent = ({ match, players }: { match: Match, players: UserProfi
 
 export default function MatchPage({ params }: { params: { id: string } }) {
   const { data: match, loading: matchLoading } = useDoc<Match>(`matches/${params.id}`);
-  const { data: results, loading: resultsLoading } = useCollection<MatchResult>(`matches/${params.id}/results`);
+  
+  const resultsQueryOptions = useMemo(() => ({
+    orderBy: ['submittedAt', 'desc']
+  }), []);
+  const { data: results, loading: resultsLoading } = useCollection<MatchResult>(`matches/${params.id}/results`, resultsQueryOptions);
+  
   const { width, height } = useWindowSize();
   
   const playerIds = useMemo(() => {
@@ -397,8 +405,11 @@ export default function MatchPage({ params }: { params: { id: string } }) {
       return match.players.length > 0 ? match.players : ['_'];
   }, [match]);
 
+  const playersQueryOptions = useMemo(() => ({
+      where: ['uid', 'in', playerIds]
+  }), [playerIds]);
   const { data: playersData, loading: playersLoading } = useCollection<UserProfile>(
-    'users', { where: ['uid', 'in', playerIds] }
+    'users', playersQueryOptions
   );
 
   const players = useMemo(() => playersData || [], [playersData]);
@@ -490,7 +501,3 @@ export default function MatchPage({ params }: { params: { id: string } }) {
   
   return <div className="bg-muted/30">{renderContent()}</div>;
 }
-
-    
-
-    

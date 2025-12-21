@@ -29,9 +29,11 @@ export default function AdminTransactionsPage() {
     return ids.size > 0 ? Array.from(ids) : ['_'];
   }, [transactions]);
   
-  const { data: users, loading: usersLoading } = useCollection<UserProfile>('users', {
-      where: ['uid', 'in', userIds]
-  });
+  const usersQueryOptions = useMemo(() => ({
+    where: ['uid', 'in', userIds]
+  }), [userIds]);
+
+  const { data: users, loading: usersLoading } = useCollection<UserProfile>('users', usersQueryOptions);
   
   const usersMap = useMemo(() => {
     if (!users) return new Map();

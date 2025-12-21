@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { useCollection, useDoc } from '@/firebase';
 import { doc, writeBatch, Timestamp } from 'firebase/firestore';
@@ -48,10 +49,11 @@ export default function AdminKycPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<KycRequest | null>(null);
 
-  const { data: requests, loading } = useCollection<KycRequest>('kyc-requests', {
+  const queryOptions = useMemo(() => ({
     orderBy: ['createdAt', 'desc'],
     where: ['status', '==', statusFilter]
-  });
+  }), [statusFilter]);
+  const { data: requests, loading } = useCollection<KycRequest>('kyc-requests', queryOptions);
 
   const handleProcessRequest = async (request: KycRequest, newStatus: 'approved' | 'rejected') => {
     if (!firestore || !adminUser) return;

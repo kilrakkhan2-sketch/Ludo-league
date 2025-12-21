@@ -34,19 +34,18 @@ export default function FriendsPage() {
 
   // My friends
   const friendIds = useMemo(() => currentUserProfile?.friends?.length ? currentUserProfile.friends : ['_'], [currentUserProfile]);
-  const { data: friends, loading: friendsLoading } = useCollection<UserProfile>('users', {
-    where: ['uid', 'in', friendIds]
-  });
+  const friendsQueryOptions = useMemo(() => ({ where: ['uid', 'in', friendIds] }), [friendIds]);
+  const { data: friends, loading: friendsLoading } = useCollection<UserProfile>('users', friendsQueryOptions);
 
   // Incoming friend requests
-  const { data: requests, loading: requestsLoading } = useCollection<FriendRequest>('friend-requests', {
+  const requestsQueryOptions = useMemo(() => ({
       where: [['to', '==', user?.uid || ''], ['status', '==', 'pending']]
-  });
+  }), [user?.uid]);
+  const { data: requests, loading: requestsLoading } = useCollection<FriendRequest>('friend-requests', requestsQueryOptions);
   
   const requestSenderIds = useMemo(() => requests.length > 0 ? requests.map(r => r.from) : ['_'], [requests]);
-  const { data: requestSenders, loading: sendersLoading } = useCollection<UserProfile>('users', {
-    where: ['uid', 'in', requestSenderIds]
-  });
+  const sendersQueryOptions = useMemo(() => ({ where: ['uid', 'in', requestSenderIds] }), [requestSenderIds]);
+  const { data: requestSenders, loading: sendersLoading } = useCollection<UserProfile>('users', sendersQueryOptions);
   
   const requestSendersMap = useMemo(() => {
     return new Map(requestSenders.map(sender => [sender.uid, sender]));
@@ -176,7 +175,7 @@ export default function FriendsPage() {
                   >
                     <div className="flex items-center gap-4">
                       <Avatar className="h-12 w-12">
-                        <AvatarImage src={friend.photoURL} alt={friend.name} />
+                        <AvatarImage src={friend.photoURL || undefined} alt={friend.name} />
                         <AvatarFallback>
                           {friend.name.charAt(0)}
                         </AvatarFallback>
@@ -210,7 +209,7 @@ export default function FriendsPage() {
                       >
                         <div className="flex items-center gap-4">
                           <Avatar className="h-12 w-12">
-                            <AvatarImage src={sender.photoURL} alt={sender.name} />
+                            <AvatarImage src={sender.photoURL || undefined} alt={sender.name} />
                             <AvatarFallback>
                               {sender.name.charAt(0)}
                             </AvatarFallback>

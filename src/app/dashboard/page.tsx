@@ -41,7 +41,7 @@ const MatchCard = ({ match }: { match: Match }) => {
             case 'ongoing': return 'default';
             case 'completed': return 'outline';
             case 'disputed': return 'destructive';
-            case 'result_pending': return 'default';
+            case 'processing': return 'default';
             default: return 'default';
         }
     }
@@ -196,19 +196,21 @@ export default function DashboardPage() {
     const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
     
     // My Active Matches (User has joined and match is not completed/disputed)
-    const { data: myMatches, loading: myMatchesLoading } = useCollection<Match>('matches', {
+    const myMatchesQueryOptions = useMemo(() => ({
         where: user?.uid ? [
             ['players', 'array-contains', user.uid], 
-            ['status', 'in', ['open', 'ongoing', 'result_pending']]
+            ['status', 'in', ['open', 'ongoing', 'processing']]
         ] : undefined,
         limit: 10,
-    });
+    }), [user?.uid]);
+    const { data: myMatches, loading: myMatchesLoading } = useCollection<Match>('matches', myMatchesQueryOptions);
 
     // All public, open matches (that the user hasn't joined)
-    const { data: openMatchesData, loading: openMatchesLoading } = useCollection<Match>('matches', {
+    const openMatchesQueryOptions = useMemo(() => ({
         where: [['status', '==', 'open']],
         limit: 10
-    });
+    }), []);
+    const { data: openMatchesData, loading: openMatchesLoading } = useCollection<Match>('matches', openMatchesQueryOptions);
 
     // Filter out matches the user is already in from the open matches list
     const openMatches = useMemo(() => {
@@ -283,5 +285,3 @@ export default function DashboardPage() {
         </AppShell>
     );
 }
-
-    

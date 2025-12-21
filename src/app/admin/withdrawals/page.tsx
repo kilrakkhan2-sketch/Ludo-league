@@ -53,10 +53,11 @@ export default function AdminWithdrawalsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<WithdrawalRequest | null>(null);
 
-  const { data: requests, loading } = useCollection<WithdrawalRequest>('withdrawal-requests', {
+  const requestQueryOptions = useMemo(() => ({
     where: ['status', '==', statusFilter],
     orderBy: ['createdAt', 'desc'],
-  });
+  }), [statusFilter]);
+  const { data: requests, loading } = useCollection<WithdrawalRequest>('withdrawal-requests', requestQueryOptions);
 
   const allUserIdsInView = useMemo(() => {
     if (!requests || requests.length === 0) return ['_'];
@@ -70,9 +71,10 @@ export default function AdminWithdrawalsPage() {
     return Array.from(ids);
   }, [requests]);
 
-  const { data: usersData, loading: usersLoading } = useCollection<UserProfile>('users', {
+  const usersQueryOptions = useMemo(() => ({
     where: ['uid', 'in', allUserIdsInView]
-  });
+  }), [allUserIdsInView]);
+  const { data: usersData, loading: usersLoading } = useCollection<UserProfile>('users', usersQueryOptions);
 
   const usersMap = useMemo(() => {
     const map = new Map<string, UserProfile>();

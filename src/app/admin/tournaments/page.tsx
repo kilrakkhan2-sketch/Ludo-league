@@ -1,8 +1,9 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { useCollection, useUser } from '@/firebase';
+import { useCollection, useUser, useDoc } from '@/firebase';
 import { Tournament, UserProfile } from '@/types';
 import { format } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -22,9 +23,9 @@ const getStatusVariant = (status: string) => {
 };
 
 const UserCell = ({ userId }: { userId: string }) => {
-    const { data: user, loading } = useCollection<UserProfile>('users', { where: ['uid', '==', userId], limit: 1 });
+    const { data: user, loading } = useDoc<UserProfile>(`users/${userId}`);
     if (loading) return <Skeleton className="h-5 w-24" />;
-    return <>{user[0]?.displayName || 'Unknown Admin'}</>;
+    return <>{user?.displayName || 'Unknown Admin'}</>;
 }
 
 

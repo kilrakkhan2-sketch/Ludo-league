@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AppShell } from "@/components/layout/AppShell";
@@ -17,6 +18,7 @@ import Link from "next/link";
 import { useCollection } from "@/firebase";
 import type { Match } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useMemo } from "react";
 
 const MatchCardSkeleton = () => (
     <Card className="flex flex-col">
@@ -94,11 +96,12 @@ const MatchCard = ({ match }: { match: Match }) => {
 }
 
 export default function OpenMatchesPage() {
-  const { data: matches, loading } = useCollection<Match>("matches", {
+  const queryOptions = useMemo(() => ({
     where: [["status", "==", "open"]],
     orderBy: [["createdAt", "desc"]],
     limit: 12,
-  });
+  }), []);
+  const { data: matches, loading } = useCollection<Match>("matches", queryOptions);
 
   const Skeletons = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

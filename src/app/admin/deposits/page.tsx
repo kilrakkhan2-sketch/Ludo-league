@@ -49,11 +49,11 @@ export default function AdminDepositsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDeposit, setSelectedDeposit] = useState<DepositRequest | null>(null);
 
-
-  const { data: deposits, loading: depositsLoading } = useCollection<DepositRequest>('deposit-requests', {
+  const queryOptions = useMemo(() => ({
     orderBy: ['createdAt', 'desc'],
     where: ['status', '==', statusFilter]
-  });
+  }), [statusFilter]);
+  const { data: deposits, loading: depositsLoading } = useCollection<DepositRequest>('deposit-requests', queryOptions);
 
  const handleApproveDeposit = async (deposit: DepositRequest) => {
     if (!firestore || !adminUser) return;

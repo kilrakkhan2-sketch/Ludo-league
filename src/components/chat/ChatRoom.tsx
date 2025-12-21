@@ -24,16 +24,16 @@ export function ChatRoom({ matchId }: ChatRoomProps) {
   const [newMessage, setNewMessage] = useState('');
 
   const messagesPath = `matches/${matchId}/messages`;
-  const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesPath, { orderBy: ['createdAt', 'asc'] });
+  const messagesQueryOptions = useMemo(() => ({ orderBy: ['createdAt', 'asc'] }), []);
+  const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesPath, messagesQueryOptions);
   
   const playerIds = useMemo(() => {
     if (!messages || messages.length === 0) return ['_'];
     return Array.from(new Set(messages.map((m: Message) => m.userId)));
   }, [messages]);
 
-  const { data: playerProfiles, loading: playersLoading } = useCollection<UserProfile>('users', { 
-      where: ['uid', 'in', playerIds] 
-  });
+  const playersQueryOptions = useMemo(() => ({ where: ['uid', 'in', playerIds] }), [playerIds]);
+  const { data: playerProfiles, loading: playersLoading } = useCollection<UserProfile>('users', playersQueryOptions);
 
   const playerProfilesMap = useMemo(() => {
       const map = new Map<string, UserProfile>();
@@ -80,7 +80,7 @@ export function ChatRoom({ matchId }: ChatRoomProps) {
                 <div key={msg.id} className={`flex gap-2 ${isYou ? 'justify-end' : ''}`}>
                     {!isYou && (
                         <Avatar className="h-8 w-8">
-                            <AvatarImage src={senderProfile?.photoURL} />
+                            <AvatarImage src={senderProfile?.photoURL || undefined} />
                             <AvatarFallback>{senderProfile?.displayName?.[0]}</AvatarFallback>
                         </Avatar>
                     )}
@@ -93,7 +93,7 @@ export function ChatRoom({ matchId }: ChatRoomProps) {
                     </div>
                     {isYou && (
                         <Avatar className="h-8 w-8">
-                            <AvatarImage src={profile?.photoURL} />
+                            <AvatarImage src={profile?.photoURL || undefined} />
                             <AvatarFallback>{profile?.displayName?.[0]}</AvatarFallback>
                         </Avatar>
                     )}

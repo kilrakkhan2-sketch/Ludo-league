@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AppShell } from "@/components/layout/AppShell";
@@ -44,7 +45,7 @@ const MatchCard = ({ match }: { match: Match }) => {
             case 'ongoing': return 'default';
             case 'completed': return 'outline';
             case 'disputed': return 'destructive';
-            case 'result_pending': return 'default';
+            case 'processing': return 'default';
             default: return 'default';
         }
     }
@@ -107,14 +108,16 @@ const MatchCard = ({ match }: { match: Match }) => {
 
 export default function MyMatchesPage() {
   const { user } = useUser();
-  const { data: matches, loading } = useCollection<Match>('matches', {
+  const queryOptions = useMemo(() => ({
     where: user?.uid ? [
         ['players', 'array-contains', user.uid],
-        ['status', 'in', ['open', 'ongoing', 'result_pending']]
+        ['status', 'in', ['open', 'ongoing', 'processing']]
     ] : undefined,
     orderBy: ['createdAt', 'desc'],
     limit: 12
-  });
+  }), [user?.uid]);
+  
+  const { data: matches, loading } = useCollection<Match>('matches', queryOptions);
 
   const Skeletons = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
