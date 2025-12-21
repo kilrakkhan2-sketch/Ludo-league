@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { onIdTokenChanged, User } from 'firebase/auth';
 import { useAuth, useFirestore } from '../provider';
 import { UserProfile } from '@/types';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, Unsubscribe } from 'firebase/firestore';
 
 interface AuthState {
   user: User | null;
@@ -41,9 +41,11 @@ export function useUser(): AuthState {
   }, [auth]);
 
   useEffect(() => {
+    let unsubscribe: Unsubscribe | undefined;
+
     if (user && firestore) {
       const userDocRef = doc(firestore, 'users', user.uid);
-      const unsubscribeFirestore = onSnapshot(userDocRef, (doc) => {
+      unsubscribe = onSnapshot(userDocRef, (doc) => {
         if (doc.exists()) {
             const profileData = { id: doc.id, ...doc.data() } as UserProfile;
             setState(prevState => ({ ...prevState, userData: profileData, loading: false }));
@@ -56,12 +58,17 @@ export function useUser(): AuthState {
           console.error("Error fetching user profile:", error);
           setState(prevState => ({ ...prevState, userData: null, loading: false }));
       });
-
-      return () => unsubscribeFirestore();
-    } else if (!user) {
-        // If there's no user, we are not loading.
+    } else {
+        // If there's no user or firestore, we are not loading.
         setState(prevState => ({...prevState, loading: false}));
     }
+
+    // Cleanup subscription on unmount or when dependencies change.
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [user, firestore]);
 
   return state;
