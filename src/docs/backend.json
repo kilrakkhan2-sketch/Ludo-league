@@ -66,6 +66,18 @@
         },
         "required": ["userId", "text", "createdAt"]
     },
+    "AdminChatMessage": {
+      "title": "Admin Chat Message",
+      "description": "A message in a private admin chat.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userName", "text", "createdAt"]
+    },
     "Transaction": {
       "title": "Transaction",
       "description": "Represents a wallet transaction.",
@@ -218,9 +230,10 @@
         "endDate": { "type": "string", "format": "date-time" },
         "status": { "type": "string", "enum": ["upcoming", "live", "completed"] },
         "players": { "type": "array", "items": { "type": "string" } },
-        "maxPlayers": { "type": "number" }
+        "maxPlayers": { "type": "number" },
+        "creatorId": { "type": "string" }
       },
-      "required": ["name", "prizePool", "entryFee", "startDate", "status", "players", "maxPlayers"]
+      "required": ["name", "prizePool", "entryFee", "startDate", "status", "players", "maxPlayers", "creatorId"]
     },
     "Announcement": {
         "title": "Announcement",
@@ -265,6 +278,10 @@
         "schema": { "$ref": "#/entities/Message"},
         "description": "Stores messages for a specific match chat."
     },
+     "/matches/{matchId}/admin-chat/{messageId}": {
+      "schema": { "$ref": "#/entities/AdminChatMessage" },
+      "description": "Private chat for admins about a specific match."
+    },
     "/tournaments/{tournamentId}": {
       "schema": { "$ref": "#/entities/Tournament" },
       "description": "Stores all created tournaments."
@@ -277,9 +294,17 @@
       "schema": { "$ref": "#/entities/DepositRequest" },
       "description": "Stores all deposit requests for admin verification."
     },
+     "/deposit-requests/{depositId}/admin-chat/{messageId}": {
+      "schema": { "$ref": "#/entities/AdminChatMessage" },
+      "description": "Private chat for admins about a specific deposit request."
+    },
     "/withdrawal-requests/{withdrawalId}": {
       "schema": { "$ref": "#/entities/WithdrawalRequest" },
       "description": "Stores all withdrawal requests for admin verification."
+    },
+     "/withdrawal-requests/{withdrawalId}/admin-chat/{messageId}": {
+      "schema": { "$ref": "#/entities/AdminChatMessage" },
+      "description": "Private chat for admins about a specific withdrawal request."
     },
     "/upi-accounts/{accountId}": {
       "schema": { "$ref": "#/entities/UpiAccount" },

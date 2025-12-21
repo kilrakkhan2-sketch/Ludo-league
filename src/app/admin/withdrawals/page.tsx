@@ -13,7 +13,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,6 +34,8 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminChatRoom } from '@/components/chat/AdminChatRoom';
+
 
 const getStatusVariant = (status: string) => {
   switch (status) {
@@ -166,19 +168,24 @@ export default function AdminWithdrawalsPage() {
                                      <Button size="sm" onClick={() => setSelectedRequest(req)}>Process</Button>
                                 </DialogTrigger>
                                 {selectedRequest && selectedRequest.id === req.id && (
-                                     <DialogContent>
-                                        <DialogHeader>
-                                            <DialogTitle>Process Withdrawal</DialogTitle>
-                                            <DialogDescription>
-                                            You are about to process a withdrawal of <span className="font-bold">₹{selectedRequest.amount}</span> for {user?.name || selectedRequest.userName}.
-                                            Ensure funds are transferred externally before approving. This action is irreversible.
-                                            </DialogDescription>
-                                        </DialogHeader>
-                                        <DialogFooter>
-                                            <Button size="sm" variant="outline" onClick={() => setSelectedRequest(null)}>Cancel</Button>
-                                            <Button size="sm" variant="destructive" onClick={() => handleReject(selectedRequest)} disabled={isSubmitting}><XCircle className="h-4 w-4 mr-2"/>Reject</Button>
-                                            <Button size="sm" onClick={() => handleApprove(selectedRequest)} disabled={isSubmitting}><CheckCircle className="h-4 w-4 mr-2"/>Approve</Button>
-                                        </DialogFooter>
+                                     <DialogContent className="max-w-2xl grid-cols-1 md:grid-cols-2 grid gap-6">
+                                        <div>
+                                            <DialogHeader>
+                                                <DialogTitle>Process Withdrawal</DialogTitle>
+                                                <DialogDescription>
+                                                You are about to process a withdrawal of <span className="font-bold">₹{selectedRequest.amount}</span> for {user?.name || selectedRequest.userName}.
+                                                Ensure funds are transferred externally before approving. This action is irreversible.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <DialogFooter className="mt-8">
+                                                <Button size="sm" variant="outline" onClick={() => setSelectedRequest(null)}>Cancel</Button>
+                                                <Button size="sm" variant="destructive" onClick={() => handleReject(selectedRequest)} disabled={isSubmitting}><XCircle className="h-4 w-4 mr-2"/>Reject</Button>
+                                                <Button size="sm" onClick={() => handleApprove(selectedRequest)} disabled={isSubmitting}><CheckCircle className="h-4 w-4 mr-2"/>Approve</Button>
+                                            </DialogFooter>
+                                        </div>
+                                         <div className='max-h-[80vh] overflow-y-auto'>
+                                            {selectedRequest && <AdminChatRoom contextPath={`withdrawal-requests/${selectedRequest.id}`} />}
+                                        </div>
                                     </DialogContent>
                                 )}
                            </Dialog>

@@ -7,6 +7,7 @@
 
 
 
+
 export type UserProfile = {
   id: string;
   uid: string;
@@ -146,6 +147,15 @@ export type Message = {
     createdAt: any;
 }
 
+export type AdminChatMessage = {
+    id: string;
+    userId: string;
+    userName: string;
+    text: string;
+    createdAt: any;
+}
+
+
 export type KycRequest = {
   id: string;
   userId: string;
@@ -186,6 +196,7 @@ export type Tournament = {
   status: 'upcoming' | 'live' | 'completed';
   players: string[];
   maxPlayers: number;
+  creatorId: string;
 };
 
 export type Announcement = {

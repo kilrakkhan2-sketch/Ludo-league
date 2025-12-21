@@ -18,6 +18,7 @@ import { CircleAlert, ArrowLeft, Trophy } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 import { Label } from '@/components/ui/label';
+import { AdminChatRoom } from '@/components/chat/AdminChatRoom';
 
 const getStatusVariant = (status: string) => {
   switch (status) {
@@ -176,6 +177,7 @@ export default function AdminMatchDetailsPage() {
                     }) : <p className="text-muted-foreground">No results have been submitted for this match yet.</p>}
                 </CardContent>
             </Card>
+            <AdminChatRoom contextPath={`matches/${matchId}`} />
         </div>
         <div className="sticky top-20">
             <Card>

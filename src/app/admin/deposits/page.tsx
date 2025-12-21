@@ -17,6 +17,7 @@ import { Eye, CheckCircle, XCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useUser } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminChatRoom } from '@/components/chat/AdminChatRoom';
 
 const getStatusVariant = (status: string) => {
   switch (status) {
@@ -149,27 +150,32 @@ export default function AdminDepositsPage() {
                               <DialogTrigger asChild>
                                 <Button variant="ghost" size="icon" onClick={() => setSelectedDeposit(deposit)}><Eye className="h-4 w-4" /></Button>
                               </DialogTrigger>
-                              <DialogContent className="max-w-md">
-                                  <DialogHeader>
-                                      <DialogTitle>Deposit Details</DialogTitle>
-                                      <DialogDescription>Review the details and screenshot before taking action.</DialogDescription>
-                                  </DialogHeader>
-                                   {selectedDeposit && (
-                                     <div className='space-y-4'>
-                                        <p><strong>User:</strong> <UserCell userId={selectedDeposit.userId} /></p>
-                                        <p><strong>Amount:</strong> <span className="font-bold text-lg">₹{selectedDeposit.amount}</span></p>
-                                        <p><strong>Transaction ID:</strong> <span className="font-mono bg-muted p-1 rounded">{selectedDeposit.transactionId}</span></p>
-                                         <div className="relative aspect-square w-full rounded-md overflow-hidden border">
-                                              <Image src={selectedDeposit.screenshotUrl} alt="Payment Screenshot" layout="fill" objectFit="contain" />
-                                          </div>
-                                    </div>
-                                   )}
-                                  {deposit.status === 'pending' && (
-                                      <DialogFooter className="pt-4">
-                                          <Button variant="destructive" onClick={() => handleRejectDeposit(deposit)} disabled={isSubmitting}><XCircle className="h-4 w-4 mr-2"/>Reject</Button>
-                                          <Button onClick={() => handleApproveDeposit(deposit)} disabled={isSubmitting}><CheckCircle className="h-4 w-4 mr-2"/>Approve</Button>
-                                      </DialogFooter>
-                                  )}
+                              <DialogContent className="max-w-2xl grid-cols-1 md:grid-cols-2 grid gap-6">
+                                  <div>
+                                      <DialogHeader>
+                                          <DialogTitle>Deposit Details</DialogTitle>
+                                          <DialogDescription>Review the details and screenshot before taking action.</DialogDescription>
+                                      </DialogHeader>
+                                       {selectedDeposit && (
+                                         <div className='space-y-4 py-4'>
+                                            <p><strong>User:</strong> <UserCell userId={selectedDeposit.userId} /></p>
+                                            <p><strong>Amount:</strong> <span className="font-bold text-lg">₹{selectedDeposit.amount}</span></p>
+                                            <p><strong>Transaction ID:</strong> <span className="font-mono bg-muted p-1 rounded">{selectedDeposit.transactionId}</span></p>
+                                             <div className="relative aspect-square w-full rounded-md overflow-hidden border">
+                                                  <Image src={selectedDeposit.screenshotUrl} alt="Payment Screenshot" layout="fill" objectFit="contain" />
+                                              </div>
+                                        </div>
+                                       )}
+                                      {deposit.status === 'pending' && (
+                                          <DialogFooter className="pt-4">
+                                              <Button variant="destructive" onClick={() => handleRejectDeposit(deposit)} disabled={isSubmitting}><XCircle className="h-4 w-4 mr-2"/>Reject</Button>
+                                              <Button onClick={() => handleApproveDeposit(deposit)} disabled={isSubmitting}><CheckCircle className="h-4 w-4 mr-2"/>Approve</Button>
+                                          </DialogFooter>
+                                      )}
+                                  </div>
+                                  <div className='max-h-[80vh] overflow-y-auto'>
+                                    {selectedDeposit && <AdminChatRoom contextPath={`deposit-requests/${selectedDeposit.id}`} />}
+                                  </div>
                               </DialogContent>
                           </Dialog>
                       </TableCell>

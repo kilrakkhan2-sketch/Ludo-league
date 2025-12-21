@@ -16,6 +16,11 @@ service cloud.firestore {
       // A more robust way would be a custom claim for service accounts if needed.
       return request.auth.token.firebase.sign_in_provider == null || request.auth.token.firebase.sign_in_provider == "firebase";
     }
+    
+    function isAnyAdmin() {
+        let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+        return role == 'superadmin' || role == 'deposit_admin' || role == 'withdrawal_admin' || role == 'match_admin';
+    }
 
     function isSuperAdmin() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
@@ -107,6 +112,10 @@ service cloud.firestore {
       match /messages/{messageId} {
         allow read, write: if isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players);
       }
+      
+      match /admin-chat/{messageId} {
+        allow read, write: if isAnyAdmin();
+      }
     }
 
     match /tournaments/{tournamentId} {
@@ -141,6 +150,10 @@ service cloud.firestore {
       allow create: if isServer() || (isSignedIn() && isOwner(request.resource.data.userId));
       allow update: if isServer() || isDepositAdmin();
       allow delete: if isServer() || isSuperAdmin();
+      
+       match /admin-chat/{messageId} {
+        allow read, write: if isAnyAdmin();
+      }
     }
 
     match /withdrawal-requests/{withdrawalId} {
@@ -148,6 +161,10 @@ service cloud.firestore {
       allow create: if isServer() || (isSignedIn() && isOwner(request.resource.data.userId));
       allow update: if isServer() || isWithdrawalAdmin();
       allow delete: if isServer() || isSuperAdmin();
+      
+       match /admin-chat/{messageId} {
+        allow read, write: if isAnyAdmin();
+      }
     }
 
     match /kyc-requests/{kycId} {
