@@ -1,14 +1,13 @@
 
 
-
 export type UserProfile = {
   id: string;
   uid: string;
   name: string;
   email: string;
-  phone: string;
-  username: string;
-  photoURL: string;
+  phone?: string;
+  username?: string;
+  photoURL?: string;
   walletBalance: number;
   isVerified: boolean;
   role: 'superadmin' | 'deposit_admin' | 'match_admin' | 'user';

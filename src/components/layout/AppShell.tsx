@@ -47,20 +47,23 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const { user, loading: userLoading, claims } = useUser();
+  const { user, loading: userLoading, userData } = useUser();
   const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
 
   const isAdmin = useMemo(() => 
-    claims?.role && ['superadmin', 'deposit_admin', 'match_admin'].includes(claims.role as string)
-  , [claims]);
+    userData?.role && ['superadmin', 'deposit_admin', 'withdrawal_admin', 'match_admin'].includes(userData.role)
+  , [userData]);
 
   const navItems = useMemo(() => {
     let items = [...baseNavItems];
     if (isAdmin) {
-      // Add Admin item at a specific position, e.g., before Profile
+      // Add Admin item at a specific position, before Profile
       const profileIndex = items.findIndex(item => item.href === '/profile');
       if (profileIndex !== -1) {
         items.splice(profileIndex, 0, { href: "/admin/dashboard", icon: Shield, label: "Admin" });
+      } else {
+        // Fallback in case profile is not in the list
+        items.push({ href: "/admin/dashboard", icon: Shield, label: "Admin" });
       }
     }
     return items;

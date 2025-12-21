@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -36,38 +35,38 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { Banknote } from "lucide-react";
+import { Banknote, UserCog } from "lucide-react";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 export default function ManageAdminsPage() {
   const { data: users, loading } = useCollection<UserProfile>('users');
   const { user: currentUser } = useUser();
   const firestore = useFirestore();
+  const functions = getFunctions();
   const { toast } = useToast();
 
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [amount, setAmount] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
-    if (!firestore) return;
-    
-    const userRef = doc(firestore, "users", userId);
-    const updatedData = { role: newRole };
-
-    updateDoc(userRef, updatedData)
-      .then(() => {
+      setIsSubmitting(true);
+      try {
+        const setUserRole = httpsCallable(functions, 'setUserRole');
+        await setUserRole({ userId: userId, role: newRole });
         toast({
-          title: "Success",
-          description: `User role updated to ${newRole}.`,
+          title: "Role Updated",
+          description: `User role has been successfully set to ${newRole}.`,
         });
-      })
-      .catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: userRef.path,
-          operation: 'update',
-          requestResourceData: updatedData,
+      } catch (error: any) {
+         toast({
+          variant: "destructive",
+          title: "Error updating role",
+          description: error.message || 'An unknown error occurred.',
         });
-        errorEmitter.emit('permission-error', permissionError);
-      });
+      } finally {
+          setIsSubmitting(false);
+      }
   };
 
   const handleUpdateBalance = async () => {
@@ -78,32 +77,25 @@ export default function ManageAdminsPage() {
         return;
     }
 
+    setIsSubmitting(true);
     const userRef = doc(firestore, "users", selectedUser.id);
-    const superAdminRef = doc(firestore, "users", currentUser.uid);
-
+    
     try {
-        const batch = writeBatch(firestore);
-        
-        batch.update(userRef, { walletBalance: numericAmount });
+        await updateDoc(userRef, { walletBalance: numericAmount });
 
-        // Optional: Log this as a transaction for the superadmin
-        const transactionRef = doc(collection(firestore, `users/${currentUser.uid}/transactions`));
-        batch.set(transactionRef, {
-            amount: 0,
-            type: 'admin_action',
-            description: `Set balance for ${selectedUser.name} to ₹${numericAmount}`,
-            createdAt: new Date(),
-            status: 'completed',
-        });
-
-        await batch.commit();
-
-        toast({ title: 'Balance Updated', description: `${selectedUser.name}\'s balance has been set to ₹${numericAmount}.` });
+        toast({ title: 'Balance Updated', description: `${selectedUser.displayName}\'s balance has been set to ₹${numericAmount}.` });
         setSelectedUser(null);
         setAmount('');
-    } catch (error) {
+    } catch (error: any) {
         console.error(error);
-        toast({ variant: 'destructive', title: 'Update failed' });
+        const permissionError = new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'update',
+          requestResourceData: { walletBalance: numericAmount },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    } finally {
+        setIsSubmitting(false);
     }
   }
   
@@ -114,7 +106,7 @@ export default function ManageAdminsPage() {
       case 'deposit_admin':
         return 'default';
       case 'match_admin':
-        return 'secondary';
+        return 'success';
       default:
         return 'outline';
     }
@@ -127,7 +119,7 @@ export default function ManageAdminsPage() {
         <CardHeader>
           <CardTitle>User Roles & Balances</CardTitle>
           <CardDescription>
-            Assign roles and manage wallet balances for all users.
+            Assign roles and manage wallet balances for all users. Only superadmins can assign roles.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -146,7 +138,7 @@ export default function ManageAdminsPage() {
               <TableBody>
                 {users.map((user: UserProfile) => (
                   <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell className="font-medium">{user.displayName}</TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>₹{user.walletBalance?.toLocaleString() || 0}</TableCell>
                     <TableCell>
@@ -158,7 +150,7 @@ export default function ManageAdminsPage() {
                       <Select 
                         defaultValue={user.role}
                         onValueChange={(newRole) => handleRoleChange(user.id, newRole)}
-                        disabled={user.role === 'superadmin' && user.id !== currentUser?.uid}
+                        disabled={user.role === 'superadmin' && user.id !== currentUser?.uid || isSubmitting}
                       >
                         <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Select a role" />
@@ -178,7 +170,7 @@ export default function ManageAdminsPage() {
                                setAmount('');
                            }
                        }}>
-                        <DialogTrigger>
+                        <DialogTrigger asChild>
                             <Button variant="outline" size="sm" onClick={() => setSelectedUser(user)}>
                                 <Banknote className="mr-2 h-4 w-4"/>
                                 Set Balance
@@ -188,7 +180,7 @@ export default function ManageAdminsPage() {
                             <DialogHeader>
                                 <DialogTitle>Update Wallet Balance</DialogTitle>
                                 <DialogDescription>
-                                    Manually set the wallet balance for {selectedUser?.name}. This action is logged.
+                                    Manually set the wallet balance for {selectedUser?.displayName}. This action is logged.
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-4">
@@ -205,7 +197,7 @@ export default function ManageAdminsPage() {
                             </div>
                             <DialogFooter>
                                 <Button variant="outline" onClick={() => setSelectedUser(null)}>Cancel</Button>
-                                <Button onClick={handleUpdateBalance}>Update Balance</Button>
+                                <Button onClick={handleUpdateBalance} disabled={isSubmitting}>Update Balance</Button>
                             </DialogFooter>
                           </DialogContent>
                        </Dialog>

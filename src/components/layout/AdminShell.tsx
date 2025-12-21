@@ -1,146 +1,150 @@
-
 'use client';
 
 import {
   Home,
   Package,
-  Package2,
   Users,
+  Wallet,
+  Shield,
+  Settings,
+  Landmark,
+  CircleArrowUp,
+  Award,
+  LogOut,
+  UserCog,
 } from 'lucide-react';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
+import { useUser, useFirebase } from '@/firebase';
+import { usePathname, useRouter } from 'next/navigation';
 import {
-  Sheet,
-  SheetContent,
-  SheetTrigger
-} from '@/components/ui/sheet';
-import { AppShell } from './AppShell';
-import { useFirebase, useUser } from '@/firebase';
-import { useEffect, useMemo, useState } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarProvider,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarFooter,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import Image from 'next/image';
 
-const adminNavItems = [
+const superAdminNav = [
   { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
-  { href: '/admin/users', icon: Users, label: 'Users' },
-  { href: '/admin/matches', icon: Package, label: 'Matches' },
+  { href: '/admin/users', icon: Users, label: 'All Users' },
+  { href: '/admin/manage-admins', icon: UserCog, label: 'Manage Roles' },
+  { href: '/admin/matches', icon: Award, label: 'Matches' },
+  { href: '/admin/results', icon: Package, label: 'Verify Results' },
+  { href: '/admin/deposits', icon: CircleArrowUp, label: 'Deposits' },
+  { href: '/admin/withdrawals', icon: Landmark, label: 'Withdrawals' },
+  { href: '/admin/transactions', icon: Wallet, label: 'Transactions' },
+  { href: '/admin/settings', icon: Settings, label: 'Site Settings' },
 ];
 
-export function AdminShell({ children, pageTitle }: { children: React.ReactNode, pageTitle: string }) {
-  const { user, loading: authLoading } = useUser();
-  const { firestore } = useFirebase();
-  const [role, setRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+const depositAdminNav = [
+  { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
+  { href: '/admin/deposits', icon: CircleArrowUp, label: 'Deposits' },
+  { href: '/admin/withdrawals', icon: Landmark, label: 'Withdrawals' },
+];
 
-  useEffect(() => {
-    const fetchRole = async () => {
-      if (user && firestore) {
-        const userDoc = await getDoc(doc(firestore, 'users', user.uid));
-        if (userDoc.exists()) {
-          setRole(userDoc.data().role);
-        }
-      }
-      setLoading(false);
-    };
-    fetchRole();
-  }, [user, firestore]);
+const matchAdminNav = [
+  { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
+  { href: '/admin/matches', icon: Award, label: 'Matches' },
+  { href: '/admin/results', icon: Package, label: 'Verify Results' },
+];
 
-  const isAdmin = useMemo(() =>
-    role && ['superadmin', 'deposit_admin', 'match_admin'].includes(role)
-    , [role]);
 
-  if (authLoading || loading) {
-    return (
-      <AppShell pageTitle="Loading...">
-        <div className="flex items-center justify-center h-full">
-          <p>Loading admin section...</p>
-        </div>
-      </AppShell>
-    )
-  }
+export function AdminShell({ children }: { children: React.ReactNode }) {
+  const { userData } = useUser();
+  const router = useRouter();
+  const pathname = usePathname();
 
-  if (!isAdmin) {
-    return (
-      <AppShell pageTitle="Access Denied">
-        <div className="flex flex-col items-center justify-center h-full text-center">
-          <h1 className="text-2xl font-bold">Access Denied</h1>
-          <p className="text-muted-foreground">
-            You do not have permission to view this page.
-          </p>
-        </div>
-      </AppShell>
-    );
-  }
+  const getNavItems = () => {
+    switch (userData?.role) {
+      case 'superadmin':
+        return superAdminNav;
+      case 'deposit_admin':
+        return depositAdminNav;
+      case 'match_admin':
+        return matchAdminNav;
+      default:
+        return [];
+    }
+  };
+
+  const navItems = getNavItems();
+  const pageTitle = navItems.find(item => pathname.startsWith(item.href))?.label || 'Admin Panel';
 
   return (
-    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
-      <div className="hidden border-r bg-muted/40 md:block">
-        <div className="flex h-full max-h-screen flex-col gap-2">
-          <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-            <Link href="/" className="flex items-center gap-2 font-semibold">
-              <Package2 className="h-6 w-6" />
-              <span className="">LudoLeague</span>
-            </Link>
-          </div>
-          <div className="flex-1">
-            <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-              {adminNavItems.map(({ href, icon: Icon, label }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </Link>
+    <SidebarProvider>
+      <div className="grid min-h-screen w-full bg-muted/40">
+        <Sidebar>
+          <SidebarContent>
+            <SidebarHeader>
+              <Link href="/admin/dashboard" className="flex items-center gap-2 font-semibold">
+                <Shield className="h-6 w-6" />
+                <span>Admin Panel</span>
+              </Link>
+            </SidebarHeader>
+            <SidebarMenu>
+               {navItems.map(({ href, icon: Icon, label }) => (
+                <SidebarMenuItem key={href}>
+                    <SidebarMenuButton 
+                        href={href}
+                        current={pathname === href}
+                        tooltip={label}
+                    >
+                        <Icon />
+                        <span>{label}</span>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
               ))}
-            </nav>
-          </div>
+            </SidebarMenu>
+            <SidebarFooter>
+               <Button variant="ghost" className="w-full justify-start gap-2" asChild>
+                <Link href="/dashboard">
+                  <LogOut className="rotate-180" />
+                  <span>Back to App</span>
+                </Link>
+              </Button>
+            </SidebarFooter>
+          </SidebarContent>
+        </Sidebar>
+        <div className="flex flex-col sm:pl-14">
+            <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:py-4">
+              <SidebarTrigger className="sm:hidden" />
+              <h1 className="text-xl font-semibold hidden sm:block">{pageTitle}</h1>
+               <div className="relative ml-auto flex-1 md:grow-0">
+                  {/* Future Search Bar? */}
+               </div>
+               <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" className="overflow-hidden rounded-full">
+                         <Avatar className="h-8 w-8">
+                            <AvatarImage src={userData?.photoURL || undefined} alt={userData?.displayName || ''} />
+                            <AvatarFallback>{userData?.displayName?.charAt(0) || 'A'}</AvatarFallback>
+                        </Avatar>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => router.push('/settings')}>Settings</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push('/support')}>Support</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => router.push('/dashboard')}>Exit Admin Panel</DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+            </header>
+            <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
+              {children}
+            </main>
         </div>
       </div>
-      <div className="flex flex-col">
-        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="shrink-0 md:hidden"
-              >
-                <Users className="h-5 w-5" />
-                <span className="sr-only">Toggle navigation menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="flex flex-col">
-              <nav className="grid gap-2 text-lg font-medium">
-                <Link
-                  href="#"
-                  className="flex items-center gap-2 text-lg font-semibold"
-                >
-                  <Package2 className="h-6 w-6" />
-                  <span className="sr-only">LudoLeague</span>
-                </Link>
-                {adminNavItems.map(({ href, icon: Icon, label }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <Icon className="h-5 w-5" />
-                    {label}
-                  </Link>
-                ))}
-              </nav>
-            </SheetContent>
-          </Sheet>
-          <div className="w-full flex-1">
-            <h1 className="text-xl font-semibold">{pageTitle}</h1>
-          </div>
-        </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
-          {children}
-        </main>
-      </div>
-    </div>
+    </SidebarProvider>
   );
 }

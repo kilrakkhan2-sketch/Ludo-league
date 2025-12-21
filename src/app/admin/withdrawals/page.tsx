@@ -1,9 +1,8 @@
-
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useCollection, useUser, useDoc } from '@/firebase';
-import { doc, writeBatch, Timestamp, collection, getDoc, query, where, getDocs, runTransaction } from 'firebase/firestore';
+import { doc, Timestamp, runTransaction, collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import type { WithdrawalRequest, UserProfile } from '@/types';
 import { format } from 'date-fns';
@@ -34,7 +33,7 @@ import {
   DialogTrigger,
   DialogFooter
 } from '@/components/ui/dialog';
-import { AdminShell } from '@/components/layout/AdminShell';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const getStatusVariant = (status: string) => {
   switch (status) {
@@ -47,8 +46,7 @@ const getStatusVariant = (status: string) => {
 
 export default function AdminWithdrawalsPage() {
   const { firestore } = useFirebase();
-  const { user: adminUser } = useUser();
-  const { data: adminProfile } = useDoc<UserProfile>(adminUser ? `users/${adminUser.uid}`: '');
+  const { userData: adminProfile, user: adminUser } = useUser();
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState('pending');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,6 +58,7 @@ export default function AdminWithdrawalsPage() {
   });
 
   const allUserIdsInView = useMemo(() => {
+    if (!requests || requests.length === 0) return ['_']; // Firestore 'in' query needs a non-empty array
     const ids = new Set<string>();
     requests.forEach((r: WithdrawalRequest) => {
         ids.add(r.userId);
@@ -67,10 +66,6 @@ export default function AdminWithdrawalsPage() {
             ids.add(r.processedBy);
         }
     });
-    // Ensure the list is not empty to prevent Firestore errors with 'in' queries
-    if (ids.size === 0) {
-        return ['_']; // Use a placeholder that won't match any documents
-    }
     return Array.from(ids);
   }, [requests]);
 
@@ -100,16 +95,11 @@ export default function AdminWithdrawalsPage() {
             const adminDoc = await transaction.get(adminRef);
             const adminData = adminDoc.data() as UserProfile;
             
-            // Find the original user transaction to update its status
             const userTransactionQuery = query(collection(firestore, `users/${request.userId}/transactions`), where('relatedId', '==', request.id));
             const userTransactionsSnapshot = await getDocs(userTransactionQuery);
             const userTransactionRef = userTransactionsSnapshot.docs[0]?.ref;
 
             if (action === 'approve') {
-                if ((adminData.walletBalance || 0) < request.amount) {
-                    throw new Error("You have insufficient balance to approve this withdrawal.");
-                }
-
                 transaction.update(requestRef, {
                     status: 'approved',
                     processedAt: Timestamp.now(),
@@ -120,23 +110,6 @@ export default function AdminWithdrawalsPage() {
                     transaction.update(userTransactionRef, { status: 'completed' });
                 }
 
-                // Deduct amount from admin's wallet
-                const newAdminBalance = (adminData.walletBalance || 0) - request.amount;
-                transaction.update(adminRef, { walletBalance: newAdminBalance });
-
-                // Create a transaction record for the admin
-                const adminTransactionRef = doc(collection(firestore, `users/${adminUser.uid}/transactions`));
-                transaction.set(adminTransactionRef, {
-                    amount: -request.amount,
-                    type: 'withdrawal',
-                    status: 'completed',
-                    description: `Approved withdrawal for ${request.userName}`,
-                    relatedId: request.id,
-                    createdAt: Timestamp.now(),
-                    userName: adminData.name,
-                    userEmail: adminData.email,
-                });
-
             } else { // 'reject'
                 transaction.update(requestRef, {
                     status: 'rejected',
@@ -144,7 +117,6 @@ export default function AdminWithdrawalsPage() {
                     processedBy: adminUser.uid,
                 });
                 
-                // Refund the amount to the user's wallet
                 const userDoc = await transaction.get(userRef);
                 const userProfile = userDoc.data() as UserProfile;
                 const newUserBalance = (userProfile.walletBalance || 0) + request.amount;
@@ -166,8 +138,9 @@ export default function AdminWithdrawalsPage() {
     }
   }
 
+  const isLoading = loading || usersLoading;
+
   return (
-    <AdminShell>
         <div className="space-y-6">
         <h1 className="text-3xl font-bold font-headline">Withdrawal Requests</h1>
         <Card>
@@ -196,8 +169,8 @@ export default function AdminWithdrawalsPage() {
                 </TableRow>
                 </TableHeader>
                 <TableBody>
-                {loading || usersLoading ? (
-                    <TableRow><TableCell colSpan={8} className="text-center">Loading...</TableCell></TableRow>
+                {isLoading ? (
+                    <TableRow><TableCell colSpan={8} className="text-center"><Skeleton className="h-8 w-full" /></TableCell></TableRow>
                 ) : requests.length > 0 ? requests.map((req: WithdrawalRequest) => {
                     const user = usersMap.get(req.userId);
                     const processor = req.processedBy ? usersMap.get(req.processedBy) : null;
@@ -215,8 +188,8 @@ export default function AdminWithdrawalsPage() {
                     <TableCell><Badge variant={getStatusVariant(req.status)}>{req.status}</Badge></TableCell>
                     <TableCell className="text-right space-x-2">
                         {statusFilter === 'pending' && (
-                           <Dialog>
-                                <DialogTrigger>
+                           <Dialog open={selectedRequest?.id === req.id} onOpenChange={(isOpen) => !isOpen && setSelectedRequest(null)}>
+                                <DialogTrigger asChild>
                                      <Button size="sm" onClick={() => setSelectedRequest(req)}>Process</Button>
                                 </DialogTrigger>
                                 {selectedRequest && selectedRequest.id === req.id && (
@@ -225,13 +198,13 @@ export default function AdminWithdrawalsPage() {
                                             <DialogTitle>Process Withdrawal</DialogTitle>
                                             <DialogDescription>
                                             You are about to process a withdrawal of <span className="font-bold">₹{selectedRequest.amount}</span> for {user?.name || selectedRequest.userName}.
-                                            Ensure funds are transferred externally before approving. This action is irreversible. Approving will deduct ₹{selectedRequest.amount} from your admin wallet.
+                                            Ensure funds are transferred externally before approving. This action is irreversible.
                                             </DialogDescription>
                                         </DialogHeader>
                                         <DialogFooter>
                                             <Button size="sm" variant="outline" onClick={() => setSelectedRequest(null)}>Cancel</Button>
                                             <Button size="sm" variant="destructive" onClick={() => handleProcessRequest(selectedRequest, 'reject')} disabled={isSubmitting}><XCircle className="h-4 w-4 mr-2"/>Reject</Button>
-                                            <Button size="sm" onClick={() => handleProcessRequest(selectedRequest, 'approve')} disabled={isSubmitting || (adminProfile?.walletBalance || 0) < selectedRequest.amount}><CheckCircle className="h-4 w-4 mr-2"/>Approve</Button>
+                                            <Button size="sm" onClick={() => handleProcessRequest(selectedRequest, 'approve')} disabled={isSubmitting}><CheckCircle className="h-4 w-4 mr-2"/>Approve</Button>
                                         </DialogFooter>
                                     </DialogContent>
                                 )}
@@ -249,8 +222,5 @@ export default function AdminWithdrawalsPage() {
             </CardContent>
         </Card>
         </div>
-    </AdminShell>
   );
 }
-
-    
