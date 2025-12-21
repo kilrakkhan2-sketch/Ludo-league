@@ -35,7 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useUser, useDoc, useCollection } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { UserProfile, Transaction } from "@/types";
+import { UserProfile, Transaction, MaintenanceSettings } from "@/types";
 import { format } from "date-fns";
 import { useFirebase } from "@/firebase/provider";
 import { addDoc, collection, runTransaction, doc, Timestamp } from "firebase/firestore";
@@ -66,6 +66,7 @@ export default function WalletPage() {
   const { user, loading: userLoading } = useUser();
   const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
   const { data: transactions, loading: transactionsLoading } = useCollection<Transaction>(user ? `users/${user.uid}/transactions` : '', { orderBy: ['createdAt', 'desc'], limit: 10 });
+  const { data: maintenanceSettings, loading: maintenanceLoading } = useDoc<MaintenanceSettings>('settings/maintenance');
   const { firestore } = useFirebase();
   const { toast } = useToast();
   const router = useRouter();
@@ -137,11 +138,14 @@ export default function WalletPage() {
   };
 
 
-  const loading = userLoading || profileLoading || transactionsLoading;
+  const loading = userLoading || profileLoading || transactionsLoading || maintenanceLoading;
 
   const totalWinnings = transactions
     .filter((t: Transaction) => t.type === 'prize' || t.type === 'win')
     .reduce((sum, t) => sum + t.amount, 0);
+    
+  const depositsDisabled = maintenanceSettings?.areDepositsDisabled || false;
+  const withdrawalsDisabled = maintenanceSettings?.areWithdrawalsDisabled || false;
 
   return (
     <AppShell pageTitle="Wallet" showBackButton>
@@ -168,12 +172,12 @@ export default function WalletPage() {
 
         <div className="p-4 space-y-6 pb-20">
             <div className="grid grid-cols-2 gap-4">
-                <Button className="py-6 text-base bg-green-500 hover:bg-green-600 text-white" onClick={() => router.push('/add-money')}>
+                <Button className="py-6 text-base bg-green-500 hover:bg-green-600 text-white" onClick={() => router.push('/add-money')} disabled={depositsDisabled}>
                   <Upload className="mr-2 h-5 w-5" /> Deposit
                 </Button>
                  <Dialog>
                   <DialogTrigger asChild>
-                    <Button variant="destructive" className="py-6 text-base bg-red-500 hover:bg-red-600">
+                    <Button variant="destructive" className="py-6 text-base bg-red-500 hover:bg-red-600" disabled={withdrawalsDisabled}>
                       <Download className="mr-2 h-5 w-5" /> Withdraw
                     </Button>
                   </DialogTrigger>

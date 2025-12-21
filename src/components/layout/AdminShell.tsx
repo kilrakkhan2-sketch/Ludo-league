@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -13,7 +14,8 @@ import {
   LogOut,
   UserCog,
   FileBadge,
-  Megaphone
+  Megaphone,
+  Power,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -45,7 +47,7 @@ const superAdminNav = [
   { href: '/admin/kyc', icon: FileBadge, label: 'KYC Management' },
   { href: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
   { href: '/admin/transactions', icon: Wallet, label: 'Transactions' },
-  { href: '/admin/settings', icon: Settings, label: 'Site Settings' },
+  { href: '/admin/status', icon: Power, label: 'App Status' },
 ];
 
 const depositAdminNav = [
@@ -57,6 +59,7 @@ const depositAdminNav = [
 const matchAdminNav = [
   { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
   { href: '/admin/matches', icon: Award, label: 'Matches' },
+  { href: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
 ];
 
 

@@ -1,5 +1,6 @@
 
 
+
 export type UserProfile = {
   id: string;
   uid: string;
@@ -91,6 +92,14 @@ export type WithdrawalRequest = {
 export type AppSettings = {
   id: string;
   upiId?: string;
+};
+
+export type MaintenanceSettings = {
+  id: string;
+  isAppDisabled?: boolean;
+  appDisabledMessage?: string;
+  areDepositsDisabled?: boolean;
+  areWithdrawalsDisabled?: boolean;
 };
 
 export type Message = {

@@ -3,6 +3,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase";
+import { MaintenanceShield } from "@/components/layout/MaintenanceShield";
 
 export const metadata: Metadata = {
   title: "LudoLeague",
@@ -22,7 +23,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={cn("font-body antialiased")}>
         <FirebaseClientProvider>
-          {children}
+          <MaintenanceShield>
+            {children}
+          </MaintenanceShield>
         </FirebaseClientProvider>
         <Toaster />
       </body>

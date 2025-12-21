@@ -104,6 +104,17 @@
         "upiId": { "type": "string", "description": "The UPI ID for deposits." }
       }
     },
+    "MaintenanceSettings": {
+      "title": "Maintenance Settings",
+      "description": "Controls the app's maintenance mode and feature availability.",
+      "type": "object",
+      "properties": {
+        "isAppDisabled": { "type": "boolean", "description": "If true, the entire app is in maintenance mode." },
+        "appDisabledMessage": { "type": "string", "description": "Message to display when the app is disabled." },
+        "areDepositsDisabled": { "type": "boolean", "description": "If true, users cannot initiate new deposits." },
+        "areWithdrawalsDisabled": { "type": "boolean", "description": "If true, users cannot request withdrawals." }
+      }
+    },
     "KycRequest": {
       "title": "KYC Request",
       "description": "A user's request for KYC verification.",
@@ -160,6 +171,32 @@
         "creatorId": { "type": "string" }
       },
       "required": ["name", "prizePool", "entryFee", "startDate", "status", "players", "maxPlayers", "creatorId"]
+    },
+    "Announcement": {
+        "title": "Announcement",
+        "description": "Represents a global news update or notification for all users.",
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "content": { "type": "string" },
+          "type": { "type": "string", "enum": ["News", "Promo", "Update", "Warning"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "link": { "type": "string", "format": "uri", "description": "An optional link for more details." }
+        },
+        "required": ["title", "content", "type", "createdAt"]
+    },
+    "PersonalNotification": {
+        "title": "Personal Notification",
+        "description": "A notification sent to a specific user.",
+        "type": "object",
+        "properties": {
+            "title": { "type": "string" },
+            "body": { "type": "string" },
+            "isRead": { "type": "boolean" },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "link": { "type": "string", "format": "uri" }
+        },
+        "required": ["title", "body", "isRead", "createdAt"]
     }
   },
   "auth": {
@@ -194,6 +231,10 @@
       "schema": { "$ref": "#/entities/AppSettings" },
       "description": "Stores app-wide payment settings like UPI ID."
     },
+    "/settings/maintenance": {
+        "schema": { "$ref": "#/entities/MaintenanceSettings" },
+        "description": "Controls app-wide maintenance and feature status."
+    },
     "/kyc-requests/{kycId}": {
       "schema": { "$ref": "#/entities/KycRequest" },
       "description": "Stores all KYC requests for admin verification."
@@ -205,6 +246,14 @@
     "/friend-requests/{requestId}": {
       "schema": { "$ref": "#/entities/FriendRequest" },
       "description": "Stores friend requests between users."
+    },
+    "/announcements/{announcementId}": {
+        "schema": { "$ref": "#/entities/Announcement" },
+        "description": "Stores global announcements for all users."
+    },
+    "/users/{userId}/personal_notifications/{notificationId}": {
+        "schema": { "$ref": "#/entities/PersonalNotification" },
+        "description": "Stores notifications specific to a user."
     }
   }
 }

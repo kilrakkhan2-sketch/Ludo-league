@@ -138,7 +138,7 @@ service cloud.firestore {
       allow update, delete: if isServer() || isSuperAdmin();
     }
 
-    match /settings/payment {
+    match /settings/{settingId} {
       allow read: if isSignedIn();
       allow write: if isServer() || isSuperAdmin();
     }
