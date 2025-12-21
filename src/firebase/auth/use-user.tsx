@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -22,54 +23,50 @@ export function useUser(): AuthState {
     loading: true,
   });
 
-  const user = state.user;
-
   useEffect(() => {
-    if (!auth) {
-        setState({ user: null, userData: null, loading: false });
-        return;
+    if (!auth || !firestore) {
+      setState({ user: null, userData: null, loading: false });
+      return;
     }
+
+    let unsubscribeFirestore: Unsubscribe | undefined;
+
     const unsubscribeAuth = onIdTokenChanged(auth, (authUser) => {
-       if (authUser) {
-         setState(prevState => ({ ...prevState, user: authUser, loading: !prevState.userData }));
-       } else {
-         setState({ user: null, userData: null, loading: false });
-       }
-    });
+      // If there's an existing firestore listener, unsubscribe from it first.
+      if (unsubscribeFirestore) {
+        unsubscribeFirestore();
+      }
 
-    return () => unsubscribeAuth();
-  }, [auth]);
-
-  useEffect(() => {
-    let unsubscribe: Unsubscribe | undefined;
-
-    if (user && firestore) {
-      const userDocRef = doc(firestore, 'users', user.uid);
-      unsubscribe = onSnapshot(userDocRef, (doc) => {
-        if (doc.exists()) {
-            const profileData = { id: doc.id, ...doc.data() } as UserProfile;
+      if (authUser) {
+        setState(prevState => ({ ...prevState, user: authUser, loading: true }));
+        
+        const userDocRef = doc(firestore, 'users', authUser.uid);
+        unsubscribeFirestore = onSnapshot(userDocRef, (docSnapshot) => {
+          if (docSnapshot.exists()) {
+            const profileData = { id: docSnapshot.id, ...docSnapshot.data() } as UserProfile;
             setState(prevState => ({ ...prevState, userData: profileData, loading: false }));
-        } else {
-             // This case might happen if the user exists in Auth but not in Firestore.
-             // We set loading to false to prevent an infinite loading state.
-             setState(prevState => ({ ...prevState, userData: null, loading: false }));
-        }
-      }, (error) => {
+          } else {
+            setState(prevState => ({ ...prevState, userData: null, loading: false }));
+          }
+        }, (error) => {
           console.error("Error fetching user profile:", error);
           setState(prevState => ({ ...prevState, userData: null, loading: false }));
-      });
-    } else {
-        // If there's no user or firestore, we are not loading.
-        setState(prevState => ({...prevState, loading: false}));
-    }
+        });
 
-    // Cleanup subscription on unmount or when dependencies change.
+      } else {
+        // User logged out, clear everything.
+        setState({ user: null, userData: null, loading: false });
+      }
+    });
+
+    // Cleanup both auth and potential firestore listeners on component unmount.
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
+      unsubscribeAuth();
+      if (unsubscribeFirestore) {
+        unsubscribeFirestore();
       }
     };
-  }, [user, firestore]);
+  }, [auth, firestore]);
 
   return state;
 }
