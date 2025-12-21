@@ -51,14 +51,14 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
         const whereClauses = Array.isArray(optionsMemo.where[0]) ? (optionsMemo.where as WhereClause[]) : ([optionsMemo.where] as WhereClause[]);
         
         for (const w of whereClauses) {
-            const [field, op, value] = w;
+            const [_field, op, value] = w;
             // Firestore 'in', 'not-in', and 'array-contains-any' queries require a non-empty array.
             if ( (op === 'in' || op === 'not-in' || op === 'array-contains-any') && (!Array.isArray(value) || value.length === 0) ) {
                 // This is an invalid query for Firestore. By returning null, we prevent an error and can handle it gracefully.
                 // An empty 'data' array will be returned for this query.
                 return null;
             }
-            constraints.push(where(field, op, value));
+            constraints.push(where(...w));
         }
     }
     if (optionsMemo?.orderBy) {
