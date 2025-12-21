@@ -36,10 +36,12 @@ interface CommissionSettings {
 
 interface MatchResult {
     userId: string;
-    position: number;
-    status: 'win' | 'loss';
+    confirmedPosition: number;
+    confirmedWinStatus: 'win' | 'loss';
     screenshotUrl: string;
     submittedAt: any;
+    confirmedAt: any;
+    status: 'submitted' | 'confirmed' | 'mismatch' | 'locked';
 }
 
 // Helper function to send a personal notification
@@ -246,6 +248,7 @@ export const onDepositStatusChange = functions.firestore
     }
 
     const userRef = db.collection("users").doc(userId);
+    const upiAccountRef = db.collection('upi-accounts').doc(upiAccountId);
     const commissionSettingsRef = db.collection('settings').doc('commission');
 
 
@@ -261,7 +264,13 @@ export const onDepositStatusChange = functions.firestore
             // 1. Credit the user's wallet.
             t.update(userRef, { walletBalance: FieldValue.increment(amount) });
             
-            // 2. Create a transaction log for the deposit.
+            // 2. Update the UPI account's daily stats
+            t.update(upiAccountRef, {
+                dailyAmountReceived: FieldValue.increment(amount),
+                dailyTransactionCount: FieldValue.increment(1)
+            });
+
+            // 3. Create a transaction log for the deposit.
             const depositTxRef = db.collection(`users/${userId}/transactions`).doc();
             t.set(depositTxRef, {
                 amount: amount,
@@ -272,8 +281,8 @@ export const onDepositStatusChange = functions.firestore
                 relatedId: context.params.depositId,
             });
 
-            // 3. Handle referral commission if the user was referred and commission is enabled.
-            if (userData.referredBy && commissionSettings?.isEnabled && commissionSettings.rate > 0) {
+            // 4. Handle referral commission if the user was referred and commission is enabled.
+            if (userData.referredBy && commissionSettings?.isEnabled && typeof commissionSettings.rate === 'number' && commissionSettings.rate > 0) {
                 const referrerQuery = db.collection('users').where('referralCode', '==', userData.referredBy).limit(1);
                 const referrerSnapshot = await t.get(referrerQuery);
                 if (!referrerSnapshot.empty) {
@@ -310,57 +319,66 @@ export const onDepositStatusChange = functions.firestore
 });
 
 
-export const onResultSubmitted = functions.firestore
+export const autoVerifyResults = functions.firestore
     .document('matches/{matchId}/results/{userId}')
     .onCreate(async (snap, context) => {
         const { matchId } = context.params;
         const matchRef = db.collection('matches').doc(matchId);
 
         try {
-            const matchDoc = await matchRef.get();
-            if (!matchDoc.exists) return null;
-            const matchData = matchDoc.data();
-            if (!matchData) return null;
+            await db.runTransaction(async (transaction) => {
+                const matchDoc = await transaction.get(matchRef);
+                if (!matchDoc.exists) return null;
+                const matchData = matchDoc.data();
+                if (!matchData) return null;
 
-            // If match is already processed, do nothing.
-            if (['completed', 'disputed', 'verification'].includes(matchData.status)) {
-                return null;
-            }
-
-            const resultsSnapshot = await matchRef.collection('results').get();
-            const submittedResults = resultsSnapshot.docs.map(doc => doc.data() as MatchResult);
-
-            // Check if all players have submitted their results.
-            if (submittedResults.length !== matchData.maxPlayers) {
-                return null; // Wait for all results
-            }
-
-            // --- AUTO-VERIFICATION LOGIC ---
-            const positions = new Set<number>();
-            const winners = new Set<string>();
-
-            for (const result of submittedResults) {
-                positions.add(result.position);
-                if (result.status === 'won') {
-                    winners.add(result.userId);
+                // If match is already processed, do nothing.
+                if (['completed', 'disputed', 'verification'].includes(matchData.status)) {
+                    return null;
                 }
-            }
+                
+                // Set match status to processing as soon as the first result is in
+                if (matchData.status === 'ongoing') {
+                    transaction.update(matchRef, { status: 'processing' });
+                }
 
-            // CHECK 1: Duplicate positions submitted (e.g., two 1st places)
-            const hasDuplicatePositions = positions.size !== submittedResults.length;
-            
-            // CHECK 2: More than one winner claimed
-            const hasMultipleWinners = winners.size > 1;
+                const resultsSnapshot = await matchRef.collection('results').get();
+                const submittedResults = resultsSnapshot.docs.map(doc => doc.data() as MatchResult);
 
-            if (hasDuplicatePositions || hasMultipleWinners) {
-                // If any check fails, mark as disputed for admin review.
-                await matchRef.update({ status: 'disputed' });
-                functions.logger.info(`Match ${matchId} marked as disputed due to result conflict.`);
-            } else {
-                // If all checks pass, mark for admin verification.
-                await matchRef.update({ status: 'verification' });
-                functions.logger.info(`Match ${matchId} pending verification.`);
-            }
+                // Check if all players have submitted their results.
+                if (submittedResults.length !== matchData.maxPlayers) {
+                    return null; // Wait for all results
+                }
+
+                // --- AUTO-VERIFICATION LOGIC ---
+                const positions = new Set<number>();
+                const winners = new Set<string>();
+
+                for (const result of submittedResults) {
+                    if (result.confirmedPosition) {
+                        positions.add(result.confirmedPosition);
+                    }
+                    if (result.confirmedWinStatus === 'win') {
+                        winners.add(result.userId);
+                    }
+                }
+
+                // CHECK 1: Duplicate positions submitted (e.g., two 1st places)
+                const hasDuplicatePositions = positions.size !== submittedResults.length;
+                
+                // CHECK 2: More than one winner claimed
+                const hasMultipleWinners = winners.size > 1;
+
+                if (hasDuplicatePositions || hasMultipleWinners) {
+                    // If any check fails, mark as disputed for admin review.
+                    transaction.update(matchRef, { status: 'disputed' });
+                    functions.logger.info(`Match ${matchId} marked as disputed due to result conflict.`);
+                } else {
+                    // If all checks pass, mark for admin verification.
+                    transaction.update(matchRef, { status: 'verification' });
+                    functions.logger.info(`Match ${matchId} pending verification.`);
+                }
+            });
         } catch (error) {
             functions.logger.error(`Error processing results for match ${matchId}:`, error);
             await matchRef.update({ status: 'disputed', error: (error as Error).message });
@@ -395,7 +413,7 @@ export const onMatchResultUpdate = functions.firestore
                 // 1. Update winner's balance, rating, xp, and stats
                 t.update(winnerRef, { 
                     walletBalance: FieldValue.increment(prizePool),
-                    rating: FieldValue.increment(10),
+                    rating: FieldValue.increment(10), // Winner gets +10 rating
                     xp: FieldValue.increment(25),
                     matchesPlayed: FieldValue.increment(1),
                     matchesWon: FieldValue.increment(1)
@@ -418,7 +436,7 @@ export const onMatchResultUpdate = functions.firestore
                     const loserRef = db.collection("users").doc(loserId);
                     // We can update loser stats without fetching them first using FieldValue
                     t.update(loserRef, {
-                         rating: FieldValue.increment(-5),
+                         rating: FieldValue.increment(-5), // Losers get -5 rating
                          matchesPlayed: FieldValue.increment(1)
                     });
                 }
@@ -435,12 +453,13 @@ export const onMatchResultUpdate = functions.firestore
             functions.logger.error(`Failed to process results for match ${matchId}:`, error);
             await change.after.ref.update({ status: "error", error: (error as Error).message });
         }
+        return null
     }
     return null;
 });
 
 // =================================================================
-//  MATCH CREATION & MANAGEMENT
+//  MATCH & TOURNAMENT CREATION
 // =================================================================
 export const createMatch = functions.https.onCall(async (data, context) => {
     // 1. Authentication Check
@@ -509,6 +528,8 @@ export const createMatch = functions.https.onCall(async (data, context) => {
                 players: [userId],
                 status: 'open',
                 roomCode: null,
+                resultStage: 'none',
+                autoPayoutAllowed: true,
                 createdAt: FieldValue.serverTimestamp(),
                 startedAt: null,
                 completedAt: null,
@@ -529,7 +550,56 @@ export const createMatch = functions.https.onCall(async (data, context) => {
         if (error instanceof functions.https.HttpsError) {
             throw error;
         } else {
-            throw new functions.https.HttpsError("internal", "An unexpected error occurred.");
+            throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the match.");
         }
+    }
+});
+
+
+export const createTournament = functions.https.onCall(async (data, context) => {
+    // 1. Authentication & Authorization Check
+    if (!context.auth || !['superadmin', 'match_admin'].includes(context.auth.token.role)) {
+        throw new functions.https.HttpsError("permission-denied", "You must be an admin to create a tournament.");
+    }
+    const adminUid = context.auth.uid;
+
+    // 2. Data Validation
+    const { name, description, entryFee, maxPlayers, commissionRate, prizeDistribution, startDate, endDate, bannerUrl } = data;
+    if (!name || !description || typeof entryFee !== 'number' || typeof maxPlayers !== 'number' || typeof commissionRate !== 'number' || !prizeDistribution || !startDate) {
+        throw new functions.https.HttpsError("invalid-argument", "Missing required tournament information.");
+    }
+    
+    // 3. Calculate final prize pool after commission
+    const totalCollection = entryFee * maxPlayers;
+    const adminCommission = totalCollection * commissionRate;
+    const finalPrizePool = totalCollection - adminCommission;
+    
+    try {
+        const tournamentRef = await db.collection("tournaments").add({
+            name,
+            description,
+            entryFee,
+            maxPlayers,
+            commissionRate,
+            prizePool: finalPrizePool,
+            prizeDistribution,
+            startDate: admin.firestore.Timestamp.fromDate(new Date(startDate)),
+            endDate: endDate ? admin.firestore.Timestamp.fromDate(new Date(endDate)) : null,
+            bannerUrl: bannerUrl || null,
+            status: 'upcoming',
+            players: [],
+            creatorId: adminUid,
+            createdAt: FieldValue.serverTimestamp()
+        });
+
+        return {
+            status: "success",
+            message: "Tournament created successfully!",
+            tournamentId: tournamentRef.id,
+        };
+
+    } catch (error) {
+        functions.logger.error(`Failed to create tournament by admin ${adminUid}:`, error);
+        throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the tournament.");
     }
 });

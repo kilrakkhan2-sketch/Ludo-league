@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -58,7 +59,7 @@ export default function SignupPage() {
     },
   });
 
-  const handleNewUserSetup = async (userCredential: UserCredential) => {
+  const handleNewUserSetup = async (userCredential: UserCredential, formValues?: z.infer<typeof formSchema>) => {
     if (!firestore) return;
     const user = userCredential.user;
     const userRef = doc(firestore, 'users', user.uid);
@@ -70,8 +71,8 @@ export default function SignupPage() {
 
         await setDoc(userRef, {
             uid: user.uid,
-            name: user.displayName,
-            displayName: user.displayName,
+            name: formValues?.displayName || user.displayName,
+            displayName: formValues?.displayName || user.displayName,
             email: user.email,
             photoURL: user.photoURL,
             role: 'user',
