@@ -452,6 +452,7 @@ export const onMatchResultUpdate = functions.firestore
             functions.logger.error(`Failed to process results for match ${matchId}:`, error);
             await change.after.ref.update({ status: "error", error: (error as Error).message });
         }
+        return null
     }
     return null;
 });

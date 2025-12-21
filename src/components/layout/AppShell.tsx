@@ -38,7 +38,7 @@ interface AppShellProps {
 
 const baseNavItems: NavItem[] = [
   { href: "/dashboard", icon: Home, label: "Home" },
-  { href: "/matches/open", icon: Swords, label: "Matches" },
+  { href: "/tournaments", icon: Swords, label: "Tournaments" },
   { href: "/wallet", icon: Wallet, label: "Wallet" },
   { href: "/profile", icon: User, label: "Profile" },
 ];
@@ -51,7 +51,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
   const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
 
   const isAdmin = useMemo(() => 
-    userData?.role && ['superadmin', 'deposit_admin', 'match_admin'].includes(userData.role)
+    userData?.role && ['superadmin', 'deposit_admin', 'withdrawal_admin', 'match_admin'].includes(userData.role)
   , [userData]);
 
   const navItems = useMemo(() => {

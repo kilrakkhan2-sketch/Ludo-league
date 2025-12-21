@@ -15,7 +15,6 @@ import { Badge } from "@/components/ui/badge";
 import { Award, Calendar, Users, PlusCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useCollection, useUser, useDoc } from "@/firebase";
 import { useFirebase } from "@/firebase/provider";
 import type { Tournament, UserProfile } from "@/types";
@@ -24,10 +23,6 @@ import { format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { doc, updateDoc, arrayUnion } from "firebase/firestore";
 import { useState } from "react";
-
-const tournamentCardImage = PlaceHolderImages.find(
-  (p) => p.id === "tournament_card"
-);
 
 const TournamentCardSkeleton = () => (
     <Card className="overflow-hidden">
@@ -53,46 +48,11 @@ const TournamentCard = ({ tournament }: { tournament: Tournament }) => {
     const hasRegistered = user ? tournament.players.includes(user.uid) : false;
     const isFull = tournament.players.length >= tournament.maxPlayers;
     
-    const handleRegister = async () => {
-        if (!user || !firestore) {
-            toast({ variant: "destructive", title: "You must be logged in to register." });
-            return;
-        }
-        setIsRegistering(true);
-        try {
-            const tournamentRef = doc(firestore, 'tournaments', tournament.id);
-            await updateDoc(tournamentRef, {
-                players: arrayUnion(user.uid)
-            });
-            toast({ title: "Registration successful!", description: `You have been registered for ${tournament.name}.` });
-        } catch (error: any) {
-            toast({ variant: "destructive", title: "Registration Failed", description: error.message });
-        } finally {
-            setIsRegistering(false);
-        }
-    };
-    
-    const getButton = () => {
-        if (hasRegistered) {
-            return <Button className="w-full" disabled>Registered</Button>;
-        }
-        switch(tournament.status) {
-            case 'upcoming':
-                return <Button className="w-full" onClick={handleRegister} disabled={isFull || isRegistering}>{isRegistering ? 'Registering...' : (isFull ? 'Full' : 'Register Now')}</Button>
-            case 'live':
-                return <Link href={`/tournament/${tournament.id}/live`} className="w-full"><Button className="w-full" variant="destructive">View Live</Button></Link>
-            case 'completed':
-                return <Link href={`/tournament/${tournament.id}/results`} className="w-full"><Button className="w-full" variant="outline">View Results</Button></Link>
-            default:
-                return null;
-        }
-    }
-
     return (
-        <Card className="overflow-hidden hover:shadow-lg transition-shadow bg-card">
+        <Card className="overflow-hidden hover:shadow-lg transition-shadow bg-card flex flex-col">
             <div className="relative h-40 w-full">
                 <Image
-                src={tournament.bannerUrl || tournamentCardImage?.imageUrl || ''}
+                src={tournament.bannerUrl || `https://picsum.photos/seed/${tournament.id}/400/200`}
                 alt={tournament.name}
                 data-ai-hint="tournament banner"
                 fill
@@ -102,7 +62,7 @@ const TournamentCard = ({ tournament }: { tournament: Tournament }) => {
                 <Badge
                 className="absolute top-3 right-3 capitalize"
                 variant={
-                    tournament.status === "live" ? "default" : "secondary"
+                    tournament.status === "live" ? "destructive" : "secondary"
                 }
                 >
                 {tournament.status}
@@ -112,7 +72,7 @@ const TournamentCard = ({ tournament }: { tournament: Tournament }) => {
                     <p className="text-xs opacity-80">Entry: ₹{tournament.entryFee}</p>
                 </div>
             </div>
-            <CardContent className="p-4 space-y-3">
+            <CardContent className="p-4 space-y-3 flex-grow">
             <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2 text-muted-foreground">
                     <Award className="h-5 w-5 text-primary" />
@@ -133,7 +93,9 @@ const TournamentCard = ({ tournament }: { tournament: Tournament }) => {
             </div>
             </CardContent>
             <CardFooter className="p-4 pt-0">
-                {getButton()}
+                 <Link href={`/tournaments/${tournament.id}`} className="w-full">
+                    <Button className="w-full" variant="outline">View Details</Button>
+                </Link>
             </CardFooter>
         </Card>
     );

@@ -11,8 +11,6 @@ service cloud.firestore {
     }
 
     function isServer() {
-      // In callable functions, there is no sign_in_provider. We identify server-side
-      // operations by checking if the auth token is verified. This is a simplification.
       return request.auth.token.firebase.sign_in_provider == null || request.auth.token.firebase.sign_in_provider == "firebase";
     }
     
@@ -60,7 +58,6 @@ service cloud.firestore {
           !('walletBalance' in request.resource.data.diff(resource.data).affectedKeys()))
           || isSuperAdmin()
         ) || (
-          // Allow adding or removing a friend
           (request.resource.data.friends.hasAny(resource.data.friends) || resource.data.friends.hasAny(request.resource.data.friends))
         );
 
@@ -80,26 +77,23 @@ service cloud.firestore {
     // ------------------ MATCHES & TOURNAMENTS ------------------
     match /matches/{matchId} {
 
-      allow list: if isSignedIn();
-      allow read: if isSignedIn();
+      allow list, read: if isSignedIn();
+      allow create: if isSignedIn() && isServer();
 
-      allow create: if isSignedIn() && isServer(); // Only allow creation via cloud function
-
-      // Update rules
       allow update: if isSignedIn() && (
                       // Player joining a match
                       (
                         resource.data.status == 'open' &&
-                        request.resource.data.players == resource.data.players.concat(request.auth.uid) &&
-                        !(request.auth.uid in resource.data.players) &&
+                        request.resource.data.players == resource.data.players + [request.auth.uid] &&
                         resource.data.players.size() < resource.data.maxPlayers &&
-                        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee
+                        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players'])
                       ) ||
                       // Creator setting the room code
                       (
                          resource.data.status == 'ongoing' &&
                          request.auth.uid == resource.data.creatorId &&
-                         'roomCode' in request.resource.data.diff(resource.data).affectedKeys() &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['roomCode']) &&
                          request.resource.data.roomCode != resource.data.roomCode
                       ) ||
                       isMatchAdmin() || isSuperAdmin() || isServer()
@@ -112,16 +106,14 @@ service cloud.firestore {
       }
       
        match /results/{userId} {
-        // Allow create if user is a player in the match
         allow create: if isOwner(userId) && request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
         allow read: if isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players || isMatchAdmin());
         
-        // Allow update only for confirmation, and only once.
         allow update: if isOwner(userId) 
-                      && resource.data.status == 'submitted' // Can only update a submitted result
-                      && request.resource.data.status == 'confirmed' // The only allowed status change
-                      && !('screenshotUrl' in request.resource.data.diff(resource.data).affectedKeys()) // Cannot change screenshot
-                      && !('submittedAt' in request.resource.data.diff(resource.data).affectedKeys()); // Cannot change submission time
+                      && resource.data.status == 'submitted'
+                      && request.resource.data.status == 'confirmed'
+                      && !('screenshotUrl' in request.resource.data.diff(resource.data).affectedKeys())
+                      && !('submittedAt' in request.resource.data.diff(resource.data).affectedKeys());
                       
         allow delete: if isMatchAdmin();
       }
@@ -136,8 +128,11 @@ service cloud.firestore {
       allow create: if isMatchAdmin() || isSuperAdmin();
       allow update: if (isSignedIn() && 
                         (
-                            // Allow a user to join a tournament (add themselves to players array)
-                            (request.resource.data.players.hasAny([request.auth.uid]) && !(request.auth.uid in resource.data.players))
+                            (resource.data.status == 'open' || resource.data.status == 'live') &&
+                            request.resource.data.players == resource.data.players + [request.auth.uid] &&
+                            resource.data.players.size() < resource.data.maxPlayers &&
+                            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee &&
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players'])
                         )
                       ) || isMatchAdmin() || isSuperAdmin();
       allow delete: if isMatchAdmin() || isSuperAdmin();
@@ -190,21 +185,20 @@ service cloud.firestore {
         allow read: if isSignedIn();
         allow write: if isSuperAdmin() || isServer();
 
-        // Rules for daily statistics subcollection
         match /daily_stats/{date} {
           allow read: if isSuperAdmin();
-          allow write: if isServer(); // Only server (cloud functions) can update daily stats
+          allow write: if isServer();
         }
     }
 
     match /settings/maintenance {
       allow read: if true;
-      allow write: if isServer() || isSuperAdmin();
+      allow write: if isServer() || isAnyAdmin();
     }
 
     match /settings/{settingId} {
       allow read: if isSignedIn();
-      allow write: if isServer() || isSuperAdmin();
+      allow write: if isServer() || isAnyAdmin();
     }
   }
 }
