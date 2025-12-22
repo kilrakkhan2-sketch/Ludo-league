@@ -73,6 +73,8 @@ const MatchCard = ({ match }: { match: Match }) => {
 
   const handleJoinMatch = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
+    
     if (!user || !firestore || hasJoined || isFull) return;
     setIsJoining(true);
 
@@ -98,7 +100,6 @@ const MatchCard = ({ match }: { match: Match }) => {
                 throw new Error("Insufficient wallet balance.");
             }
             if (matchData.players.includes(user.uid)) {
-                // This case should ideally not be reached if UI is correct, but as a safeguard.
                 throw new Error("You have already joined this match.");
             }
 
@@ -128,45 +129,45 @@ const MatchCard = ({ match }: { match: Match }) => {
 
   return (
     <Card className="flex flex-col hover:shadow-lg transition-shadow overflow-hidden">
-      <Link href={`/match/${match.id}`} className="flex flex-col flex-grow">
-        <CardHeader className="p-4 bg-muted/30">
-          <div className="flex justify-between items-start">
-            <CardTitle className="text-base font-bold truncate pr-2">{match.title}</CardTitle>
-            <Badge variant={getStatusVariant(match.status)} className="capitalize shrink-0">
-              {isFull && match.status === 'open' ? 'Full' : match.status.replace('_', ' ')}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-2 text-muted-foreground text-xs pt-1">
-            <Users className="h-3 w-3" />
-            <span>
-              {match.players.length} of {match.maxPlayers} Players
-            </span>
-          </div>
-        </CardHeader>
-        <CardContent className="p-4 flex-grow grid grid-cols-2 gap-4">
-          <div className="text-center">
-              <p className="text-xs text-muted-foreground">Entry Fee</p>
-              <p className="font-bold text-lg text-primary">₹{match.entryFee}</p>
-          </div>
-           <div className="text-center border-l">
-              <p className="text-xs text-muted-foreground">Winning Prize</p>
-              <p className="font-bold text-lg text-green-600">₹{match.prizePool}</p>
-          </div>
-        </CardContent>
-      </Link>
-      <CardFooter className="bg-muted/30 p-2">
-        {showJoinButton ? (
-          <Button onClick={handleJoinMatch} disabled={isJoining} className="w-full">
-            {isJoining ? 'Joining...' : 'Join Now'}
-          </Button>
-        ) : (
-          <Button asChild className="w-full" variant="outline">
-            <Link href={`/match/${match.id}`}>
-              {hasJoined || match.status !== 'open' ? 'View Match' : 'Match Full'}
-            </Link>
-          </Button>
-        )}
-      </CardFooter>
+        <Link href={`/match/${match.id}`} className="flex flex-col flex-grow">
+            <CardHeader className="p-4 bg-muted/30">
+              <div className="flex justify-between items-start">
+                <CardTitle className="text-base font-bold truncate pr-2">{match.title}</CardTitle>
+                <Badge variant={getStatusVariant(match.status)} className="capitalize shrink-0">
+                  {isFull && match.status === 'open' ? 'Full' : match.status.replace('_', ' ')}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground text-xs pt-1">
+                <Users className="h-3 w-3" />
+                <span>
+                  {match.players.length} of {match.maxPlayers} Players
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 flex-grow grid grid-cols-2 gap-4">
+              <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Entry Fee</p>
+                  <p className="font-bold text-lg text-primary">₹{match.entryFee}</p>
+              </div>
+              <div className="text-center border-l">
+                  <p className="text-xs text-muted-foreground">Winning Prize</p>
+                  <p className="font-bold text-lg text-green-600">₹{match.prizePool}</p>
+              </div>
+            </CardContent>
+        </Link>
+        <CardFooter className="bg-muted/30 p-2">
+            {showJoinButton ? (
+                <Button onClick={handleJoinMatch} disabled={isJoining} className="w-full">
+                    {isJoining ? 'Joining...' : 'Join Now'}
+                </Button>
+            ) : (
+                <Button asChild className="w-full" variant="outline">
+                    <Link href={`/match/${match.id}`}>
+                        {hasJoined || match.status !== 'open' ? 'View Match' : 'Match Full'}
+                    </Link>
+                </Button>
+            )}
+        </CardFooter>
     </Card>
   );
 };
@@ -230,7 +231,7 @@ export default function MatchesPage() {
 
   return (
     <AppShell pageTitle="Matches">
-        <div className="bg-background/80 backdrop-blur-sm p-4 flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-14 sm:top-0 z-10 border-b">
+        <div className="bg-background/80 backdrop-blur-sm p-4 flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-14 z-10 border-b">
             <div className="flex items-center gap-3">
                 <p className="text-sm text-muted-foreground">Wallet Balance</p>
                 <WalletBalance />
