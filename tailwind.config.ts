@@ -11,9 +11,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-pt-sans)"],
-        body: ["var(--font-pt-sans)"],
-        headline: ["var(--font-pt-sans)"],
+        sans: ["var(--font-pt-sans)", "sans-serif"],
         code: ["Roboto Mono", "monospace"],
       },
       colors: {
