@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUser, useDoc, useCollection } from "@/firebase";
-import { UserProfile } from "@/types";
+import { UserProfile, CommissionSettings } from "@/types";
 import { Copy, Gift, Users, Share2, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,12 +20,15 @@ const friends = [
 export default function ReferPage() {
   const { user, loading: userLoading } = useUser();
   const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : "");
+  const { data: commissionSettings, loading: settingsLoading } = useDoc<CommissionSettings>('settings/commission');
+
   const { toast } = useToast();
 
-  const loading = userLoading || profileLoading;
+  const loading = userLoading || profileLoading || settingsLoading;
 
-  const referralCode = profile?.referralCode || 'LUDO123';
+  const referralCode = profile?.referralCode || '...';
   const referralEarnings = profile?.referralEarnings || 0;
+  const commissionRate = commissionSettings?.isEnabled ? (commissionSettings.rate || 0) * 100 : 0;
 
   const copyCode = () => {
     navigator.clipboard.writeText(referralCode);
@@ -52,9 +55,11 @@ export default function ReferPage() {
           <CardContent className="p-6 space-y-2">
             <Gift className="mx-auto h-12 w-12 opacity-80" />
             <h2 className="text-2xl font-bold">Invite Friends, Earn Rewards!</h2>
-            <p className="text-sm opacity-90 max-w-xs mx-auto">
-              Get 5% commission on every deposit your friend makes. They get a bonus too!
-            </p>
+            {loading ? <Skeleton className="h-5 w-3/4 mx-auto bg-white/20" /> : (
+                 <p className="text-sm opacity-90 max-w-xs mx-auto">
+                    Get {commissionRate > 0 ? `${commissionRate}% commission` : 'a bonus'} on every deposit your friend makes. They get a bonus too!
+                </p>
+            )}
           </CardContent>
         </Card>
 
@@ -111,10 +116,10 @@ export default function ReferPage() {
                             </Avatar>
                             <div>
                                 <p className="font-semibold">{friend.name}</p>
-                                <p className={`text-xs ${friend.status === 'Joined' ? 'text-success' : 'text-muted-foreground'}`}>{friend.status}</p>
+                                <p className={`text-xs ${friend.status === 'Joined' ? 'text-green-500' : 'text-muted-foreground'}`}>{friend.status}</p>
                             </div>
                         </div>
-                        {friend.status === 'Joined' && <CheckCircle className="h-5 w-5 text-success" />}
+                        {friend.status === 'Joined' && <CheckCircle className="h-5 w-5 text-green-500" />}
                     </div>
                 ))}
             </div>
@@ -123,3 +128,4 @@ export default function ReferPage() {
     </AppShell>
   );
 }
+

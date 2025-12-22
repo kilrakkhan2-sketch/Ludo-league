@@ -25,13 +25,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useUser, useDoc } from "@/firebase";
 import { useFirebase } from "@/firebase/provider";
 import { useToast } from "@/hooks/use-toast";
-import { addDoc, collection, Timestamp } from "firebase/firestore";
+import { addDoc, collection, Timestamp, query, where, getDocs } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import type { UserProfile, KycRequest } from "@/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function KycPage() {
   const { user } = useUser();
-  const { data: profile } = useDoc<UserProfile>(user ? `users/${user.uid}` : "");
+  const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : "");
   const { firestore } = useFirebase();
   const { toast } = useToast();
 
@@ -40,6 +41,21 @@ export default function KycPage() {
   const [docNumber, setDocNumber] = useState("");
   const [docFile, setDocFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // State to track if there is already a pending request
+  const [hasPendingRequest, setHasPendingRequest] = useState<boolean | null>(null);
+
+  // Check for pending requests when the user loads
+  useState(() => {
+    const checkPending = async () => {
+      if (!user || !firestore) return;
+      const q = query(collection(firestore, "kyc-requests"), where("userId", "==", user.uid), where("status", "==", "pending"));
+      const querySnapshot = await getDocs(q);
+      setHasPendingRequest(!querySnapshot.empty);
+    };
+    checkPending();
+  });
+
 
   const isVerified = profile?.isVerified || false;
 
@@ -63,7 +79,7 @@ export default function KycPage() {
     setIsSubmitting(true);
     try {
         const storage = getStorage();
-        // Create a safe, unique filename to avoid issues with special characters
+        // Create a safe, unique filename
         const safeFileName = `kyc_${Date.now()}_${docFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
         const docRef = ref(storage, `kyc-documents/${user.uid}/${safeFileName}`);
         
@@ -84,11 +100,7 @@ export default function KycPage() {
             title: "Request Submitted",
             description: "Your KYC documents have been submitted for verification.",
         });
-        // Optionally reset form
-        setFullName('');
-        setDocType('');
-        setDocNumber('');
-        setDocFile(null);
+        setHasPendingRequest(true); // Update state to show pending message
     } catch (error: any) {
         console.error("KYC Submission Error:", error);
         toast({
@@ -101,11 +113,23 @@ export default function KycPage() {
     }
   };
 
-
-  return (
-    <AppShell pageTitle="KYC Verification" showBackButton>
-      <div className="p-4 space-y-6">
-        {isVerified ? (
+  const renderContent = () => {
+    if (profileLoading || hasPendingRequest === null) {
+      return (
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-40 w-full" />
+          </CardContent>
+        </Card>
+      );
+    }
+    
+    if (isVerified) {
+      return (
           <Alert className="bg-success/10 border-success/20">
             <ShieldCheck className="h-4 w-4 text-success" />
             <AlertTitle className="text-success font-bold">You are verified!</AlertTitle>
@@ -114,8 +138,23 @@ export default function KycPage() {
               to all features, including higher withdrawal limits.
             </AlertDescription>
           </Alert>
-        ) : (
-          <Card>
+      );
+    }
+    
+    if (hasPendingRequest) {
+       return (
+          <Alert>
+            <ShieldCheck className="h-4 w-4" />
+            <AlertTitle className="font-bold">Verification Pending</AlertTitle>
+            <AlertDescription>
+              Your documents are currently under review. We will notify you once the verification process is complete.
+            </AlertDescription>
+          </Alert>
+       )
+    }
+
+    return (
+        <Card>
             <CardHeader>
               <CardTitle>Submit Your Documents</CardTitle>
               <CardDescription>
@@ -143,8 +182,8 @@ export default function KycPage() {
                       <SelectValue placeholder="Select document type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="aadhaar">Aadhaar Card</SelectItem>
-                      <SelectItem value="pan">PAN Card</SelectItem>
+                      <SelectItem value="aadhaar_card">Aadhaar Card</SelectItem>
+                      <SelectItem value="pan_card">PAN Card</SelectItem>
                       <SelectItem value="passport">Passport</SelectItem>
                       <SelectItem value="drivers_license">
                         Driver's License
@@ -195,8 +234,15 @@ export default function KycPage() {
               </form>
             </CardContent>
           </Card>
-        )}
+    );
+  };
+
+  return (
+    <AppShell pageTitle="KYC Verification" showBackButton>
+      <div className="p-4 space-y-6">
+        {renderContent()}
       </div>
     </AppShell>
   );
 }
+

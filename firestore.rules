@@ -86,13 +86,12 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       allow update: if isSignedIn() && (
-                      // Player joining the match
+                      // Player joining an open match
                       (
                         resource.data.status == 'open' &&
                         request.resource.data.players == resource.data.players + [request.auth.uid] &&
                         resource.data.players.size() < resource.data.maxPlayers &&
-                        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasAll(['players', 'status', 'startedAt'])
+                        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee
                       ) ||
                       // Creator updating room code
                       (
@@ -150,5 +149,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
