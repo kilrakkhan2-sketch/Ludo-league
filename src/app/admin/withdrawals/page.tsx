@@ -39,7 +39,7 @@ export default function AdminWithdrawalsPage() {
   const { data: requests, loading } = useCollection<WithdrawalRequest>('withdrawal-requests', requestQueryOptions);
 
   const allUserIdsInView = useMemo(() => {
-    if (!requests || requests.length === 0) return ['_'];
+    if (!requests || requests.length === 0) return ['_']; // Return a non-empty array to prevent invalid query
     const ids = new Set<string>();
     requests.forEach((r: WithdrawalRequest) => {
         ids.add(r.userId);
@@ -176,3 +176,5 @@ export default function AdminWithdrawalsPage() {
         </div>
   );
 }
+
+    

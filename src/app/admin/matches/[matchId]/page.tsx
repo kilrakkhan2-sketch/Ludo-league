@@ -79,8 +79,8 @@ export default function AdminMatchDetailsPage() {
   const { data: results, loading: resultsLoading } = useCollection<MatchResult>(`matches/${matchId}/results`);
   
   const playerIds = useMemo(() => {
-      if (!match?.players) return ['_']; 
-      return match.players.length > 0 ? match.players : ['_'];
+      if (!match?.players || match.players.length === 0) return ['_']; 
+      return match.players;
   }, [match]);
 
   const { data: players, loading: playersLoading } = useCollection<UserProfile>('users', {
@@ -337,7 +337,7 @@ export default function AdminMatchDetailsPage() {
                             </AlertDescription>
                         </Alert>
                      )}
-                     {match.status === 'open' || match.status === 'ongoing' || match.status === 'processing' && (
+                     {(match.status === 'open' || match.status === 'ongoing' || match.status === 'processing') && (
                           <Alert>
                             <CircleAlert className="h-4 w-4" />
                             <AlertTitle>Match In Progress</AlertTitle>
@@ -353,3 +353,5 @@ export default function AdminMatchDetailsPage() {
     </div>
   );
 }
+
+    

@@ -98,9 +98,9 @@ export default function AdminUsersPage() {
   const [searchTerm, setSearchTerm] = useState('');
 
   const userStats = useMemo(() => {
-    if (!users || !transactions) return new Map();
-
     const statsMap = new Map();
+    if (!users || !transactions) return statsMap;
+
     users.forEach(user => {
       const userTxs = transactions.filter(t => t.userId === user.uid);
       const totalDeposited = userTxs.filter(t => t.type === 'deposit').reduce((sum, t) => sum + t.amount, 0);
@@ -175,3 +175,4 @@ export default function AdminUsersPage() {
   );
 }
 
+    

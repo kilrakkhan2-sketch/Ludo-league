@@ -33,6 +33,8 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  // Memoize options to prevent re-renders from causing new query objects.
+  // The stringify is a shallow but effective way to check for changes in nested arrays.
   const optionsMemo = useMemo(() => options, [
       JSON.stringify(options?.where),
       JSON.stringify(options?.orderBy),
@@ -49,10 +51,14 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     let queryIsValid = true;
 
     if (optionsMemo?.where) {
+        // Ensure whereClauses is always an array of arrays
         const whereClauses = (Array.isArray(optionsMemo.where[0]) ? optionsMemo.where : [optionsMemo.where]) as WhereClause[];
         
         for (const w of whereClauses) {
             const [_field, op, value] = w;
+            // Firestore 'in', 'not-in', and 'array-contains-any' queries require a non-empty array.
+            // If the array is empty, the query is invalid and will throw an error.
+            // We can short-circuit here and return no results.
             if ( (op === 'in' || op === 'not-in' || op === 'array-contains-any') && (!Array.isArray(value) || value.length === 0) ) {
                 queryIsValid = false;
                 break;
@@ -61,6 +67,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
         }
     }
     
+    // If a query is determined to be invalid (e.g., 'in' with empty array), stop here.
     if (!queryIsValid) {
         return null;
     }
@@ -88,6 +95,8 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     
     const q = buildQuery();
 
+    // If the query is null (because it's invalid, e.g., 'in' with empty array),
+    // set data to empty and stop loading.
     if (!q) {
       setData([]);
       setCount(0);
@@ -105,6 +114,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
         setLoading(false);
         setError(null);
     }, (err: any) => {
+      // Don't log expected "Query requires an index" errors, as they are part of Firebase's dev flow.
       if (err.message && !err.message.includes("Query requires an index")) {
           console.error(`Error fetching collection from path: ${path}`, err);
       }
@@ -113,7 +123,9 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     });
 
     return () => unsubscribe();
-  }, [buildQuery, path, optionsMemo]);
+  }, [buildQuery, path]); // Re-run effect only when the memoized query builder changes.
 
   return { data, count, loading, error };
 }
+
+    
