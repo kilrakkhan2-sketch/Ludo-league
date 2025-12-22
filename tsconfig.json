@@ -1,3 +1,4 @@
+
 {
   "compilerOptions": {
     "lib": [
@@ -34,6 +35,7 @@
     "**/*.tsx"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "functions"
   ]
 }
