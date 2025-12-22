@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase";
 import { MaintenanceShield } from "@/components/layout/MaintenanceShield";
+import Script from "next/script";
 
 const ptSans = PT_Sans({
   subsets: ["latin"],
@@ -34,6 +35,20 @@ export default function RootLayout({
           </MaintenanceShield>
         </FirebaseClientProvider>
         <Toaster />
+        <Script
+          id="service-worker-unregister"
+          strategy="afterInteractive"
+        >
+          {`
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.ready.then(registration => {
+                registration.unregister();
+              }).catch(error => {
+                console.error('Service worker unregistration failed:', error);
+              });
+            }
+          `}
+        </Script>
       </body>
     </html>
   );
