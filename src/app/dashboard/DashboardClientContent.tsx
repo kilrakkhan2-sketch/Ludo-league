@@ -129,30 +129,28 @@ const MatchSection = ({ title, matches, loading, emptyMessage, viewAllLink }: { 
 export default function DashboardClientContent() {
     const { user, loading: userLoading } = useUser();
     const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
-    
-    // My Active Matches (User has joined and match is not completed/disputed)
-    const myMatchesQueryOptions = useMemo(() => ({
-        where: user?.uid ? [
-            ['players', 'array-contains', user.uid], 
-            ['status', 'in', ['open', 'ongoing', 'processing']]
-        ] : undefined,
-        limit: 10,
+
+    // 1. Fetch all matches the user is a part of.
+    const allMyMatchesQuery = useMemo(() => ({
+        where: user?.uid ? [['players', 'array-contains', user.uid]] : undefined,
     }), [user?.uid]);
-    const { data: myMatches, loading: myMatchesLoading } = useCollection<Match>('matches', myMatchesQueryOptions);
+    const { data: allMyMatches, loading: myMatchesLoading } = useCollection<Match>('matches', allMyMatchesQuery);
 
-    // All public, open matches (that the user hasn't joined)
-    const openMatchesQueryOptions = useMemo(() => ({
+    // 2. Fetch all open matches.
+    const allOpenMatchesQuery = useMemo(() => ({
         where: [['status', '==', 'open']],
-        limit: 10
+        limit: 20
     }), []);
-    const { data: openMatchesData, loading: openMatchesLoading } = useCollection<Match>('matches', openMatchesQueryOptions);
+    const { data: allOpenMatches, loading: openMatchesLoading } = useCollection<Match>('matches', allOpenMatchesQuery);
 
-    // Filter out matches the user is already in from the open matches list
-    const openMatches = useMemo(() => {
-        if (!openMatchesData || !myMatches) return openMatchesData || [];
-        const myMatchIds = new Set(myMatches.map(m => m.id));
-        return openMatchesData.filter(match => !myMatchIds.has(match.id));
-    }, [openMatchesData, myMatches]);
+    // 3. Client-side filtering
+    const { myActiveMatches, openMatchesForMe } = useMemo(() => {
+        const myActiveMatches = allMyMatches.filter(m => ['open', 'ongoing', 'processing'].includes(m.status));
+        const myMatchIds = new Set(allMyMatches.map(m => m.id));
+        const openMatchesForMe = allOpenMatches.filter(m => !myMatchIds.has(m.id));
+
+        return { myActiveMatches, openMatchesForMe };
+    }, [allMyMatches, allOpenMatches]);
     
     const loading = userLoading || profileLoading;
     
@@ -198,7 +196,7 @@ export default function DashboardClientContent() {
                 
                  <MatchSection
                     title="My Active Matches"
-                    matches={myMatches || []}
+                    matches={myActiveMatches}
                     loading={myMatchesLoading}
                     emptyMessage="You have no active matches."
                     viewAllLink="/matches/my-matches"
@@ -206,7 +204,7 @@ export default function DashboardClientContent() {
 
                 <MatchSection
                     title="Open Matches"
-                    matches={openMatches}
+                    matches={openMatchesForMe}
                     loading={openMatchesLoading}
                     emptyMessage="No new open matches available."
                     viewAllLink="/matches/open"

@@ -81,17 +81,25 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     
     const collectionRef = optionsMemo?.isCollectionGroup ? collectionGroup(db, path) : collection(db, path);
 
+    // If there are no constraints, just return the base collection reference
+    if (constraints.length === 0) {
+        return collectionRef;
+    }
+
     return query(collectionRef, ...constraints);
   }, [db, path, optionsMemo]);
 
   useEffect(() => {
     setLoading(true);
-    if (!path) {
+    // If a query depends on a value that isn't ready (like a user UID), the where clause might be undefined.
+    // In that case, we should not proceed. `buildQuery` will return null.
+    if (!path || (options?.where && !options.where)) {
         setData([]);
         setCount(0);
         setLoading(false);
         return;
     }
+
 
     const q = buildQuery();
 
@@ -120,7 +128,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     });
 
     return () => unsubscribe();
-  }, [buildQuery, path]);
+  }, [buildQuery, path, options?.where]);
 
   return { data, count, loading, error };
 }
