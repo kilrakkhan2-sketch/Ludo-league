@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "../ui/button";
-import { ArrowLeft, Home, Swords, Wallet, User, LogOut, Menu, Shield } from "lucide-react";
+import { ArrowLeft, Home, Swords, Wallet, User, LogOut, Menu, Shield, Users as FriendsIcon, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Sidebar, SidebarContent, SidebarHeader, SidebarProvider, SidebarMenu,
@@ -39,6 +39,10 @@ interface AppShellProps {
 const baseNavItems: NavItem[] = [
   { href: "/dashboard", icon: Home, label: "Home" },
   { href: "/matches", icon: Swords, label: "Matches" },
+  { href: "/tournaments", icon: Trophy, label: "Tournaments" },
+  { href: "/friends", icon: FriendsIcon, label: "Friends" },
+  { href: "/wallet", icon: Wallet, label: "Wallet" },
+  { href: "/profile", icon: User, label: "Profile" },
 ];
 
 export function AppShell({ children, pageTitle, showBackButton = false, className }: AppShellProps) {

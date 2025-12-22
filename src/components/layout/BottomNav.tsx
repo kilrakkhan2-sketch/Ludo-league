@@ -20,7 +20,7 @@ export function BottomNav({ items }: BottomNavProps) {
     const pathname = usePathname();
 
     // Hide bottom nav on specific paths if needed
-    const hideNav = pathname ? ['/match/'].some(path => pathname.startsWith(path)) : false;
+    const hideNav = pathname ? ['/match/', '/login', '/signup'].some(path => pathname.startsWith(path)) : false;
     if (hideNav) return null;
 
     return (
