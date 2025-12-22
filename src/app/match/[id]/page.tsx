@@ -135,13 +135,9 @@ const ResultSubmissionForm = ({ match }: { match: Match }) => {
                 confirmedWinStatus: winStatus,
                 screenshotUrl,
                 submittedAt: Timestamp.now(),
-                status: 'submitted',
-            });
+            } as Omit<MatchResult, 'id' | 'status' | 'confirmedAt'>);
             
-            const matchRef = doc(firestore, 'matches', match.id);
-            await updateDoc(matchRef, {status: 'processing'});
-
-            toast({ title: 'Result Submitted', description: 'Your result has been recorded. Please wait for confirmation.' });
+            toast({ title: 'Result Submitted', description: 'Your result has been recorded. Waiting for other players to submit.' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Submission Failed', description: error.message });
         } finally {
@@ -499,3 +495,4 @@ export default function MatchPage({ params }: { params: { id: string } }) {
   
   return <div className="bg-muted/30">{renderContent()}</div>;
 }
+

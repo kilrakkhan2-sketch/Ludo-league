@@ -54,8 +54,8 @@ interface UserProfile {
 }
 
 // Helper function to send a personal notification
-const sendNotification = (userId: string, title: string, body: string, link?: string) => {
-    if (!userId) return;
+const sendNotification = (userId: string, title: string, body: string, link?: string): Promise<any> => {
+    if (!userId) return Promise.resolve();
     const notification = {
         title,
         body,
@@ -162,7 +162,7 @@ export const deleteStorageFile = functions.https.onCall(async (data, context) =>
 
 export const approveWithdrawal = functions.https.onCall(async (data, context) => {
     // 1. Check permissions
-    if (context.auth?.token.role !== 'withdrawal_admin' && context.auth?.token.role !== 'superadmin') {
+    if (!context.auth || !['withdrawal_admin', 'superadmin'].includes(context.auth.token.role)) {
         throw new functions.https.HttpsError('permission-denied', 'Only withdrawal admins can approve requests.');
     }
     
@@ -176,63 +176,60 @@ export const approveWithdrawal = functions.https.onCall(async (data, context) =>
     const requestRef = db.collection('withdrawal-requests').doc(withdrawalId);
     
     // 3. Perform transaction
-    try {
-        const requestDoc = await requestRef.get();
-        if (!requestDoc.exists) throw new Error('Withdrawal request not found.');
+    return db.runTransaction(async (t) => {
+        const requestDoc = await t.get(requestRef);
+        if (!requestDoc.exists) throw new functions.https.HttpsError('not-found', 'Withdrawal request not found.');
+        
         const requestData = requestDoc.data();
-        if (requestData?.status !== 'pending') throw new Error('This request has already been processed.');
+        if (requestData?.status !== 'pending') throw new functions.https.HttpsError('failed-precondition', 'This request has already been processed.');
 
         const { amount, userId } = requestData;
+        const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
+        const userTxSnapshot = await t.get(userTxQuery);
+        const userTxRef = userTxSnapshot.docs[0]?.ref;
         
-        await db.runTransaction(async (t) => {
-            const adminRef = db.collection('users').doc(adminUid);
-            const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
-            const userTxSnapshot = await t.get(userTxQuery);
-            const userTxRef = userTxSnapshot.docs[0]?.ref;
-
-            // A. Update withdrawal request status
-            t.update(requestRef, {
-                status: 'approved',
-                processedAt: FieldValue.serverTimestamp(),
-                processedBy: adminUid,
-            });
-
-            // B. Update the user's transaction status to completed
-            if (userTxRef) {
-                t.update(userTxRef, { status: 'completed' });
-            }
-
-            // C. Deduct the amount from the admin's wallet as a ledger
-            const adminDoc = await t.get(adminRef);
-            const adminData = adminDoc.data() as UserProfile | undefined;
-            if(adminData?.adminWallet) {
-                t.update(adminRef, { 
-                    'adminWallet.balance': FieldValue.increment(-amount),
-                    'adminWallet.totalUsed': FieldValue.increment(amount)
-                });
-            }
+        // A. Update withdrawal request status
+        t.update(requestRef, {
+            status: 'approved',
+            processedAt: FieldValue.serverTimestamp(),
+            processedBy: adminUid,
         });
 
-        functions.logger.info(`Withdrawal ${withdrawalId} approved by admin ${adminUid}.`);
+        // B. Update the user's transaction status to completed
+        if (userTxRef) {
+            t.update(userTxRef, { status: 'completed' });
+        }
+
+        // C. Create an admin wallet transaction for accounting
+        const adminTxRef = db.collection('admin-wallet-transactions').doc();
+        t.set(adminTxRef, {
+            adminId: adminUid,
+            type: 'debit',
+            amount: amount,
+            reason: 'withdrawal_approval',
+            relatedUserId: userId,
+            relatedRequestId: withdrawalId,
+            createdAt: FieldValue.serverTimestamp(),
+        });
+
         await sendNotification(userId, 'Withdrawal Approved', `Your withdrawal request for ₹${amount} has been approved and processed.`);
         return { success: true, message: 'Withdrawal approved successfully.' };
-        
-    } catch (error) {
+    }).catch(error => {
         functions.logger.error(`Error approving withdrawal ${withdrawalId}:`, error);
         if (error instanceof functions.https.HttpsError) throw error;
-        throw new functions.https.HttpsError('internal', (error as Error).message);
-    }
+        throw new functions.https.HttpsError('internal', (error as Error).message || 'An unexpected error occurred.');
+    });
 });
 
 
 export const rejectWithdrawal = functions.https.onCall(async (data, context) => {
     // 1. Check permissions
-    if (context.auth?.token.role !== 'withdrawal_admin' && context.auth?.token.role !== 'superadmin') {
+    if (!context.auth || !['withdrawal_admin', 'superadmin'].includes(context.auth.token.role)) {
         throw new functions.https.HttpsError('permission-denied', 'Only withdrawal admins can reject requests.');
     }
     
     // 2. Validate data
-    const { withdrawalId } = data;
+    const { withdrawalId, reason } = data;
     if (!withdrawalId || typeof withdrawalId !== 'string') {
         throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a "withdrawalId" argument.');
     }
@@ -240,46 +237,58 @@ export const rejectWithdrawal = functions.https.onCall(async (data, context) => 
     const adminUid = context.auth.uid;
     const requestRef = db.collection('withdrawal-requests').doc(withdrawalId);
     
-    try {
-        const requestDoc = await requestRef.get();
+    return db.runTransaction(async (t) => {
+        const requestDoc = await t.get(requestRef);
         if (!requestDoc.exists) throw new functions.https.HttpsError('not-found', 'Withdrawal request not found.');
+        
         const requestData = requestDoc.data();
         if (requestData?.status !== 'pending') throw new functions.https.HttpsError('failed-precondition', 'This request has already been processed.');
         
         const { userId, amount } = requestData;
         const userRef = db.collection('users').doc(userId);
         const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
-        
-        await db.runTransaction(async (t) => {
-            const userTxSnapshot = await t.get(userTxQuery);
-            const userTxRef = userTxSnapshot.docs[0]?.ref;
-        
-            // A. Update withdrawal request
-            t.update(requestRef, {
-                status: 'rejected',
-                processedAt: FieldValue.serverTimestamp(),
-                processedBy: adminUid,
-            });
-
-            // B. Refund the user
-            t.update(userRef, { walletBalance: FieldValue.increment(amount) });
-
-            // C. Mark user's transaction as failed
-            if (userTxRef) {
-                t.update(userTxRef, { status: 'failed', description: 'Withdrawal request rejected by admin' });
-            }
+        const userTxSnapshot = await t.get(userTxQuery);
+        const userTxRef = userTxSnapshot.docs[0]?.ref;
+    
+        // A. Update withdrawal request
+        t.update(requestRef, {
+            status: 'rejected',
+            processedAt: FieldValue.serverTimestamp(),
+            processedBy: adminUid,
+            rejectionReason: reason || "Rejected by admin",
         });
 
-        functions.logger.info(`Withdrawal ${withdrawalId} for user ${userId} was rejected and funds were refunded.`);
-        await sendNotification(userId, 'Withdrawal Rejected', `Your withdrawal request for ₹${amount} was rejected. The amount has been refunded to your wallet.`);
+        // B. Refund the user
+        t.update(userRef, { walletBalance: FieldValue.increment(amount) });
+
+        // C. Mark user's transaction as failed
+        if (userTxRef) {
+            t.update(userTxRef, { 
+                status: 'failed', 
+                description: reason || 'Withdrawal request rejected by admin' 
+            });
+        }
         
+        // D. Create a reversing admin wallet transaction
+        const adminTxRef = db.collection('admin-wallet-transactions').doc();
+        t.set(adminTxRef, {
+            adminId: adminUid,
+            type: 'credit', // Reversing the initial debit
+            amount: amount,
+            reason: 'withdrawal_rejection',
+            relatedUserId: userId,
+            relatedRequestId: withdrawalId,
+            createdAt: FieldValue.serverTimestamp(),
+        });
+
+        await sendNotification(userId, 'Withdrawal Rejected', `Your withdrawal request for ₹${amount} was rejected. The amount has been refunded to your wallet.`);
         return { success: true, message: 'Withdrawal rejected and funds refunded.' };
 
-    } catch (error) {
+    }).catch(error => {
         functions.logger.error(`Failed to refund user for rejected withdrawal ${withdrawalId}:`, error);
         if (error instanceof functions.https.HttpsError) throw error;
         throw new functions.https.HttpsError('internal', 'An unexpected error occurred while rejecting the withdrawal.');
-    }
+    });
 });
 
 
@@ -306,8 +315,7 @@ export const onDepositStatusChange = functions.firestore
     const userRef = db.collection("users").doc(userId);
     const upiAccountRef = db.collection('upi-accounts').doc(upiAccountId);
     const commissionSettingsRef = db.collection('settings').doc('commission');
-    const adminRef = db.collection('users').doc(processedBy);
-
+    
     try {
         await db.runTransaction(async (t) => {
             const userDoc = await t.get(userRef);
@@ -317,18 +325,16 @@ export const onDepositStatusChange = functions.firestore
             const commissionSettingsDoc = await t.get(commissionSettingsRef);
             const commissionSettings = commissionSettingsDoc.data() as CommissionSettings | undefined;
 
-            const adminDoc = await t.get(adminRef);
-            const adminData = adminDoc.data() as UserProfile | undefined;
-
-
             // 1. Credit the user's wallet.
             t.update(userRef, { walletBalance: FieldValue.increment(amount) });
             
             // 2. Update the UPI account's daily stats
-            t.update(upiAccountRef, {
-                dailyAmountReceived: FieldValue.increment(amount),
-                dailyTransactionCount: FieldValue.increment(1)
-            });
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            const dailyStatRef = upiAccountRef.collection('daily_stats').doc(today);
+            t.set(dailyStatRef, {
+                amount: FieldValue.increment(amount),
+                transactionCount: FieldValue.increment(1)
+            }, { merge: true });
 
             // 3. Create a transaction log for the deposit.
             const depositTxRef = db.collection(`users/${userId}/transactions`).doc();
@@ -341,14 +347,17 @@ export const onDepositStatusChange = functions.firestore
                 relatedId: context.params.depositId,
             });
             
-            // 4. Update the admin's ledger for accountability.
-            if (adminData?.adminWallet) {
-                t.update(adminRef, {
-                    'adminWallet.balance': FieldValue.increment(amount),
-                    'adminWallet.totalReceived': FieldValue.increment(amount),
-                });
-            }
-
+            // 4. Create an admin wallet transaction for accountability
+            const adminTxRef = db.collection('admin-wallet-transactions').doc();
+            t.set(adminTxRef, {
+                adminId: processedBy,
+                type: 'credit',
+                amount: amount,
+                reason: 'deposit_approval',
+                relatedUserId: userId,
+                relatedRequestId: context.params.depositId,
+                createdAt: FieldValue.serverTimestamp(),
+            });
 
             // 5. Handle referral commission if the user was referred and commission is enabled.
             if (userData.referredBy && commissionSettings?.isEnabled && typeof commissionSettings.rate === 'number' && commissionSettings.rate > 0) {
@@ -397,26 +406,25 @@ export const autoVerifyResults = functions.firestore
         try {
             await db.runTransaction(async (transaction) => {
                 const matchDoc = await transaction.get(matchRef);
-                if (!matchDoc.exists) return null;
+                if (!matchDoc.exists) return;
                 const matchData = matchDoc.data();
-                if (!matchData) return null;
+                if (!matchData) return;
 
                 // If match is already processed, do nothing.
                 if (['completed', 'disputed', 'verification'].includes(matchData.status)) {
-                    return null;
+                    return;
                 }
                 
-                // Set match status to processing as soon as the first result is in
-                if (matchData.status === 'ongoing') {
-                    transaction.update(matchRef, { status: 'processing' });
-                }
-
-                const resultsSnapshot = await matchRef.collection('results').get();
+                const resultsSnapshot = await transaction.get(matchRef.collection('results'));
                 const submittedResults = resultsSnapshot.docs.map(doc => doc.data() as MatchResult);
 
-                // Check if all players have submitted their results.
-                if (submittedResults.length !== matchData.maxPlayers) {
-                    return null; // Wait for all results
+                // Wait for all players to submit their results.
+                if (submittedResults.length < matchData.maxPlayers) {
+                     // Set match status to processing as soon as the first result is in
+                     if (matchData.status === 'ongoing') {
+                        transaction.update(matchRef, { status: 'processing' });
+                    }
+                    return; 
                 }
 
                 // --- AUTO-VERIFICATION LOGIC ---
@@ -594,11 +602,9 @@ export const createMatch = functions.https.onCall(async (data, context) => {
                 prizePool,
                 maxPlayers,
                 creatorId: userId,
-                players: [userId],
+                players: [userId], // Creator is the first player
                 status: 'open',
                 roomCode: null,
-                resultStage: 'none',
-                autoPayoutAllowed: true,
                 createdAt: FieldValue.serverTimestamp(),
                 startedAt: null,
                 completedAt: null,
@@ -672,3 +678,5 @@ export const createTournament = functions.https.onCall(async (data, context) => 
         throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the tournament.");
     }
 });
+
+    
