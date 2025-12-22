@@ -26,7 +26,7 @@ import { getAuth, signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { UserProfile } from "@/types";
 import { Skeleton } from "../ui/skeleton";
-import { BottomNav, NavItem } from "./BottomNav"; // Import NavItem
+import { BottomNav, NavItem } from "./BottomNav";
 import { useMemo } from "react";
 
 interface AppShellProps {
@@ -44,6 +44,15 @@ const baseNavItems: NavItem[] = [
   { href: "/wallet", icon: Wallet, label: "Wallet" },
   { href: "/profile", icon: User, label: "Profile" },
 ];
+
+// Condensed list for bottom navigation
+const bottomNavItems: NavItem[] = [
+  { href: "/dashboard", icon: Home, label: "Home" },
+  { href: "/matches", icon: Swords, label: "Matches" },
+  { href: "/tournaments", icon: Trophy, label: "Tournaments" },
+  { href: "/friends", icon: FriendsIcon, label: "Friends" },
+];
+
 
 export function AppShell({ children, pageTitle, showBackButton = false, className }: AppShellProps) {
   const pathname = usePathname();
@@ -219,7 +228,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
               <main className="flex-grow overflow-y-auto pb-16 sm:pb-0">
                   {children}
               </main>
-              <BottomNav items={navItems} />
+              <BottomNav items={bottomNavItems} />
         </div>
       </div>
     </SidebarProvider>
