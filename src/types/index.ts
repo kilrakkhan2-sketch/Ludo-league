@@ -23,6 +23,8 @@ export type UserProfile = {
   friends?: string[];
   matchesPlayed?: number;
   matchesWon?: number;
+  totalWinnings?: number;
+  totalEntryFees?: number;
 };
 
 export type Match = {
