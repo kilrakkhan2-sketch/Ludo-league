@@ -537,6 +537,10 @@ const sidebarMenuButtonVariants = cva(
         sm: "h-7 text-xs",
         lg: "h-12 text-sm",
       },
+      current: {
+        true: "",
+        false: ""
+      }
     },
     defaultVariants: {
       variant: "default",
@@ -565,14 +569,13 @@ const SidebarMenuButton = React.forwardRef<
 }, ref) => {
     const { state, isMobile } = useSidebar()
 
-    // Omit 'onToggle' if it exists, as it's not a valid prop for Link
     const { onToggle, ...restProps } = props as any;
 
     const commonProps = {
         "data-sidebar": "menu-button",
         "data-size": size,
         "data-active": current,
-        className: cn(sidebarMenuButtonVariants({ variant, size }), className),
+        className: cn(sidebarMenuButtonVariants({ variant, size, current }), className),
         ...restProps,
     };
 

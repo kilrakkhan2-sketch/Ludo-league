@@ -158,8 +158,10 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                       href={item.href} 
                       tooltip={item.label}
                       current={pathname === item.href}
-                      className="text-secondary-foreground/80 hover:text-secondary-foreground hover:bg-accent/40"
-                      currentClassName="text-primary bg-primary/20 hover:bg-primary/30 hover:text-primary"
+                      className={cn(
+                        "text-secondary-foreground/80 hover:text-secondary-foreground hover:bg-accent/40",
+                        pathname === item.href && "text-primary bg-primary/20 hover:bg-primary/30 hover:text-primary"
+                      )}
                   >
                       <item.icon />
                       <span>{item.label}</span>
