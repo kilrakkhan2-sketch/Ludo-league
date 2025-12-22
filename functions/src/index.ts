@@ -10,6 +10,14 @@ const db = admin.firestore();
 
 // Type definitions for robust data handling
 interface UserProfile {
+    adminWallet?: {
+        balance: number;
+        totalReceived: number;
+        totalUsed: number;
+    };
+    [key: string]: any;
+}
+interface UserData {
     walletBalance?: number;
     referralEarnings?: number;
     referredBy?: string;
@@ -19,11 +27,6 @@ interface UserProfile {
     matchesPlayed?: number;
     matchesWon?: number;
     name?: string;
-    adminWallet?: {
-        balance: number;
-        totalReceived: number;
-        totalUsed: number;
-    };
     [key: string]: any;
 }
 
@@ -309,7 +312,7 @@ export const onDepositStatusChange = functions.firestore
         await db.runTransaction(async (t) => {
             const userDoc = await t.get(userRef);
             if (!userDoc.exists) throw new Error(`User ${userId} not found.`);
-            const userData = userDoc.data() as UserProfile;
+            const userData = userDoc.data() as UserData;
             
             const commissionSettingsDoc = await t.get(commissionSettingsRef);
             const commissionSettings = commissionSettingsDoc.data() as CommissionSettings | undefined;
@@ -394,13 +397,13 @@ export const autoVerifyResults = functions.firestore
         try {
             await db.runTransaction(async (transaction) => {
                 const matchDoc = await transaction.get(matchRef);
-                if (!matchDoc.exists) return null;
+                if (!matchDoc.exists) return;
                 const matchData = matchDoc.data();
-                if (!matchData) return null;
+                if (!matchData) return;
 
                 // If match is already processed, do nothing.
                 if (['completed', 'disputed', 'verification'].includes(matchData.status)) {
-                    return null;
+                    return;
                 }
                 
                 // Set match status to processing as soon as the first result is in
@@ -408,12 +411,12 @@ export const autoVerifyResults = functions.firestore
                     transaction.update(matchRef, { status: 'processing' });
                 }
 
-                const resultsSnapshot = await matchRef.collection('results').get();
+                const resultsSnapshot = await transaction.get(matchRef.collection('results'));
                 const submittedResults = resultsSnapshot.docs.map(doc => doc.data() as MatchResult);
 
                 // Check if all players have submitted their results.
                 if (submittedResults.length !== matchData.maxPlayers) {
-                    return null; // Wait for all results
+                    return; // Wait for all results
                 }
 
                 // --- AUTO-VERIFICATION LOGIC ---
@@ -546,7 +549,7 @@ export const createMatch = functions.https.onCall(async (data, context) => {
     if (!title || typeof title !== "string" || title.length === 0 || title.length > 50) {
         throw new functions.https.HttpsError("invalid-argument", "Match title is required and must be 50 characters or less.");
     }
-    if (typeof entryFee !== "number" || entryFee < 0) {
+    if (typeof entryFee !== 'number' || entryFee < 0) {
         throw new functions.https.HttpsError("invalid-argument", "A valid, non-negative entry fee is required.");
     }
     if (maxPlayers !== 2 && maxPlayers !== 4) {
@@ -669,3 +672,5 @@ export const createTournament = functions.https.onCall(async (data, context) => 
         throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the tournament.");
     }
 });
+
+    

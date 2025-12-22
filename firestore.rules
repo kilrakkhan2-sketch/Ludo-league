@@ -47,7 +47,7 @@ service cloud.firestore {
                     && request.resource.data.role == 'user'
                     && request.resource.data.walletBalance == 0;
                     
-      allow update: if (isOwner(userId) && !('role' in request.resource.data.diff(resource.data).affectedKeys()) && !('walletBalance' in request.resource.data.diff(resource.data).affectedKeys())) 
+      allow update: if (isOwner(userId) && !('role' in request.resource.data.diff(resource.data).affectedKeys()) && (request.resource.data.walletBalance <= resource.data.walletBalance))
                     || isSuperAdmin() 
                     || (request.resource.data.friends.hasAny(resource.data.friends) || resource.data.friends.hasAny(request.resource.data.friends));
 
