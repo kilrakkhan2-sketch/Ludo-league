@@ -128,7 +128,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     });
 
     return () => unsubscribe();
-  }, [buildQuery, path, options?.where]);
+  }, [buildQuery, path, optionsMemo]);
 
   return { data, count, loading, error };
 }
