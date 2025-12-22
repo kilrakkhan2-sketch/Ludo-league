@@ -1,20 +1,16 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Users, Trophy, PlusCircle } from 'lucide-react';
+import { Users, Trophy, PlusCircle, Swords } from 'lucide-react';
 import Link from 'next/link';
 import { useCollection, useUser, useFirebase } from '@/firebase';
-import type { Match } from '@/types';
+import type { Match, UserProfile } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WalletBalance } from '@/components/wallet-balance';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,24 +20,23 @@ import { doc, runTransaction, Timestamp, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
-
-const MatchCardSkeleton = () => (
-  <Card className="flex flex-col">
-    <CardHeader className="p-4 bg-muted/30">
-      <Skeleton className="h-5 w-3/4 mb-1" />
-      <Skeleton className="h-4 w-1/4" />
-    </CardHeader>
-    <CardContent className="p-4 flex-grow grid grid-cols-2 gap-4">
-       <Skeleton className="h-12 w-full" />
-       <Skeleton className="h-12 w-full" />
-    </CardContent>
-    <CardFooter className="bg-muted/30 p-2">
-      <Skeleton className="h-10 w-full" />
-    </CardFooter>
-  </Card>
+const MatchListItemSkeleton = () => (
+  <div className="flex items-center justify-between p-3 bg-card rounded-lg shadow-sm border">
+    <div className="flex items-center gap-3">
+      <Skeleton className="h-10 w-10 rounded-full" />
+      <div className="space-y-1">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-16" />
+      </div>
+    </div>
+    <div className="text-right">
+      <Skeleton className="h-5 w-16 mb-1" />
+      <Skeleton className="h-8 w-20" />
+    </div>
+  </div>
 );
 
-const MatchCard = ({ match }: { match: Match }) => {
+const MatchListItem = ({ match, creator }: { match: Match, creator?: UserProfile }) => {
   const { user } = useUser();
   const { firestore } = useFirebase();
   const { toast } = useToast();
@@ -49,31 +44,16 @@ const MatchCard = ({ match }: { match: Match }) => {
 
   const [isJoining, setIsJoining] = useState(false);
 
-  const isFull = match.players.length >= match.maxPlayers;
   const hasJoined = user ? match.players.includes(user.uid) : false;
-
-  const getStatusVariant = (status: Match['status']) => {
-    switch (status) {
-      case 'open':
-        return isFull ? 'destructive' : 'secondary';
-      case 'ongoing':
-        return 'default';
-      case 'completed':
-        return 'outline';
-      case 'disputed':
-        return 'destructive';
-      case 'processing':
-        return 'default';
-      default:
-        return 'default';
-    }
-  };
+  const isCreator = user ? match.creatorId === user.uid : false;
+  const isFull = match.players.length >= match.maxPlayers;
+  const canJoin = match.status === 'open' && !isFull && !hasJoined && !isCreator;
 
   const handleJoinMatch = async (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    
-    if (!user || !firestore || hasJoined || isFull) return;
+
+    if (!canJoin || !user || !firestore) return;
     setIsJoining(true);
 
     const matchRef = doc(firestore, 'matches', match.id);
@@ -83,107 +63,83 @@ const MatchCard = ({ match }: { match: Match }) => {
         await runTransaction(firestore, async (transaction) => {
             const matchDoc = await transaction.get(matchRef);
             const userDoc = await transaction.get(userRef);
-
-            if (!matchDoc.exists() || !userDoc.exists()) {
-                throw new Error("Match or user does not exist.");
-            }
-
+            if (!matchDoc.exists() || !userDoc.exists()) throw new Error("Match or user not found.");
             const matchData = matchDoc.data();
             const userData = userDoc.data();
+            if (matchData.players.length >= matchData.maxPlayers) throw new Error("Match is full.");
+            if (userData.walletBalance < matchData.entryFee) throw new Error("Insufficient funds.");
 
-            if (matchData.players.length >= matchData.maxPlayers) {
-                throw new Error("Match is already full.");
-            }
-            if (userData.walletBalance < matchData.entryFee) {
-                throw new Error("Insufficient wallet balance.");
-            }
-            if (matchData.players.includes(user.uid)) {
-                // This check is a safeguard, the button should not be shown if already joined
-                throw new Error("You have already joined this match.");
-            }
-
-            // 1. Deduct entry fee
             transaction.update(userRef, { walletBalance: userData.walletBalance - matchData.entryFee });
-            
-            // 2. Add player to match
             const updatedPlayers = [...matchData.players, user.uid];
             transaction.update(matchRef, { players: updatedPlayers });
 
-            // 3. If match is now full, update status
             if (updatedPlayers.length === matchData.maxPlayers) {
-                transaction.update(matchRef, {
-                    status: 'ongoing',
-                    startedAt: Timestamp.now()
-                });
+                transaction.update(matchRef, { status: 'ongoing', startedAt: Timestamp.now() });
             }
         });
-
         toast({ title: "Successfully Joined!", description: `Redirecting you to the match.` });
         router.push(`/match/${match.id}`);
     } catch (error: any) {
-        toast({ variant: 'destructive', title: "Could not join match", description: error.message });
+        toast({ variant: 'destructive', title: "Could not join", description: error.message });
     } finally {
         setIsJoining(false);
     }
   };
   
-  const showJoinButton = match.status === 'open' && !isFull && !hasJoined;
-
+  // A simple component for the button to keep the main return clean
+  const ActionButton = () => {
+    if (canJoin) {
+      return <Button size="sm" onClick={handleJoinMatch} disabled={isJoining}>{isJoining ? 'Joining...' : 'Play'}</Button>;
+    }
+    return <Button size="sm" variant="outline" asChild><Link href={`/match/${match.id}`}>View</Link></Button>;
+  }
 
   return (
-    <Card className="flex flex-col hover:shadow-lg transition-shadow overflow-hidden">
-        <Link href={`/match/${match.id}`} className="flex flex-col flex-grow">
-            <CardHeader className="p-4 bg-muted/30">
-              <div className="flex justify-between items-start">
-                <CardTitle className="text-base font-bold truncate pr-2">{match.title}</CardTitle>
-                <Badge variant={getStatusVariant(match.status)} className="capitalize shrink-0">
-                  {isFull && match.status === 'open' ? 'Full' : match.status.replace('_', ' ')}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground text-xs pt-1">
-                <Users className="h-3 w-3" />
-                <span>
-                  {match.players.length} of {match.maxPlayers} Players
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 flex-grow grid grid-cols-2 gap-4">
-              <div className="text-center">
-                  <p className="text-xs text-muted-foreground">Entry Fee</p>
-                  <p className="font-bold text-lg text-primary">₹{match.entryFee}</p>
-              </div>
-              <div className="text-center border-l">
-                  <p className="text-xs text-muted-foreground">Winning Prize</p>
-                  <p className="font-bold text-lg text-green-600">₹{match.prizePool}</p>
-              </div>
-            </CardContent>
-        </Link>
-        <CardFooter className="bg-muted/30 p-2">
-            {showJoinButton ? (
-                <Button onClick={handleJoinMatch} disabled={isJoining} className="w-full">
-                    {isJoining ? 'Joining...' : 'Join Now'}
-                </Button>
-            ) : (
-                <Button asChild className="w-full" variant="outline">
-                    <Link href={`/match/${match.id}`}>
-                        {hasJoined || match.status !== 'open' ? 'View Match' : 'Match Full'}
-                    </Link>
-                </Button>
-            )}
-        </CardFooter>
-    </Card>
+    <div className="bg-card rounded-lg shadow-sm border p-3">
+       <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+             <Avatar className="h-10 w-10 border">
+              <AvatarImage src={creator?.photoURL || ''} />
+              <AvatarFallback>{creator?.displayName?.[0] || 'U'}</AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="text-xs text-muted-foreground">Challenge set by</p>
+              <p className="font-semibold">{creator?.displayName || "..."}</p>
+            </div>
+          </div>
+           <div className="text-right">
+              <p className="font-bold text-primary text-lg">₹{match.entryFee}</p>
+              <ActionButton />
+          </div>
+       </div>
+    </div>
   );
 };
 
 
 const MatchesList = ({ matches, loading }: { matches: Match[], loading: boolean }) => {
-    if (loading) {
+    const creatorIds = useMemo(() => {
+        if (!matches || matches.length === 0) return ['_'];
+        const ids = new Set(matches.map(m => m.creatorId));
+        return Array.from(ids);
+    }, [matches]);
+
+    const usersQueryOptions = useMemo(() => ({ where: [['uid', 'in', creatorIds] as const] }), [creatorIds]);
+    const { data: creators, loading: creatorsLoading } = useCollection<UserProfile>('users', usersQueryOptions);
+    
+    const creatorsMap = useMemo(() => {
+      const map = new Map<string, UserProfile>();
+      creators.forEach(c => map.set(c.uid, c));
+      return map;
+    }, [creators]);
+    
+    if (loading || (matches.length > 0 && creatorsLoading)) {
         return (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <MatchCardSkeleton />
-                <MatchCardSkeleton />
-                <MatchCardSkeleton />
-                <MatchCardSkeleton />
+            <div className="space-y-3">
+                <MatchListItemSkeleton />
+                <MatchListItemSkeleton />
+                <MatchListItemSkeleton />
+                <MatchListItemSkeleton />
             </div>
         );
     }
@@ -204,9 +160,9 @@ const MatchesList = ({ matches, loading }: { matches: Match[], loading: boolean 
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-3">
             {matches.map((match) => (
-                <MatchCard key={match.id} match={match} />
+                <MatchListItem key={match.id} match={match} creator={creatorsMap.get(match.creatorId)} />
             ))}
         </div>
     )
@@ -214,7 +170,7 @@ const MatchesList = ({ matches, loading }: { matches: Match[], loading: boolean 
 
 export default function MatchesPage() {
   const { user } = useUser();
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('open');
   
   const queryOptions = useMemo(() => ({
     orderBy: [['createdAt', 'desc'] as const],
@@ -247,27 +203,20 @@ export default function MatchesPage() {
             </Button>
         </div>
       <div className="p-4 space-y-6">
-         <Tabs value={filter} onValueChange={setFilter}>
+        <div className='text-center space-y-2'>
+            <h2 className='text-xl font-bold flex items-center justify-center gap-2'><Trophy className='text-yellow-500'/> Open Battles (Classic) <Trophy className='text-yellow-500'/></h2>
+        </div>
+         <Tabs value={filter} onValueChange={setFilter} className='hidden'>
             <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="open">Open</TabsTrigger>
                 <TabsTrigger value="ongoing">Ongoing</TabsTrigger>
                 <TabsTrigger value="my-matches">My Matches</TabsTrigger>
             </TabsList>
-            <TabsContent value="all">
-                <MatchesList matches={filteredMatches} loading={loading} />
-            </TabsContent>
-             <TabsContent value="open">
-                <MatchesList matches={filteredMatches} loading={loading} />
-            </TabsContent>
-            <TabsContent value="ongoing">
-                <MatchesList matches={filteredMatches} loading={loading} />
-            </TabsContent>
-            <TabsContent value="my-matches">
-                <MatchesList matches={filteredMatches} loading={loading} />
-            </TabsContent>
         </Tabs>
+        <MatchesList matches={filteredMatches} loading={loading} />
       </div>
     </AppShell>
   );
 }
+
