@@ -14,6 +14,7 @@ import { CheckCircle, XCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AdminChatRoom } from '@/components/chat/AdminChatRoom';
+import { useFunctions } from '@/firebase/provider';
 
 
 const getStatusVariant = (status: string) => {
@@ -26,7 +27,7 @@ const getStatusVariant = (status: string) => {
 };
 
 export default function AdminWithdrawalsPage() {
-  const functions = getFunctions();
+  const functions = useFunctions();
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState('pending');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,6 +65,7 @@ export default function AdminWithdrawalsPage() {
   }, [usersData]);
   
   const handleApprove = async (request: WithdrawalRequest) => {
+    if (!functions) return;
     setIsSubmitting(true);
     try {
       const approveWithdrawal = httpsCallable(functions, 'approveWithdrawal');
@@ -79,6 +81,7 @@ export default function AdminWithdrawalsPage() {
   }
   
   const handleReject = async (request: WithdrawalRequest) => {
+     if (!functions) return;
      setIsSubmitting(true);
     try {
       const rejectWithdrawal = httpsCallable(functions, 'rejectWithdrawal');
@@ -124,8 +127,8 @@ export default function AdminWithdrawalsPage() {
                                     <Badge variant={getStatusVariant(req.status)}>{req.status}</Badge>
                                 </div>
                                 <div>
-                                    <p className="font-semibold">{user?.name || req.userName}</p>
-                                    <p className="text-xs text-muted-foreground">{user?.email || req.userEmail}</p>
+                                    <p className="font-semibold">{user?.name || 'Unknown User'}</p>
+                                    <p className="text-xs text-muted-foreground">{user?.email || 'No Email'}</p>
                                 </div>
                             </CardHeader>
                             <CardContent className="flex-grow space-y-2 text-sm">
@@ -147,7 +150,7 @@ export default function AdminWithdrawalsPage() {
                                                     <DialogHeader>
                                                         <DialogTitle>Process Withdrawal</DialogTitle>
                                                         <DialogDescription>
-                                                        You are about to process a withdrawal of <span className="font-bold">₹{selectedRequest.amount}</span> for {user?.name || selectedRequest.userName}.
+                                                        You are about to process a withdrawal of <span className="font-bold">₹{selectedRequest.amount}</span> for {user?.name || 'Unknown User'}.
                                                         Ensure funds are transferred externally before approving. This action is irreversible.
                                                         </DialogDescription>
                                                     </DialogHeader>

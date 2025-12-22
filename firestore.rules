@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -54,6 +55,12 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
     
+    // Admin wallet transactions for accounting
+    match /admin-wallet-transactions/{transactionId} {
+        allow read, list: if isSuperAdmin();
+        allow create: if false; // Server-side only
+    }
+
     // UPI accounts for deposits, admin-managed
     match /upi-accounts/{accountId} {
        allow read, list: if isDepositAdmin() || isSuperAdmin();
@@ -79,22 +86,13 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       allow update: if isSignedIn() && (
-                      // Player joining (not filling the match)
+                      // Player joining the match
                       (
                         resource.data.status == 'open' &&
                         request.resource.data.players == resource.data.players + [request.auth.uid] &&
-                        resource.data.players.size() < resource.data.maxPlayers - 1 &&
+                        resource.data.players.size() < resource.data.maxPlayers &&
                         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players'])
-                      ) ||
-                      // Player joining and filling the match
-                      (
-                        resource.data.status == 'open' &&
-                        request.resource.data.players == resource.data.players + [request.auth.uid] &&
-                        resource.data.players.size() == resource.data.maxPlayers - 1 &&
-                        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasAll(['players', 'status']) &&
-                        request.resource.data.status == 'ongoing'
+                        request.resource.data.diff(resource.data).affectedKeys().hasAll(['players', 'status', 'startedAt'])
                       ) ||
                       // Creator updating room code
                       (
@@ -114,7 +112,7 @@ service cloud.firestore {
         // Allow write if user is part of the match's player list
         allow create, update: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
       }
-      match /chat/{messageId} {
+      match /messages/{messageId} {
         allow read: if isSignedIn();
         // Allow write if user is part of the match's player list
         allow create: if request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
@@ -152,3 +150,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
