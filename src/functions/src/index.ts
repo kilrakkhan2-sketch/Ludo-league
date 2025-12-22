@@ -413,7 +413,7 @@ export const onMatchResultUpdate = functions.firestore
                 // 1. Update winner's balance, rating, xp, and stats
                 t.update(winnerRef, { 
                     walletBalance: FieldValue.increment(prizePool),
-                    rating: FieldValue.increment(10), // Winner gets +10 rating
+                    rating: FieldValue.increment(10),
                     xp: FieldValue.increment(25),
                     matchesPlayed: FieldValue.increment(1),
                     matchesWon: FieldValue.increment(1)
@@ -436,7 +436,7 @@ export const onMatchResultUpdate = functions.firestore
                     const loserRef = db.collection("users").doc(loserId);
                     // We can update loser stats without fetching them first using FieldValue
                     t.update(loserRef, {
-                         rating: FieldValue.increment(-5), // Losers get -5 rating
+                         rating: FieldValue.increment(-5),
                          matchesPlayed: FieldValue.increment(1)
                     });
                 }
@@ -603,3 +603,5 @@ export const createTournament = functions.https.onCall(async (data, context) => 
         throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the tournament.");
     }
 });
+
+    
