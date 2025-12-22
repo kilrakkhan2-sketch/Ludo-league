@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button";
 import { useCollection, useUser, useDoc } from "@/firebase";
 import type { Match, UserProfile } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bell, MessageCircle, PlusCircle, Swords } from "lucide-react";
+import { Bell, MessageCircle, PlusCircle, Swords, Wallet, Gift, ShieldCheck, Gamepad2 } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Trophy } from "lucide-react";
 import { useMemo } from "react";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
+import Image from "next/image";
 
 const MatchCard = ({ match }: { match: Match }) => {
     const isFull = match.players.length >= match.maxPlayers;
@@ -84,6 +86,28 @@ const MatchCard = ({ match }: { match: Match }) => {
     );
 }
 
+const CategoryCard = ({ title, href, icon: Icon, imageId }: { title: string, href: string, icon: React.ElementType, imageId: string }) => {
+    const image = PlaceHolderImages.find(p => p.id === imageId);
+    return (
+        <Link href={href} className="relative block rounded-lg overflow-hidden h-28 group">
+            {image && (
+                 <Image
+                    src={image.imageUrl}
+                    alt={image.description}
+                    data-ai-hint={image.imageHint}
+                    fill
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                 />
+            )}
+            <div className="absolute inset-0 bg-black/60" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-primary-foreground p-2">
+                <Icon className="h-8 w-8 mb-1"/>
+                <p className="text-sm font-bold text-center">{title}</p>
+            </div>
+        </Link>
+    )
+}
+
 export default function DashboardClientContent() {
     const { user, loading: userLoading } = useUser();
     const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : undefined);
@@ -131,6 +155,14 @@ export default function DashboardClientContent() {
                 </div>
                 
                 <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
+                    <section>
+                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                            <CategoryCard title="KYC" href="/kyc" icon={ShieldCheck} imageId="kyc_card" />
+                            <CategoryCard title="Refer & Earn" href="/refer" icon={Gift} imageId="hero" />
+                            <CategoryCard title="My Wallet" href="/wallet/history" icon={Wallet} imageId="wallet_icon" />
+                            <CategoryCard title="My Matches" href="/matches/my-matches" icon={Gamepad2} imageId="tournament_card" />
+                        </div>
+                    </section>
                     <section>
                         <div className="flex justify-between items-center mb-3">
                             <h2 className="text-lg font-bold">Open Matches</h2>
