@@ -39,8 +39,6 @@ interface AppShellProps {
 const baseNavItems: NavItem[] = [
   { href: "/dashboard", icon: Home, label: "Home" },
   { href: "/matches", icon: Swords, label: "Matches" },
-  { href: "/wallet", icon: Wallet, label: "Wallet" },
-  { href: "/profile", icon: User, label: "Profile" },
 ];
 
 export function AppShell({ children, pageTitle, showBackButton = false, className }: AppShellProps) {
@@ -57,14 +55,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
   const navItems = useMemo(() => {
     let items = [...baseNavItems];
     if (isAdmin) {
-      // Add Admin item at a specific position, before Profile
-      const profileIndex = items.findIndex(item => item.href === '/profile');
-      if (profileIndex !== -1) {
-        items.splice(profileIndex, 0, { href: "/admin/dashboard", icon: Shield, label: "Admin" });
-      } else {
-        // Fallback in case profile is not in the list
-        items.push({ href: "/admin/dashboard", icon: Shield, label: "Admin" });
-      }
+      items.push({ href: "/admin/dashboard", icon: Shield, label: "Admin" });
     }
     return items;
   }, [isAdmin]);
@@ -102,9 +93,9 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                 </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push('/profile')}>
+            <DropdownMenuItem onClick={() => router.push('/settings')}>
                 <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+                <span>Settings</span>
             </DropdownMenuItem>
             {isAdmin && (
               <DropdownMenuItem onClick={() => router.push('/admin/dashboard')}>
@@ -183,9 +174,9 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                         </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => router.push('/profile')}>
+                    <DropdownMenuItem onClick={() => router.push('/settings')}>
                         <User className="mr-2 h-4 w-4" />
-                        <span>Profile</span>
+                        <span>Settings</span>
                     </DropdownMenuItem>
                     {isAdmin && (
                       <DropdownMenuItem onClick={() => router.push('/admin/dashboard')}>
