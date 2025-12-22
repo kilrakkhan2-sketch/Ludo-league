@@ -46,6 +46,9 @@ const getStatusVariant = (status: string) => {
 
 export default function TournamentDetailsPage() {
     const params = useParams();
+    if (!params) {
+        return <TournamentDetailsSkeleton />;
+    }
     const tournamentId = params.id as string;
     const { user } = useUser();
     const { firestore } = useFirebase();

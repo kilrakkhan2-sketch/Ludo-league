@@ -96,11 +96,11 @@ const MatchCard = ({ match }: { match: Match }) => {
 }
 
 export default function OpenMatchesPage() {
-  const queryOptions = useMemo(() => ({
-    where: [["status", "==", "open"]],
-    orderBy: [["createdAt", "desc"]],
-    limit: 12,
-  }), []);
+    const queryOptions = useMemo(() => ({
+        where: [['status', '==', 'open'] as const],
+        orderBy: [['createdAt', 'desc'] as const],
+        limit: 12,
+      }), []);
   const { data: matches, loading } = useCollection<Match>("matches", queryOptions);
 
   const Skeletons = () => (

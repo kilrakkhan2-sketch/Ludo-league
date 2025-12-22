@@ -553,27 +553,27 @@ const SidebarMenuButton = React.forwardRef<
     tooltip?: string | React.ComponentProps<typeof TooltipContent>
     href?: string
   } & VariantProps<typeof sidebarMenuButtonVariants>
->((
-    {
-        asChild = false,
-        current = false,
-        variant = "default",
-        size = "default",
-        tooltip,
-        className,
-        href,
-        ...props
-    },
-    ref
-) => {
+>(({
+    asChild = false,
+    current = false,
+    variant = "default",
+    size = "default",
+    tooltip,
+    className,
+    href,
+    ...props
+}, ref) => {
     const { state, isMobile } = useSidebar()
+
+    // Omit 'onToggle' if it exists, as it's not a valid prop for Link
+    const { onToggle, ...restProps } = props as any;
 
     const commonProps = {
         "data-sidebar": "menu-button",
         "data-size": size,
         "data-active": current,
         className: cn(sidebarMenuButtonVariants({ variant, size }), className),
-        ...props,
+        ...restProps,
     };
 
     const button = href ? (

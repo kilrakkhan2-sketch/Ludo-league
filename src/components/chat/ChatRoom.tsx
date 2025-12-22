@@ -24,7 +24,7 @@ export function ChatRoom({ matchId }: ChatRoomProps) {
   const [newMessage, setNewMessage] = useState('');
 
   const messagesPath = `matches/${matchId}/messages`;
-  const messagesQueryOptions = useMemo(() => ({ orderBy: ['createdAt', 'asc'] }), []);
+  const messagesQueryOptions = useMemo(() => ({ orderBy: [['createdAt', 'asc'] as const] }), []);
   const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesPath, messagesQueryOptions);
   
   const playerIds = useMemo(() => {
@@ -32,7 +32,7 @@ export function ChatRoom({ matchId }: ChatRoomProps) {
     return Array.from(new Set(messages.map((m: Message) => m.userId)));
   }, [messages]);
 
-  const playersQueryOptions = useMemo(() => ({ where: ['uid', 'in', playerIds] }), [playerIds]);
+  const playersQueryOptions = useMemo(() => ({ where: [['uid', 'in', playerIds] as const] }), [playerIds]);
   const { data: playerProfiles, loading: playersLoading } = useCollection<UserProfile>('users', playersQueryOptions);
 
   const playerProfilesMap = useMemo(() => {

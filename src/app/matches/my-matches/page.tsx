@@ -109,11 +109,9 @@ const MatchCard = ({ match }: { match: Match }) => {
 export default function MyMatchesPage() {
   const { user } = useUser();
   const queryOptions = useMemo(() => ({
-    where: user?.uid ? [
-        ['players', 'array-contains', user.uid]
-    ] : undefined,
-    orderBy: ['createdAt', 'desc'],
-    limit: 12
+    where: user?.uid ? [['players', 'array-contains', user.uid] as const] : undefined,
+    orderBy: [['createdAt', 'desc'] as const],
+    limit: 12,
   }), [user?.uid]);
   
   const { data: matches, loading } = useCollection<Match>('matches', queryOptions);
