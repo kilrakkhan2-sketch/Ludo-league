@@ -1,10 +1,11 @@
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createTournament = exports.createMatch = exports.onMatchResultUpdate = exports.autoVerifyResults = exports.onDepositStatusChange = exports.rejectWithdrawal = exports.approveWithdrawal = exports.setUserRole = exports.setSuperAdminRole = void 0;
+exports.createTournament = exports.createMatch = exports.onMatchResultUpdate = exports.autoVerifyResults = exports.onDepositStatusChange = exports.rejectWithdrawal = exports.approveWithdrawal = exports.deleteStorageFile = exports.setUserRole = exports.setSuperAdminRole = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const firestore_1 = require("firebase-admin/firestore");
+const storage_1 = require("firebase-admin/storage");
 admin.initializeApp();
 const db = admin.firestore();
 // Helper function to send a personal notification
@@ -65,12 +66,47 @@ exports.setUserRole = functions.https.onCall(async (data, context) => {
     }
 });
 // =================================================================
+//  STORAGE MANAGEMENT FUNCTIONS
+// =================================================================
+exports.deleteStorageFile = functions.https.onCall(async (data, context) => {
+    var _b;
+    // 1. Authentication & Authorization Check
+    if (((_b = context.auth) === null || _b === void 0 ? void 0 : _b.token.role) !== 'superadmin') {
+        throw new functions.https.HttpsError("permission-denied", "You must be a superadmin to delete files.");
+    }
+    // 2. Data Validation
+    const { filePath } = data;
+    if (!filePath || typeof filePath !== 'string') {
+        throw new functions.https.HttpsError("invalid-argument", "A valid file path is required.");
+    }
+    try {
+        const bucket = (0, storage_1.getStorage)().bucket();
+        const file = bucket.file(filePath);
+        const [exists] = await file.exists();
+        if (!exists) {
+            throw new functions.https.HttpsError("not-found", "The specified file does not exist.");
+        }
+        await file.delete();
+        functions.logger.info(`File ${filePath} deleted by admin ${context.auth.uid}.`);
+        return { success: true, message: "File deleted successfully." };
+    }
+    catch (error) {
+        functions.logger.error(`Failed to delete file ${filePath}:`, error);
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        }
+        else {
+            throw new functions.https.HttpsError("internal", "An unexpected error occurred while deleting the file.");
+        }
+    }
+});
+// =================================================================
 //  WITHDRAWAL MANAGEMENT FUNCTIONS
 // =================================================================
 exports.approveWithdrawal = functions.https.onCall(async (data, context) => {
-    var _a, _b;
+    var _c, _d;
     // 1. Check permissions
-    if (((_a = context.auth) === null || _a === void 0 ? void 0 : _a.token.role) !== 'withdrawal_admin' && ((_b = context.auth) === null || _b === void 0 ? void 0 : _b.token.role) !== 'superadmin') {
+    if (((_c = context.auth) === null || _c === void 0 ? void 0 : _c.token.role) !== 'withdrawal_admin' && ((_d = context.auth) === null || _d === void 0 ? void 0 : _d.token.role) !== 'superadmin') {
         throw new functions.https.HttpsError('permission-denied', 'Only withdrawal admins can approve requests.');
     }
     // 2. Validate data
@@ -82,15 +118,15 @@ exports.approveWithdrawal = functions.https.onCall(async (data, context) => {
     const requestRef = db.collection('withdrawal-requests').doc(withdrawalId);
     // 3. Perform transaction
     try {
-        const requestDoc = await requestRef.get();
-        if (!requestDoc.exists)
-            throw new Error('Withdrawal request not found.');
-        const requestData = requestDoc.data();
-        if ((requestData === null || requestData === void 0 ? void 0 : requestData.status) !== 'pending')
-            throw new Error('This request has already been processed.');
-        const { amount, userId } = requestData;
         await db.runTransaction(async (t) => {
             var _a;
+            const requestDoc = await t.get(requestRef);
+            if (!requestDoc.exists)
+                throw new Error('Withdrawal request not found.');
+            const requestData = requestDoc.data();
+            if ((requestData === null || requestData === void 0 ? void 0 : requestData.status) !== 'pending')
+                throw new Error('This request has already been processed.');
+            const { amount, userId } = requestData;
             const adminRef = db.collection('users').doc(adminUid);
             const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
             const userTxSnapshot = await t.get(userTxQuery);
@@ -102,14 +138,19 @@ exports.approveWithdrawal = functions.https.onCall(async (data, context) => {
                 processedBy: adminUid,
             });
             // B. Update the user's transaction status to completed
+            // Note: The user's balance was already debited when they made the request.
+            // This function confirms the external payment has been made.
             if (userTxRef) {
                 t.update(userTxRef, { status: 'completed' });
             }
             // C. Deduct the amount from the admin's wallet as a ledger
             t.update(adminRef, { walletBalance: firestore_1.FieldValue.increment(-amount) });
         });
-        functions.logger.info(`Withdrawal ${withdrawalId} approved by admin ${adminUid}.`);
-        await sendNotification(userId, 'Withdrawal Approved', `Your withdrawal request for ₹${amount} has been approved and processed.`);
+        const requestData = (await requestRef.get()).data();
+        if (requestData) {
+            functions.logger.info(`Withdrawal ${withdrawalId} approved by admin ${adminUid}.`);
+            await sendNotification(requestData.userId, 'Withdrawal Approved', `Your withdrawal request for ₹${requestData.amount} has been approved and processed.`);
+        }
         return { success: true, message: 'Withdrawal approved successfully.' };
     }
     catch (error) {
@@ -120,9 +161,9 @@ exports.approveWithdrawal = functions.https.onCall(async (data, context) => {
     }
 });
 exports.rejectWithdrawal = functions.https.onCall(async (data, context) => {
-    var _a, _b;
+    var _e, _f;
     // 1. Check permissions
-    if (((_a = context.auth) === null || _a === void 0 ? void 0 : _a.token.role) !== 'withdrawal_admin' && ((_b = context.auth) === null || _b === void 0 ? void 0 : _b.token.role) !== 'superadmin') {
+    if (((_e = context.auth) === null || _e === void 0 ? void 0 : _e.token.role) !== 'withdrawal_admin' && ((_f = context.auth) === null || _f === void 0 ? void 0 : _f.token.role) !== 'superadmin') {
         throw new functions.https.HttpsError('permission-denied', 'Only withdrawal admins can reject requests.');
     }
     // 2. Validate data
@@ -133,17 +174,17 @@ exports.rejectWithdrawal = functions.https.onCall(async (data, context) => {
     const adminUid = context.auth.uid;
     const requestRef = db.collection('withdrawal-requests').doc(withdrawalId);
     try {
-        const requestDoc = await requestRef.get();
-        if (!requestDoc.exists)
-            throw new functions.https.HttpsError('not-found', 'Withdrawal request not found.');
-        const requestData = requestDoc.data();
-        if ((requestData === null || requestData === void 0 ? void 0 : requestData.status) !== 'pending')
-            throw new functions.https.HttpsError('failed-precondition', 'This request has already been processed.');
-        const { userId, amount } = requestData;
-        const userRef = db.collection('users').doc(userId);
-        const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
         await db.runTransaction(async (t) => {
             var _a;
+            const requestDoc = await t.get(requestRef);
+            if (!requestDoc.exists)
+                throw new functions.https.HttpsError('not-found', 'Withdrawal request not found.');
+            const requestData = requestDoc.data();
+            if ((requestData === null || requestData === void 0 ? void 0 : requestData.status) !== 'pending')
+                throw new functions.https.HttpsError('failed-precondition', 'This request has already been processed.');
+            const { userId, amount } = requestData;
+            const userRef = db.collection('users').doc(userId);
+            const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
             const userTxSnapshot = await t.get(userTxQuery);
             const userTxRef = (_a = userTxSnapshot.docs[0]) === null || _a === void 0 ? void 0 : _a.ref;
             // A. Update withdrawal request
@@ -152,15 +193,18 @@ exports.rejectWithdrawal = functions.https.onCall(async (data, context) => {
                 processedAt: firestore_1.FieldValue.serverTimestamp(),
                 processedBy: adminUid,
             });
-            // B. Refund the user
+            // B. Refund the user's wallet
             t.update(userRef, { walletBalance: firestore_1.FieldValue.increment(amount) });
             // C. Mark user's transaction as failed
             if (userTxRef) {
                 t.update(userTxRef, { status: 'failed', description: 'Withdrawal request rejected by admin' });
             }
         });
-        functions.logger.info(`Withdrawal ${withdrawalId} for user ${userId} was rejected and funds were refunded.`);
-        await sendNotification(userId, 'Withdrawal Rejected', `Your withdrawal request for ₹${amount} was rejected. The amount has been refunded to your wallet.`);
+        const requestData = (await requestRef.get()).data();
+        if (requestData) {
+            functions.logger.info(`Withdrawal ${withdrawalId} for user ${requestData.userId} was rejected and funds were refunded.`);
+            await sendNotification(requestData.userId, 'Withdrawal Rejected', `Your withdrawal request for ₹${requestData.amount} was rejected. The amount has been refunded to your wallet.`);
+        }
         return { success: true, message: 'Withdrawal rejected and funds refunded.' };
     }
     catch (error) {
@@ -191,6 +235,7 @@ exports.onDepositStatusChange = functions.firestore
     const commissionSettingsRef = db.collection('settings').doc('commission');
     try {
         await db.runTransaction(async (t) => {
+            var _a;
             const userDoc = await t.get(userRef);
             if (!userDoc.exists)
                 throw new Error(`User ${userId} not found.`);
@@ -232,7 +277,7 @@ exports.onDepositStatusChange = functions.firestore
                         amount: commissionAmount,
                         type: "referral_bonus",
                         status: "completed",
-                        description: `${commissionPercentage}% commission from ${userData.name || 'a referred user'}'s deposit.`,
+                        description: `${commissionPercentage}% commission from ${(_a = userData.name) !== null && _a !== void 0 ? _a : 'a referred user'}'s deposit.`,
                         createdAt: firestore_1.FieldValue.serverTimestamp(),
                         relatedId: context.params.depositId,
                     });
@@ -435,9 +480,12 @@ exports.createMatch = functions.https.onCall(async (data, context) => {
                 players: [userId],
                 status: 'open',
                 roomCode: null,
+                resultStage: 'none',
+                autoPayoutAllowed: true,
                 createdAt: firestore_1.FieldValue.serverTimestamp(),
                 startedAt: null,
                 completedAt: null,
+                winnerId: null,
             });
             return matchRef.id;
         });
@@ -458,9 +506,9 @@ exports.createMatch = functions.https.onCall(async (data, context) => {
     }
 });
 exports.createTournament = functions.https.onCall(async (data, context) => {
-    var _a;
+    var _g;
     // 1. Authentication & Authorization Check
-    if (!context.auth || !['superadmin', 'match_admin'].includes((_a = context.auth) === null || _a === void 0 ? void 0 : _a.token.role)) {
+    if (!context.auth || !['superadmin', 'match_admin'].includes((_g = context.auth) === null || _g === void 0 ? void 0 : _g.token.role)) {
         throw new functions.https.HttpsError("permission-denied", "You must be an admin to create a tournament.");
     }
     const adminUid = context.auth.uid;

@@ -2,6 +2,7 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -107,6 +108,46 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
 });
 
 // =================================================================
+//  STORAGE MANAGEMENT FUNCTIONS
+// =================================================================
+export const deleteStorageFile = functions.https.onCall(async (data, context) => {
+    // 1. Authentication & Authorization Check
+    if (context.auth?.token.role !== 'superadmin') {
+        throw new functions.https.HttpsError("permission-denied", "You must be a superadmin to delete files.");
+    }
+    
+    // 2. Data Validation
+    const { filePath } = data;
+    if (!filePath || typeof filePath !== 'string') {
+        throw new functions.https.HttpsError("invalid-argument", "A valid file path is required.");
+    }
+    
+    try {
+        const bucket = getStorage().bucket();
+        const file = bucket.file(filePath);
+        
+        const [exists] = await file.exists();
+        if (!exists) {
+            throw new functions.https.HttpsError("not-found", "The specified file does not exist.");
+        }
+        
+        await file.delete();
+        
+        functions.logger.info(`File ${filePath} deleted by admin ${context.auth.uid}.`);
+        return { success: true, message: "File deleted successfully." };
+
+    } catch (error) {
+        functions.logger.error(`Failed to delete file ${filePath}:`, error);
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        } else {
+            throw new functions.https.HttpsError("internal", "An unexpected error occurred while deleting the file.");
+        }
+    }
+});
+
+
+// =================================================================
 //  WITHDRAWAL MANAGEMENT FUNCTIONS
 // =================================================================
 
@@ -127,16 +168,18 @@ export const approveWithdrawal = functions.https.onCall(async (data, context) =>
     
     // 3. Perform transaction
     try {
-        const requestDoc = await requestRef.get();
-        if (!requestDoc.exists) throw new Error('Withdrawal request not found.');
-        const requestData = requestDoc.data();
-        if (requestData?.status !== 'pending') throw new Error('This request has already been processed.');
-
-        const { amount, userId } = requestData;
-        
         await db.runTransaction(async (t) => {
+            const requestDoc = await t.get(requestRef);
+            if (!requestDoc.exists) throw new Error('Withdrawal request not found.');
+            
+            const requestData = requestDoc.data();
+            if (requestData?.status !== 'pending') throw new Error('This request has already been processed.');
+
+            const { amount, userId } = requestData;
+            
             const adminRef = db.collection('users').doc(adminUid);
             const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
+            
             const userTxSnapshot = await t.get(userTxQuery);
             const userTxRef = userTxSnapshot.docs[0]?.ref;
 
@@ -148,6 +191,8 @@ export const approveWithdrawal = functions.https.onCall(async (data, context) =>
             });
 
             // B. Update the user's transaction status to completed
+            // Note: The user's balance was already debited when they made the request.
+            // This function confirms the external payment has been made.
             if (userTxRef) {
                 t.update(userTxRef, { status: 'completed' });
             }
@@ -156,8 +201,11 @@ export const approveWithdrawal = functions.https.onCall(async (data, context) =>
             t.update(adminRef, { walletBalance: FieldValue.increment(-amount) });
         });
 
-        functions.logger.info(`Withdrawal ${withdrawalId} approved by admin ${adminUid}.`);
-        await sendNotification(userId, 'Withdrawal Approved', `Your withdrawal request for ₹${amount} has been approved and processed.`);
+        const requestData = (await requestRef.get()).data();
+        if (requestData) {
+            functions.logger.info(`Withdrawal ${withdrawalId} approved by admin ${adminUid}.`);
+            await sendNotification(requestData.userId, 'Withdrawal Approved', `Your withdrawal request for ₹${requestData.amount} has been approved and processed.`);
+        }
         return { success: true, message: 'Withdrawal approved successfully.' };
         
     } catch (error) {
@@ -184,16 +232,17 @@ export const rejectWithdrawal = functions.https.onCall(async (data, context) => 
     const requestRef = db.collection('withdrawal-requests').doc(withdrawalId);
     
     try {
-        const requestDoc = await requestRef.get();
-        if (!requestDoc.exists) throw new functions.https.HttpsError('not-found', 'Withdrawal request not found.');
-        const requestData = requestDoc.data();
-        if (requestData?.status !== 'pending') throw new functions.https.HttpsError('failed-precondition', 'This request has already been processed.');
-        
-        const { userId, amount } = requestData;
-        const userRef = db.collection('users').doc(userId);
-        const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
-        
         await db.runTransaction(async (t) => {
+            const requestDoc = await t.get(requestRef);
+            if (!requestDoc.exists) throw new functions.https.HttpsError('not-found', 'Withdrawal request not found.');
+            
+            const requestData = requestDoc.data();
+            if (requestData?.status !== 'pending') throw new functions.https.HttpsError('failed-precondition', 'This request has already been processed.');
+            
+            const { userId, amount } = requestData;
+            const userRef = db.collection('users').doc(userId);
+            const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
+        
             const userTxSnapshot = await t.get(userTxQuery);
             const userTxRef = userTxSnapshot.docs[0]?.ref;
         
@@ -204,7 +253,7 @@ export const rejectWithdrawal = functions.https.onCall(async (data, context) => 
                 processedBy: adminUid,
             });
 
-            // B. Refund the user
+            // B. Refund the user's wallet
             t.update(userRef, { walletBalance: FieldValue.increment(amount) });
 
             // C. Mark user's transaction as failed
@@ -212,9 +261,12 @@ export const rejectWithdrawal = functions.https.onCall(async (data, context) => 
                 t.update(userTxRef, { status: 'failed', description: 'Withdrawal request rejected by admin' });
             }
         });
-
-        functions.logger.info(`Withdrawal ${withdrawalId} for user ${userId} was rejected and funds were refunded.`);
-        await sendNotification(userId, 'Withdrawal Rejected', `Your withdrawal request for ₹${amount} was rejected. The amount has been refunded to your wallet.`);
+        
+        const requestData = (await requestRef.get()).data();
+        if (requestData) {
+            functions.logger.info(`Withdrawal ${withdrawalId} for user ${requestData.userId} was rejected and funds were refunded.`);
+            await sendNotification(requestData.userId, 'Withdrawal Rejected', `Your withdrawal request for ₹${requestData.amount} was rejected. The amount has been refunded to your wallet.`);
+        }
         
         return { success: true, message: 'Withdrawal rejected and funds refunded.' };
 
@@ -486,8 +538,8 @@ export const createMatch = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("invalid-argument", "Max players must be either 2 or 4.");
     }
 
-    // 4. Calculate Prize Pool (e.g., 90% of total entry fees)
-    const prizePool = (entryFee * maxPlayers) * 0.90;
+    // 4. Calculate Prize Pool (e.g., 95% of total entry fees for a 5% commission)
+    const prizePool = (entryFee * maxPlayers) * 0.95;
 
     const userRef = db.collection("users").doc(userId);
     const matchRef = db.collection("matches").doc();
