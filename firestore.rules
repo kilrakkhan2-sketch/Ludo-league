@@ -37,7 +37,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create: if !isSignedIn() || isOwner(userId); // Allow creating user doc on signup or if user doesn't have one yet
-      allow update: if isOwner(userId); // Users can only update their own profile
+      allow update: if isOwner(userId) || isSuperAdmin(); // Users can update their own profile, admins can too
       
       // Personal notifications and transactions are subcollections
       match /personal_notifications/{notificationId} {
@@ -63,21 +63,25 @@ service cloud.firestore {
 
     // UPI accounts for deposits, admin-managed
     match /upi-accounts/{accountId} {
-       allow read, list: if isDepositAdmin() || isSuperAdmin();
-       allow create, update, delete: if isDepositAdmin() || isSuperAdmin();
+       allow read: if isSignedIn();
+       allow list, create, update, delete: if isSuperAdmin();
+       
+       match /daily_stats/{date} {
+         allow read, write: if isSuperAdmin();
+       }
     }
 
     // Deposit and withdrawal requests
     match /deposit-requests/{requestId} {
       allow read, list: if isDepositAdmin() || isSuperAdmin() || (isOwner(resource.data.userId) && resource.data.userId == request.auth.uid);
       allow create: if isSignedIn();
-      allow update: if isDepositAdmin() || isSuperAdmin();
+      allow update: if isDepositAdmin() || isSuperAdmin(); // Admins change status
     }
     
     match /withdrawal-requests/{requestId} {
       allow read, list: if isWithdrawalAdmin() || isSuperAdmin() || isOwner(resource.data.userId);
       allow create: if isSignedIn();
-      allow update: if isWithdrawalAdmin() || isSuperAdmin();
+      allow update: if isWithdrawalAdmin() || isSuperAdmin(); // Admins change status
     }
 
     // Matches
@@ -86,12 +90,20 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       allow update: if isSignedIn() && (
-                      // Player joining an open match
+                      // Player joining an open match and updating players array
                       (
                         resource.data.status == 'open' &&
                         request.resource.data.players == resource.data.players + [request.auth.uid] &&
-                        resource.data.players.size() < resource.data.maxPlayers &&
+                        request.resource.data.players.size() <= resource.data.maxPlayers &&
                         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee
+                      ) ||
+                       // Player joining and filling the match, updating status and startedAt
+                      (
+                        resource.data.status == 'open' &&
+                        request.resource.data.players == resource.data.players + [request.auth.uid] &&
+                        request.resource.data.players.size() == resource.data.maxPlayers &&
+                        request.resource.data.status == 'ongoing' &&
+                        request.resource.data.keys().hasAll(['players', 'status', 'startedAt'])
                       ) ||
                       // Creator updating room code
                       (
@@ -100,9 +112,7 @@ service cloud.firestore {
                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['roomCode'])
                       ) ||
                       // Admin managing the match state
-                      (
-                        isMatchAdmin()
-                      )
+                      (isMatchAdmin())
                     );
       
       // Results and Chat subcollections
@@ -116,9 +126,12 @@ service cloud.firestore {
         // Allow write if user is part of the match's player list
         allow create: if request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
       }
+       match /admin-chat/{messageId} {
+        allow read, write: if isMatchAdmin() || isDepositAdmin() || isWithdrawalAdmin();
+      }
     }
     
-    // Tournaments - readable by all, writable by admins
+    // Tournaments - readable by all, writable by match admins
     match /tournaments/{tournamentId} {
         allow read: if true;
         allow create, update, delete: if isMatchAdmin();
@@ -128,16 +141,11 @@ service cloud.firestore {
             allow create: if isSignedIn(); // Add rules for entry fee etc.
             allow delete: if isOwner(userId) || isMatchAdmin();
         }
-        
-        match /rounds/{roundId} {
-            allow read: if true;
-            allow create, update, delete: if isMatchAdmin();
-        }
     }
     
     // KYC documents - only accessible by user and superadmin
     match /kyc-requests/{kycId} {
-      allow read: if isOwner(resource.data.userId) || isSuperAdmin();
+      allow read, list: if isSuperAdmin() || (isOwner(resource.data.userId) && resource.data.userId == request.auth.uid);
       allow create: if isSignedIn();
       allow update: if isSuperAdmin(); // Only admins can change status
     }
@@ -149,3 +157,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

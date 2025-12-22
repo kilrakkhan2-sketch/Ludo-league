@@ -10,10 +10,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
 const UserCardSkeleton = () => (
-    <div className="bg-card p-4 rounded-lg shadow-sm space-y-4">
-        <div className="flex items-center gap-3">
+    <div className="bg-card p-4 rounded-xl shadow-sm border space-y-4">
+        <div className="flex items-center">
             <Skeleton className="h-14 w-14 rounded-full" />
-            <div className="space-y-2">
+            <div className="ml-4 space-y-2">
                 <Skeleton className="h-5 w-32" />
                 <Skeleton className="h-4 w-40" />
             </div>
@@ -21,7 +21,7 @@ const UserCardSkeleton = () => (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 pt-2">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
         </div>
@@ -35,7 +35,7 @@ const UserCard = ({ user, stats }: { user: UserProfile, stats: any }) => {
         <div className="bg-card p-4 rounded-xl shadow-md border space-y-4">
             <div className="flex items-center">
                 <Avatar className="h-14 w-14 border-2 border-primary/20">
-                    <AvatarImage src={user.photoURL || `https://i.pravatar.cc/150?u=${user.id}`} alt={user.displayName} />
+                    <AvatarImage src={user.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${user.id}`} alt={user.displayName} />
                     <AvatarFallback>{user.displayName?.[0]}</AvatarFallback>
                 </Avatar>
                 <div className="ml-4">
@@ -151,9 +151,10 @@ export default function AdminUsersPage() {
             />
         </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {loading ? (
             <>
+              <UserCardSkeleton />
               <UserCardSkeleton />
               <UserCardSkeleton />
               <UserCardSkeleton />
@@ -174,5 +175,7 @@ export default function AdminUsersPage() {
     </div>
   );
 }
+
+    
 
     

@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCollection, useCollectionGroup } from "@/firebase";
-import type { Transaction, UserProfile } from "@/types";
+import type { DepositRequest, Transaction, UserProfile, WithdrawalRequest, Match, KycRequest, Tournament } from "@/types";
 import { Users, Sword, CircleArrowUp, Landmark, FileKey, BadgeCheck, ShieldAlert, Gamepad2, Ticket, Wallet, Award } from 'lucide-react';
 import { useMemo } from "react";
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area } from "recharts";
@@ -34,25 +34,25 @@ const StatCard = ({ title, value, icon: Icon, loading, href, description }: { ti
 
 const AdminDashboardPage = ({ role }: { role: UserProfile['role'] }) => {
   // ----------- ACTIONABLE ITEMS -----------
-  const { count: pendingDeposits, loading: pendingDepositsLoading } = useCollection("deposit-requests", { where: ["status", "==", "pending"] });
-  const { count: pendingWithdrawals, loading: pendingWithdrawalsLoading } = useCollection("withdrawal-requests", { where: ["status", "==", "pending"] });
-  const { count: pendingKyc, loading: pendingKycLoading } = useCollection("kyc-requests", { where: ["status", "==", "pending"] });
-  const { count: pendingMatches, loading: pendingMatchesLoading } = useCollection("matches", { where: ["status", "==", "verification"] });
-  const { count: disputedMatches, loading: disputedMatchesLoading } = useCollection("matches", { where: ["status", "==", "disputed"] });
+  const { count: pendingDeposits, loading: pendingDepositsLoading } = useCollection<DepositRequest>("deposit-requests", { where: ["status", "==", "pending"] });
+  const { count: pendingWithdrawals, loading: pendingWithdrawalsLoading } = useCollection<WithdrawalRequest>("withdrawal-requests", { where: ["status", "==", "pending"] });
+  const { count: pendingKyc, loading: pendingKycLoading } = useCollection<KycRequest>("kyc-requests", { where: ["status", "==", "pending"] });
+  const { count: pendingMatches, loading: pendingMatchesLoading } = useCollection<Match>("matches", { where: ["status", "==", "verification"] });
+  const { count: disputedMatches, loading: disputedMatchesLoading } = useCollection<Match>("matches", { where: ["status", "==", "disputed"] });
   
   // ----------- PLATFORM OVERVIEW (COMMON) -----------
-  const { count: openMatches, loading: openMatchesLoading } = useCollection("matches", { where: ["status", "==", "open"] });
-  const { count: ongoingMatches, loading: ongoingMatchesLoading } = useCollection("matches", { where: ["status", "==", "ongoing"] });
-  const { count: liveTournaments, loading: liveTournamentsLoading } = useCollection("tournaments", { where: ["status", "==", "live"] });
+  const { count: openMatches, loading: openMatchesLoading } = useCollection<Match>("matches", { where: ["status", "==", "open"] });
+  const { count: ongoingMatches, loading: ongoingMatchesLoading } = useCollection<Match>("matches", { where: ["status", "==", "ongoing"] });
+  const { count: liveTournaments, loading: liveTournamentsLoading } = useCollection<Tournament>("tournaments", { where: ["status", "==", "live"] });
   
   const { data: prizes, loading: prizesLoading } = useCollectionGroup<Transaction>('transactions', { where: ['type', '==', 'prize'] });
   const totalPrizes = useMemo(() => prizes?.reduce((acc, p) => acc + (p.amount || 0), 0) || 0, [prizes]);
   const platformFee = totalPrizes * 0.05; // Assuming 5% fee on prizes
   
   // ----------- SUPERADMIN-ONLY STATS -----------
-  const { count: totalUsers, loading: usersLoading } = useCollection("users");
-  const { data: deposits, loading: depositsLoading } = useCollection<Transaction>("deposit-requests", { where: ["status", "==", "approved"] });
-  const { data: withdrawals, loading: withdrawalsLoading } = useCollection<Transaction>("withdrawal-requests", { where: ["status", "==", "approved"] });
+  const { count: totalUsers, loading: usersLoading } = useCollection<UserProfile>("users");
+  const { data: deposits, loading: depositsLoading } = useCollection<DepositRequest>("deposit-requests", { where: ["status", "==", "approved"] });
+  const { data: withdrawals, loading: withdrawalsLoading } = useCollection<WithdrawalRequest>("withdrawal-requests", { where: ["status", "==", "approved"] });
   
   const totalDeposits = useMemo(() => deposits?.reduce((acc, d) => acc + (d.amount || 0), 0) || 0, [deposits]);
   const totalWithdrawals = useMemo(() => withdrawals?.reduce((acc, w) => acc + (w.amount || 0), 0) || 0, [withdrawals]);
@@ -190,3 +190,5 @@ export default function DashboardRouter() {
 
     return <p>You do not have a dashboard assigned to your role.</p>;
 }
+
+    

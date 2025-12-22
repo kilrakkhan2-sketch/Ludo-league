@@ -18,12 +18,7 @@ const NewsCarousel = () => {
     });
 
     if (loading) {
-      return (
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-32" />
-          <Skeleton className="h-32 w-full rounded-lg" />
-        </div>
-      );
+      return null; // Don't show skeleton, just hide section while loading
     }
 
     if (announcements.length === 0) {
@@ -41,7 +36,7 @@ const NewsCarousel = () => {
 
     return (
         <section>
-             <h2 className="text-lg font-bold mb-3">News & Updates</h2>
+             <h2 className="text-lg font-bold mb-3 px-4 sm:px-6">News & Updates</h2>
              <Carousel
                 opts={{
                     align: "start",
@@ -49,20 +44,22 @@ const NewsCarousel = () => {
                 }}
                 className="w-full"
             >
-                <CarouselContent>
+                <CarouselContent className="-ml-4">
                     {announcements.map((ann) => (
-                        <CarouselItem key={ann.id}>
-                            <Card className={cn("border-0 shadow-lg", getCardClasses(ann.type))}>
-                                <CardContent className="p-6">
-                                     <Badge variant="secondary" className="mb-2 bg-white/20 text-white border-0">{ann.type}</Badge>
-                                    <h3 className="font-bold text-lg mb-2">{ann.title}</h3>
-                                    <p className="text-sm text-white/90">{ann.content}</p>
-                                </CardContent>
-                            </Card>
+                        <CarouselItem key={ann.id} className="pl-4 md:basis-1/2 lg:basis-1/3">
+                            <div className="p-1">
+                                <Card className={cn("border-0 shadow-lg", getCardClasses(ann.type))}>
+                                    <CardContent className="p-6">
+                                        <Badge variant="secondary" className="mb-2 bg-white/20 text-white border-0">{ann.type}</Badge>
+                                        <h3 className="font-bold text-lg mb-2">{ann.title}</h3>
+                                        <p className="text-sm text-white/90">{ann.content}</p>
+                                    </CardContent>
+                                </Card>
+                            </div>
                         </CarouselItem>
                     ))}
                 </CarouselContent>
-                {announcements.length > 1 && (
+                 {announcements.length > 1 && (
                     <>
                         <CarouselPrevious className="hidden sm:flex" />
                         <CarouselNext className="hidden sm:flex" />
@@ -78,9 +75,11 @@ export default function DashboardPage() {
     return (
         <>
              <DashboardClientContent />
-             <div className="p-4 sm:p-6 space-y-6 sm:space-y-8 pb-20">
+             <div className="pb-20">
                 <NewsCarousel />
             </div>
         </>
     );
 }
+
+    
