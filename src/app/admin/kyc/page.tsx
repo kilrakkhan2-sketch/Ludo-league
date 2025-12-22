@@ -12,10 +12,12 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Eye, CheckCircle, XCircle } from 'lucide-react';
+import { Eye, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useUser } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { httpsCallable } from 'firebase/functions';
+import { useFunctions } from '@/firebase/provider';
 
 const getStatusVariant = (status: string) => {
   switch (status) {
@@ -35,6 +37,7 @@ const UserCell = ({ userId }: { userId: string }) => {
 
 export default function AdminKycPage() {
   const { firestore } = useFirebase();
+  const functions = useFunctions();
   const { user: adminUser } = useUser();
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState('pending');
@@ -77,6 +80,24 @@ export default function AdminKycPage() {
       setSelectedRequest(null);
     }
   };
+
+  const handleDeleteDocument = async (documentUrl: string) => {
+    if (!functions) return;
+    if (!window.confirm('Are you sure you want to permanently delete this document?')) return;
+
+    setIsSubmitting(true);
+    try {
+        const deleteStorageFile = httpsCallable(functions, 'deleteStorageFile');
+        const filePath = new URL(documentUrl).pathname.split('/o/')[1].split('?')[0];
+        await deleteStorageFile({ filePath: decodeURIComponent(filePath) });
+        toast({ title: 'Document Deleted', description: 'The document has been permanently removed from storage.' });
+    } catch(error: any) {
+        console.error("Error deleting document:", error);
+        toast({ variant: 'destructive', title: 'Delete Failed', description: error.message || 'Could not delete the document.' });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
   
   const isLoading = loading;
 
@@ -136,6 +157,9 @@ export default function AdminKycPage() {
                                          <div className="relative aspect-video w-full rounded-md overflow-hidden border">
                                               <Image src={selectedRequest.documentUrl} alt="KYC Document" layout="fill" objectFit="contain" />
                                           </div>
+                                         <Button variant="destructive" size="sm" className="w-full mt-2" onClick={() => handleDeleteDocument(selectedRequest.documentUrl)} disabled={isSubmitting}>
+                                            <Trash2 className="mr-2 h-4 w-4" /> Delete Document
+                                        </Button>
                                     </div>
                                    )}
                                   {request.status === 'pending' && (

@@ -14,11 +14,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CircleAlert, ArrowLeft, Trophy } from 'lucide-react';
+import { CircleAlert, ArrowLeft, Trophy, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 import { Label } from '@/components/ui/label';
 import { AdminChatRoom } from '@/components/chat/AdminChatRoom';
+import { httpsCallable } from 'firebase/functions';
+import { useFunctions } from '@/firebase/provider';
 
 const getStatusVariant = (status: string) => {
   switch (status) {
@@ -51,6 +53,8 @@ const LoadingSkeleton = () => (
 export default function AdminMatchDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const functions = useFunctions();
+
 
   if (!params) {
     return (
@@ -142,6 +146,24 @@ export default function AdminMatchDetailsPage() {
     }
   };
 
+    const handleDeleteScreenshot = async (screenshotUrl: string) => {
+    if (!functions) return;
+    if (!window.confirm('Are you sure you want to permanently delete this screenshot?')) return;
+
+    setIsSubmitting(true);
+    try {
+        const deleteStorageFile = httpsCallable(functions, 'deleteStorageFile');
+        const filePath = new URL(screenshotUrl).pathname.split('/o/')[1].split('?')[0];
+        await deleteStorageFile({ filePath: decodeURIComponent(filePath) });
+        toast({ title: 'Screenshot Deleted', description: 'The image has been permanently removed from storage.' });
+    } catch(error: any) {
+        console.error("Error deleting screenshot:", error);
+        toast({ variant: 'destructive', title: 'Delete Failed', description: error.message || 'Could not delete the screenshot.' });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
+
   const loading = matchLoading || playersLoading || resultsLoading;
 
   if (loading) {
@@ -167,7 +189,9 @@ export default function AdminMatchDetailsPage() {
       const positions = new Map<number, number>();
       let winnerCount = 0;
       results.forEach(r => {
-          positions.set(r.confirmedPosition, (positions.get(r.confirmedPosition) || 0) + 1);
+          if (r.confirmedPosition) {
+            positions.set(r.confirmedPosition, (positions.get(r.confirmedPosition) || 0) + 1);
+          }
           if (r.confirmedWinStatus === 'win') {
               winnerCount++;
           }
@@ -230,14 +254,14 @@ export default function AdminMatchDetailsPage() {
                                     <th className="p-2">Player</th>
                                     <th className="p-2">Selected Position</th>
                                     <th className="p-2">Win / Loss</th>
-                                    <th className="p-2">Screenshot</th>
+                                    <th className="p-2 text-center">Screenshot</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {players.map(player => {
                                     const result = resultsMap.get(player.id);
                                     const isWinner = result?.confirmedWinStatus === 'win';
-                                    const isDisputed = results.filter(r => r.confirmedPosition === result?.confirmedPosition).length > 1;
+                                    const isDisputed = result?.confirmedPosition && results.filter(r => r.confirmedPosition === result.confirmedPosition).length > 1;
 
                                     return (
                                         <tr key={player.id} className="border-t">
@@ -245,11 +269,18 @@ export default function AdminMatchDetailsPage() {
                                             <td className={`p-2 font-semibold ${isDisputed ? 'text-destructive' : ''}`}>{result?.confirmedPosition ? `${result.confirmedPosition}${isDisputed ? ' ❌' : ''}` : 'N/A'}</td>
                                             <td className={`p-2 font-semibold capitalize ${isWinner ? 'text-green-500' : 'text-gray-500'}`}>{result?.confirmedWinStatus || 'N/A'}</td>
                                             <td className="p-2">
-                                                {result?.screenshotUrl ? (
-                                                    <a href={result.screenshotUrl} target="_blank" rel="noopener noreferrer">
-                                                        <Image src={result.screenshotUrl} alt={`Screenshot from ${player.displayName}`} width={80} height={45} className="rounded-md object-cover"/>
-                                                    </a>
-                                                ) : 'No Screenshot'}
+                                                <div className="flex items-center justify-center gap-2">
+                                                    {result?.screenshotUrl ? (
+                                                        <a href={result.screenshotUrl} target="_blank" rel="noopener noreferrer">
+                                                            <Image src={result.screenshotUrl} alt={`Screenshot from ${player.displayName}`} width={80} height={45} className="rounded-md object-cover"/>
+                                                        </a>
+                                                    ) : <span className="text-xs text-muted-foreground">No Screenshot</span>}
+                                                    {result?.screenshotUrl && (
+                                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteScreenshot(result.screenshotUrl)}>
+                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     )

@@ -12,11 +12,13 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Eye, CheckCircle, XCircle } from 'lucide-react';
+import { Eye, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useUser } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AdminChatRoom } from '@/components/chat/AdminChatRoom';
+import { httpsCallable } from 'firebase/functions';
+import { useFunctions } from '@/firebase/provider';
 
 const getStatusVariant = (status: string) => {
   switch (status) {
@@ -41,7 +43,8 @@ const ProcessorCell = ({ userId }: { userId: string | undefined }) => {
 
 
 export default function AdminDepositsPage() {
-  const { firestore, app } = useFirebase();
+  const { firestore } = useFirebase();
+  const functions = useFunctions();
   const { user: adminUser } = useUser();
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState('pending');
@@ -102,6 +105,24 @@ export default function AdminDepositsPage() {
       setSelectedDeposit(null);
     }
   };
+
+  const handleDeleteScreenshot = async (screenshotUrl: string) => {
+    if (!functions) return;
+    if (!window.confirm('Are you sure you want to permanently delete this screenshot?')) return;
+
+    setIsSubmitting(true);
+    try {
+        const deleteStorageFile = httpsCallable(functions, 'deleteStorageFile');
+        const filePath = new URL(screenshotUrl).pathname.split('/o/')[1].split('?')[0];
+        await deleteStorageFile({ filePath: decodeURIComponent(filePath) });
+        toast({ title: 'Screenshot Deleted', description: 'The image has been permanently removed from storage.' });
+    } catch(error: any) {
+        console.error("Error deleting screenshot:", error);
+        toast({ variant: 'destructive', title: 'Delete Failed', description: error.message || 'Could not delete the screenshot.' });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
   
   const isLoading = depositsLoading;
 
@@ -162,6 +183,9 @@ export default function AdminDepositsPage() {
                                              <div className="relative aspect-square w-full rounded-md overflow-hidden border">
                                                   <Image src={selectedDeposit.screenshotUrl} alt="Payment Screenshot" layout="fill" objectFit="contain" />
                                               </div>
+                                              <Button variant="destructive" size="sm" className="w-full mt-2" onClick={() => handleDeleteScreenshot(selectedDeposit.screenshotUrl)} disabled={isSubmitting}>
+                                                <Trash2 className="mr-2 h-4 w-4" /> Delete Screenshot
+                                              </Button>
                                         </div>
                                        )}
                                       {deposit.status === 'pending' && (

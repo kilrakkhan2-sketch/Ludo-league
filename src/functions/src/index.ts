@@ -2,6 +2,7 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -105,6 +106,46 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('internal', 'An error occurred while trying to set the user role.');
   }
 });
+
+// =================================================================
+//  STORAGE MANAGEMENT FUNCTIONS
+// =================================================================
+export const deleteStorageFile = functions.https.onCall(async (data, context) => {
+    // 1. Authentication & Authorization Check
+    if (context.auth?.token.role !== 'superadmin') {
+        throw new functions.https.HttpsError("permission-denied", "You must be a superadmin to delete files.");
+    }
+    
+    // 2. Data Validation
+    const { filePath } = data;
+    if (!filePath || typeof filePath !== 'string') {
+        throw new functions.https.HttpsError("invalid-argument", "A valid file path is required.");
+    }
+    
+    try {
+        const bucket = getStorage().bucket();
+        const file = bucket.file(filePath);
+        
+        const [exists] = await file.exists();
+        if (!exists) {
+            throw new functions.https.HttpsError("not-found", "The specified file does not exist.");
+        }
+        
+        await file.delete();
+        
+        functions.logger.info(`File ${filePath} deleted by admin ${context.auth.uid}.`);
+        return { success: true, message: "File deleted successfully." };
+
+    } catch (error) {
+        functions.logger.error(`Failed to delete file ${filePath}:`, error);
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        } else {
+            throw new functions.https.HttpsError("internal", "An unexpected error occurred while deleting the file.");
+        }
+    }
+});
+
 
 // =================================================================
 //  WITHDRAWAL MANAGEMENT FUNCTIONS
@@ -527,9 +568,12 @@ export const createMatch = functions.https.onCall(async (data, context) => {
                 players: [userId],
                 status: 'open',
                 roomCode: null,
+                resultStage: 'none',
+                autoPayoutAllowed: true,
                 createdAt: FieldValue.serverTimestamp(),
                 startedAt: null,
                 completedAt: null,
+                winnerId: null,
             });
             
             return matchRef.id;
