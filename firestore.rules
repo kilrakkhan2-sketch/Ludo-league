@@ -15,27 +15,23 @@ service cloud.firestore {
     }
     
     function isAnyAdmin() {
-        let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-        return role == 'superadmin' || role == 'deposit_admin' || role == 'withdrawal_admin' || role == 'match_admin';
+        return request.auth.token.role == 'superadmin' || request.auth.token.role == 'deposit_admin' || request.auth.token.role == 'withdrawal_admin' || request.auth.token.role == 'match_admin';
     }
 
     function isSuperAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+      return request.auth.token.role == 'superadmin';
     }
 
     function isDepositAdmin() {
-      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-      return role == 'deposit_admin' || role == 'superadmin';
+      return request.auth.token.role == 'deposit_admin' || request.auth.token.role == 'superadmin';
     }
     
     function isWithdrawalAdmin() {
-      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-      return role == 'withdrawal_admin' || role == 'superadmin';
+      return request.auth.token.role == 'withdrawal_admin' || request.auth.token.role == 'superadmin';
     }
 
     function isMatchAdmin() {
-      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-      return role == 'match_admin' || role == 'superadmin';
+      return request.auth.token.role == 'match_admin' || request.auth.token.role == 'superadmin';
     }
 
     function isOwner(userId) {
