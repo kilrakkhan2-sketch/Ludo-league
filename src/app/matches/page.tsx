@@ -11,7 +11,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Users, Trophy, PlusCircle } from 'lucide-react';
@@ -165,7 +165,7 @@ export default function MatchesPage() {
 
   return (
     <AppShell pageTitle="Matches">
-        <div className="bg-card p-4 rounded-lg shadow-sm border flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-16 sm:top-0 z-10">
+        <div className="bg-background/80 backdrop-blur-sm p-4 rounded-lg shadow-sm border flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-16 sm:top-0 z-10">
             <div className="flex items-center gap-3">
                 <p className="text-sm text-muted-foreground">Wallet Balance</p>
                 <WalletBalance />
