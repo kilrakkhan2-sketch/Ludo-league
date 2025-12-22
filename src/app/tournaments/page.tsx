@@ -1,153 +1,16 @@
 
-"use client";
-
-import { AppShell } from "@/components/layout/AppShell";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Award, Calendar, Users, PlusCircle } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { useCollection, useUser, useDoc } from "@/firebase";
-import { useFirebase } from "@/firebase/provider";
-import type { Tournament, UserProfile } from "@/types";
-import { Skeleton } from "@/components/ui/skeleton";
-import { format } from 'date-fns';
-import { useToast } from "@/hooks/use-toast";
-import { doc, updateDoc, arrayUnion } from "firebase/firestore";
-import { useState } from "react";
-
-const TournamentCardSkeleton = () => (
-    <Card className="overflow-hidden">
-        <Skeleton className="h-40 w-full" />
-        <CardContent className="p-4 space-y-3">
-            <div className="space-y-2">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-            </div>
-        </CardContent>
-        <CardFooter className="p-4 pt-0">
-            <Skeleton className="h-10 w-full" />
-        </CardFooter>
-    </Card>
-);
-
-const TournamentCard = ({ tournament }: { tournament: Tournament }) => {
-    const { user } = useUser();
-    const { firestore } = useFirebase();
-    const { toast } = useToast();
-    const [isRegistering, setIsRegistering] = useState(false);
-
-    const hasRegistered = user ? tournament.players.includes(user.uid) : false;
-    const isFull = tournament.players.length >= tournament.maxPlayers;
-    
-    return (
-        <Card className="overflow-hidden hover:shadow-lg transition-shadow bg-card flex flex-col">
-            <div className="relative h-40 w-full">
-                <Image
-                src={tournament.bannerUrl || `https://picsum.photos/seed/${tournament.id}/400/200`}
-                alt={tournament.name}
-                data-ai-hint="tournament banner"
-                fill
-                className="object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <Badge
-                className="absolute top-3 right-3 capitalize"
-                variant={
-                    tournament.status === "live" ? "destructive" : "secondary"
-                }
-                >
-                {tournament.status}
-                </Badge>
-                <div className="absolute bottom-3 left-4 text-primary-foreground">
-                    <h3 className="font-bold text-lg">{tournament.name}</h3>
-                    <p className="text-xs opacity-80">Entry: ₹{tournament.entryFee}</p>
-                </div>
-            </div>
-            <CardContent className="p-4 space-y-3 flex-grow">
-            <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                    <Award className="h-5 w-5 text-primary" />
-                    <span className="font-semibold text-foreground">
-                    ₹{tournament.prizePool.toLocaleString()}
-                    </span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                    <Users className="h-5 w-5" />
-                    <span className="font-semibold text-foreground">
-                    {tournament.players.length}/{tournament.maxPlayers}
-                    </span>
-                </div>
-            </div>
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                <Calendar className="h-5 w-5" />
-                <span>Starts: {tournament.startDate ? format(tournament.startDate.toDate(), 'PP') : 'N/A'}</span>
-            </div>
-            </CardContent>
-            <CardFooter className="p-4 pt-0">
-                 <Link href={`/tournaments/${tournament.id}`} className="w-full">
-                    <Button className="w-full" variant="outline">View Details</Button>
-                </Link>
-            </CardFooter>
-        </Card>
-    );
-};
+import { AppShell } from "@/components/app-shell";
 
 export default function TournamentsPage() {
-  const { user } = useUser();
-  const { data: profile } = useDoc<UserProfile>(user ? `users/${user.uid}` : undefined);
-  const { data: tournaments, loading } = useCollection<Tournament>('tournaments', {
-      orderBy: ['startDate', 'desc']
-  });
-
-  const canCreate = profile && (profile.role === 'superadmin' || profile.role === 'match_admin');
-
   return (
-    <AppShell pageTitle="Tournaments">
-      <div className="p-4 space-y-6">
-        {canCreate && (
-             <div className="flex justify-end">
-                <Link href="/admin/tournaments/create">
-                    <Button><PlusCircle className="mr-2 h-4 w-4" />Create Tournament</Button>
-                </Link>
+    <AppShell>
+        <div className="container mx-auto p-4">
+            <h1 className="text-2xl font-bold mb-4">Tournaments</h1>
+            <div className="text-center py-16 border-2 border-dashed rounded-lg">
+                <h2 className="text-xl font-semibold text-muted-foreground">Coming Soon!</h2>
+                <p className="text-muted-foreground mt-2">Get ready for epic battles and huge prize pools. Tournaments are under construction.</p>
             </div>
-        )}
-        {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <TournamentCardSkeleton />
-                <TournamentCardSkeleton />
-            </div>
-        ) : tournaments.length === 0 ? (
-            <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg bg-card mt-8">
-                <Award className="mx-auto h-12 w-12 text-muted-foreground" />
-                <h3 className="mt-4 text-lg font-semibold text-foreground">No Tournaments Found</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                {canCreate ? "Create the first tournament and engage your players!" : "There are no active or upcoming tournaments right now."}
-                </p>
-                {canCreate && (
-                    <div className="mt-6">
-                        <Link href="/admin/tournaments/create">
-                            <Button><PlusCircle className="mr-2 h-4 w-4" />Create a Tournament</Button>
-                        </Link>
-                    </div>
-                )}
-            </div>
-        ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {tournaments.map((tournament) => (
-                <TournamentCard key={tournament.id} tournament={tournament} />
-              ))}
-            </div>
-        )}
-      </div>
+        </div>
     </AppShell>
   );
 }
