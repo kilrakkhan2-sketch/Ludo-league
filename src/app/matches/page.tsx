@@ -13,7 +13,6 @@ import { useCollection, useUser, useFirebase } from '@/firebase';
 import type { Match, UserProfile } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WalletBalance } from '@/components/wallet-balance';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { doc, runTransaction, Timestamp, updateDoc } from 'firebase/firestore';
@@ -45,9 +44,8 @@ const MatchListItem = ({ match, creator }: { match: Match, creator?: UserProfile
   const [isJoining, setIsJoining] = useState(false);
 
   const hasJoined = user ? match.players.includes(user.uid) : false;
-  const isCreator = user ? match.creatorId === user.uid : false;
   const isFull = match.players.length >= match.maxPlayers;
-  const canJoin = match.status === 'open' && !isFull && !hasJoined && !isCreator;
+  const canJoin = match.status === 'open' && !isFull && !hasJoined;
 
   const handleJoinMatch = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -89,26 +87,26 @@ const MatchListItem = ({ match, creator }: { match: Match, creator?: UserProfile
   return (
     <Link href={`/match/${match.id}`} className="block">
         <div className="bg-card rounded-lg shadow-sm border p-3 hover:bg-muted/50 transition-colors">
-        <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10 border">
-                <AvatarImage src={creator?.photoURL || ''} />
-                <AvatarFallback>{creator?.displayName?.[0] || 'U'}</AvatarFallback>
-                </Avatar>
-                <div>
-                <p className="text-xs text-muted-foreground">Challenge by {creator?.displayName || "..."}</p>
-                <p className="font-semibold">{match.title}</p>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10 border">
+                        <AvatarImage src={creator?.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${match.creatorId}`} />
+                        <AvatarFallback>{creator?.displayName?.[0] || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <p className="text-xs text-muted-foreground">Challenge by {creator?.displayName || "..."}</p>
+                        <p className="font-semibold">{match.title}</p>
+                    </div>
+                </div>
+                <div className="text-right">
+                    <p className="font-bold text-primary text-lg">₹{match.entryFee}</p>
+                    {canJoin ? (
+                         <Button size="sm" onClick={handleJoinMatch} disabled={isJoining}>{isJoining ? 'Joining...' : 'Join'}</Button>
+                    ) : (
+                        <span className="text-xs text-muted-foreground capitalize">{match.status}</span>
+                    )}
                 </div>
             </div>
-            <div className="text-right">
-                <p className="font-bold text-primary text-lg">₹{match.entryFee}</p>
-                {canJoin ? (
-                     <Button size="sm" onClick={handleJoinMatch} disabled={isJoining}>{isJoining ? 'Joining...' : 'Join'}</Button>
-                ) : (
-                    <span className="text-xs text-muted-foreground capitalize">{match.status}</span>
-                )}
-            </div>
-        </div>
         </div>
     </Link>
   );
@@ -119,7 +117,7 @@ const MatchesList = ({ matches, loading }: { matches: Match[], loading: boolean 
     const creatorIds = useMemo(() => {
         if (!matches || matches.length === 0) return ['_'];
         const ids = new Set(matches.map(m => m.creatorId));
-        return Array.from(ids);
+        return Array.from(ids).length > 0 ? Array.from(ids) : ['_'];
     }, [matches]);
 
     const usersQueryOptions = useMemo(() => ({ where: [['uid', 'in', creatorIds] as const] }), [creatorIds]);
@@ -148,7 +146,7 @@ const MatchesList = ({ matches, loading }: { matches: Match[], loading: boolean 
                 <Trophy className="mx-auto h-12 w-12 text-muted-foreground" />
                 <h3 className="mt-4 text-lg font-semibold text-foreground">No Matches Found</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                    There are no matches in this category right now.
+                    There are no matches available right now.
                 </p>
                 <Button asChild className="mt-4">
                   <Link href="/create-match">Create the first one!</Link>
@@ -168,7 +166,6 @@ const MatchesList = ({ matches, loading }: { matches: Match[], loading: boolean 
 
 export default function MatchesPage() {
   const { user } = useUser();
-  const [filter, setFilter] = useState('open');
   
   const queryOptions = useMemo(() => ({
     orderBy: [['createdAt', 'desc'] as const],
@@ -177,14 +174,29 @@ export default function MatchesPage() {
 
   const { data: allMatches, loading } = useCollection<Match>('matches', queryOptions);
 
-  const filteredMatches = useMemo(() => {
+  const sortedMatches = useMemo(() => {
     if (!allMatches) return [];
-    if (filter === 'all') return allMatches;
-    if (filter === 'my-matches') {
-        return allMatches.filter(m => user && m.players.includes(user.uid));
-    }
-    return allMatches.filter(m => m.status === filter);
-  }, [allMatches, filter, user]);
+    
+    // Create a copy to avoid mutating the original array
+    const matchesCopy = [...allMatches];
+
+    // Sort the array: user's created matches first, then by creation date.
+    matchesCopy.sort((a, b) => {
+        const isUserCreatorA = a.creatorId === user?.uid;
+        const isUserCreatorB = b.creatorId === user?.uid;
+
+        if (isUserCreatorA && !isUserCreatorB) {
+            return -1; // a comes first
+        }
+        if (!isUserCreatorA && isUserCreatorB) {
+            return 1; // b comes first
+        }
+        // If both are created by user, or neither, sort by date (already done by Firestore query)
+        return 0;
+    });
+
+    return matchesCopy;
+  }, [allMatches, user]);
 
   return (
     <AppShell pageTitle="Matches">
@@ -204,15 +216,7 @@ export default function MatchesPage() {
         <div className='text-center space-y-2'>
             <h2 className='text-xl font-bold flex items-center justify-center gap-2'><Trophy className='text-yellow-500'/> Open Battles <Trophy className='text-yellow-500'/></h2>
         </div>
-         <Tabs value={filter} onValueChange={setFilter} className='hidden'>
-            <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="open">Open</TabsTrigger>
-                <TabsTrigger value="ongoing">Ongoing</TabsTrigger>
-                <TabsTrigger value="my-matches">My Matches</TabsTrigger>
-            </TabsList>
-        </Tabs>
-        <MatchesList matches={filteredMatches} loading={loading} />
+        <MatchesList matches={sortedMatches} loading={loading} />
       </div>
     </AppShell>
   );
