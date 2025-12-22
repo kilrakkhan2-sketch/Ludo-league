@@ -61,48 +61,36 @@ const MatchCard = ({ match }: { match: Match }) => {
   };
 
   return (
-    <Card className="flex flex-col hover:shadow-lg transition-shadow">
-      <CardHeader className="p-4">
+    <Card className="flex flex-col hover:shadow-lg transition-shadow overflow-hidden">
+      <CardHeader className="p-4 bg-muted/30">
         <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="text-lg truncate">{match.title}</CardTitle>
-            <CardDescription>
-              Entry: <span className="font-bold text-primary">₹{match.entryFee}</span>
-            </CardDescription>
-          </div>
-          <Badge variant={getStatusVariant(match.status)} className="capitalize">
+          <CardTitle className="text-base font-bold truncate pr-2">{match.title}</CardTitle>
+          <Badge variant={getStatusVariant(match.status)} className="capitalize shrink-0">
             {isFull && match.status === 'open' ? 'Full' : match.status.replace('_', ' ')}
           </Badge>
         </div>
-      </CardHeader>
-      <CardContent className="p-4 pt-0 flex-grow">
-        <div className="flex items-center -space-x-2 mb-2">
-          {match.players.map((playerId, i) => (
-            <Avatar key={playerId} className="h-6 w-6 border-2 border-background">
-              <AvatarImage src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${playerId}`} />
-              <AvatarFallback>P{i + 1}</AvatarFallback>
-            </Avatar>
-          ))}
-          {Array.from({ length: Math.max(0, match.maxPlayers - match.players.length) }).map((_, i) => (
-            <Avatar key={`empty-${i}`} className="h-6 w-6 border-2 border-background bg-muted">
-              <AvatarFallback>?</AvatarFallback>
-            </Avatar>
-          ))}
-        </div>
-        <div className="flex items-center gap-2 text-muted-foreground text-sm">
-          <Users className="h-4 w-4" />
+        <div className="flex items-center gap-2 text-muted-foreground text-xs pt-1">
+          <Users className="h-3 w-3" />
           <span>
-            {match.players.length} / {match.maxPlayers} Players
+            {match.players.length} of {match.maxPlayers} Players
           </span>
         </div>
-      </CardContent>
-      <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-4">
-        <div className="flex items-center gap-1.5">
-          <Trophy className="h-5 w-5 text-yellow-500" />
-          <p className="text-lg font-bold">₹{match.prizePool}</p>
+      </CardHeader>
+      <CardContent className="p-4 flex-grow grid grid-cols-2 gap-4">
+        <div className="text-center">
+            <p className="text-xs text-muted-foreground">Entry Fee</p>
+            <p className="font-bold text-lg text-primary">₹{match.entryFee}</p>
         </div>
-        <Button asChild>
-          <Link href={`/match/${match.id}`}>View</Link>
+         <div className="text-center border-l">
+            <p className="text-xs text-muted-foreground">Winning Prize</p>
+            <p className="font-bold text-lg text-green-600">₹{match.prizePool}</p>
+        </div>
+      </CardContent>
+      <CardFooter className="bg-muted/30 p-2">
+        <Button asChild className="w-full">
+          <Link href={`/match/${match.id}`}>
+            {isFull || match.status !== 'open' ? 'View Match' : 'Join Now'}
+          </Link>
         </Button>
       </CardFooter>
     </Card>
@@ -124,12 +112,15 @@ const MatchesList = ({ matches, loading }: { matches: Match[], loading: boolean 
     
     if (matches.length === 0) {
         return (
-            <div className="text-center py-12 px-4 border-2 border-dashed rounded-lg bg-card mt-8">
+            <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg bg-card mt-8">
                 <Trophy className="mx-auto h-12 w-12 text-muted-foreground" />
-                <h3 className="mt-2 text-sm font-semibold text-foreground">No Matches Found</h3>
+                <h3 className="mt-4 text-lg font-semibold text-foreground">No Matches Found</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                    There are no matches in this category.
+                    There are no matches in this category right now.
                 </p>
+                <Button asChild className="mt-4">
+                  <Link href="/create-match">Create the first one!</Link>
+                </Button>
             </div>
         )
     }
