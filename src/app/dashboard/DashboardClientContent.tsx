@@ -130,27 +130,11 @@ export default function DashboardClientContent() {
     const { user, loading: userLoading } = useUser();
     const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
 
-    // 1. Fetch all matches the user is a part of.
-    const allMyMatchesQuery = useMemo(() => ({
-        where: user?.uid ? [['players', 'array-contains', user.uid]] : undefined,
-    }), [user?.uid]);
-    const { data: allMyMatches, loading: myMatchesLoading } = useCollection<Match>('matches', allMyMatchesQuery);
-
-    // 2. Fetch all open matches.
-    const allOpenMatchesQuery = useMemo(() => ({
-        where: [['status', '==', 'open']],
+    // Single, simple query to get all open matches. This is reliable.
+    const { data: openMatches, loading: openMatchesLoading } = useCollection<Match>('matches', {
+        where: ['status', '==', 'open'],
         limit: 20
-    }), []);
-    const { data: allOpenMatches, loading: openMatchesLoading } = useCollection<Match>('matches', allOpenMatchesQuery);
-
-    // 3. Client-side filtering
-    const { myActiveMatches, openMatchesForMe } = useMemo(() => {
-        const myActiveMatches = allMyMatches.filter(m => ['open', 'ongoing', 'processing'].includes(m.status));
-        const myMatchIds = new Set(allMyMatches.map(m => m.id));
-        const openMatchesForMe = allOpenMatches.filter(m => !myMatchIds.has(m.id));
-
-        return { myActiveMatches, openMatchesForMe };
-    }, [allMyMatches, allOpenMatches]);
+    });
     
     const loading = userLoading || profileLoading;
     
@@ -194,17 +178,9 @@ export default function DashboardClientContent() {
                     </div>
                 </section>
                 
-                 <MatchSection
-                    title="My Active Matches"
-                    matches={myActiveMatches}
-                    loading={myMatchesLoading}
-                    emptyMessage="You have no active matches."
-                    viewAllLink="/matches/my-matches"
-                />
-
                 <MatchSection
                     title="Open Matches"
-                    matches={openMatchesForMe}
+                    matches={openMatches}
                     loading={openMatchesLoading}
                     emptyMessage="No new open matches available."
                     viewAllLink="/matches/open"
