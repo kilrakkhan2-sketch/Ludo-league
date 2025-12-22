@@ -41,6 +41,7 @@ export default function AdminDashboardPage() {
   
   // ----------- PLATFORM OVERVIEW -----------
   const { count: totalUsers, loading: usersLoading } = useCollectionCount("users");
+  const { count: openMatches, loading: openMatchesLoading } = useCollectionCount("matches", { where: ["status", "==", "open"] });
   const { count: ongoingMatches, loading: ongoingMatchesLoading } = useCollectionCount("matches", { where: ["status", "==", "ongoing"] });
   const { count: liveTournaments, loading: liveTournamentsLoading } = useCollectionCount("tournaments", { where: ["status", "==", "live"] });
   
@@ -64,7 +65,7 @@ export default function AdminDashboardPage() {
   const totalWithdrawals = useMemo(() => withdrawals?.reduce((acc, w) => acc + (w.amount || 0), 0) || 0, [withdrawals]);
   const totalCommissions = useMemo(() => commissions?.reduce((acc, c) => acc + (c.amount || 0), 0) || 0, [commissions]);
 
-  const loading = usersLoading || depositsLoading || withdrawalsLoading || commissionsLoading;
+  const loading = usersLoading || depositsLoading || withdrawalsLoading || commissionsLoading || openMatchesLoading;
   const pendingLoading = pendingDepositsLoading || pendingWithdrawalsLoading || pendingKycLoading || pendingMatchesLoading || disputedMatchesLoading;
   
   const revenueData = [
@@ -89,7 +90,7 @@ export default function AdminDashboardPage() {
     <>
       <div className="space-y-2">
         <h2 className="text-lg font-semibold">Immediate Actions</h2>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
           <StatCard title="Pending Deposits" value={pendingDeposits} icon={CircleArrowUp} loading={pendingLoading} href="/admin/deposits" />
           <StatCard title="Pending Withdrawals" value={pendingWithdrawals} icon={Landmark} loading={pendingLoading} href="/admin/withdrawals" />
           <StatCard title="Pending KYC" value={pendingKyc} icon={FileKey} loading={pendingLoading} href="/admin/kyc" />
@@ -102,8 +103,9 @@ export default function AdminDashboardPage() {
 
       <div className="space-y-2">
         <h2 className="text-lg font-semibold">Platform Overview</h2>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <StatCard title="Total Users" value={totalUsers} icon={Users} loading={usersLoading} href="/admin/users" />
+          <StatCard title="Open Matches" value={openMatches} icon={Sword} loading={loading} href="/admin/matches" />
           <StatCard title="Ongoing Matches" value={ongoingMatches} icon={Gamepad2} loading={ongoingMatchesLoading} href="/admin/matches" />
           <StatCard title="Live Tournaments" value={liveTournaments} icon={Ticket} loading={liveTournamentsLoading} href="/admin/tournaments" />
           <StatCard title="New Users (24h)" value={newUsersToday} icon={Users} loading={newUsersLoading} />
