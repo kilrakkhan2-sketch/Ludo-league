@@ -122,7 +122,9 @@ const ResultSubmissionForm = ({ match }: { match: Match }) => {
         }
         setIsSubmitting(true);
         try {
-            const screenshotRef = ref(storage, `match-results/${match.id}/${user.uid}-${screenshot.name}`);
+            const safeFileName = `result_${Date.now()}_${screenshot.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+            const screenshotRef = ref(storage, `match-results/${match.id}/${safeFileName}`);
+            
             await uploadBytes(screenshotRef, screenshot);
             const screenshotUrl = await getDownloadURL(screenshotRef);
 
@@ -356,15 +358,11 @@ const MatchOpenContent = ({ match, players }: { match: Match, players: UserProfi
 
                 // 2. Add player to match
                 const updatedPlayers = [...matchData.players, user.uid];
-                transaction.update(matchRef, { players: updatedPlayers });
-
-                // 3. If match is now full, update status to 'ongoing'
-                if (updatedPlayers.length === matchData.maxPlayers) {
-                    transaction.update(matchRef, {
-                        status: 'ongoing',
-                        startedAt: Timestamp.now()
-                    });
-                }
+                transaction.update(matchRef, { 
+                    players: updatedPlayers,
+                    status: updatedPlayers.length === matchData.maxPlayers ? 'ongoing' : 'open',
+                    startedAt: updatedPlayers.length === matchData.maxPlayers ? Timestamp.now() : null
+                });
             });
 
             toast({ title: "Successfully Joined!", description: `You have joined the match "${match.title}".` });

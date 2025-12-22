@@ -63,7 +63,10 @@ export default function KycPage() {
     setIsSubmitting(true);
     try {
         const storage = getStorage();
-        const docRef = ref(storage, `kyc-documents/${user.uid}/${Date.now()}_${docFile.name}`);
+        // Create a safe, unique filename to avoid issues with special characters
+        const safeFileName = `kyc_${Date.now()}_${docFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+        const docRef = ref(storage, `kyc-documents/${user.uid}/${safeFileName}`);
+        
         await uploadBytes(docRef, docFile);
         const documentUrl = await getDownloadURL(docRef);
 
@@ -86,12 +89,12 @@ export default function KycPage() {
         setDocType('');
         setDocNumber('');
         setDocFile(null);
-    } catch (error) {
+    } catch (error: any) {
         console.error("KYC Submission Error:", error);
         toast({
             variant: "destructive",
             title: "Submission Failed",
-            description: "There was an error submitting your documents. Please try again.",
+            description: error.message || "There was an error submitting your documents. Please try again.",
         });
     } finally {
         setIsSubmitting(false);
