@@ -9,7 +9,7 @@ admin.initializeApp();
 const db = admin.firestore();
 
 // Type definitions for robust data handling
-interface UserData {
+interface UserProfile {
     walletBalance?: number;
     referralEarnings?: number;
     referredBy?: string;
@@ -19,6 +19,11 @@ interface UserData {
     matchesPlayed?: number;
     matchesWon?: number;
     name?: string;
+    adminWallet?: {
+        balance: number;
+        totalReceived: number;
+        totalUsed: number;
+    };
     [key: string]: any;
 }
 
@@ -304,7 +309,7 @@ export const onDepositStatusChange = functions.firestore
         await db.runTransaction(async (t) => {
             const userDoc = await t.get(userRef);
             if (!userDoc.exists) throw new Error(`User ${userId} not found.`);
-            const userData = userDoc.data() as UserData;
+            const userData = userDoc.data() as UserProfile;
             
             const commissionSettingsDoc = await t.get(commissionSettingsRef);
             const commissionSettings = commissionSettingsDoc.data() as CommissionSettings | undefined;
@@ -664,5 +669,3 @@ export const createTournament = functions.https.onCall(async (data, context) => 
         throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the tournament.");
     }
 });
-
-    
