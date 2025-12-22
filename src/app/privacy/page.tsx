@@ -1,9 +1,9 @@
 
-import { AppShell } from "@/components/layout/AppShell";
+import { InfoPageShell } from "@/components/layout/InfoPageShell";
 
 export default function PrivacyPolicyPage() {
   return (
-    <AppShell pageTitle="Privacy Policy" showBackButton>
+    <InfoPageShell pageTitle="Privacy Policy">
       <div className="p-4 sm:p-6">
         <div className="prose dark:prose-invert max-w-none bg-card p-6 rounded-lg shadow-sm">
             <h1 className="text-2xl sm:text-3xl font-bold mb-4">Privacy Policy</h1>
@@ -77,6 +77,6 @@ export default function PrivacyPolicyPage() {
             </ul>
         </div>
     </div>
-    </AppShell>
+    </InfoPageShell>
   );
 }
