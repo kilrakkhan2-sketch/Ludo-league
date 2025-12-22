@@ -2,8 +2,6 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { AppShell } from "@/components/layout/AppShell";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -21,6 +19,8 @@ import type { Match } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WalletBalance } from '@/components/wallet-balance';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AppShell } from '@/components/layout/AppShell';
+import { Button } from '@/components/ui/button';
 
 
 const MatchCardSkeleton = () => (
@@ -156,7 +156,7 @@ export default function MatchesPage() {
 
   return (
     <AppShell pageTitle="Matches">
-        <div className="bg-background/80 backdrop-blur-sm p-4 rounded-lg shadow-sm border flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-16 sm:top-0 z-10">
+        <div className="bg-background/80 backdrop-blur-sm p-4 flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-14 sm:top-0 z-10 border-b">
             <div className="flex items-center gap-3">
                 <p className="text-sm text-muted-foreground">Wallet Balance</p>
                 <WalletBalance />
