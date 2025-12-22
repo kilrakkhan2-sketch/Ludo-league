@@ -394,7 +394,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
   const { data: match, loading: matchLoading } = useDoc<Match>(`matches/${params.id}`);
   
   const resultsQueryOptions = useMemo(() => ({
-    orderBy: ['submittedAt', 'desc']
+    orderBy: ['submittedAt', 'desc'] as const
   }), []);
   const { data: results, loading: resultsLoading } = useCollection<MatchResult>(`matches/${params.id}/results`, resultsQueryOptions);
   
@@ -406,7 +406,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
   }, [match]);
 
   const playersQueryOptions = useMemo(() => ({
-      where: ['uid', 'in', playerIds]
+      where: ['uid', 'in', playerIds] as const
   }), [playerIds]);
   const { data: playersData, loading: playersLoading } = useCollection<UserProfile>(
     'users', playersQueryOptions

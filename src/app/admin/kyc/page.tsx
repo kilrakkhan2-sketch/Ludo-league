@@ -45,8 +45,8 @@ export default function AdminKycPage() {
   const [selectedRequest, setSelectedRequest] = useState<KycRequest | null>(null);
 
   const queryOptions = useMemo(() => ({
-    orderBy: ['createdAt', 'desc'],
-    where: ['status', '==', statusFilter]
+    orderBy: ['createdAt', 'desc'] as const,
+    where: ['status', '==', statusFilter] as const
   }), [statusFilter]);
   const { data: requests, loading } = useCollection<KycRequest>('kyc-requests', queryOptions);
 

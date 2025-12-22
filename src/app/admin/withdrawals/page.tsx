@@ -33,8 +33,8 @@ export default function AdminWithdrawalsPage() {
   const [selectedRequest, setSelectedRequest] = useState<WithdrawalRequest | null>(null);
 
   const requestQueryOptions = useMemo(() => ({
-    where: ['status', '==', statusFilter],
-    orderBy: ['createdAt', 'desc'],
+    where: ['status', '==', statusFilter] as const,
+    orderBy: ['createdAt', 'desc'] as const,
   }), [statusFilter]);
   const { data: requests, loading } = useCollection<WithdrawalRequest>('withdrawal-requests', requestQueryOptions);
 
@@ -51,7 +51,7 @@ export default function AdminWithdrawalsPage() {
   }, [requests]);
 
   const usersQueryOptions = useMemo(() => ({
-    where: ['uid', 'in', allUserIdsInView]
+    where: ['uid', 'in', allUserIdsInView] as const
   }), [allUserIdsInView]);
   const { data: usersData, loading: usersLoading } = useCollection<UserProfile>('users', usersQueryOptions);
 

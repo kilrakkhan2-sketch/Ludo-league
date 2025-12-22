@@ -34,17 +34,17 @@ export default function FriendsPage() {
 
   // My friends
   const friendIds = useMemo(() => currentUserProfile?.friends?.length ? currentUserProfile.friends : ['_'], [currentUserProfile]);
-  const friendsQueryOptions = useMemo(() => ({ where: ['uid', 'in', friendIds] }), [friendIds]);
+  const friendsQueryOptions = useMemo(() => ({ where: ['uid', 'in', friendIds] as const }), [friendIds]);
   const { data: friends, loading: friendsLoading } = useCollection<UserProfile>('users', friendsQueryOptions);
 
   // Incoming friend requests
   const requestsQueryOptions = useMemo(() => ({
-      where: [['to', '==', user?.uid || ''], ['status', '==', 'pending']]
+      where: [['to', '==', user?.uid || ''] as const, ['status', '==', 'pending'] as const]
   }), [user?.uid]);
   const { data: requests, loading: requestsLoading } = useCollection<FriendRequest>('friend-requests', requestsQueryOptions);
   
   const requestSenderIds = useMemo(() => requests.length > 0 ? requests.map(r => r.from) : ['_'], [requests]);
-  const sendersQueryOptions = useMemo(() => ({ where: ['uid', 'in', requestSenderIds] }), [requestSenderIds]);
+  const sendersQueryOptions = useMemo(() => ({ where: ['uid', 'in', requestSenderIds] as const }), [requestSenderIds]);
   const { data: requestSenders, loading: sendersLoading } = useCollection<UserProfile>('users', sendersQueryOptions);
   
   const requestSendersMap = useMemo(() => {

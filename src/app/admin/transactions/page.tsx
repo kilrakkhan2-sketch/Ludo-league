@@ -40,7 +40,7 @@ export default function AdminTransactionsPage() {
   }, [transactions]);
   
   const usersQueryOptions = useMemo(() => ({
-    where: ['uid', 'in', userIds]
+    where: ['uid', 'in', userIds] as const
   }), [userIds]);
 
   const { data: users, loading: usersLoading } = useCollection<UserProfile>('users', usersQueryOptions);

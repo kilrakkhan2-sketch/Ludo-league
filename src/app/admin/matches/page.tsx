@@ -41,8 +41,8 @@ export default function AdminMatchesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   
   const queryOptions = useMemo(() => ({
-    orderBy: ['createdAt', 'desc'],
-    where: statusFilter !== 'all' ? ['status', '==', statusFilter] : undefined
+    orderBy: ['createdAt', 'desc'] as const,
+    where: statusFilter !== 'all' ? ['status', '==', statusFilter] as const : undefined
   }), [statusFilter]);
   
   const { data: matches, loading } = useCollection<Match>('matches', queryOptions);

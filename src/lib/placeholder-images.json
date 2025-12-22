@@ -3,49 +3,49 @@
     {
       "id": "hero",
       "description": "Dynamic and exciting Ludo game board with dice in motion",
-      "imageUrl": "https://images.unsplash.com/photo-1593113543924-eae59350f381?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxkeW5hbWljJTIwbHVkayUyMGdhbWV8ZW58MHx8fHwxNzE2NDkxMjczfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1667552749299-551eec9151f6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxsdWRvJTIwZ2FtZXxlbnwwfHx8fDE3NjYzODc1NTF8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "ludo game"
     },
     {
       "id": "avatar1",
       "description": "User avatar 1",
-      "imageUrl": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjQ3NTM4NzB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjYyOTUyNTN8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "person portrait"
     },
     {
       "id": "avatar2",
       "description": "User avatar 2",
-      "imageUrl": "https://images.unsplash.com/photo-1531123414780-f74242c2b052?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8cGVyc29uJTIwcG9ydHJhaXR8ZW58MHx8fHwxNzY0NzUzODcwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjYyOTUyNTN8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "person portrait"
     },
     {
       "id": "avatar3",
       "description": "User avatar 3",
-      "imageUrl": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjQ3NTM4NzB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1531123414780-f74242c2b052?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8cGVyc29uJTIwcG9ydHJhaXR8ZW58MHx8fHwxNzY2Mjk1MjUzfDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "person portrait"
     },
     {
       "id": "tournament_card",
       "description": "Tournament promotion image",
-      "imageUrl": "https://images.unsplash.com/photo-1759688983881-0742f416a4b4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHx0cm9waHklMjBwcml6ZXxlbnwwfHx8fDE3NjQ4MTkzOTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1654195131868-cac1d8429d86?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHx0cm9waHklMjBwcml6ZXxlbnwwfHx8fDE3NjYzODc1NTF8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "trophy prize"
     },
     {
       "id": "wallet_icon",
       "description": "Wallet icon",
-      "imageUrl": "https://images.unsplash.com/photo-1614260937358-94b6ea4b5741?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHx3YWxsZXQlMjBtb25leXxlbnwwfHx8fDE3NjQ4MTkzOTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1579279263243-44345e5cfa62?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHx3YWxsZXQlMjBtb25leXxlbnwwfHx8fDE3NjYyOTQ5ODd8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "wallet money"
     },
     {
       "id": "kyc_card",
       "description": "KYC verification card image",
-      "imageUrl": "https://images.unsplash.com/photo-1635231152740-dcfba853f33d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxpZGVudGlmaWNhdGlvbiUyMGNhcmR8ZW58MHx8fHwxNzY0ODE5Mzk2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1614082175478-20a7219d3244?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8aWRlbnRpZmljYXRpb24lMjBjYXJkfGVufDB8fHx8MTc2NjM4NzU1MXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "identification card"
     },
     {
       "id": "profile_banner",
       "description": "User profile banner image",
-      "imageUrl": "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGJhbm5lcnxlbnwwfHx8fDE3NjQ4MjAwMDB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1649783467317-810564b3df8a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8YWJzdHJhY3QlMjBiYW5uZXJ8ZW58MHx8fHwxNzY2MzY3Njk3fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "abstract banner"
     }
   ]

@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { httpsCallable } from 'firebase/functions';
 import { useFunctions } from '@/firebase'; 
-import { AppShell } from '@/components/app-shell'; 
+import { AppShell } from '@/components/layout/AppShell'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

@@ -82,7 +82,7 @@ export default function AdminCreateTournamentPage() {
     setIsSubmitting(true);
 
     try {
-        let bannerUrl = null;
+        let bannerUrl: string | null = null;
         if (bannerFile && storage) {
              const bannerRef = ref(storage, `tournament-banners/${Date.now()}_${bannerFile.name}`);
              await uploadBytes(bannerRef, bannerFile);
