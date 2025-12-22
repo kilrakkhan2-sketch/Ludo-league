@@ -1,3 +1,4 @@
+
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createTournament = exports.createMatch = exports.onMatchResultUpdate = exports.autoVerifyResults = exports.onDepositStatusChange = exports.rejectWithdrawal = exports.approveWithdrawal = exports.setUserRole = exports.setSuperAdminRole = void 0;
@@ -501,4 +502,3 @@ exports.createTournament = functions.https.onCall(async (data, context) => {
     }
 });
 //# sourceMappingURL=index.js.map
-    
