@@ -556,4 +556,3 @@ exports.createTournament = functions.https.onCall(async (data, context) => {
     }
 });
 //# sourceMappingURL=index.js.map
-    
