@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -21,24 +20,23 @@ import { WalletBalance } from '@/components/wallet-balance';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
-import { doc, runTransaction, Timestamp } from 'firebase/firestore';
+import { doc, runTransaction, Timestamp, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
 
 const MatchCardSkeleton = () => (
   <Card className="flex flex-col">
-    <CardHeader className="p-4">
-      <Skeleton className="h-5 w-3/4 mb-2" />
-      <Skeleton className="h-4 w-1/2" />
+    <CardHeader className="p-4 bg-muted/30">
+      <Skeleton className="h-5 w-3/4 mb-1" />
+      <Skeleton className="h-4 w-1/4" />
     </CardHeader>
-    <CardContent className="p-4 pt-0 flex-grow">
-      <Skeleton className="h-6 w-1/4 mb-2" />
-      <Skeleton className="h-5 w-1/2" />
+    <CardContent className="p-4 flex-grow grid grid-cols-2 gap-4">
+       <Skeleton className="h-12 w-full" />
+       <Skeleton className="h-12 w-full" />
     </CardContent>
-    <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-4">
-      <Skeleton className="h-8 w-1/4" />
-      <Skeleton className="h-10 w-20" />
+    <CardFooter className="bg-muted/30 p-2">
+      <Skeleton className="h-10 w-full" />
     </CardFooter>
   </Card>
 );
@@ -100,14 +98,18 @@ const MatchCard = ({ match }: { match: Match }) => {
                 throw new Error("Insufficient wallet balance.");
             }
             if (matchData.players.includes(user.uid)) {
+                // This check is a safeguard, the button should not be shown if already joined
                 throw new Error("You have already joined this match.");
             }
 
+            // 1. Deduct entry fee
             transaction.update(userRef, { walletBalance: userData.walletBalance - matchData.entryFee });
             
+            // 2. Add player to match
             const updatedPlayers = [...matchData.players, user.uid];
             transaction.update(matchRef, { players: updatedPlayers });
 
+            // 3. If match is now full, update status
             if (updatedPlayers.length === matchData.maxPlayers) {
                 transaction.update(matchRef, {
                     status: 'ongoing',
@@ -124,8 +126,9 @@ const MatchCard = ({ match }: { match: Match }) => {
         setIsJoining(false);
     }
   };
-
+  
   const showJoinButton = match.status === 'open' && !isFull && !hasJoined;
+
 
   return (
     <Card className="flex flex-col hover:shadow-lg transition-shadow overflow-hidden">
@@ -268,5 +271,3 @@ export default function MatchesPage() {
     </AppShell>
   );
 }
-
-    

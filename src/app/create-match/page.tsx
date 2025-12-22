@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -10,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ArrowLeft } from 'lucide-react';
-import { useDoc } from '@/firebase';
+import { useDoc, useFunctions } from '@/firebase';
 import type { MaintenanceSettings } from '@/types';
 import { isTimeInDisabledRange } from '@/components/layout/MaintenanceShield';
 
@@ -19,6 +18,7 @@ const feeOptions = [10, 50, 100];
 export default function CreateMatchPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const functions = useFunctions();
   const { data: maintenanceSettings, loading: maintenanceLoading } = useDoc<MaintenanceSettings>('settings/maintenance');
 
 
@@ -36,6 +36,11 @@ export default function CreateMatchPage() {
   };
   
   const handleCreateMatch = async () => {
+    if (!functions) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Firebase Functions not available.' });
+        return;
+    }
+      
     let finalFee: number;
     if (entryFee === 'custom') {
       const parsedCustomFee = parseInt(customFee, 10);
@@ -59,7 +64,6 @@ export default function CreateMatchPage() {
 
     setIsSubmitting(true);
     
-    const functions = getFunctions();
     const createMatchCloudFunction = httpsCallable(functions, 'createMatch');
 
     try {
@@ -180,5 +184,3 @@ export default function CreateMatchPage() {
     </div>
   );
 }
-
-    

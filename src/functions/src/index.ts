@@ -44,6 +44,15 @@ interface MatchResult {
     status: 'submitted' | 'confirmed' | 'mismatch' | 'locked';
 }
 
+interface UserProfile {
+    adminWallet?: {
+        balance: number;
+        totalUsed: number;
+        totalReceived: number;
+    };
+    [key: string]: any;
+}
+
 // Helper function to send a personal notification
 const sendNotification = (userId: string, title: string, body: string, link?: string) => {
     if (!userId) return;
@@ -62,7 +71,7 @@ const sendNotification = (userId: string, title: string, body: string, link?: st
 //  USER & ROLE MANAGEMENT FUNCTIONS
 // =================================================================
 
-export const setSuperAdminRole = functions.https.onCall(async (data, context) => {
+export const setSuperAdminRole = functions.https.onCall(async (data: any, context) => {
   const email = data.email;
   if (typeof email !== "string" || email.length === 0) {
     throw new functions.https.HttpsError('invalid-argument', 'The function must be called with one argument "email" containing the user email address.');
@@ -663,5 +672,3 @@ export const createTournament = functions.https.onCall(async (data, context) => 
         throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the tournament.");
     }
 });
-
-    
