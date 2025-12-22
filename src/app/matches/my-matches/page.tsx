@@ -110,8 +110,7 @@ export default function MyMatchesPage() {
   const { user } = useUser();
   const queryOptions = useMemo(() => ({
     where: user?.uid ? [
-        ['players', 'array-contains', user.uid],
-        ['status', 'in', ['open', 'ongoing', 'processing']]
+        ['players', 'array-contains', user.uid]
     ] : undefined,
     orderBy: ['createdAt', 'desc'],
     limit: 12
@@ -128,7 +127,7 @@ export default function MyMatchesPage() {
   )
 
   return (
-    <AppShell pageTitle="My Active Matches" showBackButton>
+    <AppShell pageTitle="My Matches" showBackButton>
       <div className="p-4 space-y-6">
         {loading && (!matches || matches.length === 0) ? <Skeletons /> : matches && matches.length > 0 ? (
           <>
@@ -141,9 +140,9 @@ export default function MyMatchesPage() {
         ) : (
           <div className="text-center py-12 px-4 border-2 border-dashed rounded-lg bg-card mt-8">
              <Trophy className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-2 text-sm font-semibold text-foreground">No active matches found</h3>
+            <h3 className="mt-2 text-sm font-semibold text-foreground">No matches found</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              You haven't joined or created any matches that are currently active.
+              You haven't joined or created any matches.
             </p>
           </div>
         )}

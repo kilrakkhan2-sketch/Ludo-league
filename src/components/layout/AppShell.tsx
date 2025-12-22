@@ -38,7 +38,7 @@ interface AppShellProps {
 
 const baseNavItems: NavItem[] = [
   { href: "/dashboard", icon: Home, label: "Home" },
-  { href: "/tournaments", icon: Swords, label: "Tournaments" },
+  { href: "/matches", icon: Swords, label: "Matches" },
   { href: "/wallet", icon: Wallet, label: "Wallet" },
   { href: "/profile", icon: User, label: "Profile" },
 ];
