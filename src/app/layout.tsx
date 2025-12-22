@@ -28,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn("font-body antialiased", ptSans.variable)}>
+      <body className={cn("font-sans antialiased", ptSans.variable)}>
         <FirebaseClientProvider>
           <MaintenanceShield>
             {children}

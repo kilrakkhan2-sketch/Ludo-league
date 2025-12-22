@@ -11,8 +11,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        headline: ["Poppins", "sans-serif"],
-        body: ["Inter", "sans-serif"],
+        sans: ["var(--font-pt-sans)"],
+        body: ["var(--font-pt-sans)"],
+        headline: ["var(--font-pt-sans)"],
         code: ["Roboto Mono", "monospace"],
       },
       colors: {
