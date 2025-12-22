@@ -5,79 +5,56 @@
 
 @layer base {
   :root {
-    --background: 240 10% 97%; /* Lighter Gray */
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    /* Light theme (fallback) */
+    --background: 0 0% 100%;
+    --foreground: 170 65% 8%; /* Dark Text */
+    --card: 0 0% 98%;
+    --card-foreground: 170 65% 8%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 221 83% 53%; /* Blue from admin design */
-    --primary-dark: 221 83% 45%; /* A slightly darker blue */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 215 28% 93%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 215 28% 93%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 142 71% 45%; /* Green from design */
-    --accent-foreground: 0 0% 100%;
+    --popover-foreground: 170 65% 8%;
+    --primary: 45 68% 52%; /* Gold */
+    --primary-foreground: 170 65% 8%; /* Dark text on gold */
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 170 65% 8%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 64%;
+    --accent: 170 60% 15%; /* Dark Green */
+    --accent-foreground: 45 25% 95%; /* White text on green */
     --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --success: 160 70% 42%;
-    --success-foreground: 0 0% 100%;
-    --warning: 43 94% 53%;
-    --warning-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 221 83% 53%;
+    --destructive-foreground: 45 25% 95%;
+    --border: 0 0% 89%;
+    --input: 0 0% 89%;
+    --ring: 45 68% 52%; /* Gold */
     --radius: 0.8rem;
-    --chart-1: 221 83% 53%;
-    --chart-2: 43 94% 53%;
-    --chart-3: 160 70% 42%;
-    --chart-4: 0 84% 60%;
-    --chart-5: 262 74% 66%;
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 221 83% 53%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 28% 93%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 221 83% 53%;
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --card: 217 33% 17%;
-    --card-foreground: 210 40% 98%;
-    --popover: 217 33% 17%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 221 83% 53%;
-    --primary-dark: 221 83% 45%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 217 33% 25%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 25%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 142 71% 45%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-    --success: 160 70% 42%;
-    --success-foreground: 210 40% 98%;
-    --warning: 43 94% 53%;
-    --warning-foreground: 210 40% 98%;
-    --border: 217 33% 25%;
-    --input: 217 33% 25%;
-    --ring: 221 83% 53%;
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 221 83% 53%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 217 33% 25%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 25%;
-    --sidebar-ring: 221 83% 53%;
+    /* Ludo League Theme */
+    --background: 170 60% 15%; /* #0F3D36 */
+    --foreground: 45 25% 95%; /* #F5F3EE */
+    --card: 169 65% 22%; /* #145A4A */
+    --card-foreground: 45 25% 95%; /* #F5F3EE */
+    --popover: 170 65% 8%; /* #062420 */
+    --popover-foreground: 45 25% 95%; /* #F5F3EE */
+    
+    --primary: 45 68% 52%; /* #D4AF37 */
+    --primary-foreground: 170 65% 8%; /* #062420 - Dark text for gold buttons */
+
+    --secondary: 169 65% 22%; /* #145A4A */
+    --secondary-foreground: 45 25% 95%; /* #F5F3EE */
+
+    --muted: 169 65% 22%; /* #145A4A */
+    --muted-foreground: 45 25% 80%; /* Lighter version of F5F3EE */
+
+    --accent: 45 68% 52%; /* #D4AF37 */
+    --accent-foreground: 170 65% 8%; /* #062420 */
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 45 25% 95%;
+    
+    --border: 45 56% 55%; /* #C9A24D - Border Gold */
+    --input: 169 65% 22%;
+    --ring: 45 56% 55%; /* #C9A24D - Border Gold */
   }
 }
 
@@ -87,7 +64,11 @@
   }
   body {
     @apply bg-background text-foreground;
-    overscroll-behavior-y: none;
+    /* Gradient Background: #0F3D36 -> #145A4A */
+    background: hsl(var(--background));
+    background-image: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 100%);
+    background-repeat: no-repeat;
+    min-height: 100vh;
   }
 }
     

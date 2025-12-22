@@ -19,19 +19,23 @@ interface BottomNavProps {
 export function BottomNav({ items }: BottomNavProps) {
     const pathname = usePathname();
 
-    // Hide bottom nav on specific paths if needed
-    const hideNav = pathname ? ['/match/', '/login', '/signup'].some(path => pathname.startsWith(path)) : false;
+    const hideNav = pathname ? ['/match/', '/login', '/signup', '/admin'].some(path => pathname.startsWith(path)) : false;
     if (hideNav) return null;
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 h-16 bg-card border-t shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-20 sm:hidden">
+        <div className="fixed bottom-0 left-0 right-0 h-16 bg-popover border-t border-border/50 shadow-[0_-4px_12px_rgba(212,175,55,0.1)] z-20 sm:hidden">
             <div className="flex justify-around items-center h-full">
                 {items.map((item) => {
                     const isActive = pathname === item.href;
                     return (
-                        <Link href={item.href} key={item.href} className={cn("flex flex-col items-center justify-center gap-1 w-16 text-muted-foreground transition-colors",
-                            isActive && "text-primary font-bold"
-                        )}>
+                        <Link 
+                            href={item.href} 
+                            key={item.href} 
+                            className={cn(
+                                "flex flex-col items-center justify-center gap-1 w-16 text-foreground/70 transition-colors duration-200",
+                                isActive && "text-primary font-bold"
+                            )}
+                        >
                             <item.icon className="h-6 w-6" />
                             <span className="text-xs">{item.label}</span>
                         </Link>

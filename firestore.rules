@@ -85,8 +85,7 @@ service cloud.firestore {
                         request.resource.data.players == resource.data.players + [request.auth.uid] &&
                         resource.data.players.size() < resource.data.maxPlayers - 1 &&
                         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee &&
-                        request.resource.data.diff(resource.data).affectedKeys().size() == 1 &&
-                        request.resource.data.diff(resource.data).affectedKeys().has('players')
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players'])
                       ) ||
                       // Player joining and filling the match
                       (
@@ -94,7 +93,6 @@ service cloud.firestore {
                         request.resource.data.players == resource.data.players + [request.auth.uid] &&
                         resource.data.players.size() == resource.data.maxPlayers - 1 &&
                         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee &&
-                        request.resource.data.diff(resource.data).affectedKeys().size() == 2 &&
                         request.resource.data.diff(resource.data).affectedKeys().hasAll(['players', 'status']) &&
                         request.resource.data.status == 'ongoing'
                       ) ||
@@ -102,8 +100,7 @@ service cloud.firestore {
                       (
                         request.auth.uid == resource.data.creatorId &&
                         resource.data.status == 'ongoing' &&
-                        request.resource.data.diff(resource.data).affectedKeys().size() == 1 &&
-                        request.resource.data.diff(resource.data).affectedKeys().has('roomCode')
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['roomCode'])
                       ) ||
                       // Admin managing the match state
                       (

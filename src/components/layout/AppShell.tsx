@@ -50,7 +50,7 @@ const bottomNavItems: NavItem[] = [
   { href: "/dashboard", icon: Home, label: "Home" },
   { href: "/matches", icon: Swords, label: "Matches" },
   { href: "/tournaments", icon: Trophy, label: "Tournaments" },
-  { href: "/friends", icon: FriendsIcon, label: "Friends" },
+  { href: "/wallet", icon: Wallet, label: "Wallet" },
 ];
 
 
@@ -79,7 +79,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
     const auth = getAuth();
     try {
       await signOut(auth);
-      toast({ title: "Logged Out" });
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
       router.push('/login');
     } catch (error) {
       toast({ variant: "destructive", title: "Logout Failed" });
@@ -87,12 +87,12 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
   };
   
   const userMenu = loading ? (
-    <Skeleton className="h-8 w-8 rounded-full" />
+    <Skeleton className="h-8 w-8 rounded-full bg-background/50" />
   ) : user ? (
      <DropdownMenu>
         <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                <Avatar className="h-8 w-8">
+                <Avatar className="h-8 w-8 border border-border/50">
                     <AvatarImage src={profile?.photoURL || undefined} alt={profile?.displayName || ''} />
                     <AvatarFallback>{profile?.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
                 </Avatar>
@@ -125,11 +125,10 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
     </DropdownMenu>
   ) : null;
 
-  // Loading Skeleton for the whole page to prevent flashes of incorrect UI
   if (userLoading) {
       return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
-             <div className="p-2 bg-primary rounded-lg">
+             <div className="p-2 bg-primary rounded-lg animate-pulse">
                 <Image src="/favicon.ico" alt="LudoLeague Logo" width={32} height={32} />
             </div>
         </div>
@@ -138,16 +137,16 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
 
   return (
     <SidebarProvider>
-      <div className={cn("min-h-screen w-full bg-background", className)}>
-        <Sidebar>
+      <div className={cn("min-h-screen w-full bg-background text-foreground", className)}>
+        <Sidebar className="bg-popover border-r border-border/50">
           <SidebarContent>
             <SidebarHeader>
-              <div className="flex items-center gap-2">
+              <Link href="/dashboard" className="flex items-center gap-2">
                 <div className="p-2 bg-primary rounded-lg">
                   <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
                 </div>
                 <h1 className="text-xl font-bold font-headline text-primary">LudoLeague</h1>
-              </div>
+              </Link>
             </SidebarHeader>
             <SidebarMenu>
               {navItems.map(item => (
@@ -156,6 +155,8 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                       href={item.href} 
                       tooltip={item.label}
                       current={pathname === item.href}
+                      className="text-foreground/80 hover:text-foreground hover:bg-card"
+                      currentClassName="text-primary-foreground bg-primary hover:bg-primary/90 hover:text-primary-foreground"
                   >
                       <item.icon />
                       <span>{item.label}</span>
@@ -164,11 +165,10 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
               ))}
             </SidebarMenu>
              <SidebarFooter>
-               {/* This Dropdown is for the collapsed sidebar user menu, can be simplified or match the header one */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="w-full justify-start gap-2 p-2 h-auto">
-                      <Avatar className="h-8 w-8">
+                    <Button variant="ghost" className="w-full justify-start gap-2 p-2 h-auto text-foreground/80 hover:text-foreground hover:bg-card">
+                      <Avatar className="h-8 w-8 border border-border/50">
                         <AvatarImage src={profile?.photoURL || undefined} alt={profile?.displayName || ''} />
                         <AvatarFallback>{profile?.displayName?.charAt(0) || user?.email?.charAt(0)}</AvatarFallback>
                       </Avatar>
@@ -178,7 +178,6 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
-                  {/* Using the same content as the header user menu for consistency */}
                   <DropdownMenuContent className="w-56 mb-2" align="end" side="right" forceMount>
                      <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
@@ -209,7 +208,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
         </Sidebar>
           
         <div className="flex flex-col h-screen sm:pl-14">
-              <header className="bg-card p-4 flex items-center justify-between gap-4 z-10 shadow-sm shrink-0 border-b">
+              <header className="bg-card p-3 sm:p-4 flex items-center justify-between gap-4 z-10 shrink-0 border-b border-border/50">
                   <div className="flex items-center gap-2">
                     <SidebarTrigger className="sm:hidden">
                         <Menu />
@@ -219,7 +218,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                             <ArrowLeft />
                         </Button>
                     )}
-                    <h1 className="text-xl font-bold">{pageTitle}</h1>
+                    <h1 className="text-lg sm:text-xl font-bold text-primary">{pageTitle}</h1>
                     </div>
                     <div className="hidden sm:block">
                       {userMenu}

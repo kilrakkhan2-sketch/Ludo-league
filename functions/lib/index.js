@@ -445,7 +445,7 @@ exports.createMatch = functions.https.onCall(async (data, context) => {
     if (!title || typeof title !== "string" || title.length === 0 || title.length > 50) {
         throw new functions.https.HttpsError("invalid-argument", "Match title is required and must be 50 characters or less.");
     }
-    if (typeof entryFee !== 'number' || entryFee < 0) {
+    if (typeof entryFee !== "number" || entryFee < 0) {
         throw new functions.https.HttpsError("invalid-argument", "A valid, non-negative entry fee is required.");
     }
     if (maxPlayers !== 2 && maxPlayers !== 4) {
@@ -484,11 +484,9 @@ exports.createMatch = functions.https.onCall(async (data, context) => {
                 prizePool,
                 maxPlayers,
                 creatorId: userId,
-                players: [userId],
+                players: [userId], // Creator is the first player
                 status: 'open',
                 roomCode: null,
-                resultStage: 'none',
-                autoPayoutAllowed: true,
                 createdAt: firestore_1.FieldValue.serverTimestamp(),
                 startedAt: null,
                 completedAt: null,

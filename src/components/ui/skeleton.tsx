@@ -1,6 +1,4 @@
 
-"use client"
-
 import { cn } from "@/lib/utils"
 
 function Skeleton({
@@ -9,7 +7,7 @@ function Skeleton({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-muted", className)}
+      className={cn("animate-pulse rounded-md bg-accent/40", className)}
       {...props}
     />
   )

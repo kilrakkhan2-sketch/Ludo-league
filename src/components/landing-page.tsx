@@ -52,21 +52,22 @@ export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center">
           <div className="mr-4 flex items-center">
             <Link href="/" className="flex items-center gap-2 font-bold">
                <div className="p-1 bg-primary rounded-md">
+                {/* Assuming favicon.ico is the intended logo icon */}
                 <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
               </div>
-              <span className="font-headline text-lg">LudoLeague</span>
+              <span className="font-headline text-lg text-primary">LudoLeague</span>
             </Link>
           </div>
           <div className="flex flex-1 items-center justify-end space-x-2">
             <Button variant="ghost" asChild>
               <Link href="/login">Login</Link>
             </Button>
-            <Button asChild className="bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 text-white">
+            <Button asChild>
               <Link href="/signup">Get Started</Link>
             </Button>
           </div>
@@ -76,7 +77,7 @@ export default function LandingPage() {
       {/* Main Content */}
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative h-[80vh] min-h-[500px] flex items-center justify-center text-center text-white">
+        <section className="relative h-[80vh] min-h-[500px] flex items-center justify-center text-center text-foreground">
           {heroImage && (
              <Image
                 src={heroImage.imageUrl}
@@ -87,17 +88,17 @@ export default function LandingPage() {
                 priority
              />
           )}
-          <div className="absolute inset-0 bg-black/70 -z-10" />
+          <div className="absolute inset-0 bg-background/80 -z-10" />
           <div className="container px-4 md:px-6">
             <div className="max-w-3xl mx-auto space-y-6">
-              <h1 className="text-4xl md:text-6xl font-extrabold font-headline tracking-tight animate-fade-in [text-shadow:0_2px_4px_rgba(0,0,0,0.5)]" style={{animationDelay: '0.2s'}}>
+              <h1 className="text-4xl md:text-6xl font-extrabold font-headline tracking-tight animate-fade-in text-primary [text-shadow:0_2px_4px_rgba(0,0,0,0.5)]" style={{animationDelay: '0.2s'}}>
                 India's Most Thrilling Ludo Arena
               </h1>
-              <p className="md:text-xl text-lg text-primary-foreground/90 animate-fade-in [text-shadow:0_2px_4px_rgba(0,0,0,0.5)]" style={{animationDelay: '0.4s'}}>
+              <p className="md:text-xl text-lg text-foreground/90 animate-fade-in [text-shadow:0_2px_4px_rgba(0,0,0,0.5)]" style={{animationDelay: '0.4s'}}>
                 Where Skill Meets Fortune. Play, Compete, and Win Real Cash Prizes 24/7.
               </p>
               <div className="flex justify-center gap-4 animate-fade-in" style={{animationDelay: '0.6s'}}>
-                <Button size="lg" asChild className="bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 text-white shadow-lg transform hover:scale-105 transition-transform">
+                <Button size="lg" asChild className="shadow-lg transform hover:scale-105 transition-transform">
                   <Link href="/signup">Claim Your Bonus Now</Link>
                 </Button>
               </div>
@@ -109,7 +110,7 @@ export default function LandingPage() {
         <section id="features" className="py-16 md:py-24 bg-card">
           <div className="container px-4 md:px-6">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold font-headline">The LudoLeague Advantage</h2>
+              <h2 className="text-3xl font-bold font-headline text-primary">The LudoLeague Advantage</h2>
               <p className="text-muted-foreground mt-2">More than just a game. It's a premium experience.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -118,7 +119,7 @@ export default function LandingPage() {
                   <div className="inline-block p-4 bg-primary/10 text-primary rounded-full mb-4 transition-transform transform hover:scale-110 hover:rotate-12">
                     <feature.icon className="h-8 w-8" />
                   </div>
-                  <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
+                  <h3 className="text-xl font-bold mb-2 text-primary">{feature.title}</h3>
                   <p className="text-sm text-muted-foreground">{feature.description}</p>
                 </div>
               ))}
@@ -127,27 +128,27 @@ export default function LandingPage() {
         </section>
 
         {/* How It Works Section */}
-        <section className="py-16 md:py-24 bg-muted/40">
+        <section className="py-16 md:py-24 bg-background">
            <div className="container px-4 md:px-6">
              <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold font-headline">Start Winning in 3 Easy Steps</h2>
+              <h2 className="text-3xl font-bold font-headline text-primary">Start Winning in 3 Easy Steps</h2>
             </div>
             <div className="relative grid grid-cols-1 md:grid-cols-3 gap-8">
               {/* Dashed line for desktop */}
               <div className="hidden md:block absolute top-8 left-0 w-full h-px bg-border -translate-y-1/2 border-t-2 border-dashed"></div>
                <div className="relative flex flex-col items-center text-center p-4">
-                <div className="h-16 w-16 bg-card text-primary rounded-full flex items-center justify-center text-3xl font-bold mb-4 z-10 border-4 border-muted/40 shadow-md">1</div>
-                <h3 className="text-xl font-bold">Sign Up & KYC</h3>
+                <div className="h-16 w-16 bg-card text-primary rounded-full flex items-center justify-center text-3xl font-bold mb-4 z-10 border-4 border-background shadow-md">1</div>
+                <h3 className="text-xl font-bold text-primary">Sign Up & KYC</h3>
                 <p className="text-sm text-muted-foreground mt-2">Create your free account and complete a quick KYC to get started.</p>
               </div>
               <div className="relative flex flex-col items-center text-center p-4">
-                 <div className="h-16 w-16 bg-card text-primary rounded-full flex items-center justify-center text-3xl font-bold mb-4 z-10 border-4 border-muted/40 shadow-md">2</div>
-                <h3 className="text-xl font-bold">Add Funds</h3>
+                 <div className="h-16 w-16 bg-card text-primary rounded-full flex items-center justify-center text-3xl font-bold mb-4 z-10 border-4 border-background shadow-md">2</div>
+                <h3 className="text-xl font-bold text-primary">Add Funds</h3>
                 <p className="text-sm text-muted-foreground mt-2">Securely add money to your wallet using UPI or other payment methods.</p>
               </div>
                <div className="relative flex flex-col items-center text-center p-4">
-                 <div className="h-16 w-16 bg-card text-primary rounded-full flex items-center justify-center text-3xl font-bold mb-4 z-10 border-4 border-muted/40 shadow-md">3</div>
-                <h3 className="text-xl font-bold">Play & Win</h3>
+                 <div className="h-16 w-16 bg-card text-primary rounded-full flex items-center justify-center text-3xl font-bold mb-4 z-10 border-4 border-background shadow-md">3</div>
+                <h3 className="text-xl font-bold text-primary">Play & Win</h3>
                 <p className="text-sm text-muted-foreground mt-2">Join a match, defeat your opponent, and your winnings are instantly credited!</p>
               </div>
             </div>
@@ -158,13 +159,13 @@ export default function LandingPage() {
         <section className="py-16 md:py-24 bg-card">
            <div className="container">
               <div className="text-center mb-12">
-                  <h2 className="text-3xl font-bold font-headline">Don't Just Take Our Word For It</h2>
+                  <h2 className="text-3xl font-bold font-headline text-primary">Don't Just Take Our Word For It</h2>
                   <p className="text-muted-foreground mt-2">See what our players have to say about their experience.</p>
               </div>
                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {testimonials.map((testimonial, index) => (
-                    <div key={index} className="bg-muted/50 p-6 rounded-lg shadow-sm">
-                        <div className="flex text-yellow-400 mb-4">
+                    <div key={index} className="bg-background/50 p-6 rounded-lg shadow-sm border border-border/30">
+                        <div className="flex text-primary mb-4">
                             {[...Array(5)].map((_, i) => <Star key={i} className="h-5 w-5 fill-current" />)}
                         </div>
                         <p className="text-foreground mb-4">"{testimonial.quote}"</p>
@@ -176,11 +177,11 @@ export default function LandingPage() {
         </section>
 
         {/* Final CTA */}
-        <section className="py-16 md:py-24 bg-primary text-primary-foreground">
-           <div className="container text-center">
-              <h2 className="text-3xl md:text-4xl font-extrabold font-headline">Ready to Roll the Dice?</h2>
-              <p className="mt-4 max-w-xl mx-auto opacity-90">Join over 50,000 happy players and start your journey to becoming a Ludo champion today. Your first match is just a click away!</p>
-              <Button size="lg" className="mt-8 bg-background text-primary hover:bg-background/90 shadow-lg" asChild>
+        <section className="py-16 md:py-24 bg-card text-center">
+           <div className="container">
+              <h2 className="text-3xl md:text-4xl font-extrabold font-headline text-primary">Ready to Roll the Dice?</h2>
+              <p className="mt-4 max-w-xl mx-auto text-foreground/90">Join over 50,000 happy players and start your journey to becoming a Ludo champion today. Your first match is just a click away!</p>
+              <Button size="lg" className="mt-8 shadow-lg transform hover:scale-105 transition-transform" asChild>
                 <Link href="/signup">Sign Up and Play Now</Link>
               </Button>
            </div>
@@ -188,12 +189,12 @@ export default function LandingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-muted/40 border-t">
+      <footer className="bg-popover border-t border-border/60">
         <div className="container py-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} LudoLeague. All rights reserved.</p>
+          <p className="text-sm text-foreground/80">&copy; {new Date().getFullYear()} LudoLeague. All rights reserved.</p>
           <div className="flex gap-4 text-sm">
-            <Link href="/privacy" className="text-muted-foreground hover:text-primary">Privacy Policy</Link>
-            <Link href="/terms" className="text-muted-foreground hover:text-primary">Terms of Service</Link>
+            <Link href="/privacy" className="text-foreground/80 hover:text-primary">Privacy Policy</Link>
+            <Link href="/terms" className="text-foreground/80 hover:text-primary">Terms of Service</Link>
           </div>
         </div>
       </footer>
