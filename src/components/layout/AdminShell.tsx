@@ -17,7 +17,8 @@ import {
   Megaphone,
   Power,
   Banknote,
-  BadgeCheck
+  BadgeCheck,
+  Ticket
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -69,15 +70,17 @@ export function AdminShell({ children, pageTitle }: { children: React.ReactNode,
   const { count: pendingWithdrawals } = useCollection("withdrawal-requests", { where: ["status", "==", "pending"] });
   const { count: pendingKyc } = useCollection("kyc-requests", { where: ["status", "==", "pending"] });
   const { count: pendingMatches } = useCollection("matches", { where: ["status", "==", "verification"] });
+  const { count: disputedMatches } = useCollection("matches", { where: ["status", "==", "disputed"] });
+
 
   const getNavItems = () => {
     const allNav = {
         dashboard: { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
         users: { href: '/admin/users', icon: Users, label: 'All Users' },
         roles: { href: '/admin/manage-admins', icon: UserCog, label: 'Manage Roles' },
-        matches: { href: '/admin/matches', icon: Award, label: 'Matches', count: pendingMatches },
-        tournaments: { href: '/admin/tournaments', icon: Shield, label: 'Tournaments' },
-        deposits: { href: '/admin/deposits', icon: CircleArrowUp, label: 'Deposits', count: pendingDeposits },
+        matches: { href: '/admin/matches', icon: Award, label: 'Matches', count: pendingMatches + disputedMatches },
+        tournaments: { href: '/admin/tournaments', icon: Ticket, label: 'Tournaments' },
+        deposits: { href: '/admin/deposits', icon: CircleArrowUp, label: 'Deposits', count: pendingDeposites },
         withdrawals: { href: '/admin/withdrawals', icon: Landmark, label: 'Withdrawals', count: pendingWithdrawals },
         upi: { href: '/admin/upi-management', icon: Banknote, label: 'UPI Management' },
         kyc: { href: '/admin/kyc', icon: FileBadge, label: 'KYC Management', count: pendingKyc },

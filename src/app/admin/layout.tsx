@@ -8,6 +8,7 @@ import type { UserProfile } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
+import DashboardRouter from "./dashboard/page";
 
 // Define which roles can access which paths
 const rolePermissions: { [key: string]: (UserProfile['role'])[] } = {
@@ -95,6 +96,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!permissionState) {
     return <AdminShell pageTitle="Access Denied"><AccessDenied /></AdminShell>;
   }
+  
+  const isDashboard = pathname === '/admin/dashboard';
 
-  return <AdminShell>{children}</AdminShell>;
+
+  return <AdminShell>{isDashboard ? <DashboardRouter /> : children}</AdminShell>;
 }
