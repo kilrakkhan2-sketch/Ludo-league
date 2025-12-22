@@ -100,39 +100,13 @@ const MatchCard = ({ match }: { match: Match }) => {
     );
 }
 
-const MatchSection = ({ title, matches, loading, emptyMessage, viewAllLink }: { title: string, matches: Match[], loading: boolean, emptyMessage: string, viewAllLink?: string }) => (
-    <section>
-        <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-bold">{title}</h2>
-            {viewAllLink && <Link href={viewAllLink} className="text-sm font-semibold text-primary">View All</Link>}
-        </div>
-        {loading ? (
-             <div className="flex space-x-4 overflow-x-auto pb-4">
-                <Skeleton className="shrink-0 w-72 h-52 rounded-lg" />
-                <Skeleton className="shrink-0 w-72 h-52 rounded-lg" />
-             </div>
-        ): matches.length > 0 ? (
-            <div className="overflow-x-auto">
-                <div className="flex space-x-4 pb-4">
-                   {matches.map(match => <MatchCard key={match.id} match={match}/>)}
-                </div>
-            </div>
-        ) : (
-            <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg bg-card">
-                <p className="text-muted-foreground mb-2">{emptyMessage}</p>
-            </div>
-        )}
-    </section>
-);
-
-
 export default function DashboardClientContent() {
     const { user, loading: userLoading } = useUser();
-    const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
+    const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : undefined);
 
-    // Single, simple query to get all open matches. This is reliable.
     const { data: openMatches, loading: openMatchesLoading } = useCollection<Match>('matches', {
         where: ['status', '==', 'open'],
+        orderBy: ['createdAt', 'desc'],
         limit: 20
     });
     
@@ -185,13 +159,31 @@ export default function DashboardClientContent() {
                     </div>
                 </section>
                 
-                <MatchSection
-                    title="Open Matches"
-                    matches={openMatches}
-                    loading={openMatchesLoading}
-                    emptyMessage="No new open matches available."
-                    viewAllLink="/matches/open"
-                />
+                <section>
+                    <div className="flex justify-between items-center mb-3">
+                        <h2 className="text-lg font-bold">Open Matches</h2>
+                        <Link href="/matches/open" className="text-sm font-semibold text-primary">View All</Link>
+                    </div>
+                    {openMatchesLoading ? (
+                        <div className="flex space-x-4 overflow-x-auto pb-4">
+                            <Skeleton className="shrink-0 w-72 h-52 rounded-lg" />
+                            <Skeleton className="shrink-0 w-72 h-52 rounded-lg" />
+                        </div>
+                    ): openMatches.length > 0 ? (
+                        <div className="overflow-x-auto">
+                            <div className="flex space-x-4 pb-4">
+                            {openMatches.map(match => <MatchCard key={match.id} match={match}/>)}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg bg-card">
+                            <p className="text-muted-foreground mb-2">No open matches available right now.</p>
+                            <Button asChild>
+                              <Link href="/create-match">Create the first match!</Link>
+                            </Button>
+                        </div>
+                    )}
+                </section>
 
             </div>
         </div>

@@ -29,11 +29,10 @@ interface UseCollectionOptions {
 export function useCollection<T extends { id: string }>(path: string, options?: UseCollectionOptions) {
   const db = useFirestore();
   const [data, setData] = useState<T[]>([]);
-  const [count, setCount] = useState(0); // Add count state
+  const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // Memoize options to prevent re-renders from object recreation
   const optionsMemo = useMemo(() => options, [
       JSON.stringify(options?.where),
       JSON.stringify(options?.orderBy),
@@ -81,26 +80,12 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     
     const collectionRef = optionsMemo?.isCollectionGroup ? collectionGroup(db, path) : collection(db, path);
 
-    // If there are no constraints, just return the base collection reference
-    if (constraints.length === 0) {
-        return collectionRef;
-    }
-
     return query(collectionRef, ...constraints);
   }, [db, path, optionsMemo]);
 
   useEffect(() => {
     setLoading(true);
-    // If a query depends on a value that isn't ready (like a user UID), the where clause might be undefined.
-    // In that case, we should not proceed. `buildQuery` will return null.
-    if (!path || (options?.where && !options.where)) {
-        setData([]);
-        setCount(0);
-        setLoading(false);
-        return;
-    }
-
-
+    
     const q = buildQuery();
 
     if (!q) {
@@ -116,7 +101,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
             result.push({ id: doc.id, ...doc.data() } as T);
         });
         setData(result);
-        setCount(querySnapshot.size); // Update count on every snapshot
+        setCount(querySnapshot.size);
         setLoading(false);
         setError(null);
     }, (err: any) => {
