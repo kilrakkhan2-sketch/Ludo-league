@@ -108,7 +108,7 @@ const CategoryCard = ({ title, href, icon: Icon, imageId }: { title: string, hre
     )
 }
 
-export default function DashboardClientContent() {
+function DashboardClientContent() {
     const { user, loading: userLoading } = useUser();
     const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : undefined);
 
@@ -193,3 +193,5 @@ export default function DashboardClientContent() {
         </AppShell>
     );
 }
+
+export default DashboardClientContent;
