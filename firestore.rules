@@ -68,17 +68,25 @@ service cloud.firestore {
     match /matches/{matchId} {
 
       allow read, list: if isSignedIn();
-
       allow create: if isSignedIn();
-
+      
       allow update: if isSignedIn() && (
-                      // Player joining a match
+                      // Player joining a match (status remains 'open')
                       (
                         resource.data.status == 'open' &&
                         request.resource.data.players == resource.data.players + [request.auth.uid] &&
                         resource.data.players.size() < resource.data.maxPlayers &&
                         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players', 'status', 'startedAt'])
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players'])
+                      ) ||
+                       // Player joining and filling the match (status becomes 'ongoing')
+                      (
+                        resource.data.status == 'open' &&
+                        request.resource.data.players == resource.data.players + [request.auth.uid] &&
+                        resource.data.players.size() + 1 == resource.data.maxPlayers &&
+                        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players', 'status', 'startedAt']) &&
+                        request.resource.data.status == 'ongoing'
                       ) ||
                       // Creator setting the room code
                       (
@@ -86,6 +94,13 @@ service cloud.firestore {
                          request.auth.uid == resource.data.creatorId &&
                          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['roomCode']) &&
                          request.resource.data.roomCode != resource.data.roomCode
+                      ) ||
+                      // Any player submitting a result, changing status to 'processing'
+                      (
+                        resource.data.status == 'ongoing' &&
+                        request.auth.uid in resource.data.players &&
+                        request.resource.data.status == 'processing' &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
                       ) ||
                       isMatchAdmin() || isSuperAdmin() || isServer()
                     );

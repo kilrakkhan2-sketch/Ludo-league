@@ -1,21 +1,16 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
-import {
-  Card,
-  CardContent,
-} from '@/components/ui/card';
+import { AppShell } from "@/components/layout/AppShell";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, Trophy, PlusCircle, Swords } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useCollection, useUser, useFirebase } from '@/firebase';
 import type { Match, UserProfile } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WalletBalance } from '@/components/wallet-balance';
-import { AppShell } from '@/components/layout/AppShell';
-import { Button } from '@/components/ui/button';
-import { doc, runTransaction, Timestamp, updateDoc } from 'firebase/firestore';
+import { doc, runTransaction, Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -24,8 +19,8 @@ const MatchListItemSkeleton = () => (
     <div className="flex items-center gap-3">
       <Skeleton className="h-10 w-10 rounded-full" />
       <div className="space-y-1">
+        <Skeleton className="h-4 w-32" />
         <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-4 w-16" />
       </div>
     </div>
     <div className="text-right">
@@ -40,15 +35,14 @@ const MatchListItem = ({ match, creator }: { match: Match, creator?: UserProfile
   const { firestore } = useFirebase();
   const { toast } = useToast();
   const router = useRouter();
-
   const [isJoining, setIsJoining] = useState(false);
 
-  const hasJoined = user ? match.players.includes(user.uid) : false;
+  const hasJoined = useMemo(() => user && match.players.includes(user.uid), [user, match.players]);
   const isFull = match.players.length >= match.maxPlayers;
   const canJoin = match.status === 'open' && !isFull && !hasJoined;
 
   const handleJoinMatch = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+    e.stopPropagation(); // Prevent the link from navigating
     e.preventDefault();
 
     if (!canJoin || !user || !firestore) return;
@@ -61,16 +55,21 @@ const MatchListItem = ({ match, creator }: { match: Match, creator?: UserProfile
         await runTransaction(firestore, async (transaction) => {
             const matchDoc = await transaction.get(matchRef);
             const userDoc = await transaction.get(userRef);
+
             if (!matchDoc.exists() || !userDoc.exists()) throw new Error("Match or user not found.");
+            
             const matchData = matchDoc.data();
             const userData = userDoc.data();
-            if (matchData.players.length >= matchData.maxPlayers) throw new Error("Match is full.");
+
+            if (matchData.players.length >= matchData.maxPlayers) throw new Error("Match is already full.");
             if (userData.walletBalance < matchData.entryFee) throw new Error("Insufficient funds.");
 
+            // 1. Deduct fee and add user to match
             transaction.update(userRef, { walletBalance: userData.walletBalance - matchData.entryFee });
             const updatedPlayers = [...matchData.players, user.uid];
             transaction.update(matchRef, { players: updatedPlayers });
 
+            // 2. If match is now full, update its status
             if (updatedPlayers.length === matchData.maxPlayers) {
                 transaction.update(matchRef, { status: 'ongoing', startedAt: Timestamp.now() });
             }
@@ -78,7 +77,7 @@ const MatchListItem = ({ match, creator }: { match: Match, creator?: UserProfile
         toast({ title: "Successfully Joined!", description: `Redirecting you to the match.` });
         router.push(`/match/${match.id}`);
     } catch (error: any) {
-        toast({ variant: 'destructive', title: "Could not join", description: error.message });
+        toast({ variant: 'destructive', title: "Could not join match", description: error.message });
     } finally {
         setIsJoining(false);
     }
@@ -88,6 +87,7 @@ const MatchListItem = ({ match, creator }: { match: Match, creator?: UserProfile
     <Link href={`/match/${match.id}`} className="block">
         <div className="bg-card rounded-lg shadow-sm border p-3 hover:bg-muted/50 transition-colors">
             <div className="flex items-center justify-between">
+                {/* Left Side: Player Info */}
                 <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10 border">
                         <AvatarImage src={creator?.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${match.creatorId}`} />
@@ -98,12 +98,16 @@ const MatchListItem = ({ match, creator }: { match: Match, creator?: UserProfile
                         <p className="font-semibold">{match.title}</p>
                     </div>
                 </div>
+
+                {/* Right Side: Fee & Action */}
                 <div className="text-right">
                     <p className="font-bold text-primary text-lg">₹{match.entryFee}</p>
                     {canJoin ? (
                          <Button size="sm" onClick={handleJoinMatch} disabled={isJoining}>{isJoining ? 'Joining...' : 'Join'}</Button>
                     ) : (
-                        <span className="text-xs text-muted-foreground capitalize">{match.status}</span>
+                        <Button size="sm" variant="outline" asChild>
+                            <Link href={`/match/${match.id}`}>View</Link>
+                        </Button>
                     )}
                 </div>
             </div>
@@ -113,90 +117,46 @@ const MatchListItem = ({ match, creator }: { match: Match, creator?: UserProfile
 };
 
 
-const MatchesList = ({ matches, loading }: { matches: Match[], loading: boolean }) => {
-    const creatorIds = useMemo(() => {
-        if (!matches || matches.length === 0) return ['_'];
-        const ids = new Set(matches.map(m => m.creatorId));
-        return Array.from(ids).length > 0 ? Array.from(ids) : ['_'];
-    }, [matches]);
-
-    const usersQueryOptions = useMemo(() => ({ where: [['uid', 'in', creatorIds] as const] }), [creatorIds]);
-    const { data: creators, loading: creatorsLoading } = useCollection<UserProfile>('users', usersQueryOptions);
-    
-    const creatorsMap = useMemo(() => {
-      const map = new Map<string, UserProfile>();
-      creators.forEach(c => map.set(c.uid, c));
-      return map;
-    }, [creators]);
-    
-    if (loading || (matches.length > 0 && creatorsLoading)) {
-        return (
-            <div className="space-y-3">
-                <MatchListItemSkeleton />
-                <MatchListItemSkeleton />
-                <MatchListItemSkeleton />
-                <MatchListItemSkeleton />
-            </div>
-        );
-    }
-    
-    if (matches.length === 0) {
-        return (
-            <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg bg-card mt-8">
-                <Trophy className="mx-auto h-12 w-12 text-muted-foreground" />
-                <h3 className="mt-4 text-lg font-semibold text-foreground">No Matches Found</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    There are no matches available right now.
-                </p>
-                <Button asChild className="mt-4">
-                  <Link href="/create-match">Create the first one!</Link>
-                </Button>
-            </div>
-        )
-    }
-
-    return (
-        <div className="space-y-3">
-            {matches.map((match) => (
-                <MatchListItem key={match.id} match={match} creator={creatorsMap.get(match.creatorId)} />
-            ))}
-        </div>
-    )
-}
-
 export default function MatchesPage() {
   const { user } = useUser();
   
   const queryOptions = useMemo(() => ({
+    where: ['status', 'in', ['open', 'ongoing']],
     orderBy: [['createdAt', 'desc'] as const],
     limit: 50,
   }), []);
 
-  const { data: allMatches, loading } = useCollection<Match>('matches', queryOptions);
+  const { data: matches, loading } = useCollection<Match>('matches', queryOptions);
+
+  const creatorIds = useMemo(() => {
+    if (!matches || matches.length === 0) return ['_']; // Firestore 'in' query needs a non-empty array
+    const ids = new Set(matches.map(m => m.creatorId));
+    return Array.from(ids);
+  }, [matches]);
+
+  const usersQueryOptions = useMemo(() => ({ where: [['uid', 'in', creatorIds] as const] }), [creatorIds]);
+  const { data: creators, loading: creatorsLoading } = useCollection<UserProfile>('users', usersQueryOptions);
+  
+  const creatorsMap = useMemo(() => {
+    const map = new Map<string, UserProfile>();
+    if(creators) {
+      creators.forEach(c => map.set(c.uid, c));
+    }
+    return map;
+  }, [creators]);
 
   const sortedMatches = useMemo(() => {
-    if (!allMatches) return [];
-    
-    // Create a copy to avoid mutating the original array
-    const matchesCopy = [...allMatches];
-
-    // Sort the array: user's created matches first, then by creation date.
-    matchesCopy.sort((a, b) => {
-        const isUserCreatorA = a.creatorId === user?.uid;
-        const isUserCreatorB = b.creatorId === user?.uid;
-
-        if (isUserCreatorA && !isUserCreatorB) {
-            return -1; // a comes first
-        }
-        if (!isUserCreatorA && isUserCreatorB) {
-            return 1; // b comes first
-        }
-        // If both are created by user, or neither, sort by date (already done by Firestore query)
+    if (!matches) return [];
+    return [...matches].sort((a, b) => {
+        const isMyMatchA = a.creatorId === user?.uid || a.players.includes(user?.uid || '');
+        const isMyMatchB = b.creatorId === user?.uid || b.players.includes(user?.uid || '');
+        if (isMyMatchA && !isMyMatchB) return -1;
+        if (!isMyMatchA && isMyMatchB) return 1;
         return 0;
     });
-
-    return matchesCopy;
-  }, [allMatches, user]);
+  }, [matches, user]);
+    
+  const isLoading = loading || (matches && matches.length > 0 && creatorsLoading);
 
   return (
     <AppShell pageTitle="Matches">
@@ -212,12 +172,30 @@ export default function MatchesPage() {
                 </Link>
             </Button>
         </div>
-      <div className="p-4 space-y-6">
-        <div className='text-center space-y-2'>
-            <h2 className='text-xl font-bold flex items-center justify-center gap-2'><Trophy className='text-yellow-500'/> Open Battles <Trophy className='text-yellow-500'/></h2>
+        <div className="p-4 space-y-3">
+            {isLoading ? (
+                <>
+                    <MatchListItemSkeleton />
+                    <MatchListItemSkeleton />
+                    <MatchListItemSkeleton />
+                    <MatchListItemSkeleton />
+                </>
+            ) : sortedMatches.length > 0 ? (
+                sortedMatches.map((match) => (
+                    <MatchListItem key={match.id} match={match} creator={creatorsMap.get(match.creatorId)} />
+                ))
+            ) : (
+                <div className="text-center py-16 px-4 border-2 border-dashed rounded-lg bg-card mt-8">
+                    <h3 className="mt-4 text-lg font-semibold text-foreground">No Matches Found</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        There are no matches available right now.
+                    </p>
+                    <Button asChild className="mt-4">
+                      <Link href="/create-match">Create the first one!</Link>
+                    </Button>
+                </div>
+            )}
         </div>
-        <MatchesList matches={sortedMatches} loading={loading} />
-      </div>
     </AppShell>
   );
 }

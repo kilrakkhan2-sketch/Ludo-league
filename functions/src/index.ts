@@ -9,14 +9,6 @@ admin.initializeApp();
 const db = admin.firestore();
 
 // Type definitions for robust data handling
-interface UserProfile {
-    adminWallet?: {
-        balance: number;
-        totalReceived: number;
-        totalUsed: number;
-    };
-    [key: string]: any;
-}
 interface UserData {
     walletBalance?: number;
     referralEarnings?: number;
@@ -53,6 +45,15 @@ interface MatchResult {
     status: 'submitted' | 'confirmed' | 'mismatch' | 'locked';
 }
 
+interface UserProfile {
+    adminWallet?: {
+        balance: number;
+        totalUsed: number;
+        totalReceived: number;
+    };
+    [key: string]: any;
+}
+
 // Helper function to send a personal notification
 const sendNotification = (userId: string, title: string, body: string, link?: string) => {
     if (!userId) return Promise.resolve();
@@ -71,7 +72,7 @@ const sendNotification = (userId: string, title: string, body: string, link?: st
 //  USER & ROLE MANAGEMENT FUNCTIONS
 // =================================================================
 
-export const setSuperAdminRole = functions.https.onCall(async (data, context) => {
+export const setSuperAdminRole = functions.https.onCall(async (data: any, context) => {
   const email = data.email;
   if (typeof email !== "string" || email.length === 0) {
     throw new functions.https.HttpsError('invalid-argument', 'The function must be called with one argument "email" containing the user email address.');
@@ -536,15 +537,8 @@ export const createMatch = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("unauthenticated", "You must be logged in to create a match.");
     }
     const userId = context.auth.uid;
-
-    // 2. Maintenance Check
-    const maintenanceDoc = await db.collection('settings').doc('maintenance').get();
-    const maintenanceSettings = maintenanceDoc.data() as MaintenanceSettings;
-    if (maintenanceSettings?.areMatchesDisabled) {
-        throw new functions.https.HttpsError("unavailable", "Match creation is temporarily disabled by the admin.");
-    }
      
-    // 3. Data Validation
+    // 2. Data Validation
     const { title, entryFee, maxPlayers } = data;
     if (!title || typeof title !== "string" || title.length === 0 || title.length > 50) {
         throw new functions.https.HttpsError("invalid-argument", "Match title is required and must be 50 characters or less.");
@@ -556,14 +550,14 @@ export const createMatch = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("invalid-argument", "Max players must be either 2 or 4.");
     }
 
-    // 4. Calculate Prize Pool (e.g., 95% of total entry fees for a 5% commission)
+    // 3. Calculate Prize Pool (e.g., 95% of total entry fees for a 5% commission)
     const prizePool = (entryFee * maxPlayers) * 0.95;
 
     const userRef = db.collection("users").doc(userId);
     const matchRef = db.collection("matches").doc();
 
     try {
-        const newMatchId = await db.runTransaction(async (t) => {
+        await db.runTransaction(async (t) => {
             const userDoc = await t.get(userRef);
             if (!userDoc.exists) {
                 throw new functions.https.HttpsError("not-found", "Your user profile does not exist.");
@@ -574,6 +568,7 @@ export const createMatch = functions.https.onCall(async (data, context) => {
                 throw new functions.https.HttpsError("failed-precondition", "Insufficient funds to create this match.");
             }
             
+            // Deduct entry fee from creator's wallet
             if (entryFee > 0) {
                 t.update(userRef, { walletBalance: FieldValue.increment(-entryFee) });
                 
@@ -588,30 +583,27 @@ export const createMatch = functions.https.onCall(async (data, context) => {
                 });
             }
             
+            // Create the match with the creator already in the players list
             t.set(matchRef, {
                 title,
                 entryFee,
                 prizePool,
                 maxPlayers,
                 creatorId: userId,
-                players: [userId],
+                players: [userId], // Creator is the first player
                 status: 'open',
                 roomCode: null,
-                resultStage: 'none',
-                autoPayoutAllowed: true,
                 createdAt: FieldValue.serverTimestamp(),
                 startedAt: null,
                 completedAt: null,
                 winnerId: null,
             });
-            
-            return matchRef.id;
         });
 
         return {
             status: "success",
             message: "Match created successfully!",
-            matchId: newMatchId,
+            matchId: matchRef.id,
         };
 
     } catch (error) {

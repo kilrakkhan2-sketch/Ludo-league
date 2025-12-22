@@ -9,9 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ArrowLeft } from 'lucide-react';
-import { useDoc, useFunctions } from '@/firebase';
-import type { MaintenanceSettings } from '@/types';
-import { isTimeInDisabledRange } from '@/components/layout/MaintenanceShield';
+import { useFunctions } from '@/firebase';
 
 const feeOptions = [10, 50, 100];
 
@@ -19,9 +17,7 @@ export default function CreateMatchPage() {
   const router = useRouter();
   const { toast } = useToast();
   const functions = useFunctions();
-  const { data: maintenanceSettings, loading: maintenanceLoading } = useDoc<MaintenanceSettings>('settings/maintenance');
-
-
+  
   const [title, setTitle] = useState('');
   const [entryFee, setEntryFee] = useState('50');
   const [customFee, setCustomFee] = useState('');
@@ -43,8 +39,8 @@ export default function CreateMatchPage() {
       
     let finalFee: number;
     if (entryFee === 'custom') {
-      const parsedCustomFee = parseInt(customFee, 10);
-      if (!customFee || isNaN(parsedCustomFee) || parsedCustomFee <= 0) {
+      finalFee = parseInt(customFee, 10);
+      if (!customFee || isNaN(finalFee) || finalFee <= 0) {
         toast({
           variant: 'destructive',
           title: 'Invalid Custom Fee',
@@ -52,7 +48,6 @@ export default function CreateMatchPage() {
         });
         return;
       }
-      finalFee = parsedCustomFee;
     } else {
       finalFee = parseInt(entryFee, 10);
     }
@@ -68,14 +63,18 @@ export default function CreateMatchPage() {
 
     try {
       const result = await createMatchCloudFunction({
-        title,
+        title: title.trim(),
         entryFee: finalFee,
-        maxPlayers: parseInt(maxPlayers),
+        maxPlayers: parseInt(maxPlayers, 10),
       });
 
       toast({ title: 'Match Created!', description: 'Your match is now live and waiting for players.' });
-      // @ts-ignore
-      router.push(`/match/${result.data.matchId}`);
+      const data = result.data as { matchId?: string };
+      if (data.matchId) {
+        router.push(`/match/${data.matchId}`);
+      } else {
+        router.push('/matches');
+      }
 
     } catch (error: any) {
       console.error("Error creating match:", error);
@@ -88,11 +87,6 @@ export default function CreateMatchPage() {
       setIsSubmitting(false);
     }
   };
-  
-  const matchesGloballyDisabled = maintenanceSettings?.areMatchesDisabled || false;
-  const matchesTimeDisabled = maintenanceSettings?.matchesTimeScheduled && isTimeInDisabledRange(maintenanceSettings.matchesStartTime, maintenanceSettings.matchesEndTime);
-  const areMatchesDisabled = matchesGloballyDisabled || matchesTimeDisabled;
-
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -177,8 +171,8 @@ export default function CreateMatchPage() {
         </main>
         
         <footer className="p-4 sticky bottom-0 bg-background border-t">
-             <Button onClick={handleCreateMatch} className="w-full text-lg py-6 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90" disabled={isSubmitting || areMatchesDisabled}>
-              {isSubmitting ? 'Creating Match...' : (areMatchesDisabled ? 'Match Creation Disabled' : 'Create Match')}
+             <Button onClick={handleCreateMatch} className="w-full text-lg py-6 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating Match...' : 'Create Match'}
             </Button>
         </footer>
     </div>
