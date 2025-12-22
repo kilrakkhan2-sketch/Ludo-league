@@ -3,8 +3,7 @@
 
 import React from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/lib/firebase/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -25,6 +24,7 @@ import {
 import { signOut } from 'firebase/auth';
 import { useDocumentData } from 'react-firebase-hooks/firestore';
 import { WalletBalance } from './wallet-balance';
+import { useAuth, useFirestore } from '@/firebase';
 
 const navLinks = [
   { href: '/', label: 'Dashboard', icon: Home },
@@ -34,17 +34,11 @@ const navLinks = [
   { href: '/profile', label: 'Profile', icon: User },
 ];
 
-async function getUserRole(uid: string) {
-    const userDoc = await getDoc(doc(db, 'users', uid));
-    if (userDoc.exists()) {
-        return userDoc.data().role;
-    } 
-    return null;
-}
-
 function UserAvatar() {
+  const auth = useAuth();
+  const firestore = useFirestore();
   const [user] = useAuthState(auth);
-  const [userData] = useDocumentData(user ? doc(db, 'users', user.uid) : null);
+  const [userData] = useDocumentData(user ? doc(firestore, 'users', user.uid) : undefined);
   
   const getInitials = (name: string) => {
       return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -59,6 +53,7 @@ function UserAvatar() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const auth = useAuth();
   const [user] = useAuthState(auth);
   
   const handleLogout = async () => {

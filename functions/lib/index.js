@@ -1,4 +1,3 @@
-
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createTournament = exports.createMatch = exports.onMatchResultUpdate = exports.autoVerifyResults = exports.onDepositStatusChange = exports.rejectWithdrawal = exports.approveWithdrawal = exports.setUserRole = exports.setSuperAdminRole = void 0;
@@ -458,8 +457,8 @@ exports.createMatch = functions.https.onCall(async (data, context) => {
     }
 });
 exports.createTournament = functions.https.onCall(async (data, context) => {
-    // 1. Authentication & Authorization Check
     var _a;
+    // 1. Authentication & Authorization Check
     if (!context.auth || !['superadmin', 'match_admin'].includes((_a = context.auth) === null || _a === void 0 ? void 0 : _a.token.role)) {
         throw new functions.https.HttpsError("permission-denied", "You must be an admin to create a tournament.");
     }

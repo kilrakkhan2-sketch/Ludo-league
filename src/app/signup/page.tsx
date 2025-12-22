@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useCreateUserWithEmailAndPassword } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/lib/firebase/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,8 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const auth = useAuth();
+  const firestore = useFirestore();
   const [createUserWithEmailAndPassword, user, loading, error] = useCreateUserWithEmailAndPassword(auth);
   const router = useRouter();
 
@@ -24,7 +26,7 @@ export default function SignupPage() {
       const newUser = await createUserWithEmailAndPassword(email, password);
       if (newUser) {
         // Create a user document in Firestore
-        await setDoc(doc(db, "users", newUser.user.uid), {
+        await setDoc(doc(firestore, "users", newUser.user.uid), {
           uid: newUser.user.uid,
           name: name,
           email: email,

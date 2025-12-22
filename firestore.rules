@@ -60,7 +60,7 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
 
       match /transactions/{transactionId} {
-        allow read: if isOwner(userId) || isSuperAdmin();
+        allow read: if isOwner(userId) || isAnyAdmin(); // Changed to isAnyAdmin
         allow create: if isOwner(userId) || isDepositAdmin() || isWithdrawalAdmin() || isServer();
         allow update, delete: if false;
       }
@@ -150,7 +150,8 @@ service cloud.firestore {
     }
 
     match /deposit-requests/{depositId} {
-      allow read: if isServer() || (isSignedIn() && (isOwner(resource.data.userId) || isDepositAdmin()));
+      allow get: if isServer() || (isSignedIn() && (isOwner(resource.data.userId) || isDepositAdmin()));
+      allow list: if isServer() || isDepositAdmin();
       allow create: if isServer() || (isSignedIn() && isOwner(request.resource.data.userId));
       allow update: if isServer() || isDepositAdmin();
       allow delete: if isServer() || isSuperAdmin();
@@ -161,7 +162,8 @@ service cloud.firestore {
     }
 
     match /withdrawal-requests/{withdrawalId} {
-       allow read: if isServer() || (isSignedIn() && (isOwner(resource.data.userId) || isWithdrawalAdmin()));
+      allow get: if isServer() || (isSignedIn() && (isOwner(resource.data.userId) || isWithdrawalAdmin()));
+      allow list: if isServer() || isWithdrawalAdmin();
       allow create: if isServer() || (isSignedIn() && isOwner(request.resource.data.userId));
       allow update: if isServer() || isWithdrawalAdmin();
       allow delete: if isServer() || isSuperAdmin();
@@ -172,7 +174,8 @@ service cloud.firestore {
     }
 
     match /kyc-requests/{kycId} {
-      allow read: if isServer() || (isSignedIn() && (isOwner(resource.data.userId) || isSuperAdmin()));
+      allow get: if isServer() || (isSignedIn() && (isOwner(resource.data.userId) || isSuperAdmin()));
+      allow list: if isServer() || isSuperAdmin();
       allow create: if isServer() || (isSignedIn() && isOwner(request.resource.data.userId));
       allow update, delete: if isServer() || isSuperAdmin();
     }

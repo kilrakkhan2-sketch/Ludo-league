@@ -49,8 +49,8 @@ export default function AdminDepositsPage() {
   const [selectedDeposit, setSelectedDeposit] = useState<DepositRequest | null>(null);
 
   const queryOptions = useMemo(() => ({
-    orderBy: ['createdAt', 'desc'],
-    where: ['status', '==', statusFilter]
+    orderBy: ['createdAt', 'desc'] as const,
+    where: ['status', '==', statusFilter] as const
   }), [statusFilter]);
   const { data: deposits, loading: depositsLoading } = useCollection<DepositRequest>('deposit-requests', queryOptions);
 

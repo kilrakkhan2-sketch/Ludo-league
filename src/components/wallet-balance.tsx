@@ -4,13 +4,15 @@
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { useDocumentData } from 'react-firebase-hooks/firestore';
 import { doc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { Wallet } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export function WalletBalance() {
+  const auth = useAuth();
+  const firestore = useFirestore();
   const [user] = useAuthState(auth);
-  const [userData, loading] = useDocumentData(user ? doc(db, 'users', user.uid) : null);
+  const [userData, loading] = useDocumentData(user ? doc(firestore, 'users', user.uid) : undefined);
 
   if (loading) {
     return <Skeleton className="h-8 w-24" />;
