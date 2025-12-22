@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, Timestamp } from 'firebase/firestore';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -24,21 +24,22 @@ export default function SignupPage() {
     e.preventDefault();
     try {
       const newUser = await createUserWithEmailAndPassword(email, password);
-      if (newUser) {
+      if (newUser && firestore) {
         // Create a user document in Firestore
         await setDoc(doc(firestore, "users", newUser.user.uid), {
           uid: newUser.user.uid,
           name: name,
+          displayName: name,
           email: email,
           photoURL: '' , // or a default avatar
-          role: 'player',
+          role: 'user',
           walletBalance: 0,
           referralEarnings: 0,
           xp: 0,
           matchesPlayed: 0,
           matchesWon: 0,
           rating: 1000, // Starting ELO rating
-          createdAt: new Date(),
+          createdAt: Timestamp.now(),
         });
         router.push('/'); // Redirect to dashboard
       }
