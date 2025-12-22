@@ -41,7 +41,9 @@ const MatchCardSkeleton = () => (
 );
 
 const MatchCard = ({ match }: { match: Match }) => {
+  const { user } = useUser();
   const isFull = match.players.length >= match.maxPlayers;
+  const hasJoined = user ? match.players.includes(user.uid) : false;
 
   const getStatusVariant = (status: Match['status']) => {
     switch (status) {
@@ -59,6 +61,8 @@ const MatchCard = ({ match }: { match: Match }) => {
         return 'default';
     }
   };
+
+  const showJoinButton = match.status === 'open' && !isFull && !hasJoined;
 
   return (
     <Card className="flex flex-col hover:shadow-lg transition-shadow overflow-hidden">
@@ -89,7 +93,7 @@ const MatchCard = ({ match }: { match: Match }) => {
       <CardFooter className="bg-muted/30 p-2">
         <Button asChild className="w-full">
           <Link href={`/match/${match.id}`}>
-            {isFull || match.status !== 'open' ? 'View Match' : 'Join Now'}
+            {showJoinButton ? 'Join Now' : 'View Match'}
           </Link>
         </Button>
       </CardFooter>
