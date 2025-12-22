@@ -1,4 +1,5 @@
 
+
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
@@ -46,7 +47,7 @@ interface MatchResult {
 
 // Helper function to send a personal notification
 const sendNotification = (userId: string, title: string, body: string, link?: string) => {
-    if (!userId) return;
+    if (!userId) return Promise.resolve();
     const notification = {
         title,
         body,
@@ -168,18 +169,16 @@ export const approveWithdrawal = functions.https.onCall(async (data, context) =>
     
     // 3. Perform transaction
     try {
-        await db.runTransaction(async (t) => {
-            const requestDoc = await t.get(requestRef);
-            if (!requestDoc.exists) throw new Error('Withdrawal request not found.');
-            
-            const requestData = requestDoc.data();
-            if (requestData?.status !== 'pending') throw new Error('This request has already been processed.');
+        const requestDoc = await requestRef.get();
+        if (!requestDoc.exists) throw new Error('Withdrawal request not found.');
+        const requestData = requestDoc.data();
+        if (requestData?.status !== 'pending') throw new Error('This request has already been processed.');
 
-            const { amount, userId } = requestData;
-            
+        const { amount, userId } = requestData;
+        
+        await db.runTransaction(async (t) => {
             const adminRef = db.collection('users').doc(adminUid);
             const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
-            
             const userTxSnapshot = await t.get(userTxQuery);
             const userTxRef = userTxSnapshot.docs[0]?.ref;
 
@@ -191,21 +190,23 @@ export const approveWithdrawal = functions.https.onCall(async (data, context) =>
             });
 
             // B. Update the user's transaction status to completed
-            // Note: The user's balance was already debited when they made the request.
-            // This function confirms the external payment has been made.
             if (userTxRef) {
                 t.update(userTxRef, { status: 'completed' });
             }
 
             // C. Deduct the amount from the admin's wallet as a ledger
-            t.update(adminRef, { walletBalance: FieldValue.increment(-amount) });
+            const adminDoc = await t.get(adminRef);
+            const adminData = adminDoc.data() as UserProfile | undefined;
+            if(adminData?.adminWallet) {
+                t.update(adminRef, { 
+                    'adminWallet.balance': FieldValue.increment(-amount),
+                    'adminWallet.totalUsed': FieldValue.increment(amount)
+                });
+            }
         });
 
-        const requestData = (await requestRef.get()).data();
-        if (requestData) {
-            functions.logger.info(`Withdrawal ${withdrawalId} approved by admin ${adminUid}.`);
-            await sendNotification(requestData.userId, 'Withdrawal Approved', `Your withdrawal request for ₹${requestData.amount} has been approved and processed.`);
-        }
+        functions.logger.info(`Withdrawal ${withdrawalId} approved by admin ${adminUid}.`);
+        await sendNotification(userId, 'Withdrawal Approved', `Your withdrawal request for ₹${amount} has been approved and processed.`);
         return { success: true, message: 'Withdrawal approved successfully.' };
         
     } catch (error) {
@@ -232,17 +233,16 @@ export const rejectWithdrawal = functions.https.onCall(async (data, context) => 
     const requestRef = db.collection('withdrawal-requests').doc(withdrawalId);
     
     try {
-        await db.runTransaction(async (t) => {
-            const requestDoc = await t.get(requestRef);
-            if (!requestDoc.exists) throw new functions.https.HttpsError('not-found', 'Withdrawal request not found.');
-            
-            const requestData = requestDoc.data();
-            if (requestData?.status !== 'pending') throw new functions.https.HttpsError('failed-precondition', 'This request has already been processed.');
-            
-            const { userId, amount } = requestData;
-            const userRef = db.collection('users').doc(userId);
-            const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
+        const requestDoc = await requestRef.get();
+        if (!requestDoc.exists) throw new functions.https.HttpsError('not-found', 'Withdrawal request not found.');
+        const requestData = requestDoc.data();
+        if (requestData?.status !== 'pending') throw new functions.https.HttpsError('failed-precondition', 'This request has already been processed.');
         
+        const { userId, amount } = requestData;
+        const userRef = db.collection('users').doc(userId);
+        const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
+        
+        await db.runTransaction(async (t) => {
             const userTxSnapshot = await t.get(userTxQuery);
             const userTxRef = userTxSnapshot.docs[0]?.ref;
         
@@ -253,7 +253,7 @@ export const rejectWithdrawal = functions.https.onCall(async (data, context) => 
                 processedBy: adminUid,
             });
 
-            // B. Refund the user's wallet
+            // B. Refund the user
             t.update(userRef, { walletBalance: FieldValue.increment(amount) });
 
             // C. Mark user's transaction as failed
@@ -261,12 +261,9 @@ export const rejectWithdrawal = functions.https.onCall(async (data, context) => 
                 t.update(userTxRef, { status: 'failed', description: 'Withdrawal request rejected by admin' });
             }
         });
-        
-        const requestData = (await requestRef.get()).data();
-        if (requestData) {
-            functions.logger.info(`Withdrawal ${withdrawalId} for user ${requestData.userId} was rejected and funds were refunded.`);
-            await sendNotification(requestData.userId, 'Withdrawal Rejected', `Your withdrawal request for ₹${requestData.amount} was rejected. The amount has been refunded to your wallet.`);
-        }
+
+        functions.logger.info(`Withdrawal ${withdrawalId} for user ${userId} was rejected and funds were refunded.`);
+        await sendNotification(userId, 'Withdrawal Rejected', `Your withdrawal request for ₹${amount} was rejected. The amount has been refunded to your wallet.`);
         
         return { success: true, message: 'Withdrawal rejected and funds refunded.' };
 
@@ -292,16 +289,16 @@ export const onDepositStatusChange = functions.firestore
         return null;
     }
     
-    const { userId, amount, upiAccountId } = afterData;
-    if (!userId || !amount || amount <= 0 || !upiAccountId) {
-        functions.logger.error("Missing or invalid userId, amount, or upiAccountId", { id: context.params.depositId });
+    const { userId, amount, upiAccountId, processedBy } = afterData;
+    if (!userId || !amount || amount <= 0 || !upiAccountId || !processedBy) {
+        functions.logger.error("Missing or invalid userId, amount, upiAccountId, or processedBy", { id: context.params.depositId });
         return null;
     }
 
     const userRef = db.collection("users").doc(userId);
     const upiAccountRef = db.collection('upi-accounts').doc(upiAccountId);
     const commissionSettingsRef = db.collection('settings').doc('commission');
-
+    const adminRef = db.collection('users').doc(processedBy);
 
     try {
         await db.runTransaction(async (t) => {
@@ -311,6 +308,10 @@ export const onDepositStatusChange = functions.firestore
             
             const commissionSettingsDoc = await t.get(commissionSettingsRef);
             const commissionSettings = commissionSettingsDoc.data() as CommissionSettings | undefined;
+
+            const adminDoc = await t.get(adminRef);
+            const adminData = adminDoc.data() as UserProfile | undefined;
+
 
             // 1. Credit the user's wallet.
             t.update(userRef, { walletBalance: FieldValue.increment(amount) });
@@ -331,8 +332,17 @@ export const onDepositStatusChange = functions.firestore
                 createdAt: FieldValue.serverTimestamp(),
                 relatedId: context.params.depositId,
             });
+            
+            // 4. Update the admin's ledger for accountability.
+            if (adminData?.adminWallet) {
+                t.update(adminRef, {
+                    'adminWallet.balance': FieldValue.increment(amount),
+                    'adminWallet.totalReceived': FieldValue.increment(amount),
+                });
+            }
 
-            // 4. Handle referral commission if the user was referred and commission is enabled.
+
+            // 5. Handle referral commission if the user was referred and commission is enabled.
             if (userData.referredBy && commissionSettings?.isEnabled && typeof commissionSettings.rate === 'number' && commissionSettings.rate > 0) {
                 const referrerQuery = db.collection('users').where('referralCode', '==', userData.referredBy).limit(1);
                 const referrerSnapshot = await t.get(referrerQuery);
@@ -654,3 +664,5 @@ export const createTournament = functions.https.onCall(async (data, context) => 
         throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the tournament.");
     }
 });
+
+    

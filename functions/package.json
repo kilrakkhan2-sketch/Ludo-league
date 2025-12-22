@@ -19,7 +19,6 @@
     "firebase-functions": "^5.1.1"
   },
   "devDependencies": {
-    "@types/firebase-functions": "^3.18.9",
     "@types/node": "^20.12.12",
     "firebase-functions-test": "^3.2.0",
     "typescript": "^5.4.5"

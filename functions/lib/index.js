@@ -1,4 +1,3 @@
-
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createTournament = exports.createMatch = exports.onMatchResultUpdate = exports.autoVerifyResults = exports.onDepositStatusChange = exports.rejectWithdrawal = exports.approveWithdrawal = exports.deleteStorageFile = exports.setUserRole = exports.setSuperAdminRole = void 0;
@@ -11,7 +10,7 @@ const db = admin.firestore();
 // Helper function to send a personal notification
 const sendNotification = (userId, title, body, link) => {
     if (!userId)
-        return;
+        return Promise.resolve();
     const notification = {
         title,
         body,
@@ -69,9 +68,9 @@ exports.setUserRole = functions.https.onCall(async (data, context) => {
 //  STORAGE MANAGEMENT FUNCTIONS
 // =================================================================
 exports.deleteStorageFile = functions.https.onCall(async (data, context) => {
-    var _b;
+    var _a;
     // 1. Authentication & Authorization Check
-    if (((_b = context.auth) === null || _b === void 0 ? void 0 : _b.token.role) !== 'superadmin') {
+    if (((_a = context.auth) === null || _a === void 0 ? void 0 : _a.token.role) !== 'superadmin') {
         throw new functions.https.HttpsError("permission-denied", "You must be a superadmin to delete files.");
     }
     // 2. Data Validation
@@ -104,9 +103,9 @@ exports.deleteStorageFile = functions.https.onCall(async (data, context) => {
 //  WITHDRAWAL MANAGEMENT FUNCTIONS
 // =================================================================
 exports.approveWithdrawal = functions.https.onCall(async (data, context) => {
-    var _c, _d;
+    var _a, _b;
     // 1. Check permissions
-    if (((_c = context.auth) === null || _c === void 0 ? void 0 : _c.token.role) !== 'withdrawal_admin' && ((_d = context.auth) === null || _d === void 0 ? void 0 : _d.token.role) !== 'superadmin') {
+    if (((_a = context.auth) === null || _a === void 0 ? void 0 : _a.token.role) !== 'withdrawal_admin' && ((_b = context.auth) === null || _b === void 0 ? void 0 : _b.token.role) !== 'superadmin') {
         throw new functions.https.HttpsError('permission-denied', 'Only withdrawal admins can approve requests.');
     }
     // 2. Validate data
@@ -163,9 +162,9 @@ exports.approveWithdrawal = functions.https.onCall(async (data, context) => {
     }
 });
 exports.rejectWithdrawal = functions.https.onCall(async (data, context) => {
-    var _e, _f;
+    var _a, _b;
     // 1. Check permissions
-    if (((_e = context.auth) === null || _e === void 0 ? void 0 : _e.token.role) !== 'withdrawal_admin' && ((_f = context.auth) === null || _f === void 0 ? void 0 : _f.token.role) !== 'superadmin') {
+    if (((_a = context.auth) === null || _a === void 0 ? void 0 : _a.token.role) !== 'withdrawal_admin' && ((_b = context.auth) === null || _b === void 0 ? void 0 : _b.token.role) !== 'superadmin') {
         throw new functions.https.HttpsError('permission-denied', 'Only withdrawal admins can reject requests.');
     }
     // 2. Validate data
@@ -235,7 +234,6 @@ exports.onDepositStatusChange = functions.firestore
     const adminRef = db.collection('users').doc(processedBy);
     try {
         await db.runTransaction(async (t) => {
-            var _a;
             const userDoc = await t.get(userRef);
             if (!userDoc.exists)
                 throw new Error(`User ${userId} not found.`);
@@ -286,7 +284,7 @@ exports.onDepositStatusChange = functions.firestore
                         amount: commissionAmount,
                         type: "referral_bonus",
                         status: "completed",
-                        description: `${commissionPercentage}% commission from ${(_a = userData.name) !== null && _a !== void 0 ? _a : 'a referred user'}'s deposit.`,
+                        description: `${commissionPercentage}% commission from ${userData.name || 'a referred user'}'s deposit.`,
                         createdAt: firestore_1.FieldValue.serverTimestamp(),
                         relatedId: context.params.depositId,
                     });
@@ -515,9 +513,8 @@ exports.createMatch = functions.https.onCall(async (data, context) => {
     }
 });
 exports.createTournament = functions.https.onCall(async (data, context) => {
-    var _g;
     // 1. Authentication & Authorization Check
-    if (!context.auth || !['superadmin', 'match_admin'].includes((_g = context.auth) === null || _g === void 0 ? void 0 : _g.token.role)) {
+    if (!context.auth || !['superadmin', 'match_admin'].includes(context.auth.token.role)) {
         throw new functions.https.HttpsError("permission-denied", "You must be an admin to create a tournament.");
     }
     const adminUid = context.auth.uid;
@@ -559,5 +556,4 @@ exports.createTournament = functions.https.onCall(async (data, context) => {
     }
 });
 //# sourceMappingURL=index.js.map
-
     
