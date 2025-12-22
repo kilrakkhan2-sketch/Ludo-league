@@ -11,7 +11,6 @@ import { FirebaseProvider, useFirebase, useFirebaseApp, useAuth, useFirestore, u
 import { FirebaseClientProvider } from './client-provider';
 import { useCollection } from './firestore/use-collection';
 import { useDoc } from './firestore/use-doc';
-import { useCollectionCount } from './firestore/use-collection-count';
 import { useCollectionGroup } from './firestore/use-collection-group';
 
 function initializeFirebase(): {
@@ -52,6 +51,5 @@ export {
   useFunctions,
   useCollection,
   useDoc,
-  useCollectionCount,
   useCollectionGroup,
 };

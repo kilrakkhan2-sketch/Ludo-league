@@ -2,7 +2,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCollection, useCollectionCount, useCollectionGroup } from "@/firebase";
+import { useCollection, useCollectionGroup } from "@/firebase";
 import type { Match, UserProfile, DepositRequest, WithdrawalRequest, Tournament } from "@/types";
 import { Users, Sword, CircleArrowUp, Landmark, FileKey, BadgeCheck, ShieldAlert, Gamepad2, Ticket, Wallet } from 'lucide-react';
 import { useMemo } from "react";
@@ -33,17 +33,17 @@ const StatCard = ({ title, value, icon: Icon, loading, href, description }: { ti
 
 export default function AdminDashboardPage() {
   // ----------- ACTIONABLE ITEMS -----------
-  const { count: pendingDeposits, loading: pendingDepositsLoading } = useCollectionCount("deposit-requests", { where: ["status", "==", "pending"] });
-  const { count: pendingWithdrawals, loading: pendingWithdrawalsLoading } = useCollectionCount("withdrawal-requests", { where: ["status", "==", "pending"] });
-  const { count: pendingKyc, loading: pendingKycLoading } = useCollectionCount("kyc-requests", { where: ["status", "==", "pending"] });
-  const { count: pendingMatches, loading: pendingMatchesLoading } = useCollectionCount("matches", { where: ["status", "==", "verification"] });
-  const { count: disputedMatches, loading: disputedMatchesLoading } = useCollectionCount("matches", { where: ["status", "==", "disputed"] });
+  const { count: pendingDeposits, loading: pendingDepositsLoading } = useCollection("deposit-requests", { where: ["status", "==", "pending"] });
+  const { count: pendingWithdrawals, loading: pendingWithdrawalsLoading } = useCollection("withdrawal-requests", { where: ["status", "==", "pending"] });
+  const { count: pendingKyc, loading: pendingKycLoading } = useCollection("kyc-requests", { where: ["status", "==", "pending"] });
+  const { count: pendingMatches, loading: pendingMatchesLoading } = useCollection("matches", { where: ["status", "==", "verification"] });
+  const { count: disputedMatches, loading: disputedMatchesLoading } = useCollection("matches", { where: ["status", "==", "disputed"] });
   
   // ----------- PLATFORM OVERVIEW -----------
-  const { count: totalUsers, loading: usersLoading } = useCollectionCount("users");
-  const { count: openMatches, loading: openMatchesLoading } = useCollectionCount("matches", { where: ["status", "==", "open"] });
-  const { count: ongoingMatches, loading: ongoingMatchesLoading } = useCollectionCount("matches", { where: ["status", "==", "ongoing"] });
-  const { count: liveTournaments, loading: liveTournamentsLoading } = useCollectionCount("tournaments", { where: ["status", "==", "live"] });
+  const { count: totalUsers, loading: usersLoading } = useCollection("users");
+  const { count: openMatches, loading: openMatchesLoading } = useCollection("matches", { where: ["status", "==", "open"] });
+  const { count: ongoingMatches, loading: ongoingMatchesLoading } = useCollection("matches", { where: ["status", "==", "ongoing"] });
+  const { count: liveTournaments, loading: liveTournamentsLoading } = useCollection("tournaments", { where: ["status", "==", "live"] });
   
   const twentyFourHoursAgo = useMemo(() => {
     const date = new Date();
@@ -51,10 +51,8 @@ export default function AdminDashboardPage() {
     return date;
   }, []);
   
-  const { count: newUsersToday, loading: newUsersLoading } = useCollectionCount("users", {
-    // Note: This query requires a composite index on (createdAt, DESC).
-    // This example assumes it exists. For real apps, you'd create it in firebase.json.
-    // where: ["createdAt", ">=", twentyFourHoursAgo] 
+  const { count: newUsersToday, loading: newUsersLoading } = useCollection("users", {
+    where: ["createdAt", ">=", twentyFourHoursAgo] 
   });
 
   const { data: deposits, loading: depositsLoading } = useCollection<DepositRequest>("deposit-requests", { where: ["status", "==", "approved"] });

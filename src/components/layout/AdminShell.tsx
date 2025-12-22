@@ -22,7 +22,7 @@ import {
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
-import { useUser, useFirebase, useCollectionCount } from '@/firebase';
+import { useUser, useFirebase, useCollection } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Sidebar,
@@ -65,10 +65,10 @@ export function AdminShell({ children, pageTitle }: { children: React.ReactNode,
   const router = useRouter();
   const pathname = usePathname();
 
-  const { count: pendingDeposits } = useCollectionCount("deposit-requests", { where: ["status", "==", "pending"] });
-  const { count: pendingWithdrawals } = useCollectionCount("withdrawal-requests", { where: ["status", "==", "pending"] });
-  const { count: pendingKyc } = useCollectionCount("kyc-requests", { where: ["status", "==", "pending"] });
-  const { count: pendingMatches } = useCollectionCount("matches", { where: ["status", "==", "verification"] });
+  const { count: pendingDeposits } = useCollection("deposit-requests", { where: ["status", "==", "pending"] });
+  const { count: pendingWithdrawals } = useCollection("withdrawal-requests", { where: ["status", "==", "pending"] });
+  const { count: pendingKyc } = useCollection("kyc-requests", { where: ["status", "==", "pending"] });
+  const { count: pendingMatches } = useCollection("matches", { where: ["status", "==", "verification"] });
 
   const getNavItems = () => {
     const allNav = {

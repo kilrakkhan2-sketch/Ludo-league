@@ -29,6 +29,7 @@ interface UseCollectionOptions {
 export function useCollection<T extends { id: string }>(path: string, options?: UseCollectionOptions) {
   const db = useFirestore();
   const [data, setData] = useState<T[]>([]);
+  const [count, setCount] = useState(0); // Add count state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -87,6 +88,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     setLoading(true);
     if (!path) {
         setData([]);
+        setCount(0);
         setLoading(false);
         return;
     }
@@ -95,6 +97,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
 
     if (!q) {
       setData([]);
+      setCount(0);
       setLoading(false);
       return;
     }
@@ -105,6 +108,7 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
             result.push({ id: doc.id, ...doc.data() } as T);
         });
         setData(result);
+        setCount(querySnapshot.size); // Update count on every snapshot
         setLoading(false);
         setError(null);
     }, (err: any) => {
@@ -118,5 +122,5 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     return () => unsubscribe();
   }, [buildQuery, path]);
 
-  return { data, loading, error };
+  return { data, count, loading, error };
 }
