@@ -121,23 +121,10 @@
           "enum": [
             "open",
             "ongoing",
-            "processing",
             "verification",
             "completed",
             "disputed"
           ]
-        },
-        "resultStage": {
-          "type": "string",
-          "enum": [
-            "none",
-            "stage1",
-            "stage2",
-            "verified"
-          ]
-        },
-        "autoPayoutAllowed": {
-          "type": "boolean"
         },
         "createdAt": {
           "type": "string",
@@ -188,19 +175,6 @@
         "submittedAt": {
           "type": "string",
           "format": "date-time"
-        },
-        "confirmedAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "status": {
-          "type": "string",
-          "enum": [
-            "submitted",
-            "confirmed",
-            "mismatch",
-            "locked"
-          ]
         }
       },
       "required": [
