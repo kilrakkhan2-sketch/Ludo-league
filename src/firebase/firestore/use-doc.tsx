@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -20,6 +19,8 @@ export function useDoc<T>(path: string | undefined | null) {
     }
     
     setLoading(true);
+    
+    // The path is a dependency, so we can safely create the docRef inside.
     const docRef = doc(db, path);
 
     const unsubscribe = onSnapshot(docRef, 
@@ -38,8 +39,9 @@ export function useDoc<T>(path: string | undefined | null) {
       }
     );
 
+    // Cleanup the listener on unmount or when the path changes.
     return () => unsubscribe();
-  }, [db, path]);
+  }, [db, path]); // Dependency array ensures this only re-runs if db or path string actually changes.
 
   return { data, loading, error };
 }
