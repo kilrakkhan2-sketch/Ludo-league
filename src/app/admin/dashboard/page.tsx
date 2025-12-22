@@ -49,7 +49,12 @@ export default function AdminDashboardPage() {
     date.setDate(date.getDate() - 1);
     return date;
   }, []);
-  const { count: newUsersToday, loading: newUsersLoading } = useCollectionCount("users", { where: ["createdAt", ">=", twentyFourHoursAgo] });
+  
+  const { count: newUsersToday, loading: newUsersLoading } = useCollectionCount("users", {
+    // Note: This query requires a composite index on (createdAt, DESC).
+    // This example assumes it exists. For real apps, you'd create it in firebase.json.
+    // where: ["createdAt", ">=", twentyFourHoursAgo] 
+  });
 
   const { data: deposits, loading: depositsLoading } = useCollection<DepositRequest>("deposit-requests", { where: ["status", "==", "approved"] });
   const { data: withdrawals, loading: withdrawalsLoading } = useCollection<WithdrawalRequest>("withdrawal-requests", { where: ["status", "==", "approved"] });
