@@ -1,4 +1,5 @@
 
+
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
@@ -6,7 +7,7 @@ import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getFunctions, Functions } from 'firebase/functions';
 import { firebaseConfig } from './config';
 import { useUser } from './auth/use-user';
-import { FirebaseProvider, useFirebase, useFirebaseApp, useAuth, useFirestore, useFunctions } from './provider';
+import { FirebaseProvider, useFirebase, useFirebaseApp, useAuth, useFirestore, useFunctions, useStorage } from './provider';
 import { FirebaseClientProvider } from './client-provider';
 import { useCollection } from './firestore/use-collection';
 import { useDoc } from './firestore/use-doc';
@@ -47,6 +48,7 @@ export {
   useFirebaseApp,
   useAuth,
   useFirestore,
+  useStorage,
   useFunctions,
   useCollection,
   useDoc,
