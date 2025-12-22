@@ -80,14 +80,14 @@ export default function AdminDashboardPage() {
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Pending Deposits" value={pendingDeposits} icon={CircleArrowUp} loading={pendingLoading} href="/admin/deposits" />
         <StatCard title="Pending Withdrawals" value={pendingWithdrawals} icon={Landmark} loading={pendingLoading} href="/admin/withdrawals" />
         <StatCard title="Pending KYC" value={pendingKyc} icon={FileKey} loading={pendingLoading} href="/admin/kyc" />
         <StatCard title="Pending Matches" value={pendingMatches} icon={BadgeCheck} loading={pendingLoading} href="/admin/matches" />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Total Users" value={totalUsers} icon={Users} loading={loading} href="/admin/users" />
         <StatCard title="Total Matches Played" value={totalMatches} icon={Sword} loading={loading} href="/admin/matches" />
         <StatCard title="Total Deposits" value={`₹${totalDeposits.toLocaleString()}`} icon={CircleArrowUp} loading={loading} href="/admin/transactions"/>
