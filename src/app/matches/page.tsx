@@ -86,33 +86,31 @@ const MatchListItem = ({ match, creator }: { match: Match, creator?: UserProfile
     }
   };
   
-  // A simple component for the button to keep the main return clean
-  const ActionButton = () => {
-    if (canJoin) {
-      return <Button size="sm" onClick={handleJoinMatch} disabled={isJoining}>{isJoining ? 'Joining...' : 'Play'}</Button>;
-    }
-    return <Button size="sm" variant="outline" asChild><Link href={`/match/${match.id}`}>View</Link></Button>;
-  }
-
   return (
-    <div className="bg-card rounded-lg shadow-sm border p-3">
-       <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-             <Avatar className="h-10 w-10 border">
-              <AvatarImage src={creator?.photoURL || ''} />
-              <AvatarFallback>{creator?.displayName?.[0] || 'U'}</AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="text-xs text-muted-foreground">Challenge set by</p>
-              <p className="font-semibold">{creator?.displayName || "..."}</p>
+    <Link href={`/match/${match.id}`} className="block">
+        <div className="bg-card rounded-lg shadow-sm border p-3 hover:bg-muted/50 transition-colors">
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10 border">
+                <AvatarImage src={creator?.photoURL || ''} />
+                <AvatarFallback>{creator?.displayName?.[0] || 'U'}</AvatarFallback>
+                </Avatar>
+                <div>
+                <p className="text-xs text-muted-foreground">Challenge by {creator?.displayName || "..."}</p>
+                <p className="font-semibold">{match.title}</p>
+                </div>
             </div>
-          </div>
-           <div className="text-right">
-              <p className="font-bold text-primary text-lg">₹{match.entryFee}</p>
-              <ActionButton />
-          </div>
-       </div>
-    </div>
+            <div className="text-right">
+                <p className="font-bold text-primary text-lg">₹{match.entryFee}</p>
+                {canJoin ? (
+                     <Button size="sm" onClick={handleJoinMatch} disabled={isJoining}>{isJoining ? 'Joining...' : 'Join'}</Button>
+                ) : (
+                    <span className="text-xs text-muted-foreground capitalize">{match.status}</span>
+                )}
+            </div>
+        </div>
+        </div>
+    </Link>
   );
 };
 
@@ -204,7 +202,7 @@ export default function MatchesPage() {
         </div>
       <div className="p-4 space-y-6">
         <div className='text-center space-y-2'>
-            <h2 className='text-xl font-bold flex items-center justify-center gap-2'><Trophy className='text-yellow-500'/> Open Battles (Classic) <Trophy className='text-yellow-500'/></h2>
+            <h2 className='text-xl font-bold flex items-center justify-center gap-2'><Trophy className='text-yellow-500'/> Open Battles <Trophy className='text-yellow-500'/></h2>
         </div>
          <Tabs value={filter} onValueChange={setFilter} className='hidden'>
             <TabsList className="grid w-full grid-cols-4">
@@ -219,4 +217,3 @@ export default function MatchesPage() {
     </AppShell>
   );
 }
-
