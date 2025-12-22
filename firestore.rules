@@ -77,7 +77,8 @@ service cloud.firestore {
     // ------------------ MATCHES & TOURNAMENTS ------------------
     match /matches/{matchId} {
 
-      allow list, read: if isSignedIn();
+      allow read: if isSignedIn();
+      allow list: if isSignedIn(); // This was the missing rule
       allow create: if isSignedIn() && isServer();
 
       allow update: if isSignedIn() && (
