@@ -2,16 +2,17 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCollection, useCollectionCount } from "@/firebase";
-import type { Match, UserProfile } from "@/types";
-import { Users, Sword, CircleArrowUp, Landmark, FileKey, BadgeCheck } from 'lucide-react';
+import { useCollection, useCollectionCount, useCollectionGroup } from "@/firebase";
+import type { Match, UserProfile, DepositRequest, WithdrawalRequest, Tournament } from "@/types";
+import { Users, Sword, CircleArrowUp, Landmark, FileKey, BadgeCheck, ShieldAlert, Gamepad2, Ticket, Wallet } from 'lucide-react';
 import { useMemo } from "react";
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
+import { Separator } from "@/components/ui/separator";
 
-const StatCard = ({ title, value, icon: Icon, loading, href }: { title: string, value: string | number, icon: React.ElementType, loading: boolean, href?: string }) => (
+const StatCard = ({ title, value, icon: Icon, loading, href, description }: { title: string, value: string | number, icon: React.ElementType, loading: boolean, href?: string, description?: string }) => (
   <Card className="hover:bg-muted/50 transition-colors">
     <Link href={href || '#'}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -24,30 +25,42 @@ const StatCard = ({ title, value, icon: Icon, loading, href }: { title: string, 
           ) : (
             <div className="text-2xl font-bold">{value}</div>
           )}
+          {description && <p className="text-xs text-muted-foreground pt-1">{description}</p>}
         </CardContent>
     </Link>
   </Card>
 );
 
 export default function AdminDashboardPage() {
-  const { data: users, loading: usersLoading } = useCollection<UserProfile>("users");
-  const { data: matches, loading: matchesLoading } = useCollection<Match>("matches");
-  const { data: deposits, loading: depositsLoading } = useCollection("deposit-requests", { where: ["status", "==", "approved"] });
-  const { data: withdrawals, loading: withdrawalsLoading } = useCollection("withdrawal-requests", { where: ["status", "==", "approved"] });
-  
-  // Pending counts
+  // ----------- ACTIONABLE ITEMS -----------
   const { count: pendingDeposits, loading: pendingDepositsLoading } = useCollectionCount("deposit-requests", { where: ["status", "==", "pending"] });
   const { count: pendingWithdrawals, loading: pendingWithdrawalsLoading } = useCollectionCount("withdrawal-requests", { where: ["status", "==", "pending"] });
   const { count: pendingKyc, loading: pendingKycLoading } = useCollectionCount("kyc-requests", { where: ["status", "==", "pending"] });
   const { count: pendingMatches, loading: pendingMatchesLoading } = useCollectionCount("matches", { where: ["status", "==", "verification"] });
+  const { count: disputedMatches, loading: disputedMatchesLoading } = useCollectionCount("matches", { where: ["status", "==", "disputed"] });
+  
+  // ----------- PLATFORM OVERVIEW -----------
+  const { count: totalUsers, loading: usersLoading } = useCollectionCount("users");
+  const { count: ongoingMatches, loading: ongoingMatchesLoading } = useCollectionCount("matches", { where: ["status", "==", "ongoing"] });
+  const { count: liveTournaments, loading: liveTournamentsLoading } = useCollectionCount("tournaments", { where: ["status", "==", "live"] });
+  
+  const twentyFourHoursAgo = useMemo(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 1);
+    return date;
+  }, []);
+  const { count: newUsersToday, loading: newUsersLoading } = useCollectionCount("users", { where: ["createdAt", ">=", twentyFourHoursAgo] });
 
-  const totalUsers = users?.length || 0;
-  const totalMatches = matches?.length || 0;
-  const totalDeposits = useMemo(() => deposits?.reduce((acc: any, d: any) => acc + (d.amount || 0), 0) || 0, [deposits]);
-  const totalWithdrawals = useMemo(() => withdrawals?.reduce((acc: any, w: any) => acc + (w.amount || 0), 0) || 0, [withdrawals]);
+  const { data: deposits, loading: depositsLoading } = useCollection<DepositRequest>("deposit-requests", { where: ["status", "==", "approved"] });
+  const { data: withdrawals, loading: withdrawalsLoading } = useCollection<WithdrawalRequest>("withdrawal-requests", { where: ["status", "==", "approved"] });
+  const { data: commissions, loading: commissionsLoading } = useCollectionGroup<any>('transactions', { where: ['type', '==', 'referral_bonus'] });
+  
+  const totalDeposits = useMemo(() => deposits?.reduce((acc, d) => acc + (d.amount || 0), 0) || 0, [deposits]);
+  const totalWithdrawals = useMemo(() => withdrawals?.reduce((acc, w) => acc + (w.amount || 0), 0) || 0, [withdrawals]);
+  const totalCommissions = useMemo(() => commissions?.reduce((acc, c) => acc + (c.amount || 0), 0) || 0, [commissions]);
 
-  const loading = usersLoading || matchesLoading || depositsLoading || withdrawalsLoading;
-  const pendingLoading = pendingDepositsLoading || pendingWithdrawalsLoading || pendingKycLoading || pendingMatchesLoading;
+  const loading = usersLoading || depositsLoading || withdrawalsLoading || commissionsLoading;
+  const pendingLoading = pendingDepositsLoading || pendingWithdrawalsLoading || pendingKycLoading || pendingMatchesLoading || disputedMatchesLoading;
   
   const revenueData = [
     { month: 'Jan', revenue: 2000 }, { month: 'Feb', revenue: 1800 },
@@ -63,37 +76,42 @@ export default function AdminDashboardPage() {
     { month: 'Jul', users: 310 },
   ];
   
-  const revenueChartConfig = {
-    revenue: {
-      label: "Revenue",
-      color: "hsl(var(--primary))",
-    },
-  };
-  
-   const registrationChartConfig = {
-    users: {
-      label: "Users",
-      color: "hsl(var(--primary))",
-    },
-  };
+  const revenueChartConfig = { revenue: { label: "Revenue", color: "hsl(var(--primary))" } };
+  const registrationChartConfig = { users: { label: "Users", color: "hsl(var(--primary))" } };
 
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Pending Deposits" value={pendingDeposits} icon={CircleArrowUp} loading={pendingLoading} href="/admin/deposits" />
-        <StatCard title="Pending Withdrawals" value={pendingWithdrawals} icon={Landmark} loading={pendingLoading} href="/admin/withdrawals" />
-        <StatCard title="Pending KYC" value={pendingKyc} icon={FileKey} loading={pendingLoading} href="/admin/kyc" />
-        <StatCard title="Pending Matches" value={pendingMatches} icon={BadgeCheck} loading={pendingLoading} href="/admin/matches" />
+      <div className="space-y-2">
+        <h2 className="text-lg font-semibold">Immediate Actions</h2>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-5">
+          <StatCard title="Pending Deposits" value={pendingDeposits} icon={CircleArrowUp} loading={pendingLoading} href="/admin/deposits" />
+          <StatCard title="Pending Withdrawals" value={pendingWithdrawals} icon={Landmark} loading={pendingLoading} href="/admin/withdrawals" />
+          <StatCard title="Pending KYC" value={pendingKyc} icon={FileKey} loading={pendingLoading} href="/admin/kyc" />
+          <StatCard title="Match Verification" value={pendingMatches} icon={BadgeCheck} loading={pendingLoading} href="/admin/matches" />
+          <StatCard title="Disputed Matches" value={disputedMatches} icon={ShieldAlert} loading={disputedMatchesLoading} href="/admin/matches" />
+        </div>
+      </div>
+      
+      <Separator className="my-6" />
+
+      <div className="space-y-2">
+        <h2 className="text-lg font-semibold">Platform Overview</h2>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-5">
+          <StatCard title="Total Users" value={totalUsers} icon={Users} loading={usersLoading} href="/admin/users" />
+          <StatCard title="Ongoing Matches" value={ongoingMatches} icon={Gamepad2} loading={ongoingMatchesLoading} href="/admin/matches" />
+          <StatCard title="Live Tournaments" value={liveTournaments} icon={Ticket} loading={liveTournamentsLoading} href="/admin/tournaments" />
+          <StatCard title="New Users (24h)" value={newUsersToday} icon={Users} loading={newUsersLoading} />
+          <StatCard title="Total Commission" value={`₹${totalCommissions.toLocaleString()}`} icon={Wallet} loading={commissionsLoading} />
+        </div>
+      </div>
+      
+      <div className="grid gap-4 pt-4 md:grid-cols-2 lg:grid-cols-2">
+          <StatCard title="Total Deposits" value={`₹${totalDeposits.toLocaleString()}`} icon={CircleArrowUp} loading={loading} href="/admin/transactions" description="Approved deposits value" />
+          <StatCard title="Total Withdrawals" value={`₹${totalWithdrawals.toLocaleString()}`} icon={Landmark} loading={loading} href="/admin/transactions" description="Approved withdrawals value" />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Users" value={totalUsers} icon={Users} loading={loading} href="/admin/users" />
-        <StatCard title="Total Matches Played" value={totalMatches} icon={Sword} loading={loading} href="/admin/matches" />
-        <StatCard title="Total Deposits" value={`₹${totalDeposits.toLocaleString()}`} icon={CircleArrowUp} loading={loading} href="/admin/transactions"/>
-        <StatCard title="Total Withdrawals" value={`₹${totalWithdrawals.toLocaleString()}`} icon={Landmark} loading={loading} href="/admin/transactions" />
-      </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 pt-4 md:grid-cols-2">
           <Card>
               <CardHeader>
                   <CardTitle>Revenue Overview</CardTitle>
@@ -129,4 +147,5 @@ export default function AdminDashboardPage() {
       </div>
     </>
   );
-}
+
+    
