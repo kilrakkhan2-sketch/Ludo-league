@@ -1,26 +1,25 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useCollection } from '@/firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Banknote } from 'lucide-react';
+import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UpiAccount, UpiDailyStat } from '@/types';
+import { UpiAccount } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Progress } from '@/components/ui/progress';
-import { format } from 'date-fns';
 
 const UpiAccountForm = ({ account, onSave, onOpenChange }: { account?: UpiAccount | null, onSave: () => void, onOpenChange: (open: boolean) => void }) => {
     const { firestore } = useFirebase();
@@ -54,6 +53,8 @@ const UpiAccountForm = ({ account, onSave, onOpenChange }: { account?: UpiAccoun
                 // Create new account
                 await addDoc(collection(firestore, 'upi-accounts'), {
                     ...dataToSave,
+                    dailyAmountReceived: 0,
+                    dailyTransactionCount: 0,
                     totalTransactions: 0,
                     totalAmountReceived: 0,
                     createdAt: serverTimestamp(),
@@ -115,59 +116,6 @@ const UpiAccountForm = ({ account, onSave, onOpenChange }: { account?: UpiAccoun
             </DialogFooter>
         </DialogContent>
     );
-}
-
-const UpiAccountRow = ({ account }: { account: UpiAccount }) => {
-    const { firestore } = useFirebase();
-    const [dailyData, setDailyData] = useState<UpiDailyStat | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        if (!firestore) return;
-        const today = format(new Date(), 'yyyy-MM-dd');
-        const dailyStatRef = doc(firestore, 'upi-accounts', account.id, 'daily_stats', today);
-        
-        const unsubscribe = onSnapshot(dailyStatRef, (doc) => {
-            if (doc.exists()) {
-                setDailyData(doc.data() as UpiDailyStat);
-            } else {
-                setDailyData({ amount: 0, transactionCount: 0 });
-            }
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [firestore, account.id]);
-    
-    const amountToday = dailyData?.amount || 0;
-    const progress = account.dailyLimit > 0 ? (amountToday / account.dailyLimit) * 100 : 0;
-    const limitReached = amountToday >= account.dailyLimit;
-
-    return (
-         <TableRow>
-            <TableCell>
-                <div className="font-medium">{account.displayName}</div>
-                <div className="text-xs text-muted-foreground font-mono">{account.upiId}</div>
-            </TableCell>
-            <TableCell>
-                <div className='space-y-2'>
-                    <Progress value={progress} className="h-2" />
-                    <p className='text-xs text-muted-foreground'>
-                        ₹{amountToday.toLocaleString()} / ₹{account.dailyLimit.toLocaleString()}
-                    </p>
-                </div>
-            </TableCell>
-            <TableCell className="text-center">{dailyData?.transactionCount || 0}</TableCell>
-            <TableCell>
-                <Badge variant={limitReached ? 'destructive' : (account.isActive ? 'default' : 'secondary')}>
-                    {limitReached ? 'Limit Reached' : (account.isActive ? 'Active' : 'Inactive')}
-                </Badge>
-            </TableCell>
-            <TableCell className="text-right">
-                {/* Actions can be re-enabled if needed, handled by parent component now */}
-            </TableCell>
-        </TableRow>
-    )
 }
 
 export default function UpiManagementPage() {
@@ -247,32 +195,36 @@ export default function UpiManagementPage() {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    accounts.map(acc => (
-                                      <TableRow key={acc.id}>
-                                        <TableCell>
-                                            <div className="font-medium">{acc.displayName}</div>
-                                            <div className="text-xs text-muted-foreground font-mono">{acc.upiId}</div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className='space-y-2'>
-                                                <Progress value={(acc.dailyAmountReceived / acc.dailyLimit) * 100} className="h-2" />
-                                                <p className='text-xs text-muted-foreground'>
-                                                    ₹{acc.dailyAmountReceived.toLocaleString()} / ₹{acc.dailyLimit.toLocaleString()}
-                                                </p>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">{acc.dailyTransactionCount || 0}</TableCell>
-                                        <TableCell>
-                                            <Badge variant={acc.dailyAmountReceived >= acc.dailyLimit ? 'destructive' : (acc.isActive ? 'default' : 'secondary')}>
-                                                {acc.dailyAmountReceived >= acc.dailyLimit ? 'Limit Reached' : (acc.isActive ? 'Active' : 'Inactive')}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button variant="ghost" size="icon" onClick={() => openFormForEdit(acc)}><Edit className="h-4 w-4" /></Button>
-                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(acc.id)}><Trash2 className="h-4 w-4" /></Button>
-                                        </TableCell>
-                                    </TableRow>
-                                    ))
+                                    accounts.map(acc => {
+                                        const progress = acc.dailyLimit > 0 ? (acc.dailyAmountReceived / acc.dailyLimit) * 100 : 0;
+                                        const limitReached = acc.dailyAmountReceived >= acc.dailyLimit;
+                                        return (
+                                          <TableRow key={acc.id}>
+                                            <TableCell>
+                                                <div className="font-medium">{acc.displayName}</div>
+                                                <div className="text-xs text-muted-foreground font-mono">{acc.upiId}</div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className='space-y-2'>
+                                                    <Progress value={progress} className="h-2" />
+                                                    <p className='text-xs text-muted-foreground'>
+                                                        ₹{acc.dailyAmountReceived.toLocaleString()} / ₹{acc.dailyLimit.toLocaleString()}
+                                                    </p>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-center">{acc.dailyTransactionCount || 0}</TableCell>
+                                            <TableCell>
+                                                <Badge variant={limitReached ? 'destructive' : (acc.isActive ? 'default' : 'secondary')}>
+                                                    {limitReached ? 'Limit Reached' : (acc.isActive ? 'Active' : 'Inactive')}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button variant="ghost" size="icon" onClick={() => openFormForEdit(acc)}><Edit className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(acc.id)}><Trash2 className="h-4 w-4" /></Button>
+                                            </TableCell>
+                                        </TableRow>
+                                        )
+                                    })
                                 )}
                             </TableBody>
                         </Table>

@@ -1,4 +1,5 @@
 
+
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
@@ -328,13 +329,11 @@ export const onDepositStatusChange = functions.firestore
             // 1. Credit the user's wallet.
             t.update(userRef, { walletBalance: FieldValue.increment(amount) });
             
-            // 2. Update the UPI account's daily stats
-            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-            const dailyStatRef = upiAccountRef.collection('daily_stats').doc(today);
-            t.set(dailyStatRef, {
-                amount: FieldValue.increment(amount),
-                transactionCount: FieldValue.increment(1)
-            }, { merge: true });
+            // 2. Update the UPI account's daily stats on the main document
+            t.update(upiAccountRef, {
+                dailyAmountReceived: FieldValue.increment(amount),
+                dailyTransactionCount: FieldValue.increment(1)
+            });
 
             // 3. Create a transaction log for the deposit.
             const depositTxRef = db.collection(`users/${userId}/transactions`).doc();
@@ -678,5 +677,3 @@ export const createTournament = functions.https.onCall(async (data, context) => 
         throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the tournament.");
     }
 });
-
-    
