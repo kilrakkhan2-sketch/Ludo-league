@@ -1,18 +1,29 @@
 
-import { Suspense } from 'react';
+'use client';
+
 import { AppShell } from "@/components/layout/AppShell";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Rss } from "lucide-react";
-import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { getAnnouncements } from '@/firebase/admin-helpers';
+import { useCollection } from "@/firebase";
 import type { Announcement } from '@/types';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import DashboardClientContent from './DashboardClientContent';
 
-const NewsCarousel = async () => {
-    const announcements = await getAnnouncements();
+const NewsCarousel = () => {
+    const { data: announcements, loading } = useCollection<Announcement>('announcements', {
+      orderBy: ['createdAt', 'desc'],
+      limit: 5,
+    });
+
+    if (loading) {
+      return (
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      );
+    }
 
     if (announcements.length === 0) {
         return null;
@@ -71,10 +82,9 @@ export default function DashboardPage() {
         <AppShell pageTitle="Dashboard">
              <DashboardClientContent />
              <div className="p-4 sm:p-6 space-y-6 sm:space-y-8 pb-20">
-                <Suspense fallback={<div className="space-y-4"><Skeleton className="h-8 w-32" /><Skeleton className="h-32 w-full" /></div>}>
-                    <NewsCarousel />
-                </Suspense>
+                <NewsCarousel />
             </div>
         </AppShell>
     );
 }
+
