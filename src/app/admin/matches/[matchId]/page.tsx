@@ -108,8 +108,7 @@ export default function AdminMatchDetailsPage() {
                 const playerRef = doc(firestore, 'users', playerId);
                 const playerDoc = await transaction.get(playerRef);
                 if (playerDoc.exists()) {
-                    const currentBalance = playerDoc.data().walletBalance || 0;
-                    transaction.update(playerRef, { walletBalance: currentBalance + match.entryFee });
+                    transaction.update(playerRef, { walletBalance: runTransaction.prototype.constructor.FieldValue.increment(match.entryFee) });
                 }
             }
 

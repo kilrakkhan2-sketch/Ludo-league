@@ -13,7 +13,7 @@ const Card = React.forwardRef<
     <Comp
       ref={ref}
       className={cn(
-        "rounded-lg border bg-card text-card-foreground shadow-md transition-shadow hover:shadow-lg hover:shadow-primary/10",
+        "rounded-lg border bg-card text-card-foreground shadow-md transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 hover:border-primary/80 hover:scale-[1.01]",
         className
       )}
       {...props}
@@ -43,7 +43,7 @@ const CardTitle = React.forwardRef<
     <Comp
       ref={ref}
       className={cn(
-        "text-2xl font-semibold leading-none tracking-tight text-primary",
+        "text-2xl font-semibold leading-none tracking-tight text-primary [text-shadow:0_1px_4px_hsl(var(--primary)/0.3)]",
         className
       )}
       {...props}

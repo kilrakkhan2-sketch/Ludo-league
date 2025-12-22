@@ -23,7 +23,7 @@ export function BottomNav({ items }: BottomNavProps) {
     if (hideNav) return null;
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 h-16 bg-popover border-t border-border/50 shadow-[0_-4px_12px_rgba(212,175,55,0.1)] z-20 sm:hidden">
+        <div className="fixed bottom-0 left-0 right-0 h-16 bg-secondary border-t border-primary/20 shadow-[0_-4px_12px_rgba(212,175,55,0.1)] z-20 sm:hidden">
             <div className="flex justify-around items-center h-full">
                 {items.map((item) => {
                     const isActive = pathname === item.href;
@@ -32,7 +32,7 @@ export function BottomNav({ items }: BottomNavProps) {
                             href={item.href} 
                             key={item.href} 
                             className={cn(
-                                "flex flex-col items-center justify-center gap-1 w-16 text-foreground/70 transition-colors duration-200",
+                                "flex flex-col items-center justify-center gap-1 w-16 text-secondary-foreground/70 transition-colors duration-200",
                                 isActive && "text-primary font-bold"
                             )}
                         >

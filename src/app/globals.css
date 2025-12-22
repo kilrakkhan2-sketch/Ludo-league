@@ -14,12 +14,12 @@
     --popover-foreground: 170 65% 8%;
     --primary: 45 68% 52%; /* Gold */
     --primary-foreground: 170 65% 8%; /* Dark text on gold */
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 170 65% 8%;
+    --secondary: 158 44% 28%; /* Royal Green */
+    --secondary-foreground: 45 25% 95%; /* White text on green */
     --muted: 0 0% 96%;
     --muted-foreground: 0 0% 64%;
-    --accent: 170 60% 15%; /* Dark Green */
-    --accent-foreground: 45 25% 95%; /* White text on green */
+    --accent: 158 44% 28%;
+    --accent-foreground: 45 25% 95%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 45 25% 95%;
     --border: 0 0% 89%;
@@ -29,32 +29,37 @@
   }
 
   .dark {
-    /* Ludo League Theme */
-    --background: 170 60% 15%; /* #0F3D36 */
+    /* Royal Green & Gold Theme */
+    --background: 160 50% 10%; /* #0c2921 - Deep Green/Black */
     --foreground: 45 25% 95%; /* #F5F3EE */
-    --card: 169 65% 22%; /* #145A4A */
-    --card-foreground: 45 25% 95%; /* #F5F3EE */
-    --popover: 170 65% 8%; /* #062420 */
-    --popover-foreground: 45 25% 95%; /* #F5F3EE */
     
+    --card: 160 50% 15%; /* #123d32 - Darker Green */
+    --card-foreground: 45 25% 95%; /* #F5F3EE */
+    
+    --popover: 160 50% 8%; /* Almost black green */
+    --popover-foreground: 45 25% 95%;
+
+    /* Gold */
     --primary: 45 68% 52%; /* #D4AF37 */
-    --primary-foreground: 170 65% 8%; /* #062420 - Dark text for gold buttons */
+    --primary-foreground: 160 50% 10%; /* Dark text for gold buttons */
 
-    --secondary: 169 65% 22%; /* #145A4A */
-    --secondary-foreground: 45 25% 95%; /* #F5F3EE */
+    /* Royal Green */
+    --secondary: 158 44% 28%; /* #286B52 */
+    --secondary-foreground: 45 25% 95%;
 
-    --muted: 169 65% 22%; /* #145A4A */
-    --muted-foreground: 45 25% 80%; /* Lighter version of F5F3EE */
+    --muted: 160 50% 15%; 
+    --muted-foreground: 45 25% 80%;
 
-    --accent: 45 68% 52%; /* #D4AF37 */
-    --accent-foreground: 170 65% 8%; /* #062420 */
+    /* Accent is Gold */
+    --accent: 45 68% 52%; 
+    --accent-foreground: 160 50% 10%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 45 25% 95%;
     
     --border: 45 56% 55%; /* #C9A24D - Border Gold */
-    --input: 169 65% 22%;
-    --ring: 45 56% 55%; /* #C9A24D - Border Gold */
+    --input: 160 50% 15%;
+    --ring: 45 56% 55%;
   }
 }
 
@@ -64,7 +69,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* Gradient Background: #0F3D36 -> #145A4A */
+    /* Gradient Background: #0c2921 -> #123d32 */
     background: hsl(var(--background));
     background-image: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 100%);
     background-repeat: no-repeat;

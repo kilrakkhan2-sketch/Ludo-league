@@ -28,6 +28,7 @@ import { UserProfile } from "@/types";
 import { Skeleton } from "../ui/skeleton";
 import { BottomNav, NavItem } from "./BottomNav";
 import { useMemo } from "react";
+import { Sparkle } from "../ui/sparkle";
 
 interface AppShellProps {
   children: ReactNode;
@@ -138,13 +139,15 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
   return (
     <SidebarProvider>
       <div className={cn("min-h-screen w-full bg-background text-foreground", className)}>
-        <Sidebar className="bg-popover border-r border-border/50">
+        <Sidebar className="bg-secondary border-r border-border/50">
           <SidebarContent>
             <SidebarHeader>
               <Link href="/dashboard" className="flex items-center gap-2">
-                <div className="p-2 bg-primary rounded-lg">
-                  <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
-                </div>
+                <Sparkle>
+                  <div className="p-2 bg-primary rounded-lg">
+                    <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
+                  </div>
+                </Sparkle>
                 <h1 className="text-xl font-bold font-headline text-primary">LudoLeague</h1>
               </Link>
             </SidebarHeader>
@@ -155,8 +158,8 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                       href={item.href} 
                       tooltip={item.label}
                       current={pathname === item.href}
-                      className="text-foreground/80 hover:text-foreground hover:bg-card"
-                      currentClassName="text-primary-foreground bg-primary hover:bg-primary/90 hover:text-primary-foreground"
+                      className="text-secondary-foreground/80 hover:text-secondary-foreground hover:bg-accent/40"
+                      currentClassName="text-primary bg-primary/20 hover:bg-primary/30 hover:text-primary"
                   >
                       <item.icon />
                       <span>{item.label}</span>
@@ -167,7 +170,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
              <SidebarFooter>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="w-full justify-start gap-2 p-2 h-auto text-foreground/80 hover:text-foreground hover:bg-card">
+                    <Button variant="ghost" className="w-full justify-start gap-2 p-2 h-auto text-secondary-foreground/80 hover:text-secondary-foreground hover:bg-accent/40">
                       <Avatar className="h-8 w-8 border border-border/50">
                         <AvatarImage src={profile?.photoURL || undefined} alt={profile?.displayName || ''} />
                         <AvatarFallback>{profile?.displayName?.charAt(0) || user?.email?.charAt(0)}</AvatarFallback>
@@ -208,7 +211,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
         </Sidebar>
           
         <div className="flex flex-col h-screen sm:pl-14">
-              <header className="bg-card p-3 sm:p-4 flex items-center justify-between gap-4 z-10 shrink-0 border-b border-border/50">
+              <header className="bg-secondary p-3 sm:p-4 flex items-center justify-between gap-4 z-10 shrink-0 border-b border-primary/20">
                   <div className="flex items-center gap-2">
                     <SidebarTrigger className="sm:hidden">
                         <Menu />
@@ -218,7 +221,9 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                             <ArrowLeft />
                         </Button>
                     )}
-                    <h1 className="text-lg sm:text-xl font-bold text-primary">{pageTitle}</h1>
+                     <Sparkle>
+                      <h1 className="text-lg sm:text-xl font-bold text-primary">{pageTitle}</h1>
+                     </Sparkle>
                     </div>
                     <div className="hidden sm:block">
                       {userMenu}

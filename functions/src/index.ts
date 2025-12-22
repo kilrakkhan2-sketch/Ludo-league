@@ -406,17 +406,16 @@ export const autoVerifyResults = functions.firestore
                     return;
                 }
                 
-                // Set match status to processing as soon as the first result is in
-                if (matchData.status === 'ongoing') {
-                    transaction.update(matchRef, { status: 'processing' });
-                }
-
                 const resultsSnapshot = await transaction.get(matchRef.collection('results'));
                 const submittedResults = resultsSnapshot.docs.map(doc => doc.data() as MatchResult);
 
-                // Check if all players have submitted their results.
-                if (submittedResults.length !== matchData.maxPlayers) {
-                    return; // Wait for all results
+                // Wait for all players to submit their results.
+                if (submittedResults.length < matchData.maxPlayers) {
+                    // Set match status to processing as soon as the first result is in
+                     if (matchData.status === 'ongoing') {
+                        transaction.update(matchRef, { status: 'processing' });
+                    }
+                    return; 
                 }
 
                 // --- AUTO-VERIFICATION LOGIC ---

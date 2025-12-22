@@ -100,6 +100,11 @@ export default {
         "fade-in": {
           from: { opacity: "0", transform: "translateY(10px)" },
           to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "sparkle": {
+          "0%": { transform: "scale(0) rotate(0deg)", opacity: "0.5" },
+          "50%": { transform: "scale(1) rotate(180deg)", opacity: "1" },
+          "100%": { transform: "scale(0) rotate(360deg)", opacity: "0" },
         }
       },
       animation: {
@@ -108,6 +113,7 @@ export default {
         "pulse-slow": "pulse-slow 5s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "pulse-slow-delay": "pulse-slow 5s cubic-bezier(0.4, 0, 0.6, 1) 2.5s infinite",
         "fade-in": "fade-in 0.3s ease-out forwards",
+        "sparkle": "sparkle 1s ease-in-out infinite",
       },
     },
   },
