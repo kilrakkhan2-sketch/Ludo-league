@@ -60,7 +60,7 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
 
       match /transactions/{transactionId} {
-        allow read: if isOwner(userId) || isAnyAdmin(); // Changed to isAnyAdmin
+        allow read: if isOwner(userId) || isAnyAdmin();
         allow create: if isOwner(userId) || isDepositAdmin() || isWithdrawalAdmin() || isServer();
         allow update, delete: if false;
       }
