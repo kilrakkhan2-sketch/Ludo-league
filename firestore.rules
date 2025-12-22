@@ -1,213 +1,157 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ------------------ Helper Functions ------------------
-
+    
+    // Helper Functions
     function isSignedIn() {
       return request.auth != null;
     }
-
-    function isServer() {
-      return request.auth.token.firebase.sign_in_provider == null || request.auth.token.firebase.sign_in_provider == "firebase";
-    }
     
-    function isAnyAdmin() {
-        return request.auth.token.role in ['superadmin', 'deposit_admin', 'withdrawal_admin', 'match_admin'];
-    }
-
-    function isSuperAdmin() {
-      return request.auth.token.role == 'superadmin';
-    }
-
-    function isDepositAdmin() {
-      return request.auth.token.role == 'deposit_admin' || request.auth.token.role == 'superadmin';
-    }
-    
-    function isWithdrawalAdmin() {
-      return request.auth.token.role == 'withdrawal_admin' || request.auth.token.role == 'superadmin';
-    }
-
-    function isMatchAdmin() {
-      return request.auth.token.role == 'match_admin' || request.auth.token.role == 'superadmin';
-    }
-
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
+    
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    function isSuperAdmin() {
+      return getRole() == 'superadmin';
+    }
+    
+    function isMatchAdmin() {
+      return getRole() in ['superadmin', 'match_admin'];
+    }
+    
+    function isWithdrawalAdmin() {
+      return getRole() in ['superadmin', 'withdrawal_admin'];
+    }
+    
+    function isDepositAdmin() {
+      return getRole() in ['superadmin', 'deposit_admin'];
+    }
 
-    // ------------------ USERS COLLECTION ------------------
-
+    // User profiles
     match /users/{userId} {
-      allow read: if isAnyAdmin() || isOwner(userId);
+      allow read: if isSignedIn();
+      allow create: if !isSignedIn() || isOwner(userId); // Allow creating user doc on signup or if user doesn't have one yet
+      allow update: if isOwner(userId); // Users can only update their own profile
       
-      allow create: if isOwner(userId)
-                    && request.resource.data.role == 'user'
-                    && request.resource.data.walletBalance == 0;
-                    
-      allow update: if (isOwner(userId) && !('role' in request.resource.data.diff(resource.data).affectedKeys()) && (request.resource.data.walletBalance <= resource.data.walletBalance))
-                    || isSuperAdmin() 
-                    || (request.resource.data.friends.hasAny(resource.data.friends) || resource.data.friends.hasAny(request.resource.data.friends));
-
-      allow delete: if isSuperAdmin() || isServer();
-
-      match /transactions/{transactionId} {
-        allow read: if isOwner(userId) || isAnyAdmin();
-        allow create: if isOwner(userId) || isDepositAdmin() || isWithdrawalAdmin() || isServer();
-        allow update, delete: if false;
-      }
-      
+      // Personal notifications and transactions are subcollections
       match /personal_notifications/{notificationId} {
         allow read, write: if isOwner(userId);
       }
+      match /transactions/{transactionId} {
+        allow read: if isOwner(userId) || isSuperAdmin();
+        allow create: if false; // Transactions created by server/rules only
+      }
     }
 
-    // ------------------ MATCHES & TOURNAMENTS ------------------
-    match /matches/{matchId} {
+    // Publicly readable, admin-writable settings
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+    
+    // UPI accounts for deposits, admin-managed
+    match /upi-accounts/{accountId} {
+       allow read, list: if isDepositAdmin() || isSuperAdmin();
+       allow create, update, delete: if isDepositAdmin() || isSuperAdmin();
+    }
 
+    // Deposit and withdrawal requests
+    match /deposit-requests/{requestId} {
+      allow read, list: if isDepositAdmin() || isSuperAdmin() || (isOwner(resource.data.userId) && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn();
+      allow update: if isDepositAdmin() || isSuperAdmin();
+    }
+    
+    match /withdrawal-requests/{requestId} {
+      allow read, list: if isWithdrawalAdmin() || isSuperAdmin() || isOwner(resource.data.userId);
+      allow create: if isSignedIn();
+      allow update: if isWithdrawalAdmin() || isSuperAdmin();
+    }
+
+    // Matches
+    match /matches/{matchId} {
       allow read, list: if isSignedIn();
       allow create: if isSignedIn();
       
       allow update: if isSignedIn() && (
-                      // Player joining or creator updating room code
+                      // Player joining (not filling the match)
                       (
                         resource.data.status == 'open' &&
                         request.resource.data.players == resource.data.players + [request.auth.uid] &&
-                        resource.data.players.size() < resource.data.maxPlayers &&
+                        resource.data.players.size() < resource.data.maxPlayers - 1 &&
                         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasAll(['players', 'status', 'startedAt'])
+                        request.resource.data.diff(resource.data).affectedKeys().size() == 1 &&
+                        request.resource.data.diff(resource.data).affectedKeys().has('players')
                       ) ||
                       // Player joining and filling the match
                       (
                         resource.data.status == 'open' &&
                         request.resource.data.players == resource.data.players + [request.auth.uid] &&
-                        resource.data.players.size() + 1 == resource.data.maxPlayers &&
+                        resource.data.players.size() == resource.data.maxPlayers - 1 &&
                         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasAll(['players', 'status', 'startedAt']) &&
+                        request.resource.data.diff(resource.data).affectedKeys().size() == 2 &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasAll(['players', 'status']) &&
                         request.resource.data.status == 'ongoing'
                       ) ||
-                      // Creator setting the room code
+                      // Creator updating room code
                       (
-                         resource.data.status == 'ongoing' &&
-                         request.auth.uid == resource.data.creatorId &&
-                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['roomCode']) &&
-                         request.resource.data.roomCode != resource.data.roomCode
-                      ) ||
-                      // Any player submitting a result, changing status to 'processing'
-                      (
+                        request.auth.uid == resource.data.creatorId &&
                         resource.data.status == 'ongoing' &&
-                        request.auth.uid in resource.data.players &&
-                        request.resource.data.status == 'processing' &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+                        request.resource.data.diff(resource.data).affectedKeys().size() == 1 &&
+                        request.resource.data.diff(resource.data).affectedKeys().has('roomCode')
                       ) ||
-                      isMatchAdmin() || isSuperAdmin() || isServer()
+                      // Admin managing the match state
+                      (
+                        isMatchAdmin()
+                      )
                     );
-
-      allow delete: if isMatchAdmin() || isSuperAdmin() || isServer();
-
-      match /messages/{messageId} {
-        allow read, write: if isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players);
-      }
       
-       match /results/{userId} {
-        allow create: if isOwner(userId) && request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
-        allow read: if isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players || isMatchAdmin());
-        
-        allow update: if isOwner(userId) 
-                      && resource.data.status == 'submitted'
-                      && request.resource.data.status == 'confirmed'
-                      && !('screenshotUrl' in request.resource.data.diff(resource.data).affectedKeys())
-                      && !('submittedAt' in request.resource.data.diff(resource.data).affectedKeys());
-                      
-        allow delete: if isMatchAdmin();
+      // Results and Chat subcollections
+      match /results/{userId} {
+        allow read: if isSignedIn();
+        // Allow write if user is part of the match's player list
+        allow create, update: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
       }
-      
-      match /admin-chat/{messageId} {
-        allow read, write: if isAnyAdmin();
+      match /chat/{messageId} {
+        allow read: if isSignedIn();
+        // Allow write if user is part of the match's player list
+        allow create: if request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
       }
-    }
-
-    match /tournaments/{tournamentId} {
-      allow read: if isSignedIn();
-      allow create: if isMatchAdmin() || isSuperAdmin();
-      allow update: if (isSignedIn() && 
-                        (
-                            (resource.data.status == 'open' || resource.data.status == 'live') &&
-                            request.resource.data.players == resource.data.players + [request.auth.uid] &&
-                            resource.data.players.size() < resource.data.maxPlayers &&
-                            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee &&
-                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players'])
-                        )
-                      ) || isMatchAdmin() || isSuperAdmin();
-      allow delete: if isMatchAdmin() || isSuperAdmin();
-    }
-
-    // ------------------ FRIEND REQUESTS ------------------
-    match /friend-requests/{requestId} {
-        allow read: if isSignedIn() && (request.auth.uid == resource.data.from || request.auth.uid == resource.data.to);
-        allow create: if isSignedIn() && request.auth.uid == request.resource.data.from;
-        allow update: if isSignedIn() && request.auth.uid == resource.data.to && request.resource.data.status != 'pending';
-        allow delete: if isSignedIn() && (request.auth.uid == resource.data.from || request.auth.uid == resource.data.to);
-    }
-
-    // ------------------ OTHER COLLECTIONS ------------------
-
-    match /announcements/{announcementId} {
-      allow read: if isSignedIn();
-      allow write: if isMatchAdmin() || isSuperAdmin();
-    }
-
-    match /deposit-requests/{depositId} {
-      allow get: if isServer() || (isSignedIn() && (isOwner(resource.data.userId) || isDepositAdmin()));
-      allow list: if isServer() || isDepositAdmin();
-      allow create: if isServer() || (isSignedIn() && isOwner(request.resource.data.userId));
-      allow update: if isServer() || isDepositAdmin();
-      allow delete: if isServer() || isSuperAdmin();
-      
-       match /admin-chat/{messageId} {
-        allow read, write: if isAnyAdmin();
-      }
-    }
-
-    match /withdrawal-requests/{withdrawalId} {
-      allow get: if isServer() || (isSignedIn() && (isOwner(resource.data.userId) || isWithdrawalAdmin()));
-      allow list: if isServer() || isWithdrawalAdmin();
-      allow create: if isServer() || (isSignedIn() && isOwner(request.resource.data.userId));
-      allow update: if isServer() || isWithdrawalAdmin();
-      allow delete: if isServer() || isSuperAdmin();
-      
-       match /admin-chat/{messageId} {
-        allow read, write: if isAnyAdmin();
-      }
-    }
-
-    match /kyc-requests/{kycId} {
-      allow get: if isServer() || (isSignedIn() && (isOwner(resource.data.userId) || isAnyAdmin()));
-      allow list: if isServer() || isAnyAdmin();
-      allow create: if isServer() || (isSignedIn() && isOwner(request.resource.data.userId));
-      allow update, delete: if isServer() || isSuperAdmin();
     }
     
-    match /upi-accounts/{accountId} {
-        allow read: if isSignedIn();
-        allow write: if isSuperAdmin() || isServer();
-
-        match /daily_stats/{date} {
-          allow read: if isSuperAdmin();
-          allow write: if isServer();
+    // Tournaments - readable by all, writable by admins
+    match /tournaments/{tournamentId} {
+        allow read: if true;
+        allow create, update, delete: if isMatchAdmin();
+        
+        match /players/{userId} {
+            allow read: if true;
+            allow create: if isSignedIn(); // Add rules for entry fee etc.
+            allow delete: if isOwner(userId) || isMatchAdmin();
+        }
+        
+        match /rounds/{roundId} {
+            allow read: if true;
+            allow create, update, delete: if isMatchAdmin();
         }
     }
-
-    match /settings/maintenance {
-      allow read: if true;
-      allow write: if isServer() || isAnyAdmin();
+    
+    // KYC documents - only accessible by user and superadmin
+    match /kyc-requests/{kycId} {
+      allow read: if isOwner(resource.data.userId) || isSuperAdmin();
+      allow create: if isSignedIn();
+      allow update: if isSuperAdmin(); // Only admins can change status
     }
-
-    match /settings/{settingId} {
-      allow read: if isSignedIn();
-      allow write: if isServer() || isAnyAdmin();
+    
+    // Announcements - readable by all, writable by superadmins
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow create, update, delete: if isSuperAdmin();
     }
   }
 }

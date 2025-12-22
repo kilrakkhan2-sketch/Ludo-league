@@ -1,5 +1,4 @@
 
-
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
@@ -537,27 +536,34 @@ export const createMatch = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("unauthenticated", "You must be logged in to create a match.");
     }
     const userId = context.auth.uid;
+
+    // 2. Maintenance Check
+    const maintenanceDoc = await db.collection('settings').doc('maintenance').get();
+    const maintenanceSettings = maintenanceDoc.data() as MaintenanceSettings;
+    if (maintenanceSettings?.areMatchesDisabled) {
+        throw new functions.https.HttpsError("unavailable", "Match creation is temporarily disabled by the admin.");
+    }
      
-    // 2. Data Validation
+    // 3. Data Validation
     const { title, entryFee, maxPlayers } = data;
     if (!title || typeof title !== "string" || title.length === 0 || title.length > 50) {
         throw new functions.https.HttpsError("invalid-argument", "Match title is required and must be 50 characters or less.");
     }
-    if (typeof entryFee !== 'number' || entryFee < 0) {
+    if (typeof entryFee !== "number" || entryFee < 0) {
         throw new functions.https.HttpsError("invalid-argument", "A valid, non-negative entry fee is required.");
     }
     if (maxPlayers !== 2 && maxPlayers !== 4) {
         throw new functions.https.HttpsError("invalid-argument", "Max players must be either 2 or 4.");
     }
 
-    // 3. Calculate Prize Pool (e.g., 95% of total entry fees for a 5% commission)
+    // 4. Calculate Prize Pool (e.g., 95% of total entry fees for a 5% commission)
     const prizePool = (entryFee * maxPlayers) * 0.95;
 
     const userRef = db.collection("users").doc(userId);
     const matchRef = db.collection("matches").doc();
 
     try {
-        await db.runTransaction(async (t) => {
+        const newMatchId = await db.runTransaction(async (t) => {
             const userDoc = await t.get(userRef);
             if (!userDoc.exists) {
                 throw new functions.https.HttpsError("not-found", "Your user profile does not exist.");
@@ -568,7 +574,6 @@ export const createMatch = functions.https.onCall(async (data, context) => {
                 throw new functions.https.HttpsError("failed-precondition", "Insufficient funds to create this match.");
             }
             
-            // Deduct entry fee from creator's wallet
             if (entryFee > 0) {
                 t.update(userRef, { walletBalance: FieldValue.increment(-entryFee) });
                 
@@ -583,7 +588,6 @@ export const createMatch = functions.https.onCall(async (data, context) => {
                 });
             }
             
-            // Create the match with the creator already in the players list
             t.set(matchRef, {
                 title,
                 entryFee,
@@ -598,12 +602,14 @@ export const createMatch = functions.https.onCall(async (data, context) => {
                 completedAt: null,
                 winnerId: null,
             });
+            
+            return matchRef.id;
         });
 
         return {
             status: "success",
             message: "Match created successfully!",
-            matchId: matchRef.id,
+            matchId: newMatchId,
         };
 
     } catch (error) {
