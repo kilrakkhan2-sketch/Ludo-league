@@ -76,11 +76,11 @@ const NewsCarousel = () => {
 
 export default function DashboardPage() {
     return (
-        <AppShell pageTitle="Dashboard">
+        <>
              <DashboardClientContent />
              <div className="p-4 sm:p-6 space-y-6 sm:space-y-8 pb-20">
                 <NewsCarousel />
             </div>
-        </AppShell>
+        </>
     );
 }
