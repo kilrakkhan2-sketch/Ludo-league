@@ -4,21 +4,38 @@
 // DO NOT use this for write operations from the client.
 
 import { initializeFirebaseAdmin } from '@/firebase/admin';
-import * as admin from 'firebase-admin';
+import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import type { Announcement } from '@/types';
 
-// We give it a unique name to avoid conflicts with the default client app
-const SERVER_APP_NAME = 'firebase-server-app';
+// This function is idempotent. It initializes the admin app if it's not already.
+const getFirestoreAdmin = () => {
+    const adminApp = initializeFirebaseAdmin();
+    return adminApp.firestore();
+};
 
-let app: admin.app.App;
-let firestore: admin.firestore.Firestore;
+export async function getAnnouncements(): Promise<Announcement[]> {
+    try {
+        const firestore = getFirestoreAdmin();
+        const announcementsCol = collection(firestore, 'announcements');
+        const q = query(announcementsCol, orderBy('createdAt', 'desc'), limit(5));
+        const querySnapshot = await getDocs(q);
 
-// This function is idempotent.
-export function initializeFirebase(): {
-  app: admin.app.App;
-  firestore: admin.firestore.Firestore;
-} {
-  app = initializeFirebaseAdmin();
-  firestore = admin.firestore(app);
+        if (querySnapshot.empty) {
+            return [];
+        }
 
-  return { app, firestore };
+        return querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            // Firestore admin SDK returns Timestamps, we need to convert them for the client
+            const serializedData = {
+                ...data,
+                createdAt: data.createdAt.toDate().toISOString(),
+            };
+            return { id: doc.id, ...serializedData } as Announcement;
+        });
+    } catch (error) {
+        console.error("Error fetching announcements on server:", error);
+        // In case of error, return an empty array to prevent breaking the page.
+        return [];
+    }
 }

@@ -1,5 +1,4 @@
 
-
 import { Suspense } from 'react';
 import { AppShell } from "@/components/layout/AppShell";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,23 +7,9 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase/admin-helpers'; // Using an admin-like initialization for server components
-import type { Announcement, Match } from '@/types';
+import { getAnnouncements } from '@/firebase/admin-helpers';
+import type { Announcement } from '@/types';
 import DashboardClientContent from './DashboardClientContent';
-
-const getAnnouncements = async (): Promise<Announcement[]> => {
-    const { firestore } = initializeFirebase();
-    const announcementsCol = collection(firestore, 'announcements');
-    const q = query(announcementsCol, orderBy('createdAt', 'desc'), limit(5));
-    const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) {
-        return [];
-    }
-    // The data from the admin SDK does not need to have `toDate()` called.
-    // It's already a Timestamp object that Next.js can serialize.
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement));
-};
 
 const NewsCarousel = async () => {
     const announcements = await getAnnouncements();
