@@ -1,5 +1,12 @@
 
 
+export type AdminWallet = {
+    balance: number;
+    totalReceived: number;
+    totalUsed: number;
+    canGoNegative: boolean;
+};
+
 export type UserProfile = {
   id: string;
   uid: string;
@@ -25,6 +32,7 @@ export type UserProfile = {
   matchesWon?: number;
   totalWinnings?: number;
   totalEntryFees?: number;
+  adminWallet?: AdminWallet;
 };
 
 export type Match = {
@@ -68,6 +76,17 @@ export type Transaction = {
   relatedId?: string; // e.g., matchId or depositId
   description?: string;
 };
+
+export type AdminWalletTransaction = {
+    id: string;
+    adminId: string;
+    type: 'credit' | 'debit';
+    amount: number;
+    reason: string;
+    relatedUserId?: string;
+    relatedRequestId?: string;
+    createdAt: any;
+}
 
 export type DepositRequest = {
   id: string;

@@ -77,6 +77,16 @@
         "matchesWon": {
           "type": "number",
           "description": "Total number of matches won by the user."
+        },
+        "adminWallet": {
+            "type": "object",
+            "description": "Wallet for admins to track funds distribution.",
+            "properties": {
+                "balance": { "type": "number" },
+                "totalReceived": { "type": "number" },
+                "totalUsed": { "type": "number" },
+                "canGoNegative": { "type": "boolean" }
+            }
         }
       },
       "required": [
@@ -158,15 +168,14 @@
         "userId": {
           "type": "string"
         },
-        "position": {
-          "type": "number",
-          "description": "1, 2, 3, or 4"
+        "confirmedPosition": {
+          "type": "number"
         },
-        "status": {
+        "confirmedWinStatus": {
           "type": "string",
           "enum": [
-            "won",
-            "lost"
+            "win",
+            "loss"
           ]
         },
         "screenshotUrl": {
@@ -180,8 +189,6 @@
       },
       "required": [
         "userId",
-        "position",
-        "status",
         "screenshotUrl",
         "submittedAt"
       ]
@@ -275,6 +282,21 @@
         "status",
         "createdAt"
       ]
+    },
+    "AdminWalletTransaction": {
+      "title": "Admin Wallet Transaction",
+      "description": "Represents a transaction in an admin's wallet for accounting.",
+      "type": "object",
+      "properties": {
+        "adminId": { "type": "string" },
+        "type": { "type": "string", "enum": ["credit", "debit"] },
+        "amount": { "type": "number" },
+        "reason": { "type": "string", "description": "e.g., withdraw_approval, fund_addition" },
+        "relatedUserId": { "type": "string", "description": "The user involved in the transaction, if any." },
+        "relatedRequestId": { "type": "string", "description": "The ID of the withdrawal or deposit request." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["adminId", "type", "amount", "reason", "createdAt"]
     },
     "DepositRequest": {
       "title": "Deposit Request",
@@ -632,11 +654,19 @@
         "description": {
           "type": "string"
         },
+        "bannerUrl": {
+          "type": "string",
+          "format": "uri"
+        },
         "prizePool": {
           "type": "number"
         },
         "entryFee": {
           "type": "number"
+        },
+        "commissionRate": {
+          "type": "number",
+          "description": "Admin commission rate, e.g., 0.1 for 10%"
         },
         "startDate": {
           "type": "string",
@@ -758,6 +788,12 @@
         "$ref": "#/entities/UserProfile"
       },
       "description": "Stores user profile information."
+    },
+    "/admin-wallet-transactions/{transactionId}": {
+        "schema": {
+            "$ref": "#/entities/AdminWalletTransaction"
+        },
+        "description": "Stores all admin wallet transactions for accounting."
     },
     "/matches/{matchId}": {
       "schema": {
