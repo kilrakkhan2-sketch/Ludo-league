@@ -92,10 +92,10 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-black/70 -z-10" />
           <div className="container px-4 md:px-6">
             <div className="max-w-3xl mx-auto space-y-6">
-              <h1 className="text-4xl md:text-6xl font-extrabold font-headline tracking-tight animate-fade-in" style={{animationDelay: '0.2s'}}>
+              <h1 className="text-4xl md:text-6xl font-extrabold font-headline tracking-tight animate-fade-in [text-shadow:0_2px_4px_rgba(0,0,0,0.5)]" style={{animationDelay: '0.2s'}}>
                 India's Most Thrilling Ludo Arena
               </h1>
-              <p className="md:text-xl text-lg text-primary-foreground/90 animate-fade-in" style={{animationDelay: '0.4s'}}>
+              <p className="md:text-xl text-lg text-primary-foreground/90 animate-fade-in [text-shadow:0_2px_4px_rgba(0,0,0,0.5)]" style={{animationDelay: '0.4s'}}>
                 Where Skill Meets Fortune. Play, Compete, and Win Real Cash Prizes 24/7.
               </p>
               <div className="flex justify-center gap-4 animate-fade-in" style={{animationDelay: '0.6s'}}>
@@ -202,4 +202,3 @@ export default function LandingPage() {
     </div>
   );
 }
-
