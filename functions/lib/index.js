@@ -398,8 +398,8 @@ exports.createMatch = functions.https.onCall(async (data, context) => {
     if (maxPlayers !== 2 && maxPlayers !== 4) {
         throw new functions.https.HttpsError("invalid-argument", "Max players must be either 2 or 4.");
     }
-    // 4. Calculate Prize Pool (e.g., 90% of total entry fees)
-    const prizePool = (entryFee * maxPlayers) * 0.90;
+    // 4. Calculate Prize Pool (e.g., 95% of total entry fees for a 5% commission)
+    const prizePool = (entryFee * maxPlayers) * 0.95;
     const userRef = db.collection("users").doc(userId);
     const matchRef = db.collection("matches").doc();
     try {
@@ -434,12 +434,9 @@ exports.createMatch = functions.https.onCall(async (data, context) => {
                 players: [userId],
                 status: 'open',
                 roomCode: null,
-                resultStage: 'none',
-                autoPayoutAllowed: true,
                 createdAt: firestore_1.FieldValue.serverTimestamp(),
                 startedAt: null,
                 completedAt: null,
-                winnerId: null,
             });
             return matchRef.id;
         });
@@ -461,7 +458,8 @@ exports.createMatch = functions.https.onCall(async (data, context) => {
 });
 exports.createTournament = functions.https.onCall(async (data, context) => {
     // 1. Authentication & Authorization Check
-    if (!context.auth || !['superadmin', 'match_admin'].includes(context.auth.token.role)) {
+    var _a;
+    if (!context.auth || !['superadmin', 'match_admin'].includes((_a = context.auth) === null || _a === void 0 ? void 0 : _a.token.role)) {
         throw new functions.https.HttpsError("permission-denied", "You must be an admin to create a tournament.");
     }
     const adminUid = context.auth.uid;
@@ -503,3 +501,4 @@ exports.createTournament = functions.https.onCall(async (data, context) => {
     }
 });
 //# sourceMappingURL=index.js.map
+    
