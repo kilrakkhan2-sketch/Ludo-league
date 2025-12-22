@@ -97,66 +97,67 @@ export default function DashboardClientContent() {
     const loading = userLoading || profileLoading;
 
     return (
-        <div className="bg-muted/30">
-            <div className="bg-primary text-primary-foreground p-4 sm:p-6">
-                <header className="flex justify-between items-center mb-4">
-                    {loading ? <Skeleton className="h-7 w-32 bg-white/20"/> : <h1 className="text-xl sm:text-2xl font-bold">Hi, {profile?.displayName || 'Player'}!</h1>}
-                    <div className="flex items-center gap-4">
-                        <MessageCircle className="h-6 w-6" />
-                        <Bell className="h-6 w-6" />
-                    </div>
-                </header>
-
-                <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg">
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <div>
-                            <p className="text-sm opacity-80">Wallet Balance</p>
-                            {loading ? <Skeleton className="h-8 w-36 mt-1 bg-white/20"/> : <p className="text-3xl font-bold">₹{profile?.walletBalance?.toLocaleString() || '0.00'}</p>}
+        <AppShell pageTitle="Dashboard">
+            <div className="bg-muted/30">
+                <div className="bg-primary text-primary-foreground p-4 sm:p-6">
+                    <header className="flex justify-between items-center mb-4">
+                        {loading ? <Skeleton className="h-7 w-32 bg-white/20"/> : <h1 className="text-xl sm:text-2xl font-bold">Hi, {profile?.displayName || 'Player'}!</h1>}
+                        <div className="flex items-center gap-4">
+                            <MessageCircle className="h-6 w-6" />
+                            <Bell className="h-6 w-6" />
                         </div>
-                         <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <Button className="bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-md flex-1" asChild>
-                                <Link href="/add-money">
-                                    Add Money
-                                </Link>
-                            </Button>
-                             <Button className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md flex-1" asChild>
-                                <Link href="/create-match">
-                                    Create Match
-                                </Link>
-                            </Button>
+                    </header>
+
+                    <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg">
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div>
+                                <p className="text-sm opacity-80">Wallet Balance</p>
+                                {loading ? <Skeleton className="h-8 w-36 mt-1 bg-white/20"/> : <p className="text-3xl font-bold">₹{profile?.walletBalance?.toLocaleString() || '0.00'}</p>}
+                            </div>
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                                <Button className="bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-md flex-1" asChild>
+                                    <Link href="/add-money">
+                                        Add Money
+                                    </Link>
+                                </Button>
+                                <Button className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md flex-1" asChild>
+                                    <Link href="/create-match">
+                                        Create Match
+                                    </Link>
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
-                <section>
-                    <div className="flex justify-between items-center mb-3">
-                        <h2 className="text-lg font-bold">Open Matches</h2>
-                        <Link href="/matches/open" className="text-sm font-semibold text-primary">View All</Link>
-                    </div>
-                    {openMatchesLoading ? (
-                        <div className="flex space-x-4 overflow-x-auto pb-4">
-                            <Skeleton className="shrink-0 w-72 h-52 rounded-lg" />
-                            <Skeleton className="shrink-0 w-72 h-52 rounded-lg" />
+                
+                <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
+                    <section>
+                        <div className="flex justify-between items-center mb-3">
+                            <h2 className="text-lg font-bold">Open Matches</h2>
+                            <Link href="/matches/open" className="text-sm font-semibold text-primary">View All</Link>
                         </div>
-                    ): openMatches.length > 0 ? (
-                        <div className="overflow-x-auto">
-                            <div className="flex space-x-4 pb-4">
-                            {openMatches.map(match => <MatchCard key={match.id} match={match}/>)}
+                        {openMatchesLoading ? (
+                            <div className="flex space-x-4 overflow-x-auto pb-4">
+                                <Skeleton className="shrink-0 w-72 h-52 rounded-lg" />
+                                <Skeleton className="shrink-0 w-72 h-52 rounded-lg" />
                             </div>
-                        </div>
-                    ) : (
-                        <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg bg-card">
-                            <p className="text-muted-foreground mb-2">No open matches available right now.</p>
-                            <Button asChild>
-                              <Link href="/create-match">Create the first match!</Link>
-                            </Button>
-                        </div>
-                    )}
-                </section>
-
+                        ): openMatches.length > 0 ? (
+                            <div className="overflow-x-auto">
+                                <div className="flex space-x-4 pb-4">
+                                {openMatches.map(match => <MatchCard key={match.id} match={match}/>)}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg bg-card">
+                                <p className="text-muted-foreground mb-2">No open matches available right now.</p>
+                                <Button asChild>
+                                <Link href="/create-match">Create the first match!</Link>
+                                </Button>
+                            </div>
+                        )}
+                    </section>
+                </div>
             </div>
-        </div>
+        </AppShell>
     );
 }
