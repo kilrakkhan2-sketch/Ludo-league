@@ -487,8 +487,8 @@ export const createMatch = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("invalid-argument", "Max players must be either 2 or 4.");
     }
 
-    // 4. Calculate Prize Pool (e.g., 90% of total entry fees)
-    const prizePool = (entryFee * maxPlayers) * 0.90;
+    // 4. Calculate Prize Pool (e.g., 95% of total entry fees for a 5% commission)
+    const prizePool = (entryFee * maxPlayers) * 0.95;
 
     const userRef = db.collection("users").doc(userId);
     const matchRef = db.collection("matches").doc();
