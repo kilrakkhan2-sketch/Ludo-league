@@ -9,6 +9,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import DashboardClientContent from './DashboardClientContent';
+import { cn } from "@/lib/utils";
 
 const NewsCarousel = () => {
     const { data: announcements, loading } = useCollection<Announcement>('announcements', {
@@ -20,7 +21,7 @@ const NewsCarousel = () => {
       return (
         <div className="space-y-4">
           <Skeleton className="h-8 w-32" />
-          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full rounded-lg" />
         </div>
       );
     }
@@ -29,12 +30,12 @@ const NewsCarousel = () => {
         return null;
     }
 
-    const getBadgeVariant = (type: Announcement['type']) => {
+    const getCardClasses = (type: Announcement['type']) => {
         switch (type) {
-            case 'Promo': return 'default';
-            case 'Update': return 'secondary';
-            case 'Warning': return 'destructive';
-            default: return 'outline';
+            case 'Promo': return 'bg-gradient-to-br from-blue-500 to-blue-700 text-white';
+            case 'Update': return 'bg-gradient-to-br from-slate-600 to-slate-800 text-white';
+            case 'Warning': return 'bg-gradient-to-br from-red-500 to-red-700 text-white';
+            default: return 'bg-gradient-to-br from-violet-500 to-violet-700 text-white';
         }
     };
 
@@ -51,15 +52,11 @@ const NewsCarousel = () => {
                 <CarouselContent>
                     {announcements.map((ann) => (
                         <CarouselItem key={ann.id}>
-                            <Card className="bg-card">
-                                <CardHeader>
-                                    <div className="flex justify-between items-start">
-                                        <CardTitle className="text-base">{ann.title}</CardTitle>
-                                        <Badge variant={getBadgeVariant(ann.type)}>{ann.type}</Badge>
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-sm text-muted-foreground">{ann.content}</p>
+                            <Card className={cn("border-0 shadow-lg", getCardClasses(ann.type))}>
+                                <CardContent className="p-6">
+                                     <Badge variant="secondary" className="mb-2 bg-white/20 text-white border-0">{ann.type}</Badge>
+                                    <h3 className="font-bold text-lg mb-2">{ann.title}</h3>
+                                    <p className="text-sm text-white/90">{ann.content}</p>
                                 </CardContent>
                             </Card>
                         </CarouselItem>
@@ -87,4 +84,3 @@ export default function DashboardPage() {
         </AppShell>
     );
 }
-
