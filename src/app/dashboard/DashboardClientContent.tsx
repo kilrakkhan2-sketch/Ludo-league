@@ -159,11 +159,18 @@ export default function DashboardClientContent() {
                             <p className="text-sm opacity-80">Wallet Balance</p>
                             {loading ? <Skeleton className="h-8 w-36 mt-1 bg-white/20"/> : <p className="text-3xl font-bold">₹{profile?.walletBalance?.toLocaleString() || '0.00'}</p>}
                         </div>
-                        <Button className="bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-md w-full sm:w-auto" asChild>
-                            <Link href="/add-money">
-                                Add Money
-                            </Link>
-                        </Button>
+                         <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <Button className="bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-md flex-1" asChild>
+                                <Link href="/add-money">
+                                    Add Money
+                                </Link>
+                            </Button>
+                             <Button className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md flex-1" asChild>
+                                <Link href="/create-match">
+                                    Create Match
+                                </Link>
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
