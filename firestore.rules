@@ -78,7 +78,7 @@ service cloud.firestore {
                         request.resource.data.players == resource.data.players + [request.auth.uid] &&
                         resource.data.players.size() < resource.data.maxPlayers &&
                         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players'])
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players', 'status', 'startedAt'])
                       ) ||
                       // Creator setting the room code
                       (
