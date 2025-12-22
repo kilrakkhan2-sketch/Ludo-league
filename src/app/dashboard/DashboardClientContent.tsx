@@ -14,22 +14,6 @@ import { Badge } from "@/components/ui/badge";
 import { Users, Trophy } from "lucide-react";
 import { useMemo } from "react";
 
-const StatCard = ({ title, value, loading }: { title: string, value: string | number, loading: boolean }) => (
-    <div className="bg-card p-3 rounded-lg shadow-sm text-center">
-        {loading ? (
-            <div className="space-y-2">
-                <Skeleton className="h-4 w-20 mx-auto" />
-                <Skeleton className="h-6 w-12 mx-auto" />
-            </div>
-        ) : (
-            <>
-                <p className="text-xs text-muted-foreground">{title}</p>
-                <p className="text-lg font-bold">{value}</p>
-            </>
-        )}
-    </div>
-);
-
 const MatchCard = ({ match }: { match: Match }) => {
     const isFull = match.players.length >= match.maxPlayers;
 
@@ -111,10 +95,6 @@ export default function DashboardClientContent() {
     });
     
     const loading = userLoading || profileLoading;
-    
-    const matchesPlayed = profile?.matchesPlayed || 0;
-    const matchesWon = profile?.matchesWon || 0;
-    const winRate = matchesPlayed > 0 ? `${((matchesWon / matchesPlayed) * 100).toFixed(0)}%` : "0%";
 
     return (
         <div className="bg-muted/30">
@@ -150,15 +130,6 @@ export default function DashboardClientContent() {
             </div>
             
             <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
-                <section>
-                    <h2 className="text-lg font-bold mb-3">Quick Stats</h2>
-                    <div className="grid grid-cols-3 gap-3 sm:gap-4">
-                        <StatCard title="Total Matches" value={matchesPlayed} loading={loading}/>
-                        <StatCard title="Wins" value={matchesWon} loading={loading} />
-                        <StatCard title="Win Rate" value={winRate} loading={loading} />
-                    </div>
-                </section>
-                
                 <section>
                     <div className="flex justify-between items-center mb-3">
                         <h2 className="text-lg font-bold">Open Matches</h2>
