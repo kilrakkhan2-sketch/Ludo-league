@@ -42,9 +42,6 @@ const UserCard = ({ user, stats }: { user: UserProfile, stats: any }) => {
                     <p className="font-bold text-base">{user.displayName}</p>
                     <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
-                <div className="ml-auto text-sm font-semibold text-green-600 self-start">
-                    Active
-                </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
@@ -54,7 +51,7 @@ const UserCard = ({ user, stats }: { user: UserProfile, stats: any }) => {
                 </div>
                 <div className="bg-muted p-3 rounded-lg">
                     <p className="text-muted-foreground">Profit/Loss</p>
-                    <p className={`font-bold text-base truncate ${isProfit ? 'text-green-600' : 'text-red-600'}`}>
+                    <p className={`font-bold text-base truncate ${isProfit ? 'text-green-500' : 'text-red-500'}`}>
                         {isProfit ? '+' : '-'}₹{Math.abs(stats.netProfit).toLocaleString()}
                     </p>
                 </div>
@@ -80,7 +77,7 @@ const UserCard = ({ user, stats }: { user: UserProfile, stats: any }) => {
                 </div>
                  <div className="bg-muted p-3 rounded-lg">
                     <p className="text-muted-foreground">Role</p>
-                    <p className="font-bold text-base capitalize">{user.role}</p>
+                    <p className="font-bold text-base capitalize">{user.role.replace('_', ' ')}</p>
                 </div>
             </div>
 
@@ -103,14 +100,14 @@ export default function AdminUsersPage() {
 
     users.forEach(user => {
       const userTxs = transactions.filter(t => t.userId === user.uid);
-      const totalDeposited = userTxs.filter(t => t.type === 'deposit').reduce((sum, t) => sum + t.amount, 0);
-      const totalWithdrawn = userTxs.filter(t => t.type === 'withdrawal').reduce((sum, t) => sum + t.amount, 0);
+      const totalDeposited = userTxs.filter(t => t.type === 'deposit' && t.status === 'completed').reduce((sum, t) => sum + t.amount, 0);
+      const totalWithdrawn = userTxs.filter(t => t.type === 'withdrawal' && t.status === 'completed').reduce((sum, t) => sum + t.amount, 0);
       const prizeMoney = userTxs.filter(t => t.type === 'prize').reduce((sum, t) => sum + t.amount, 0);
       const entryFees = userTxs.filter(t => t.type === 'entry_fee').reduce((sum, t) => sum + Math.abs(t.amount), 0);
       
       const matchesPlayed = user.matchesPlayed || 0;
       const matchesWon = user.matchesWon || 0;
-      const matchesLost = matchesPlayed - matchesWon;
+      const matchesLost = matchesPlayed > matchesWon ? matchesPlayed - matchesWon : 0;
       const winRate = matchesPlayed > 0 ? Math.round((matchesWon / matchesPlayed) * 100) : 0;
       const netProfit = prizeMoney - entryFees;
 
@@ -142,7 +139,7 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
         <h1 className="text-2xl font-bold font-headline">Users Management</h1>
-        <div className="sticky top-16 sm:top-0 bg-background/80 backdrop-blur-sm py-4 z-10">
+        <div className="sticky top-[76px] sm:top-0 bg-background/80 backdrop-blur-sm py-4 z-10">
             <Input 
                 type="text" 
                 placeholder="Search by name, email or UID..."
@@ -151,7 +148,7 @@ export default function AdminUsersPage() {
             />
         </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {loading ? (
             <>
               <UserCardSkeleton />

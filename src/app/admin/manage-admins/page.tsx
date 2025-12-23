@@ -44,7 +44,7 @@ const AdminCard = ({ adminUser, onRoleChange, isSubmitting }: { adminUser: UserP
                     <Select
                         defaultValue={adminUser.role}
                         onValueChange={(newRole) => onRoleChange(adminUser.uid, newRole)}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || adminUser.role === 'superadmin'}
                     >
                         <SelectTrigger id={`role-${adminUser.id}`}>
                             <SelectValue placeholder="Select role" />
@@ -73,7 +73,7 @@ export default function ManageAdminsPage() {
 
     const admins = useMemo(() => {
         if (!allUsers) return [];
-        return allUsers.filter(u => u.role !== 'user');
+        return allUsers.filter(u => u.role !== 'user').sort((a,b) => a.role === 'superadmin' ? -1 : 1);
     }, [allUsers]);
 
     const handleRoleChange = async (uid: string, newRole: string) => {
@@ -137,7 +137,7 @@ export default function ManageAdminsPage() {
                                         <SelectValue placeholder="Select a role to assign" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                         <SelectItem value="superadmin">Super Admin</SelectItem>
+                                        <SelectItem value="superadmin">Super Admin</SelectItem>
                                         {ROLES.map(r => <SelectItem key={r} value={r} className="capitalize">{r.replace('_', ' ')}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
@@ -174,5 +174,3 @@ export default function ManageAdminsPage() {
         </div>
     );
 }
-
-    
