@@ -13,14 +13,13 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Users, Trophy, PlusCircle } from 'lucide-react';
+import { Users, Trophy, PlusCircle, Gamepad2, CheckCircle, Hourglass, XCircle, ShieldQuestion } from 'lucide-react';
 import Link from 'next/link';
 import { useCollection, useUser } from '@/firebase';
 import type { Match } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WalletBalance } from '@/components/wallet-balance';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
+import { Separator } from '@/components/ui/separator';
 
 const MatchCardSkeleton = () => (
   <Card className="flex flex-col">
@@ -47,13 +46,15 @@ const MatchCard = ({ match }: { match: Match }) => {
       case 'open':
         return isFull ? 'destructive' : 'secondary';
       case 'ongoing':
+      case 'processing':
         return 'default';
       case 'completed':
         return 'outline';
       case 'disputed':
+      case 'verification':
         return 'destructive';
-      case 'processing':
-        return 'default';
+      case 'cancelled':
+        return 'destructive'
       default:
         return 'default';
     }
@@ -109,12 +110,10 @@ const MatchCard = ({ match }: { match: Match }) => {
 };
 
 
-const MatchesList = ({ matches, loading }: { matches: Match[], loading: boolean }) => {
+const MatchesList = ({ matches, loading, title, icon: Icon, emptyMessage }: { matches: Match[], loading: boolean, title: string, icon: React.ElementType, emptyMessage: string }) => {
     if (loading) {
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <MatchCardSkeleton />
-                <MatchCardSkeleton />
                 <MatchCardSkeleton />
                 <MatchCardSkeleton />
             </div>
@@ -122,81 +121,130 @@ const MatchesList = ({ matches, loading }: { matches: Match[], loading: boolean 
     }
     
     if (matches.length === 0) {
-        return (
-            <div className="text-center py-12 px-4 border-2 border-dashed rounded-lg bg-card mt-8">
-                <Trophy className="mx-auto h-12 w-12 text-muted-foreground" />
-                <h3 className="mt-2 text-sm font-semibold text-foreground">No Matches Found</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    There are no matches in this category.
-                </p>
-            </div>
-        )
+       return null;
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {matches.map((match) => (
-                <MatchCard key={match.id} match={match} />
-            ))}
+        <div className="space-y-4">
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-primary">
+                <Icon className="h-5 w-5" />
+                {title}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {matches.map((match) => (
+                    <MatchCard key={match.id} match={match} />
+                ))}
+            </div>
         </div>
     )
 }
 
-export default function MatchesPage() {
+const statusOrder = {
+  'ongoing': 1,
+  'processing': 2,
+  'verification': 3,
+  'disputed': 4,
+  'open': 5,
+  'completed': 6,
+  'cancelled': 7,
+};
+
+export default function MyMatchesPage() {
   const { user } = useUser();
-  const [filter, setFilter] = useState('all');
   
   const queryOptions = useMemo(() => ({
+    where: ['players', 'array-contains', user?.uid || ''],
     orderBy: [['createdAt', 'desc'] as const],
     limit: 50,
-  }), []);
+  }), [user]);
 
-  const { data: allMatches, loading } = useCollection<Match>('matches', queryOptions);
+  const { data: myMatches, loading } = useCollection<Match>('matches', queryOptions);
 
-  const filteredMatches = useMemo(() => {
-    if (!allMatches) return [];
-    if (filter === 'all') return allMatches;
-    if (filter === 'my-matches') {
-        return allMatches.filter(m => user && m.players.includes(user.uid));
+  const { openMatches, myActiveMatches, archivedMatches } = useMemo(() => {
+    if (!myMatches) return { openMatches: [], myActiveMatches: [], archivedMatches: [] };
+
+    const sortedMatches = myMatches.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
+    
+    const open: Match[] = [];
+    const active: Match[] = [];
+    const archived: Match[] = [];
+
+    for (const match of sortedMatches) {
+        if (['completed', 'cancelled'].includes(match.status)) {
+            archived.push(match);
+        } else if (match.status === 'open') {
+            open.push(match);
+        } else {
+            active.push(match);
+        }
     }
-    return allMatches.filter(m => m.status === filter);
-  }, [allMatches, filter, user]);
+    
+    return { openMatches: open, myActiveMatches: active, archivedMatches: archived };
+
+  }, [myMatches]);
 
   return (
-    <AppShell pageTitle="Matches">
-        <div className="bg-card p-4 rounded-lg shadow-sm border flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-16 sm:top-0 z-10">
-            <div className="flex items-center gap-3">
-                <p className="text-sm text-muted-foreground">Wallet Balance</p>
-                <WalletBalance />
+    <AppShell pageTitle="My Matches" showBackButton>
+      <div className="p-4 space-y-8">
+        
+        {loading ? (
+             <div className="space-y-8">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <MatchCardSkeleton />
+                    <MatchCardSkeleton />
+                </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <MatchCardSkeleton />
+                </div>
             </div>
-            <Button asChild>
-                <Link href="/create-match">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Create New Match
-                </Link>
-            </Button>
-        </div>
-      <div className="p-4 space-y-6">
-         <Tabs value={filter} onValueChange={setFilter}>
-            <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="open">Open</TabsTrigger>
-                <TabsTrigger value="ongoing">Ongoing</TabsTrigger>
-                <TabsTrigger value="my-matches">My Matches</TabsTrigger>
-            </TabsList>
-            <TabsContent value="all">
-                <MatchesList matches={filteredMatches} loading={loading} />
-            </TabsContent>
-             <TabsContent value="open">
-                <MatchesList matches={filteredMatches} loading={loading} />
-            </TabsContent>
-            <TabsContent value="ongoing">
-                <MatchesList matches={filteredMatches} loading={loading} />
-            </TabsContent>
-            <TabsContent value="my-matches">
-                <MatchesList matches={filteredMatches} loading={loading} />
-            </TabsContent>
-        </Tabs>
+        ) : myMatches.length === 0 ? (
+            <div className="text-center py-12 px-4 border-2 border-dashed rounded-lg bg-card mt-8">
+                <Trophy className="mx-auto h-12 w-12 text-muted-foreground" />
+                <h3 className="mt-2 text-sm font-semibold text-foreground">No Matches Found</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    You haven't joined or created any matches yet.
+                </p>
+                 <Button asChild className="mt-4">
+                    <Link href="/matches">Explore Matches</Link>
+                </Button>
+            </div>
+        ) : (
+            <>
+                <MatchesList
+                    matches={myActiveMatches}
+                    loading={loading}
+                    title="My Active Matches"
+                    icon={Gamepad2}
+                    emptyMessage="You have no active matches."
+                />
+
+                <MatchesList
+                    matches={openMatches}
+                    loading={loading}
+                    title="Waiting for Players"
+                    icon={Hourglass}
+                    emptyMessage="No open matches found."
+                />
+
+                {archivedMatches.length > 0 && (
+                    <div className="space-y-4">
+                        <div className="relative py-4">
+                            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                <div className="w-full border-t border-dashed" />
+                            </div>
+                            <div className="relative flex justify-center">
+                                <span className="bg-background px-2 text-sm text-muted-foreground">Archived Matches</span>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {archivedMatches.map((match) => (
+                                <MatchCard key={match.id} match={match} />
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </>
+        )}
       </div>
     </AppShell>
   );

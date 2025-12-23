@@ -54,6 +54,8 @@ const MatchCard = ({ match }: { match: Match }) => {
       case 'disputed':
       case 'verification':
         return 'destructive';
+      case 'cancelled':
+        return 'destructive';
       default:
         return 'default';
     }
@@ -155,34 +157,42 @@ export default function MatchesPage() {
 
   const filteredMatches = useMemo(() => {
     if (!allMatches) return [];
-    if (filter === 'all') return allMatches;
+    if (filter === 'all') return allMatches.filter(m => !['completed', 'cancelled'].includes(m.status));
     if (filter === 'my-matches') {
-        return allMatches.filter(m => user && m.players.includes(user.uid));
+        // Redirect to a dedicated page for "My Matches"
+        // This is handled via a button now.
+        return [];
     }
     return allMatches.filter(m => m.status === filter);
   }, [allMatches, filter, user]);
 
   return (
     <AppShell pageTitle="Matches">
-        <div className="bg-card p-4 rounded-lg shadow-sm border flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-16 sm:top-0 z-10">
+        <div className="bg-card p-4 rounded-lg shadow-sm border flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-[60px] sm:top-0 z-10">
             <div className="flex items-center gap-3">
                 <p className="text-sm text-muted-foreground">Wallet Balance</p>
                 <WalletBalance />
             </div>
-            <Button asChild>
-                <Link href="/create-match">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Create New Match
-                </Link>
-            </Button>
+            <div className="flex gap-2 w-full sm:w-auto">
+                 <Button asChild variant="outline" className="flex-1">
+                    <Link href="/matches/my-matches">
+                        My Matches
+                    </Link>
+                </Button>
+                <Button asChild className="flex-1">
+                    <Link href="/create-match">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Create Match
+                    </Link>
+                </Button>
+            </div>
         </div>
       <div className="p-4 space-y-6">
-         <Tabs value={filter} onValueChange={setFilter}>
-            <TabsList className="grid w-full grid-cols-4">
+         <Tabs value={filter} onValueChange={setFilter} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="open">Open</TabsTrigger>
                 <TabsTrigger value="ongoing">Ongoing</TabsTrigger>
-                <TabsTrigger value="my-matches">My Matches</TabsTrigger>
             </TabsList>
             <TabsContent value="all">
                 <MatchesList matches={filteredMatches} loading={loading} />
@@ -193,13 +203,8 @@ export default function MatchesPage() {
             <TabsContent value="ongoing">
                 <MatchesList matches={filteredMatches} loading={loading} />
             </TabsContent>
-            <TabsContent value="my-matches">
-                <MatchesList matches={filteredMatches} loading={loading} />
-            </TabsContent>
         </Tabs>
       </div>
     </AppShell>
   );
 }
-
-    
