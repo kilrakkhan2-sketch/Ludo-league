@@ -10,36 +10,38 @@ service firebase.storage {
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
+    
+    // Check if the user has an admin role
+    function isAdmin() {
+      return request.auth.token.role in ['superadmin', 'match_admin', 'deposit_admin', 'withdrawal_admin'];
+    }
 
     match /profile-pictures/{userId}/{allPaths=**} {
       allow read: if true;
       allow write: if isOwner(userId);
     }
 
-    match /deposit-screenshots/{userId}/{allPaths=**} {
-      // TEMPORARY: Replaced rule that used get()
-      allow read: if isSignedIn();
+    match /deposit-screenshots/{userId}/{fileName} {
+      allow read: if isOwner(userId) || isAdmin();
       allow write: if isOwner(userId);
     }
 
-    match /kyc-documents/{userId}/{allPaths=**} {
-      // TEMPORARY: Replaced rule that used get()
-      allow read: if isSignedIn();
+    match /kyc-documents/{userId}/{fileName} {
+      allow read: if isOwner(userId) || request.auth.token.role == 'superadmin';
       allow write: if isOwner(userId);
     }
 
     match /match-results/{matchId}/{fileName} {
+      // Only signed in users can read screenshots (e.g. admins viewing results)
       allow read: if isSignedIn();
-      // TEMPORARY FIX: Allow any signed-in user to upload match results.
-      // This is less secure but will fix the immediate error.
-      // The previous rule was invalid because get() cannot be used in storage rules.
-      allow write: if isSignedIn();
+      // A user can only write a result screenshot if their UID is in the filename.
+      // This is a common pattern to ensure users can only upload files to their "own" path.
+      allow write: if isSignedIn() && request.auth.uid in fileName;
     }
 
     match /tournament-banners/{fileName} {
       allow read: if true;
-       // TEMPORARY: Replaced rule that used get()
-      allow write: if isSignedIn();
+      allow write: if request.auth.token.role == 'superadmin' || request.auth.token.role == 'match_admin';
     }
   }
 }
