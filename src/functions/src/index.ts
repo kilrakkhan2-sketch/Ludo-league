@@ -120,6 +120,37 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
 // =================================================================
 //  STORAGE MANAGEMENT FUNCTIONS
 // =================================================================
+export const listStorageFiles = functions.https.onCall(async (data, context) => {
+    if (context.auth?.token.role !== 'superadmin') {
+        throw new functions.https.HttpsError("permission-denied", "You must be a superadmin to list files.");
+    }
+    const { prefix } = data;
+    if (!prefix || typeof prefix !== 'string') {
+        throw new functions.https.HttpsError("invalid-argument", "A valid folder prefix is required.");
+    }
+
+    try {
+        const bucket = getStorage().bucket();
+        const [files] = await bucket.getFiles({ prefix: prefix });
+
+        const fileDetails = files.map(file => {
+            const metadata = file.metadata;
+            return {
+                name: metadata.name,
+                size: metadata.size,
+                contentType: metadata.contentType,
+                createdAt: metadata.timeCreated,
+            };
+        });
+
+        return { files: fileDetails };
+    } catch (error) {
+        functions.logger.error(`Failed to list files for prefix ${prefix}:`, error);
+        throw new functions.https.HttpsError("internal", "An unexpected error occurred while listing files.");
+    }
+});
+
+
 export const deleteStorageFile = functions.https.onCall(async (data, context) => {
     // 1. Authentication & Authorization Check
     if (context.auth?.token.role !== 'superadmin') {

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -17,7 +18,8 @@ import {
   Power,
   Banknote,
   Ticket,
-  Menu
+  Menu,
+  HardDrive
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -81,6 +83,7 @@ export function AdminShell({ children, pageTitle }: { children: React.ReactNode,
       { href: '/admin/tournaments', icon: Ticket, label: 'Tournaments' },
       { href: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
       { href: '/admin/upi-management', icon: Banknote, label: 'UPI Management' },
+      { href: '/admin/storage', icon: HardDrive, label: 'Storage' },
       { href: '/admin/status', icon: Power, label: 'App Status' },
       { href: '/admin/settings', icon: Settings, label: 'App Settings' },
     ]
