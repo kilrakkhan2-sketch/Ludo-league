@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -168,7 +169,8 @@ export default function MatchesPage() {
 
   return (
     <AppShell pageTitle="Matches">
-        <div className="bg-card p-4 rounded-lg shadow-sm border flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-[60px] sm:top-0 z-10">
+      <div className="p-4 space-y-6">
+        <div className="bg-card p-4 rounded-lg shadow-sm border flex flex-col sm:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-3">
                 <p className="text-sm text-muted-foreground">Wallet Balance</p>
                 <WalletBalance />
@@ -187,7 +189,7 @@ export default function MatchesPage() {
                 </Button>
             </div>
         </div>
-      <div className="p-4 space-y-6">
+
          <Tabs value={filter} onValueChange={setFilter} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="all">All</TabsTrigger>
