@@ -1,3 +1,4 @@
+
 import type { Metadata } from "next";
 import { PT_Sans } from "next/font/google";
 import "./globals.css";
@@ -30,9 +31,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={cn("font-sans antialiased", ptSans.variable)}>
         <FirebaseClientProvider>
-          <MaintenanceShield>
-            {children}
-          </MaintenanceShield>
+          {/* 
+            Temporarily bypassing the MaintenanceShield to allow admin access.
+            The user should disable the maintenance mode setting and then this shield should be re-enabled
+            with the proper logic to ignore admin routes.
+          */}
+          {children}
         </FirebaseClientProvider>
         <Toaster />
         <Script
