@@ -47,13 +47,13 @@ const MatchCard = ({ match }: { match: Match }) => {
       case 'open':
         return isFull ? 'destructive' : 'secondary';
       case 'ongoing':
+      case 'processing':
         return 'default';
       case 'completed':
         return 'outline';
       case 'disputed':
+      case 'verification':
         return 'destructive';
-      case 'processing':
-        return 'default';
       default:
         return 'default';
     }
