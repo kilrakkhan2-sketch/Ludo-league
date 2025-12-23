@@ -30,25 +30,27 @@ export default function DepositPageContent() {
 
   const amount = searchParams ? searchParams.get('amount') : null;
 
-  // Find the first UPI account that is active and has not reached its daily limit.
-  const { data: paymentAccounts, loading: settingsLoading } = useCollection<UpiAccount>('upi-accounts', {
-      where: [
-        ['isActive', '==', true],
-      ],
+  // Fetch all UPI accounts, ordered by creation. We will filter for active and available ones on the client.
+  // Querying on 'isActive' and ordering by 'createdAt' requires a composite index, which is less flexible.
+  // This approach is more robust for a small number of accounts.
+  const { data: allUpiAccounts, loading: settingsLoading } = useCollection<UpiAccount>('upi-accounts', {
       orderBy: ['createdAt', 'asc']
   });
   
   const [activeUpiAccount, setActiveUpiAccount] = useState<UpiAccount | null | undefined>(undefined);
 
   useEffect(() => {
-    if (paymentAccounts && paymentAccounts.length > 0) {
-        // Find the first account that is under its daily limit
-        const availableAccount = paymentAccounts.find(acc => (acc.dailyAmountReceived || 0) < acc.dailyLimit);
+    if (allUpiAccounts && allUpiAccounts.length > 0) {
+        // Filter for active accounts that are under their daily limit
+        const availableAccount = allUpiAccounts.find(acc => 
+            acc.isActive && (acc.dailyAmountReceived || 0) < acc.dailyLimit
+        );
         setActiveUpiAccount(availableAccount || null);
     } else if (!settingsLoading) {
+        // This case handles when there are no accounts at all, or loading is finished.
         setActiveUpiAccount(null);
     }
-  }, [paymentAccounts, settingsLoading]);
+  }, [allUpiAccounts, settingsLoading]);
 
 
   const [transactionId, setTransactionId] = useState('');
