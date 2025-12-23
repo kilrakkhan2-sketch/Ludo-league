@@ -7,6 +7,7 @@ import { getStorage } from "firebase-admin/storage";
 
 admin.initializeApp();
 const db = admin.firestore();
+const BUCKET_NAME = "studio-4431476254-c1156.appspot.com";
 
 // Type definitions for robust data handling
 interface UserData {
@@ -130,7 +131,7 @@ export const listStorageFiles = functions.https.onCall(async (data, context) => 
     }
 
     try {
-        const bucket = getStorage().bucket();
+        const bucket = getStorage().bucket(BUCKET_NAME);
         const [files] = await bucket.getFiles({ prefix: prefix });
 
         const fileDetails = files.map(file => {
@@ -164,7 +165,7 @@ export const deleteStorageFile = functions.https.onCall(async (data, context) =>
     }
     
     try {
-        const bucket = getStorage().bucket();
+        const bucket = getStorage().bucket(BUCKET_NAME);
         const file = bucket.file(filePath);
         
         const [exists] = await file.exists();
