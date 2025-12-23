@@ -6,7 +6,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useDoc } from "@/firebase";
@@ -33,6 +32,8 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Banknote, Landmark, Power, Swords, AlertTriangle, Save } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
   isAppDisabled: z.boolean().default(false),
@@ -54,79 +55,85 @@ const formSchema = z.object({
   matchesEndTime: z.string().optional(),
 });
 
-const FeatureControl = ({ form, name, label, description }: { form: any, name: string, label: string, description: string }) => {
+const FeatureControlCard = ({ form, name, label, description, icon: Icon }: { form: any, name: string, label: string, description: string, icon: React.ElementType }) => {
   const isScheduled = form.watch(`${name}TimeScheduled`);
 
   return (
-    <div className="space-y-4 rounded-lg border p-4">
-      <FormField
-        control={form.control}
-        name={`${name}Disabled`}
-        render={({ field }) => (
-          <FormItem className="flex flex-row items-center justify-between">
-            <div className="space-y-0.5">
-              <FormLabel>{label}</FormLabel>
-              <FormDescription>{description}</FormDescription>
+    <Card>
+        <CardHeader>
+             <div className="flex items-center gap-4">
+                <div className="p-3 bg-primary/10 text-primary rounded-full">
+                    <Icon className="h-6 w-6" />
+                </div>
+                <div>
+                    <CardTitle className="text-base">{label}</CardTitle>
+                    <CardDescription className="text-xs">{description}</CardDescription>
+                </div>
             </div>
-            <FormControl>
-              <Switch
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-            </FormControl>
-          </FormItem>
-        )}
-      />
-      <Separator />
-      <FormField
-        control={form.control}
-        name={`${name}TimeScheduled`}
-        render={({ field }) => (
-          <FormItem className="flex flex-row items-center justify-between">
-            <div className="space-y-0.5">
-              <FormLabel className="text-sm">Enable time schedule</FormLabel>
-              <FormDescription className="text-xs">
-                Automatically disable this feature between specific times.
-              </FormDescription>
-            </div>
-            <FormControl>
-              <Switch
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-            </FormControl>
-          </FormItem>
-        )}
-      />
-      {isScheduled && (
-        <div className="grid grid-cols-2 gap-4 pt-2">
-           <FormField
+        </CardHeader>
+      <CardContent className="space-y-4 pt-0">
+          <FormField
             control={form.control}
-            name={`${name}StartTime`}
+            name={`${name}Disabled`}
             render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-xs">Disable From</FormLabel>
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                <FormLabel className="font-normal">Manually Disable</FormLabel>
                 <FormControl>
-                  <Input type="time" {...field} />
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
                 </FormControl>
               </FormItem>
             )}
           />
-           <FormField
-            control={form.control}
-            name={`${name}EndTime`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-xs">Enable At</FormLabel>
-                <FormControl>
-                  <Input type="time" {...field} />
-                </FormControl>
-              </FormItem>
+          <div className="space-y-3 rounded-lg border p-3">
+            <FormField
+                control={form.control}
+                name={`${name}TimeScheduled`}
+                render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between">
+                    <FormLabel className="font-normal text-sm">Enable Time Schedule</FormLabel>
+                    <FormControl>
+                    <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                    />
+                    </FormControl>
+                </FormItem>
+                )}
+            />
+             {isScheduled && (
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                <FormField
+                    control={form.control}
+                    name={`${name}StartTime`}
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="text-xs">Disable From</FormLabel>
+                        <FormControl>
+                        <Input type="time" {...field} />
+                        </FormControl>
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name={`${name}EndTime`}
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="text-xs">Enable At</FormLabel>
+                        <FormControl>
+                        <Input type="time" {...field} />
+                        </FormControl>
+                    </FormItem>
+                    )}
+                />
+                </div>
             )}
-          />
-        </div>
-      )}
-    </div>
+          </div>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -160,7 +167,7 @@ export default function AdminStatusPage() {
     if (settings) {
       form.reset({
         isAppDisabled: settings.isAppDisabled || false,
-        appDisabledMessage: settings.appDisabledMessage || '',
+        appDisabledMessage: settings.appDisabledMessage || 'The app is currently down for scheduled maintenance. We will be back shortly!',
         areDepositsDisabled: settings.areDepositsDisabled || false,
         depositsTimeScheduled: settings.depositsTimeScheduled || false,
         depositsStartTime: settings.depositsStartTime || '22:00',
@@ -197,97 +204,108 @@ export default function AdminStatusPage() {
             errorEmitter.emit('permission-error', permissionError);
         });
   };
+  
+  const isAppDisabled = form.watch('isAppDisabled');
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold font-headline">App Status & Maintenance</h1>
-      <Card className="max-w-2xl">
-       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardHeader>
-            <CardTitle>Maintenance Mode</CardTitle>
-            <CardDescription>
-              Control app availability and disable specific features, either manually or on a schedule.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {loading ? (
-                <div className="space-y-4">
-                    <Skeleton className="h-24 w-full" />
-                    <Skeleton className="h-24 w-full" />
-                    <Skeleton className="h-24 w-full" />
+    <Form {...form}>
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+        <div className="flex items-center justify-between mb-6">
+            <div>
+                <h1 className="text-2xl font-bold font-headline">App Status & Maintenance</h1>
+                <p className="text-muted-foreground">
+                Control app availability and disable specific features.
+                </p>
+            </div>
+            <Button type="submit" disabled={form.formState.isSubmitting || loading}>
+                <Save className="mr-2 h-4 w-4" />
+                {form.formState.isSubmitting ? "Saving..." : "Save All Settings"}
+            </Button>
+        </div>
+
+        {loading ? (
+             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Skeleton className="h-64 lg:col-span-1" />
+                <div className="lg:col-span-2 space-y-6">
+                    <Skeleton className="h-48" />
+                    <Skeleton className="h-48" />
+                    <Skeleton className="h-48" />
                 </div>
-            ) : (
-              <>
-                <div className="space-y-4 rounded-lg border p-4">
-                  <FormField
-                    control={form.control}
-                    name="isAppDisabled"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">Disable Entire App</FormLabel>
-                          <FormDescription>
-                            If enabled, all users will see the maintenance message.
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="appDisabledMessage"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Maintenance Message</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="e.g., The app is currently down for scheduled maintenance..."
-                            {...field}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
+            </div>
+        ) : (
+             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-1 space-y-6">
+                     <Card className={cn("transition-all", isAppDisabled && "border-destructive shadow-destructive/20")}>
+                        <CardHeader>
+                            <div className="flex items-start justify-between">
+                                <CardTitle>Maintenance Mode</CardTitle>
+                                 <div className={cn("p-2 rounded-full transition-colors", isAppDisabled ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary")}>
+                                    <Power className="h-5 w-5" />
+                                </div>
+                            </div>
+                            <CardDescription>Enable to take the entire app offline for all users.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="isAppDisabled"
+                                render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4" data-state={field.value ? 'checked' : 'unchecked'}>
+                                    <FormLabel className="text-base">Disable Entire App</FormLabel>
+                                    <FormControl>
+                                    <Switch
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                    />
+                                    </FormControl>
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="appDisabledMessage"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Maintenance Message</FormLabel>
+                                    <FormControl>
+                                    <Textarea
+                                        placeholder="e.g., The app is currently down for scheduled maintenance..."
+                                        {...field}
+                                    />
+                                    </FormControl>
+                                </FormItem>
+                                )}
+                            />
+                        </CardContent>
+                    </Card>
                 </div>
 
-                <h3 className="text-lg font-semibold pt-4 border-t">Feature Toggles</h3>
-                
-                <FeatureControl 
-                  form={form} 
-                  name="deposits" 
-                  label="Disable Deposits" 
-                  description="Users will not be able to add money." 
-                />
-                <FeatureControl 
-                  form={form} 
-                  name="withdrawals" 
-                  label="Disable Withdrawals" 
-                  description="Users will not be able to request withdrawals." 
-                />
-                <FeatureControl 
-                  form={form} 
-                  name="matches" 
-                  label="Disable Match Creation" 
-                  description="Users will not be able to create new matches." 
-                />
-              </>
-            )}
-          </CardContent>
-          <CardFooter className="border-t pt-6">
-            <Button type="submit" disabled={form.formState.isSubmitting || loading}>
-                {form.formState.isSubmitting ? "Saving..." : "Save Settings"}
-            </Button>
-          </CardFooter>
-          </form>
-        </Form>
-      </Card>
-    </div>
+                <div className="lg:col-span-2 space-y-6">
+                    <FeatureControlCard 
+                        form={form} 
+                        name="deposits" 
+                        label="Deposit System" 
+                        description="Users will not be able to add money."
+                        icon={Banknote}
+                    />
+                    <FeatureControlCard 
+                        form={form} 
+                        name="withdrawals" 
+                        label="Withdrawal System" 
+                        description="Users will not be able to request withdrawals." 
+                        icon={Landmark}
+                    />
+                    <FeatureControlCard 
+                        form={form} 
+                        name="matches" 
+                        label="Match Creation" 
+                        description="Users will not be able to create new matches."
+                        icon={Swords}
+                    />
+                </div>
+            </div>
+        )}
+        </form>
+    </Form>
   );
 }
