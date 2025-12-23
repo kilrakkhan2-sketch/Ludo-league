@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -158,14 +157,18 @@ export default function MatchesPage() {
 
   const filteredMatches = useMemo(() => {
     if (!allMatches) return [];
-    if (filter === 'all') return allMatches.filter(m => !['completed', 'cancelled'].includes(m.status));
-    if (filter === 'my-matches') {
-        // Redirect to a dedicated page for "My Matches"
-        // This is handled via a button now.
-        return [];
+    
+    const activeMatches = allMatches.filter(m => !['completed', 'cancelled'].includes(m.status));
+
+    if (filter === 'open') {
+        return activeMatches.filter(m => m.status === 'open' && m.players.length < m.maxPlayers);
     }
-    return allMatches.filter(m => m.status === filter);
-  }, [allMatches, filter, user]);
+     if (filter === 'ongoing') {
+        return activeMatches.filter(m => ['ongoing', 'processing', 'verification', 'disputed'].includes(m.status) || (m.status === 'open' && m.players.length >= m.maxPlayers));
+    }
+    // 'all' filter
+    return activeMatches;
+  }, [allMatches, filter]);
 
   return (
     <AppShell pageTitle="Matches">
