@@ -40,6 +40,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import Image from 'next/image';
+import { Sheet, SheetContent } from '../ui/sheet';
 
 const NavItem = ({ href, icon: Icon, label, count }: { href: string; icon: React.ElementType; label: string, count?: number }) => {
   const pathname = usePathname();
@@ -111,7 +112,7 @@ export function AdminShell({ children, pageTitle }: { children: React.ReactNode,
   return (
     <SidebarProvider>
       <div className="grid min-h-screen w-full bg-muted/40">
-        <Sidebar>
+        <Sidebar className="bg-card">
           <SidebarContent>
             <SidebarHeader>
               <Link href="/admin/dashboard" className="flex items-center gap-2 font-semibold">
@@ -166,5 +167,3 @@ export function AdminShell({ children, pageTitle }: { children: React.ReactNode,
     </SidebarProvider>
   );
 }
-
-    
