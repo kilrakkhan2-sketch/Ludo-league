@@ -87,7 +87,13 @@ export function useCollection<T extends { id: string }>(path: string, options?: 
     
     const collectionRef = optionsMemo?.isCollectionGroup ? collectionGroup(db, path) : collection(db, path);
 
-    return query(collectionRef, ...constraints);
+    // This is the key fix: collection() can take more than one argument to form a path to a subcollection.
+    // The previous implementation only supported top-level collections.
+    const pathSegments = path.split('/');
+    const finalCollectionRef = collection(db, pathSegments[0], ...pathSegments.slice(1));
+
+
+    return query(finalCollectionRef, ...constraints);
   }, [db, path, optionsMemo]);
 
   useEffect(() => {
