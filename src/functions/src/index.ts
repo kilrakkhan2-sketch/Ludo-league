@@ -446,15 +446,14 @@ export const autoVerifyResults = functions.firestore
                     return;
                 }
                 
-                const resultsSnapshot = await transaction.get(matchRef.collection('results'));
+                const resultsCollectionRef = matchRef.collection('results');
+                const resultsSnapshot = await transaction.get(resultsCollectionRef);
                 
-                // Get all results including the one that just triggered the function
-                const allPlayerIdsInMatch = matchData.players as string[];
-                const submittedResultIds = new Set(resultsSnapshot.docs.map(doc => doc.id));
-                submittedResultIds.add(context.params.userId); // Add the triggering user's ID
+                // The number of documents in the results subcollection.
+                const submittedCount = resultsSnapshot.size;
 
                 // Wait for all players to submit their results.
-                if (submittedResultIds.size < allPlayerIdsInMatch.length) {
+                if (submittedCount < matchData.maxPlayers) {
                      // Set match status to processing as soon as the first result is in
                      if (matchData.status === 'ongoing') {
                         transaction.update(matchRef, { status: 'processing' });
@@ -464,8 +463,7 @@ export const autoVerifyResults = functions.firestore
 
                 // If we reach here, all players have submitted. Let's verify.
                 const submittedResults = resultsSnapshot.docs.map(doc => doc.data() as MatchResult);
-                submittedResults.push(snap.data() as MatchResult); // Add the triggering result
-
+                
                 // --- AUTO-VERIFICATION LOGIC ---
                 const positions = new Set<number>();
                 const winners = new Set<string>();
