@@ -450,18 +450,13 @@ export default function MatchPage({ params }: { params: { id: string } }) {
   const { width, height } = useWindowSize();
   
   const playerIds = useMemo(() => {
-      if (!match?.players) return ['_'];
+      if (!match?.players) return ['_']; // Firestore 'in' queries cannot be empty.
       return match.players.length > 0 ? match.players : ['_'];
-  }, [match]);
+  }, [match?.players]);
 
-  const playersQueryOptions = useMemo(() => ({
-      where: ['uid', 'in', playerIds] as const
-  }), [playerIds]);
-  const { data: playersData, loading: playersLoading } = useCollection<UserProfile>(
-    'users', playersQueryOptions
-  );
-
-  const players = useMemo(() => playersData || [], [playersData]);
+  const { data: players, loading: playersLoading } = useCollection<UserProfile>('users', {
+      where: ['uid', 'in', playerIds]
+  });
 
   const loading = matchLoading || playersLoading || resultsLoading;
 
@@ -564,3 +559,4 @@ export default function MatchPage({ params }: { params: { id: string } }) {
   
   return <div className="bg-muted/30">{renderContent()}</div>;
 }
+
