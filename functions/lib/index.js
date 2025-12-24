@@ -650,7 +650,6 @@ exports.resolveMatch = functions.https.onCall(async (data, context) => {
     return { success: true, message: `Match resolved. Payout for ${winnerId} has been triggered.` };
 });
 exports.createMatch = functions.https.onCall(async (data, context) => {
-    var _a;
     // 1. Authentication Check
     if (!context.auth) {
         throw new functions.https.HttpsError("unauthenticated", "You must be logged in to create a match.");
@@ -916,5 +915,3 @@ exports.submitResult = functions.https.onCall(async (data, context) => {
     }
 });
 //# sourceMappingURL=index.js.map
-
-    

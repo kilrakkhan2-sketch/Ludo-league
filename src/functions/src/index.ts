@@ -147,7 +147,7 @@ export const deleteUserAccount = functions.https.onCall(async (_, context) => {
         await db.collection('users').doc(uid).delete();
         functions.logger.info(`User ${uid} successfully deleted their account.`);
         return { success: true };
-    } catch (error: any) {
+    } catch (error: any) => {
         functions.logger.error(`Failed to delete user account for ${uid}:`, error);
         throw new functions.https.HttpsError('internal', "An error occurred while deleting your account.");
     }
@@ -1078,5 +1078,3 @@ export const submitResult = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("internal", "An unexpected error occurred.");
     }
 });
-
-    
