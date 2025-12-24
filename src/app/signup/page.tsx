@@ -1,7 +1,8 @@
+
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useCreateUserWithEmailAndPassword } from 'react-firebase-hooks/auth';
+import React, { useState } from 'react';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { useAuth, useFirestore } from '@/firebase';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,73 +12,66 @@ import { useRouter } from 'next/navigation';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
-import { updateProfile } from 'firebase/auth';
 import { SocialLogins } from '@/components/auth/SocialLogins';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [loading, setLoading] = useState(false);
   const auth = useAuth();
   const firestore = useFirestore();
-  const [createUserWithEmailAndPassword, user, loading, error] = useCreateUserWithEmailAndPassword(auth);
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    createUserWithEmailAndPassword(email, password);
-  };
+    if (!auth || !firestore) return;
+    setLoading(true);
 
-  useEffect(() => {
-    if (error) {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Update Firebase Auth profile
+      await updateProfile(user, { displayName });
+
+      // Create user document in Firestore
+      const userRef = doc(firestore, "users", user.uid);
+      const referralCode = `${displayName.substring(0, 4).toUpperCase()}${nanoid(4)}`;
+      
+      await setDoc(userRef, {
+          uid: user.uid,
+          name: displayName,
+          displayName: displayName,
+          email: email,
+          photoURL: '',
+          role: 'user',
+          walletBalance: 0,
+          referralEarnings: 0,
+          isVerified: false,
+          xp: 0,
+          matchesPlayed: 0,
+          matchesWon: 0,
+          rating: 1000,
+          referralCode: referralCode,
+          createdAt: Timestamp.now(),
+      });
+
+      toast({ title: "Account Created", description: "Welcome to LudoLeague!" });
+      router.push('/dashboard');
+
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Signup Failed",
         description: error.message,
       });
+    } finally {
+      setLoading(false);
     }
-  }, [error, toast]);
+  };
 
-  useEffect(() => {
-    const setupUser = async () => {
-      if (user && firestore && displayName) {
-        try {
-            // Update Firebase Auth profile
-            await updateProfile(user.user, { displayName });
-
-            // Create user document in Firestore
-            const userRef = doc(firestore, "users", user.user.uid);
-            const referralCode = `${displayName.substring(0, 4).toUpperCase()}${nanoid(4)}`;
-            
-            await setDoc(userRef, {
-                uid: user.user.uid,
-                name: displayName,
-                displayName: displayName,
-                email: email,
-                photoURL: '',
-                role: 'user',
-                walletBalance: 0,
-                referralEarnings: 0,
-                isVerified: false,
-                xp: 0,
-                matchesPlayed: 0,
-                matchesWon: 0,
-                rating: 1000,
-                referralCode: referralCode,
-                createdAt: Timestamp.now(),
-            });
-
-            toast({ title: "Account Created", description: "Welcome to LudoLeague!" });
-            router.push('/dashboard');
-
-        } catch (setupError: any) {
-            toast({ variant: "destructive", title: "Setup Failed", description: setupError.message });
-        }
-      }
-    };
-    setupUser();
-  }, [user, firestore, displayName, email, router, toast]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">

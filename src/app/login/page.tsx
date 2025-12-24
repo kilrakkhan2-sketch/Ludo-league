@@ -1,7 +1,8 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useSignInWithEmailAndPassword } from 'react-firebase-hooks/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,13 +15,15 @@ import { SocialLogins } from '@/components/auth/SocialLogins';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const auth = useAuth();
-  const [signInWithEmailAndPassword, user, loading, error] = useSignInWithEmailAndPassword(auth);
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth) return;
+
     if (!email || !password) {
         toast({
             variant: "destructive",
@@ -29,28 +32,21 @@ export default function LoginPage() {
         });
         return;
     }
-    signInWithEmailAndPassword(email, password);
-  };
-
-  useEffect(() => {
-    if (error) {
+    setLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      toast({ title: "Logged In", description: "Welcome back!" });
+      router.replace('/dashboard');
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Login Failed",
         description: error.message,
       });
+    } finally {
+      setLoading(false);
     }
-  }, [error, toast]);
-
-  useEffect(() => {
-    // Only redirect if the user object and its UID exist.
-    // This prevents re-renders on other state changes.
-    if (user?.user?.uid) {
-      toast({ title: "Logged In", description: "Welcome back!" });
-      router.replace('/dashboard');
-    }
-  }, [user?.user?.uid, router, toast]);
-
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
