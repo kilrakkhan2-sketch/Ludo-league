@@ -16,13 +16,16 @@ import { Input } from "@/components/ui/input";
 import { Users, AlertTriangle, ArrowRight, Swords } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
-const matchStatuses = ['verification', 'disputed', 'ongoing', 'open', 'completed', 'cancelled', 'all'];
+const matchStatuses = ['result_submitted', 'disputed', 'game_started', 'waiting', 'completed', 'cancelled', 'all'];
 
 const getStatusVariant = (status: string) => {
   switch (status) {
     case 'disputed': return 'destructive';
+    case 'result_submitted':
     case 'verification': return 'secondary';
-    case 'completed': return 'default';
+    case 'completed':
+    case 'PAID':
+         return 'default';
     default: return 'outline';
   }
 };
@@ -34,7 +37,7 @@ const UserDisplay = ({ uid }: { uid: string }) => {
 }
 
 export default function AdminMatchesPage() {
-  const [statusFilter, setStatusFilter] = useState('verification');
+  const [statusFilter, setStatusFilter] = useState('result_submitted');
   const [searchTerm, setSearchTerm] = useState('');
   
   const queryOptions = useMemo(() => ({
@@ -48,6 +51,7 @@ export default function AdminMatchesPage() {
   const filteredMatches = useMemo(() => {
     if (!matches) return [];
     const lowerSearch = searchTerm.toLowerCase();
+    if (!lowerSearch) return matches;
     return matches.filter(match => 
         match.title?.toLowerCase().includes(lowerSearch) || 
         match.id.toLowerCase().includes(lowerSearch) ||
@@ -69,7 +73,7 @@ export default function AdminMatchesPage() {
                     <div className="flex space-x-2 overflow-x-auto pb-2 w-full">
                         {matchStatuses.map(status => (
                             <Button key={status} size="sm" variant={statusFilter === status ? 'default' : 'outline'} onClick={() => setStatusFilter(status)} className="capitalize shrink-0">
-                                {status}
+                                {status.replace('_', ' ')}
                             </Button>
                         ))}
                     </div>
@@ -106,9 +110,9 @@ export default function AdminMatchesPage() {
                                     </TableCell>
                                     <TableCell>
                                          <div className="flex items-center gap-2">
-                                            <UserDisplay uid={match.players[0]} />
-                                            <Swords className="h-4 w-4 text-muted-foreground" />
-                                            <UserDisplay uid={match.players[1]} />
+                                            {match.players?.[0] && <UserDisplay uid={match.players[0]} />}
+                                            {match.players?.length > 1 && <Swords className="h-4 w-4 text-muted-foreground" />}
+                                            {match.players?.[1] && <UserDisplay uid={match.players[1]} />}
                                         </div>
                                     </TableCell>
                                     <TableCell className="hidden md:table-cell">
@@ -119,12 +123,12 @@ export default function AdminMatchesPage() {
                                         {match.createdAt ? formatDistanceToNow((match.createdAt as any).toDate(), { addSuffix: true }) : 'N/A'}
                                     </TableCell>
                                      <TableCell>
-                                        <Badge variant={getStatusVariant(match.status)} className="capitalize">{match.status}</Badge>
+                                        <Badge variant={getStatusVariant(match.status)} className="capitalize">{match.status.replace(/_/g, ' ')}</Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
                                          <Button asChild variant="outline" size="sm">
-                                            <Link href={`/admin/match/${match.id}`}>
-                                                {statusFilter === 'verification' || statusFilter === 'disputed' ? 'Review' : 'View'} <ArrowRight className="ml-2 h-4 w-4"/>
+                                            <Link href={`/admin/matches/${match.id}`}>
+                                                {statusFilter === 'result_submitted' || statusFilter === 'disputed' ? 'Review' : 'View'} <ArrowRight className="ml-2 h-4 w-4"/>
                                             </Link>
                                         </Button>
                                     </TableCell>

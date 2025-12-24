@@ -3,10 +3,10 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useCollection, useCollectionGroup, useUser } from "@/firebase";
-import type { DepositRequest, Transaction, UserProfile, WithdrawalRequest, Match, KycRequest, Tournament } from "@/types";
+import type { DepositRequest, Transaction, UserProfile, WithdrawalRequest, Match, KycRequest } from "@/types";
 import { Users, Sword, CircleArrowUp, Landmark, FileKey, BadgeCheck, ShieldAlert, Gamepad2, Ticket, Wallet, Award, Banknote } from 'lucide-react';
-import { useMemo, useEffect, useState } from "react";
-import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, PieChart, Pie, Cell } from "recharts";
+import { useMemo } from "react";
+import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
@@ -49,21 +49,20 @@ const registrationChartConfig = { users: { label: "Users", color: "hsl(var(--pri
 
 export default function AdminDashboardPage() {
   const { userData, loading: userLoading } = useUser();
-  const role = userData?.roles?.[0] || '';
+  const role = userData?.role || '';
 
   // ----------- DATA FETCHING -----------
   const { count: pendingDeposits, loading: l1 } = useCollection<DepositRequest>("deposit-requests", { where: ["status", "==", "pending"] });
   const { count: pendingWithdrawals, loading: l2 } = useCollection<WithdrawalRequest>("withdrawal-requests", { where: ["status", "==", "pending"] });
   const { count: pendingKyc, loading: l3 } = useCollection<KycRequest>("kyc-requests", { where: ["status", "==", "pending"] });
-  const { count: pendingMatches, loading: l4 } = useCollection<Match>("matches", { where: ["status", "==", "verification"] });
+  const { count: pendingMatches, loading: l4 } = useCollection<Match>("matches", { where: ["status", "in", ["verification", "result_submitted"]] });
   const { count: disputedMatches, loading: l5 } = useCollection<Match>("matches", { where: ["status", "==", "disputed"] });
   const { count: totalUsers, loading: l6 } = useCollection<UserProfile>("users");
-  const { count: ongoingMatches, loading: l7 } = useCollection<Match>("matches", { where: ["status", "==", "ongoing"] });
-  const { data: fees, loading: l8 } = useCollectionGroup<Transaction>('transactions', { where: ['type', '==', 'platform-fee'] });
-
-  const isLoading = userLoading || l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8;
+  const { count: ongoingMatches, loading: l7 } = useCollection<Match>("matches", { where: ["status", "in", ["room_code_pending", "room_code_shared", "game_started"]] });
   
-  const platformRevenue = useMemo(() => fees?.reduce((acc, p) => acc + (p.amount || 0), 0) || 0, [fees]);
+  const isLoading = userLoading || l1 || l2 || l3 || l4 || l5 || l6 || l7;
+  
+  const platformRevenue = 0; // Replace with actual revenue calculation if available
 
   const superAdminStats = [
       { title: "Total Users", value: totalUsers, icon: Users, href: "/admin/users" },
@@ -76,7 +75,7 @@ export default function AdminDashboardPage() {
       { title: "Pending KYC", value: pendingKyc, icon: FileKey, href: "/admin/kyc", roles: ['superadmin'] },
       { title: "Match Verification", value: pendingMatches, icon: BadgeCheck, href: "/admin/matches", roles: ['superadmin', 'match_admin'] },
       { title: "Disputed Matches", value: disputedMatches, icon: ShieldAlert, href: "/admin/matches", roles: ['superadmin', 'match_admin'] },
-  ].filter(item => item.roles.includes(role));
+  ].filter(item => role && item.roles.includes(role));
 
   return (
     <div className="space-y-6">
@@ -118,7 +117,7 @@ export default function AdminDashboardPage() {
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                 <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
-                                <YAxis tickLine={false} axisLine={false} width={80} tickFormatter={(value) => `₹${value/1000}k`}/>
+                                <YAxis tickLine={false} axisLine={false} width={80} tickFormatter={(value) => `₹${Number(value) / 1000}k`}/>
                                 <Tooltip content={<ChartTooltipContent />} />
                                 <Area type="monotone" dataKey="revenue" strokeWidth={2} stroke="var(--color-revenue)" fillOpacity={1} fill="url(#colorRevenue)" />
                             </AreaChart>
