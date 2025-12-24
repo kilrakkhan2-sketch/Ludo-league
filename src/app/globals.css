@@ -4,81 +4,64 @@
 @tailwind utilities;
 
 @layer base {
-  /* Define brand color palette as CSS variables */
+  /* Define brand color palette */
   :root {
-    --royal-green: 158 44% 28%; /* #286B52 */
-    --gold: 45 68% 52%; /* #D4AF37 */
-    --border-gold: 45 56% 55%; /* #C9A24D */
-    --deep-green-black: 160 50% 10%; /* #0c2921 */
-    --dark-green: 160 50% 15%; /* #123d32 */
-    --off-white: 45 25% 95%; /* #F5F3EE */
-    --steel-gray: 170 65% 8%; /* #0A1C1A */
-    --light-gray: 210 40% 98%; /* For light theme background */
-    --light-card: 0 0% 100%;
+    --royal-green-hsl: 158 44% 28%; /* HSL for #286B52 */
+    --gold-hsl: 45 68% 52%; /* HSL for #D4AF37 */
+    --border-gold-hsl: 45 56% 55%; /* HSL for #C9A24D */
+    --deep-green-black-hsl: 160 50% 10%; /* HSL for #0c2921 */
+    --dark-green-hsl: 160 50% 15%; /* HSL for #123d32 */
+    --off-white-hsl: 45 25% 95%; /* HSL for #F5F3EE */
+    --steel-gray-hsl: 170 65% 8%; /* HSL for #0A1C1A */
+    
+    --light-gray-hsl: 210 40% 98%;
+    --light-card-hsl: 0 0% 100%;
 
     --radius: 0.8rem;
+    
+    /* Default to dark theme variables */
+    --background: var(--deep-green-black-hsl);
+    --foreground: var(--off-white-hsl);
+    --card: var(--dark-green-hsl);
+    --card-foreground: var(--off-white-hsl);
+    --popover: var(--deep-green-black-hsl);
+    --popover-foreground: var(--off-white-hsl);
+    --primary: var(--gold-hsl);
+    --primary-foreground: var(--steel-gray-hsl);
+    --secondary: var(--royal-green-hsl);
+    --secondary-foreground: var(--off-white-hsl);
+    --muted: var(--dark-green-hsl);
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: var(--gold-hsl);
+    --accent-foreground: var(--steel-gray-hsl);
+    --destructive: 0 72% 51%;
+    --destructive-foreground: var(--off-white-hsl);
+    --border: var(--border-gold-hsl);
+    --input: var(--dark-green-hsl);
+    --ring: var(--border-gold-hsl);
   }
 
-  /* Light Theme Definition */
+  /* Light Theme Overrides */
   .light {
-    --background: var(--light-gray);
-    --foreground: var(--steel-gray);
-    
-    --card: var(--light-card);
-    --card-foreground: var(--steel-gray);
-    
-    --popover: var(--light-card);
-    --popover-foreground: var(--steel-gray);
-
-    --primary: var(--royal-green);
-    --primary-foreground: var(--off-white);
-
-    --secondary: var(--gold);
-    --secondary-foreground: var(--steel-gray);
-
+    --background: var(--light-gray-hsl);
+    --foreground: var(--steel-gray-hsl);
+    --card: var(--light-card-hsl);
+    --card-foreground: var(--steel-gray-hsl);
+    --popover: var(--light-card-hsl);
+    --popover-foreground: var(--steel-gray-hsl);
+    --primary: var(--royal-green-hsl);
+    --primary-foreground: var(--off-white-hsl);
+    --secondary: var(--gold-hsl);
+    --secondary-foreground: var(--steel-gray-hsl);
     --muted: 210 40% 96.1%;
     --muted-foreground: 215 20.2% 65.1%;
-
     --accent: 210 40% 96.1%;
     --accent-foreground: 215.4 16.3% 46.9%;
-
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: var(--off-white);
-    
+    --destructive-foreground: var(--off-white-hsl);
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: var(--royal-green);
-  }
-
-  /* Dark (Royal) Theme Definition */
-  .dark {
-    --background: var(--deep-green-black);
-    --foreground: var(--off-white);
-    
-    --card: var(--dark-green);
-    --card-foreground: var(--off-white);
-    
-    --popover: var(--deep-green-black);
-    --popover-foreground: var(--off-white);
-
-    --primary: var(--gold);
-    --primary-foreground: var(--steel-gray);
-
-    --secondary: var(--royal-green);
-    --secondary-foreground: var(--off-white);
-
-    --muted: var(--dark-green); 
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: var(--gold); 
-    --accent-foreground: var(--steel-gray);
-
-    --destructive: 0 72% 51%;
-    --destructive-foreground: var(--off-white);
-    
-    --border: var(--border-gold);
-    --input: var(--dark-green);
-    --ring: var(--border-gold);
+    --ring: var(--royal-green-hsl);
   }
 }
 

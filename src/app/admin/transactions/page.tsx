@@ -1,138 +1,126 @@
-
 'use client';
 
-import { useCollectionGroup, useDoc } from "@/firebase";
-import type { Transaction, UserProfile } from "@/types";
+import { useCollection } from "@/firebase";
+import { Transaction, UserProfile } from "@/types";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CircleArrowDown, CircleArrowUp, Ticket, Trophy, Gift, Minus, Coins } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMemo } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CircleArrowDown, CircleArrowUp, Ticket, Trophy } from "lucide-react";
 
-const transactionTypes = ['all', 'prize', 'win', 'entry_fee', 'withdrawal', 'deposit', 'add_money', 'referral_bonus'];
-
-const getTransactionIcon = (type: Transaction['type']) => {
+// Decide which icon to show based on the transaction type
+const TypeIcon = ({ type }: { type: Transaction['type'] }) => {
     const className = "h-5 w-5";
     switch (type) {
-        case 'prize': case 'win': return <Trophy className={`${className} text-yellow-500`} />;
-        case 'entry_fee': return <Ticket className={`${className} text-gray-500`} />;
-        case 'withdrawal': return <CircleArrowUp className={`${className} text-red-500`} />;
-        case 'deposit': case 'add_money': return <CircleArrowDown className={`${className} text-green-500`} />;
-        case 'referral_bonus': return <Gift className={`${className} text-blue-500`} />;
-        default: return <Minus className={`${className} text-gray-400`} />;
+        case 'prize-money':
+            return <Trophy className={`${className} text-yellow-500`} />;
+        case 'entry-fee':
+            return <Ticket className={`${className} text-gray-500`} />;
+        case 'withdrawal':
+            return <CircleArrowUp className={`${className} text-red-500`} />;
+        case 'deposit':
+            return <CircleArrowDown className={`${className} text-green-500`} />;
+        default:
+            return null;
     }
-}
+};
 
-const UserCell = ({ uid }: { uid: string }) => {
-    const { data: user, loading } = useDoc<UserProfile>(`users/${uid}`);
-    if (loading) return <Skeleton className="h-5 w-24" />;
-    return (
-        <div className="flex flex-col">
-            <span className='font-medium'>{user?.displayName || 'Unknown User'}</span>
-            <span className='text-xs text-muted-foreground'>{uid}</span>
-        </div>
-    );
-}
+// Determine badge variant based on status
+const getBadgeVariant = (status: Transaction['status']) => {
+  switch (status) {
+    case 'completed': return 'default';
+    case 'pending': return 'secondary';
+    case 'failed': return 'destructive';
+    default: return 'outline';
+  }
+};
 
-export default function AdminTransactionsPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
+export default function TransactionsPage() {
+  const { data: transactions, loading: transactionsLoading } = useCollection<Transaction>('transactions', { orderBy: ['createdAt', 'desc'], limit: 100 });
+  const { data: users, loading: usersLoading } = useCollection<UserProfile>('users');
 
-  const queryOptions = useMemo(() => ({
-    orderBy: ['createdAt', 'desc'] as const,
-    limit: 100, // Increased limit for better overview
-  }), []);
+  // Create a map of userId -> user for quick lookup
+  const userMap = useMemo(() => {
+    if (!users) return {};
+    return users.reduce((acc, user) => {
+      acc[user.uid] = user;
+      return acc;
+    }, {} as { [key: string]: UserProfile });
+  }, [users]);
 
-  const { data: transactions, loading } = useCollectionGroup<Transaction>('transactions', queryOptions);
-
-  const filteredTransactions = useMemo(() => {
-    if (!transactions) return [];
-    const lowerSearch = searchTerm.toLowerCase();
-    return transactions.filter(tx => {
-      const typeMatch = typeFilter === 'all' || tx.type === typeFilter;
-      const searchMatch = !searchTerm || 
-        tx.userId.toLowerCase().includes(lowerSearch) || 
-        tx.id.toLowerCase().includes(lowerSearch) ||
-        tx.description?.toLowerCase().includes(lowerSearch);
-      return typeMatch && searchMatch;
-    });
-  }, [transactions, searchTerm, typeFilter]);
+  const loading = transactionsLoading || usersLoading;
 
   return (
     <div className="space-y-6">
         <div>
-            <h1 className="text-2xl font-bold">Transaction Ledger</h1>
-            <p className="text-muted-foreground">A complete, searchable history of all transactions on the platform.</p>
+            <h1 className="text-2xl font-bold">All Transactions</h1>
+            <p className="text-muted-foreground">A log of all financial movements in the system.</p>
         </div>
-        
-        <Card>
-            <CardHeader>
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                     <div className="w-full sm:w-auto sm:max-w-xs">
-                        <Input 
-                            placeholder='Search by User/Txn ID...'
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                    <div className="w-full sm:w-auto sm:max-w-xs">
-                         <Select onValueChange={setTypeFilter} value={typeFilter}>
-                            <SelectTrigger><SelectValue placeholder="Filter by type" /></SelectTrigger>
-                            <SelectContent>
-                                {transactionTypes.map(t => <SelectItem key={t} value={t} className="capitalize">{t.replace('_', ' ')}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent>
-                 <div className="border rounded-lg">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>User</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Amount</TableHead>
-                                <TableHead className="hidden md:table-cell">Description</TableHead>
-                                <TableHead className="hidden lg:table-cell">Date</TableHead>
-                                <TableHead className="text-right">Status</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {loading && [...Array(10)].map((_, i) => <TableRow key={i}>{Array(6).fill(0).map((_, c) => <TableCell key={c}><Skeleton className="h-8 w-full" /></TableCell>)}</TableRow>)}
-                            {!loading && filteredTransactions.length === 0 && <TableRow><TableCell colSpan={6} className="h-24 text-center">No transactions found.</TableCell></TableRow>}
-                            {!loading && filteredTransactions.map((tx: Transaction) => {
-                                const isCredit = tx.amount > 0 || ['deposit', 'prize', 'referral_bonus', 'win', 'add_money'].includes(tx.type);
-                                const amount = isCredit ? tx.amount : Math.abs(tx.amount);
-                                return (
-                                    <TableRow key={tx.id}>
-                                        <TableCell><UserCell uid={tx.userId} /></TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                {getTransactionIcon(tx.type)}
-                                                <span className="capitalize font-medium">{tx.type.replace(/_/g, ' ')}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className={`font-bold ${isCredit ? 'text-green-600' : 'text-red-600'}`}>
-                                            {isCredit ? '+' : '-'}₹{amount.toLocaleString()}
-                                        </TableCell>
-                                        <TableCell className="hidden md:table-cell text-sm">{tx.description}</TableCell>
-                                        <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
-                                            {tx.createdAt?.seconds ? format(new Date(tx.createdAt.seconds * 1000), 'dd MMM yyyy, HH:mm') : 'N/A'}
-                                        </TableCell>
-                                        <TableCell className="text-right"><Badge variant={tx.status === 'completed' ? 'default' : 'secondary'}>{tx.status}</Badge></TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-                </div>
-            </CardContent>
-        </Card>
+
+        <div className="border rounded-lg">
+            <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead className="w-[80px]">Type</TableHead>
+                    <TableHead>User</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Transaction ID</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {loading ? (
+                <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                    Loading transactions...
+                    </TableCell>
+                </TableRow>
+                ) : transactions && transactions.length > 0 ? (
+                transactions.map((tx) => {
+                    const user = userMap[tx.userId];
+                    return (
+                    <TableRow key={tx.id}>
+                        <TableCell><TypeIcon type={tx.type} /></TableCell>
+                        <TableCell>
+                            {user ? (
+                                <div className="flex items-center gap-2">
+                                    <Avatar className="h-8 w-8 border">
+                                        <AvatarImage src={user.photoURL} alt={user.displayName} />
+                                        <AvatarFallback>{user.displayName?.[0]}</AvatarFallback>
+                                    </Avatar>
+                                    <span className="font-medium">{user.displayName}</span>
+                                </div>
+                            ) : (
+                                <span className="text-xs font-mono">{tx.userId}</span>
+                            )}
+                        </TableCell>
+                        <TableCell className="font-medium">₹{tx.amount}</TableCell>
+                        <TableCell>
+                        <Badge variant={getBadgeVariant(tx.status)} className="capitalize">{tx.status}</Badge>
+                        </TableCell>
+                        <TableCell>{tx.createdAt ? new Date(tx.createdAt.seconds * 1000).toLocaleString() : 'N/A'}</TableCell>
+                        <TableCell className="font-mono text-xs">{tx.id}</TableCell>
+                    </TableRow>
+                    );
+                })
+                ) : (
+                <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                    No transactions found.
+                    </TableCell>
+                </TableRow>
+                )}
+            </TableBody>
+            </Table>
+        </div>
     </div>
   );
 }

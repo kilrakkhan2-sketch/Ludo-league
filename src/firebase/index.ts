@@ -9,8 +9,7 @@ import { firebaseConfig } from './config';
 import { useUser } from './auth/use-user';
 import { FirebaseProvider, useFirebase, useFirebaseApp, useAuth, useFirestore, useFunctions, useStorage } from './provider';
 import { FirebaseClientProvider } from './client-provider';
-import { useCollection } from './firestore/use-collection';
-import { useDoc } from './firestore/use-doc';
+import { useCollection, useDoc } from './hooks';
 import { useCollectionGroup } from './firestore/use-collection-group';
 
 function initializeFirebase(): {

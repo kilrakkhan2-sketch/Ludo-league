@@ -49,7 +49,7 @@ const registrationChartConfig = { users: { label: "Users", color: "hsl(var(--pri
 
 export default function AdminDashboardPage() {
   const { userData, loading: userLoading } = useUser();
-  const role = userData?.role || '';
+  const role = userData?.roles?.[0] || '';
 
   // ----------- DATA FETCHING -----------
   const { count: pendingDeposits, loading: l1 } = useCollection<DepositRequest>("deposit-requests", { where: ["status", "==", "pending"] });

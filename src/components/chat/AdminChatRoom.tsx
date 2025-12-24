@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { AdminChatMessage } from '@/types'; // Using a specific type for clarity
-import { format }s from 'date-fns';
+import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Send, Shield } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';

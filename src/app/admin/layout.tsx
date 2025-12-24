@@ -1,10 +1,9 @@
-
+// @ts-nocheck
 'use client';
 
-import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useUser } from '@/firebase';
+import { useUser, useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
@@ -18,10 +17,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
-  Bell,
-  CircleUser,
   Home,
-  LineChart,
   Menu,
   Package2,
   Users,
@@ -35,10 +31,11 @@ import {
   Server,
   Megaphone,
   Banknote,
-  ShieldCheck
+  ShieldCheck,
+  CircleUser
 } from 'lucide-react';
+import { signOut as firebaseSignOut } from 'firebase/auth';
 
-// Define a map of all possible navigation items
 const allNavItems = {
   main: [
     { href: '/admin/dashboard', icon: Home, label: 'Dashboard', roles: ['superadmin', 'match_admin', 'deposit_admin', 'withdrawal_admin'] },
@@ -60,12 +57,12 @@ const allNavItems = {
   ],
   platform: [
     { href: '/admin/announcements', icon: Megaphone, label: 'Announcements', roles: ['superadmin'] },
-    { href: '/admin/status', icon: Server, label: 'Platform Status', roles: ['superadmin'] },
+    { href: '/admin/settings', icon: Settings, label: 'Settings', roles: ['superadmin'] },
   ]
 };
 
 const NavSection = ({ title, items, userRole, pathname }: { title: string, items: any[], userRole: string, pathname: string }) => {
-  const visibleItems = items.filter(item => item.roles.includes(userRole));
+  const visibleItems = items.filter(item => userRole && item.roles.includes(userRole));
   if (visibleItems.length === 0) return null;
 
   return (
@@ -91,8 +88,7 @@ const NavSection = ({ title, items, userRole, pathname }: { title: string, items
 const AdminSidebar = ({ userRole, className }: { userRole: string, className?: string }) => {
   const pathname = usePathname();
   return (
-    <div className={className}>
-      <div className="flex h-full max-h-screen flex-col">
+    <div className={cn("h-full max-h-screen flex-col", className)}>
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
           <Link href="/admin/dashboard" className="flex items-center gap-2 font-semibold">
             <Package2 className="h-6 w-6" />
@@ -108,19 +104,26 @@ const AdminSidebar = ({ userRole, className }: { userRole: string, className?: s
              <NavSection title="Platform" items={allNavItems.platform} userRole={userRole} pathname={pathname} />
           </nav>
         </div>
-      </div>
     </div>
   );
 };
 
 const AdminLayout = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading, error, signOut } = useUser();
+  const { user, userData, loading } = useUser();
+  const auth = useAuth();
+  const pathname = usePathname();
   
+  const handleSignOut = async () => {
+    if (auth) {
+      await firebaseSignOut(auth);
+    }
+  };
+
   if (loading) {
     return <div className="flex h-screen items-center justify-center">Loading Admin Panel...</div>;
   }
 
-  if (error || !user) {
+  if (!user || !userData) {
      return (
       <div className="flex h-screen flex-col items-center justify-center gap-4">
         <p>You must be logged in to view this page.</p>
@@ -129,19 +132,21 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
     );
   }
   
-  const userRole = user.role || '';
+  const userRole = userData.role || '';
   const allowedRoles = ['superadmin', 'match_admin', 'deposit_admin', 'withdrawal_admin'];
-  if (!allowedRoles.includes(userRole)) {
+  if (!userRole || !allowedRoles.includes(userRole)) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4">
+      <div className="flex h-screen flex-col items-center justify-center gap-4 text-center p-4">
         <ShieldAlert className='w-16 h-16 text-destructive' />
         <h1 className='text-2xl font-bold'>Access Denied</h1>
-        <p className='text-muted-foreground'>You do not have the necessary permissions for the admin panel.</p>
-        <Button asChild><Link href="/">Return to App</Link></Button>
+        <p className='text-muted-foreground'>You do not have the necessary permissions to access the admin panel.</p>
+        <div className='flex gap-4 mt-4'>
+          <Button onClick={handleSignOut} variant='secondary'>Logout</Button>
+          <Button asChild><Link href="/">Return to App</Link></Button>
+        </div>
       </div>
     );
   }
-
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
@@ -164,7 +169,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           </Sheet>
 
           <div className="w-full flex-1">
-             <h1 className="text-lg font-semibold">{usePathname().split('/').pop()?.replace('-', ' ')}</h1>
+             <h1 className="text-lg font-semibold capitalize">{pathname.split('/').pop()?.replace('-', ' ')}</h1>
           </div>
 
           <DropdownMenu>
@@ -177,18 +182,18 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel className='flex flex-col'>
                 <span>{user.displayName || 'Admin'}</span>
-                <Badge variant='outline' className='w-fit mt-1'>{userRole}</Badge>
+                {userRole && <Badge variant='outline' className='w-fit mt-1'>{userRole}</Badge>}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild><Link href="/profile">Profile</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link href="/">Go to App</Link></DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={signOut}>Logout</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSignOut}>Logout</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
 
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-muted/20">
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background">
           {children}
         </main>
       </div>

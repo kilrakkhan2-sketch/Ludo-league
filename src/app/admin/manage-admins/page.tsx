@@ -43,28 +43,32 @@ const ASSIGNABLE_ROLES = ['deposit_admin', 'withdrawal_admin', 'match_admin', 'u
 export default function ManageAdminsPage() {
     const functions = useFunctions();
     const { toast } = useToast();
-    const { user: currentUser } = useUser(); // The currently logged-in superadmin
+    const { user: currentUser, userData } = useUser(); // The currently logged-in superadmin
     
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [targetUid, setTargetUid] = useState('');
     const [newRole, setNewRole] = useState('');
 
-    const { data: admins, loading } = useCollection<UserProfile>('users', {
-        where: ['role', '!=', 'user']
-    });
+    const { data: users, loading } = useCollection<UserProfile>('users');
+    
+    const admins = useMemo(() => {
+        if (!users) return [];
+        return users.filter(u => u.roles && !u.roles.includes('user'));
+    }, [users]);
+
 
     // Sort so that superadmins are always at the top
     const sortedAdmins = useMemo(() => {
         if (!admins) return [];
         return [...admins].sort((a, b) => {
-            if (a.role === 'superadmin') return -1;
-            if (b.role === 'superadmin') return 1;
+            if (a.roles.includes('superadmin')) return -1;
+            if (b.roles.includes('superadmin')) return 1;
             return 0;
         });
     }, [admins]);
 
-    const handleRoleChange = async (uid: string, role: string, currentRole?: string) => {
+    const handleRoleChange = async (uid: string, role: string) => {
         if (!functions || !currentUser) return;
 
         // Security Check: Prevent a superadmin from demoting themselves
@@ -99,7 +103,7 @@ export default function ManageAdminsPage() {
         handleRoleChange(targetUid, newRole);
     };
 
-    if (currentUser?.role !== 'superadmin') {
+    if (userData?.roles && !userData.roles.includes('superadmin')) {
         return <p>You do not have permission to view this page.</p>;
     }
 
@@ -177,12 +181,12 @@ export default function ManageAdminsPage() {
                                             </div>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="capitalize font-medium">{admin.role.replace('_', ' ')}</TableCell>
+                                    <TableCell className="capitalize font-medium">{admin.roles.join(', ').replace(/_/g, ' ')}</TableCell>
                                     <TableCell className="text-right">
-                                        {admin.role !== 'superadmin' ? (
+                                        {!admin.roles.includes('superadmin') ? (
                                             <Select
-                                                defaultValue={admin.role}
-                                                onValueChange={(newRole) => handleRoleChange(admin.uid, newRole, admin.role)}
+                                                defaultValue={admin.roles.find(r => ASSIGNABLE_ROLES.includes(r))}
+                                                onValueChange={(newRole) => handleRoleChange(admin.uid, newRole)}
                                                 disabled={isSubmitting}
                                             >
                                                 <SelectTrigger className="w-[180px] ml-auto">

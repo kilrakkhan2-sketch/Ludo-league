@@ -138,14 +138,14 @@ export default function AdminUsersPage() {
                             </div>
                         </TableCell>
                         <TableCell className='hidden md:table-cell font-mono font-medium'>
-                            ₹{user.walletBalance?.toLocaleString() || 0}
+                            ₹{user.wallet.balance?.toLocaleString() || 0}
                         </TableCell>
                         <TableCell className='hidden lg:table-cell text-xs'>
-                           <div>Won: {user.matchesWon || 0}</div>
-                           <div>Played: {user.matchesPlayed || 0}</div>
+                           <div>Won: {user.stats.matchesWon || 0}</div>
+                           <div>Played: {user.stats.matchesPlayed || 0}</div>
                         </TableCell>
                         <TableCell className='hidden sm:table-cell'>
-                            <Badge variant="outline" className="capitalize">{user.role?.replace('_', ' ') || 'Player'}</Badge>
+                            <Badge variant="outline" className="capitalize">{user.roles[0]?.replace('_', ' ') || 'Player'}</Badge>
                         </TableCell>
                         <TableCell>
                             <Badge variant={user.isBlocked ? 'destructive' : 'default'} className={cn(!user.isBlocked && 'bg-green-500')}>

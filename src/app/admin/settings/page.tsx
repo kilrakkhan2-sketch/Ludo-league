@@ -3,20 +3,19 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useDoc, useDocs } from "@/firebase";
+import { useCollection } from "@/firebase";
 import { useFirestore } from "@/firebase/provider";
-import { doc, setDoc, writeBatch } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel } from '@/components/ui/form';
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Input } from "@/components/ui/input";
-import { Globe, Palette, ShieldCheck, TrendingUp } from "lucide-react";
+import { Globe, TrendingUp } from "lucide-react";
 
 // Schema for Referral Commission
 const commissionSchema = z.object({
@@ -139,7 +138,7 @@ const PlatformStatusCard = ({ settings, isLoading }: { settings: PlatformStatusS
 };
 
 export default function AdminSettingsPage() {
-  const { data: settingsDocs, loading } = useDocs<any>(['settings/commission', 'settings/platformStatus']);
+  const { data: settingsDocs, loading } = useCollection<any>('settings');
   
   const commissionSettings = settingsDocs?.find(d => d.id === 'commission') as CommissionSettings | undefined;
   const platformStatusSettings = settingsDocs?.find(d => d.id === 'platformStatus') as PlatformStatusSettings | undefined;

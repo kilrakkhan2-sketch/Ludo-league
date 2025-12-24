@@ -32,7 +32,7 @@ const UserCell = ({ userId }: { userId: string }) => {
         <div className="flex flex-col">
             <div className='font-medium flex items-center gap-2'>
                 {user?.displayName || 'Unknown User'}
-                {user?.isVerified && <ShieldCheck className="h-4 w-4 text-green-500" titleAccess='KYC Verified' />}
+                {user?.isVerified && <span title="KYC Verified"><ShieldCheck className="h-4 w-4 text-green-500" /></span>}
             </div>
             <span className='text-xs text-muted-foreground'>{user?.email}</span>
         </div>
@@ -70,6 +70,14 @@ export default function AdminWithdrawalsPage() {
       setAction(null);
     }
   }
+  
+  const formatDetails = (details: any) => {
+    if (!details) return 'N/A';
+    if (typeof details === 'string') return details;
+    if (details.upiId) return `${details.accountHolderName} (${details.upiId})`;
+    if (details.bankAccountNumber) return `${details.accountHolderName} (A/C: ${details.bankAccountNumber}, IFSC: ${details.ifscCode})`;
+    return JSON.stringify(details);
+  };
 
   return (
         <div className="space-y-6">
@@ -106,14 +114,14 @@ export default function AdminWithdrawalsPage() {
                             <TableCell className="hidden md:table-cell">
                                 <div className="font-medium capitalize">{req.method}</div>
                                 <div className="flex items-center gap-2">
-                                    <span className='font-mono text-xs text-muted-foreground'>{req.details}</span>
-                                    <Copy className='h-3 w-3 cursor-pointer' onClick={() => navigator.clipboard.writeText(req.details)} />
+                                    <span className='font-mono text-xs text-muted-foreground'>{formatDetails(req.details)}</span>
+                                    <Copy className='h-3 w-3 cursor-pointer' onClick={() => navigator.clipboard.writeText(formatDetails(req.details))} />
                                 </div>
                             </TableCell>
                             <TableCell className="hidden lg:table-cell text-sm">{req.createdAt ? formatDistanceToNow((req.createdAt as any).toDate(), { addSuffix: true }) : 'N/A'}</TableCell>
                             <TableCell><Badge variant={getStatusVariant(req.status)}>{req.status}</Badge></TableCell>
                             <TableCell className="text-right">
-                                {req.status === 'pending' && adminUser?.role !== 'match_admin' && (
+                                {req.status === 'pending' && (
                                     <div className="space-x-2">
                                         <Button variant="destructive" size="icon" onClick={() => setAction({ type: 'reject', request: req })} disabled={isSubmitting}><XCircle className="h-4 w-4" /><span className="sr-only">Reject</span></Button>
                                         <Button size="icon" onClick={() => setAction({ type: 'approve', request: req })} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700"><CheckCircle className="h-4 w-4" /><span className="sr-only">Approve</span></Button>

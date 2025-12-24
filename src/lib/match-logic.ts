@@ -1,7 +1,9 @@
 
 import { doc, updateDoc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 // import { db } from "@/firebase/config"; 
-import { Match } from "@/types";
+import { Match, MatchStatus } from "@/types";
+
+
 
 /**
  * 1️⃣ MATCH CREATE SYSTEM (USER A – Creator)
@@ -68,4 +70,21 @@ export const cancelMatch = async (matchId: string, userId: string): Promise<bool
 
     console.log(`Match ${matchId} has been cancelled.`);
     return true;
+};
+
+export const getMatchStatus = (match: Match): { status: string; color: string } => {
+  switch (match.status) {
+    case 'waiting':
+      return { status: 'Waiting for Player', color: '#f1c40f' };
+    case 'in-progress':
+      return { status: 'In Progress', color: '#3498db' };
+    case 'completed':
+      return { status: 'Completed', color: '#2ecc71' };
+    case 'cancelled':
+      return { status: 'Cancelled', color: '#e74c3c' };
+    case 'disputed':
+      return { status: 'Disputed', color: '#e67e22' };
+    default:
+      return { status: 'Unknown', color: '#95a5a6' };
+  }
 };

@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { History, ArrowUpCircle, ArrowDownCircle, Gamepad2, Award, PlusCircle, MinusCircle } from "lucide-react";
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
-import { cn, formatTimestamp } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { format, formatDistanceToNow } from 'date-fns';
 
 // NOTE: In a real app, you would use the Firebase hooks as you had before.
 // For styling consistency and demonstration, we'll use mock data.
@@ -41,7 +42,7 @@ const TransactionRow = ({ tx }: { tx: any }) => (
             </div>
             <div>
                 <p className="font-bold capitalize">{tx.type.replace('-', ' ')}</p>
-                <p className="text-xs text-muted-foreground">{formatTimestamp(tx.timestamp)}</p>
+                <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(tx.timestamp), { addSuffix: true })}</p>
             </div>
         </div>
         <p className={cn(

@@ -23,8 +23,8 @@ const MatchCard = ({ match }: { match: Match }) => {
 
     const getStatusVariant = (status: Match['status']) => {
         switch (status) {
-            case 'open': return isFull ? 'destructive' : 'outline';
-            case 'ongoing': return 'default';
+            case 'waiting': return isFull ? 'destructive' : 'outline';
+            case 'in-progress': return 'default';
             case 'completed': return 'secondary';
             case 'disputed': return 'destructive';
             default: return 'default';
@@ -45,7 +45,7 @@ const MatchCard = ({ match }: { match: Match }) => {
               variant={getStatusVariant(match.status)}
               className="capitalize shrink-0"
             >
-              {isFull && match.status === 'open' ? 'Full' : match.status.replace('_', ' ')}
+              {isFull && match.status === 'waiting' ? 'Full' : match.status.replace('_', ' ')}
             </Badge>
           </div>
         </CardHeader>
@@ -96,10 +96,10 @@ const CategoryCard = ({ title, href, icon: Icon, imageId }: { title: string, hre
 
 function DashboardClientContent() {
     const { user, loading: userLoading } = useUser();
-    const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : undefined);
+    const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : null);
 
     const { data: openMatches, loading: openMatchesLoading } = useCollection<Match>('matches', {
-        where: ['status', '==', 'open'],
+        where: ['status', '==', 'waiting'],
         orderBy: ['createdAt', 'desc'],
         limit: 20
     });
@@ -123,7 +123,7 @@ function DashboardClientContent() {
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div>
                                 <p className="text-sm text-muted-foreground">Wallet Balance</p>
-                                {loading ? <Skeleton className="h-8 w-36 mt-1"/> : <p className="text-3xl font-bold">₹{profile?.walletBalance?.toLocaleString('en-IN') ?? '0.00'}</p>}
+                                {loading ? <Skeleton className="h-8 w-36 mt-1"/> : <p className="text-3xl font-bold">₹{profile?.wallet.balance?.toLocaleString('en-IN') ?? '0.00'}</p>}
                             </div>
                             <div className="flex items-center gap-2 w-full sm:w-auto">
                                 <Button variant="outline" className="flex-1" asChild><Link href="/add-money">Add Money</Link></Button>

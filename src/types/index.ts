@@ -1,41 +1,28 @@
+import { FieldValue } from 'firebase/firestore';
 
-
-export type AdminWallet = {
-    balance: number;
-    totalReceived: number;
-    totalUsed: number;
-    canGoNegative: boolean;
-};
-
-export type UserProfile = {
+export interface UserProfile {
   id: string;
   uid: string;
-  name: string;
+  displayName: string;
   email: string;
-  phone?: string;
-  username?: string;
-  photoURL?: string;
-  walletBalance: number;
-  isVerified: boolean;
-  role: 'superadmin' | 'deposit_admin' | 'withdrawal_admin' | 'match_admin' | 'user';
-  createdAt?: any;
-  rating?: number;
-  xp?: number;
-  rank?: number;
-  bannerUrl?: string;
-  displayName?: string;
-  referralCode?: string;
-  referredBy?: string;
-  referralEarnings?: number;
-  friends?: string[];
-  matchesPlayed?: number;
-  matchesWon?: number;
-  totalWinnings?: number;
-  totalEntryFees?: number;
-  adminWallet?: AdminWallet;
-};
+  photoURL: string;
+  roles: string[];
+  isBlocked?: boolean;
+  isVerified?: boolean;
+  stats: {
+    matchesPlayed: number;
+    matchesWon: number;
+    totalEarnings: number;
+  };
+  wallet: {
+    balance: number;
+  };
+  createdAt: FieldValue;
+}
 
-export type Match = {
+export type MatchStatus = 'waiting' | 'in-progress' | 'completed' | 'cancelled' | 'disputed';
+
+export interface Match {
   id: string;
   title: string;
   entryFee: number;
@@ -43,203 +30,100 @@ export type Match = {
   maxPlayers: number;
   creatorId: string;
   players: string[];
+  status: MatchStatus;
+  createdAt: any;
+  roomCode?: string | null;
   joinerId?: string | null;
-  roomCode: string | null;
-  status: 'waiting' | 'cancelled' | 'room_code_pending' | 'room_code_shared' | 'game_started' | 'result_submitted' | 'AUTO_VERIFIED' | 'FLAGGED' | 'COMPLETED' | 'PAID' | 'verification' | 'disputed';
   creatorPosition?: number | null;
   joinerPosition?: number | null;
-  createdAt: any;
-  startedAt: any | null;
-  completedAt: any | null;
-  winnerId?: string;
-  proofImage?: string;
-  fraudReasons?: string[];
-};
-
-export type MatchResult = {
-  id: string;
-  userId: string;
-  screenshotUrl: string;
-  submittedAt: any;
-  creatorPosition: number;
-  joinerPosition: number;
-  confirmedWinStatus: 'win' | 'loss';
-  confirmedAt?: any;
-  status: 'submitted' | 'confirmed' | 'mismatch' | 'locked';
-};
-
-export type Transaction = {
-  id: string;
-  userId: string;
-  userName?: string; // Denormalized for easier display
-  userEmail?: string; // Denormalized for easier display
-  type: "deposit" | "withdrawal" | "entry_fee" | "prize" | "win" | "add_money" | "referral_bonus" | "entry_fee_refund";
-  amount: number;
-  status: "pending" | "completed" | "failed";
-  createdAt: any; // Can be server timestamp
-  relatedId?: string; // e.g., matchId or depositId
-  description?: string;
-};
-
-export type AdminWalletTransaction = {
-    id: string;
-    adminId: string;
-    type: 'credit' | 'debit';
-    amount: number;
-    reason: string;
-    relatedUserId?: string;
-    relatedRequestId?: string;
-    createdAt: any;
+  winnerId?: string | null;
+  startedAt?: any | null;
+  completedAt?: any | null;
 }
 
-export type DepositRequest = {
+export interface Transaction {
   id: string;
   userId: string;
-  userName: string; // Denormalized for easier display
-  userEmail: string; // Denormalized for easier display
+  type: 'deposit' | 'withdrawal' | 'entry-fee' | 'prize-money';
   amount: number;
-  transactionId: string;
-  screenshotUrl: string;
-  upiAccountId: string;
-  status: "pending" | "approved" | "rejected";
-  createdAt: any; // Can be server timestamp
-  processedAt?: any;
-  processedBy?: string; // UID of the admin who processed it
-};
+  status: 'pending' | 'completed' | 'failed';
+  createdAt: any;
+  details: any; 
+}
 
-export type WithdrawalRequest = {
+export interface DepositRequest extends Transaction {
+  type: 'deposit';
+  method: string; // e.g., 'upi', 'razorpay'
+  transactionId: string;
+  screenshotUrl?: string; // Added this line
+}
+
+export interface WithdrawalRequest extends Transaction {
+  type: 'withdrawal';
+  method: string; // e.g., 'upi', 'bank'
+  details: {
+    accountHolderName: string;
+    upiId?: string;
+    bankAccountNumber?: string;
+    ifscCode?: string;
+  };
+}
+
+export interface KycRequest {
     id: string;
     userId: string;
-    userName: string;
-    userEmail: string;
-    amount: number;
-    method: string;
-    details: string; // e.g., UPI ID or bank account info
+    name: string;
+    dob: string;
+    documentType: 'aadhar' | 'pan';
+    documentNumber: string;
+    documentFrontImage: string;
+    documentBackImage?: string;
     status: 'pending' | 'approved' | 'rejected';
     createdAt: any;
-    processedAt?: any;
-    processedBy?: string; // UID of the admin who processed it
+    lastUpdated: any;
 }
 
-export type UpiAccount = {
+export interface Tournament {
+    id: string;
+    name: string;
+    game: string; // e.g., 'ludo', 'freefire'
+    entryFee: number;
+    prizePool: number;
+    maxPlayers: number;
+    registeredPlayers: number;
+    status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+    startTime: any;
+    endTime?: any;
+    rounds: any[]; // Define a more specific type for rounds if needed
+}
+
+export interface MaintenanceSettings {
+  isAppDisabled: boolean;
+  appDisabledMessage?: string;
+  
+  areDepositsDisabled: boolean;
+  depositsTimeScheduled: boolean;
+  depositsStartTime?: string;
+  depositsEndTime?: string;
+
+  areWithdrawalsDisabled: boolean;
+  withdrawalsTimeScheduled: boolean;
+  withdrawalsStartTime?: string;
+  withdrawalsEndTime?: string;
+
+  areMatchesDisabled: boolean;
+  matchesTimeScheduled: boolean;
+  matchesStartTime?: string;
+  matchesEndTime?: string;
+}
+
+export interface UpiAccount {
   id: string;
   upiId: string;
   displayName: string;
-  isActive: boolean;
   dailyLimit: number;
+  isActive: boolean;
   dailyAmountReceived: number;
   dailyTransactionCount: number;
-  totalTransactions: number;
-  totalAmountReceived: number;
   createdAt: any;
-};
-
-export type UpiDailyStat = {
-  amount: number;
-  transactionCount: number;
 }
-
-export type MaintenanceSettings = {
-  id: string;
-  isAppDisabled?: boolean;
-  appDisabledMessage?: string;
-  areDepositsDisabled?: boolean;
-  depositsTimeScheduled?: boolean;
-  depositsStartTime?: string; // e.g., "22:00"
-  depositsEndTime?: string; // e.g., "10:00"
-  areWithdrawalsDisabled?: boolean;
-  withdrawalsTimeScheduled?: boolean;
-  withdrawalsStartTime?: string;
-  withdrawalsEndTime?: string;
-  areMatchesDisabled?: boolean;
-  matchesTimeScheduled?: boolean;
-  matchesStartTime?: string;
-  matchesEndTime?: string;
-};
-
-export type CommissionSettings = {
-    id: string;
-    isEnabled: boolean;
-    rate: number; // e.g., 0.05 for 5%
-}
-
-
-export type Message = {
-    id: string;
-    userId: string;
-    text: string;
-    createdAt: any;
-}
-
-export type AdminChatMessage = {
-    id: string;
-    userId: string;
-    userName: string;
-    text: string;
-    createdAt: any;
-}
-
-
-export type KycRequest = {
-  id: string;
-  userId: string;
-  fullName: string;
-  documentType: string;
-  documentNumber: string;
-  documentUrl: string;
-  status: 'pending' | 'approved' | 'rejected';
-  createdAt: any;
-  processedAt?: any;
-  processedBy?: string;
-}
-
-export type Referral = {
-    id: string;
-    referrerId: string; // User who referred
-    referredId: string;  // User who was referred
-    status: 'pending' | 'completed'; // Completed after referred user plays first game
-    createdAt: any;
-}
-
-export type FriendRequest = {
-  id: string;
-  from: string;
-  to: string;
-  status: 'pending' | 'accepted' | 'declined';
-  createdAt: any;
-};
-
-export type Tournament = {
-  id: string;
-  name: string;
-  description: string;
-  bannerUrl?: string;
-  prizePool: number;
-  entryFee: number;
-  commissionRate: number;
-  prizeDistribution?: { rank: number; percentage: number }[];
-  startDate: any;
-  endDate: any;
-  status: 'upcoming' | 'live' | 'completed';
-  players: string[];
-  maxPlayers: number;
-  creatorId: string;
-};
-
-export type Announcement = {
-  id: string;
-  title: string;
-  content: string;
-  type: 'News' | 'Promo' | 'Update' | 'Warning';
-  createdAt: any;
-  link?: string;
-};
-
-export type PersonalNotification = {
-    id: string;
-    title: string;
-    body: string;
-    isRead: boolean;
-    createdAt: any;
-    link?: string;
-};

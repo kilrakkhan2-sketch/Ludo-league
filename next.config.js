@@ -2,11 +2,6 @@
 /** @type {import('next').NextConfig} */
 
 const nextConfig = {
-  experimental: {
-    allowedDevOrigins: [
-        "https://*.cloudworkstations.dev",
-    ]
-  },
   images: {
     remotePatterns: [
       {
