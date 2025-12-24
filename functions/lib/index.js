@@ -1,556 +1,235 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createTournament = exports.createMatch = exports.onMatchResultUpdate = exports.autoVerifyResults = exports.onDepositStatusChange = exports.rejectWithdrawal = exports.approveWithdrawal = exports.deleteStorageFile = exports.setUserRole = exports.setSuperAdminRole = void 0;
+exports.cancelFlaggedMatch = exports.resolveFlaggedMatch = exports.autoPayout = exports.autoVerifyResults = exports.submitResult = exports.joinMatch = exports.createMatch = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const firestore_1 = require("firebase-admin/firestore");
-const storage_1 = require("firebase-admin/storage");
 admin.initializeApp();
 const db = admin.firestore();
-// Helper function to send a personal notification
-const sendNotification = (userId, title, body, link) => {
-    if (!userId)
-        return Promise.resolve();
-    const notification = {
-        title,
-        body,
-        isRead: false,
-        createdAt: firestore_1.FieldValue.serverTimestamp(),
-        link: link || null,
-    };
-    return db.collection(`users/${userId}/personal_notifications`).add(notification);
-};
-// =================================================================
-//  USER & ROLE MANAGEMENT FUNCTIONS
-// =================================================================
-exports.setSuperAdminRole = functions.https.onCall(async (data, context) => {
-    const email = data.email;
-    if (typeof email !== "string" || email.length === 0) {
-        throw new functions.https.HttpsError('invalid-argument', 'The function must be called with one argument "email" containing the user email address.');
-    }
-    try {
-        const user = await admin.auth().getUserByEmail(email);
-        await admin.auth().setCustomUserClaims(user.uid, { role: 'superadmin' });
-        return {
-            message: `Success! ${email} has been made a superadmin.`
-        };
-    }
-    catch (error) {
-        console.error("Failed to set superadmin role:", error);
-        throw new functions.https.HttpsError('internal', 'An error occurred while trying to set the user role.');
-    }
-});
-exports.setUserRole = functions.https.onCall(async (data, context) => {
-    var _a;
-    if (((_a = context.auth) === null || _a === void 0 ? void 0 : _a.token.role) !== 'superadmin') {
-        throw new functions.https.HttpsError('permission-denied', 'Only superadmins can set user roles.');
-    }
-    const { userId, role } = data;
-    if (typeof userId !== 'string' || userId.length === 0) {
-        throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a "userId" argument.');
-    }
-    if (typeof role !== 'string' || role.length === 0) {
-        throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a "role" argument.');
-    }
-    try {
-        await admin.auth().setCustomUserClaims(userId, { role: role });
-        await db.collection('users').doc(userId).set({ role: role }, { merge: true });
-        return {
-            message: `Success! User ${userId} has been assigned the role of ${role}.`
-        };
-    }
-    catch (error) {
-        console.error("Failed to set user role:", error);
-        throw new functions.https.HttpsError('internal', 'An error occurred while trying to set the user role.');
-    }
-});
-// =================================================================
-//  STORAGE MANAGEMENT FUNCTIONS
-// =================================================================
-exports.deleteStorageFile = functions.https.onCall(async (data, context) => {
-    var _a;
-    // 1. Authentication & Authorization Check
-    if (((_a = context.auth) === null || _a === void 0 ? void 0 : _a.token.role) !== 'superadmin') {
-        throw new functions.https.HttpsError("permission-denied", "You must be a superadmin to delete files.");
-    }
-    // 2. Data Validation
-    const { filePath } = data;
-    if (!filePath || typeof filePath !== 'string') {
-        throw new functions.https.HttpsError("invalid-argument", "A valid file path is required.");
-    }
-    try {
-        const bucket = (0, storage_1.getStorage)().bucket();
-        const file = bucket.file(filePath);
-        const [exists] = await file.exists();
-        if (!exists) {
-            throw new functions.https.HttpsError("not-found", "The specified file does not exist.");
-        }
-        await file.delete();
-        functions.logger.info(`File ${filePath} deleted by admin ${context.auth.uid}.`);
-        return { success: true, message: "File deleted successfully." };
-    }
-    catch (error) {
-        functions.logger.error(`Failed to delete file ${filePath}:`, error);
-        if (error instanceof functions.https.HttpsError) {
-            throw error;
-        }
-        else {
-            throw new functions.https.HttpsError("internal", "An unexpected error occurred while deleting the file.");
-        }
-    }
-});
-// =================================================================
-//  WITHDRAWAL MANAGEMENT FUNCTIONS
-// =================================================================
-exports.approveWithdrawal = functions.https.onCall(async (data, context) => {
-    var _a, _b;
-    // 1. Check permissions
-    if (((_a = context.auth) === null || _a === void 0 ? void 0 : _a.token.role) !== 'withdrawal_admin' && ((_b = context.auth) === null || _b === void 0 ? void 0 : _b.token.role) !== 'superadmin') {
-        throw new functions.https.HttpsError('permission-denied', 'Only withdrawal admins can approve requests.');
-    }
-    // 2. Validate data
-    const { withdrawalId } = data;
-    if (!withdrawalId || typeof withdrawalId !== 'string') {
-        throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a "withdrawalId" argument.');
-    }
-    const adminUid = context.auth.uid;
-    const requestRef = db.collection('withdrawal-requests').doc(withdrawalId);
-    // 3. Perform transaction
-    try {
-        const requestDoc = await requestRef.get();
-        if (!requestDoc.exists)
-            throw new Error('Withdrawal request not found.');
-        const requestData = requestDoc.data();
-        if ((requestData === null || requestData === void 0 ? void 0 : requestData.status) !== 'pending')
-            throw new Error('This request has already been processed.');
-        const { amount, userId } = requestData;
-        await db.runTransaction(async (t) => {
-            var _a;
-            const adminRef = db.collection('users').doc(adminUid);
-            const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
-            const userTxSnapshot = await t.get(userTxQuery);
-            const userTxRef = (_a = userTxSnapshot.docs[0]) === null || _a === void 0 ? void 0 : _a.ref;
-            // A. Update withdrawal request status
-            t.update(requestRef, {
-                status: 'approved',
-                processedAt: firestore_1.FieldValue.serverTimestamp(),
-                processedBy: adminUid,
-            });
-            // B. Update the user's transaction status to completed
-            if (userTxRef) {
-                t.update(userTxRef, { status: 'completed' });
-            }
-            // C. Deduct the amount from the admin's wallet as a ledger
-            const adminDoc = await t.get(adminRef);
-            const adminData = adminDoc.data();
-            if (adminData === null || adminData === void 0 ? void 0 : adminData.adminWallet) {
-                t.update(adminRef, {
-                    'adminWallet.balance': firestore_1.FieldValue.increment(-amount),
-                    'adminWallet.totalUsed': firestore_1.FieldValue.increment(amount)
-                });
-            }
-        });
-        functions.logger.info(`Withdrawal ${withdrawalId} approved by admin ${adminUid}.`);
-        await sendNotification(userId, 'Withdrawal Approved', `Your withdrawal request for ₹${amount} has been approved and processed.`);
-        return { success: true, message: 'Withdrawal approved successfully.' };
-    }
-    catch (error) {
-        functions.logger.error(`Error approving withdrawal ${withdrawalId}:`, error);
-        if (error instanceof functions.https.HttpsError)
-            throw error;
-        throw new functions.https.HttpsError('internal', error.message);
-    }
-});
-exports.rejectWithdrawal = functions.https.onCall(async (data, context) => {
-    var _a, _b;
-    // 1. Check permissions
-    if (((_a = context.auth) === null || _a === void 0 ? void 0 : _a.token.role) !== 'withdrawal_admin' && ((_b = context.auth) === null || _b === void 0 ? void 0 : _b.token.role) !== 'superadmin') {
-        throw new functions.https.HttpsError('permission-denied', 'Only withdrawal admins can reject requests.');
-    }
-    // 2. Validate data
-    const { withdrawalId } = data;
-    if (!withdrawalId || typeof withdrawalId !== 'string') {
-        throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a "withdrawalId" argument.');
-    }
-    const adminUid = context.auth.uid;
-    const requestRef = db.collection('withdrawal-requests').doc(withdrawalId);
-    try {
-        const requestDoc = await requestRef.get();
-        if (!requestDoc.exists)
-            throw new functions.https.HttpsError('not-found', 'Withdrawal request not found.');
-        const requestData = requestDoc.data();
-        if ((requestData === null || requestData === void 0 ? void 0 : requestData.status) !== 'pending')
-            throw new functions.https.HttpsError('failed-precondition', 'This request has already been processed.');
-        const { userId, amount } = requestData;
-        const userRef = db.collection('users').doc(userId);
-        const userTxQuery = db.collection(`users/${userId}/transactions`).where('relatedId', '==', withdrawalId).limit(1);
-        await db.runTransaction(async (t) => {
-            var _a;
-            const userTxSnapshot = await t.get(userTxQuery);
-            const userTxRef = (_a = userTxSnapshot.docs[0]) === null || _a === void 0 ? void 0 : _a.ref;
-            // A. Update withdrawal request
-            t.update(requestRef, {
-                status: 'rejected',
-                processedAt: firestore_1.FieldValue.serverTimestamp(),
-                processedBy: adminUid,
-            });
-            // B. Refund the user
-            t.update(userRef, { walletBalance: firestore_1.FieldValue.increment(amount) });
-            // C. Mark user's transaction as failed
-            if (userTxRef) {
-                t.update(userTxRef, { status: 'failed', description: 'Withdrawal request rejected by admin' });
-            }
-        });
-        functions.logger.info(`Withdrawal ${withdrawalId} for user ${userId} was rejected and funds were refunded.`);
-        await sendNotification(userId, 'Withdrawal Rejected', `Your withdrawal request for ₹${amount} was rejected. The amount has been refunded to your wallet.`);
-        return { success: true, message: 'Withdrawal rejected and funds refunded.' };
-    }
-    catch (error) {
-        functions.logger.error(`Failed to refund user for rejected withdrawal ${withdrawalId}:`, error);
-        if (error instanceof functions.https.HttpsError)
-            throw error;
-        throw new functions.https.HttpsError('internal', 'An unexpected error occurred while rejecting the withdrawal.');
-    }
-});
-// =================================================================
-//  FIRESTORE TRIGGERS (Automated Actions)
-// =================================================================
-exports.onDepositStatusChange = functions.firestore
-    .document("deposit-requests/{depositId}")
-    .onUpdate(async (change, context) => {
-    const beforeData = change.before.data();
-    const afterData = change.after.data();
-    if (beforeData.status === "approved" || afterData.status !== "approved") {
-        return null;
-    }
-    const { userId, amount, upiAccountId, processedBy } = afterData;
-    if (!userId || !amount || amount <= 0 || !upiAccountId || !processedBy) {
-        functions.logger.error("Missing or invalid userId, amount, upiAccountId, or processedBy", { id: context.params.depositId });
-        return null;
-    }
-    const userRef = db.collection("users").doc(userId);
-    const upiAccountRef = db.collection('upi-accounts').doc(upiAccountId);
-    const commissionSettingsRef = db.collection('settings').doc('commission');
-    const adminRef = db.collection('users').doc(processedBy);
-    try {
-        await db.runTransaction(async (t) => {
-            const userDoc = await t.get(userRef);
-            if (!userDoc.exists)
-                throw new Error(`User ${userId} not found.`);
-            const userData = userDoc.data();
-            const commissionSettingsDoc = await t.get(commissionSettingsRef);
-            const commissionSettings = commissionSettingsDoc.data();
-            const adminDoc = await t.get(adminRef);
-            const adminData = adminDoc.data();
-            // 1. Credit the user's wallet.
-            t.update(userRef, { walletBalance: firestore_1.FieldValue.increment(amount) });
-            // 2. Update the UPI account's daily stats
-            t.update(upiAccountRef, {
-                dailyAmountReceived: firestore_1.FieldValue.increment(amount),
-                dailyTransactionCount: firestore_1.FieldValue.increment(1)
-            });
-            // 3. Create a transaction log for the deposit.
-            const depositTxRef = db.collection(`users/${userId}/transactions`).doc();
-            t.set(depositTxRef, {
-                amount: amount,
-                type: "deposit",
-                status: "completed",
-                description: `Deposit of ₹${amount} approved.`,
-                createdAt: firestore_1.FieldValue.serverTimestamp(),
-                relatedId: context.params.depositId,
-            });
-            // 4. Update the admin's ledger for accountability.
-            if (adminData === null || adminData === void 0 ? void 0 : adminData.adminWallet) {
-                t.update(adminRef, {
-                    'adminWallet.balance': firestore_1.FieldValue.increment(amount),
-                    'adminWallet.totalReceived': firestore_1.FieldValue.increment(amount),
-                });
-            }
-            // 5. Handle referral commission if the user was referred and commission is enabled.
-            if (userData.referredBy && (commissionSettings === null || commissionSettings === void 0 ? void 0 : commissionSettings.isEnabled) && typeof commissionSettings.rate === 'number' && commissionSettings.rate > 0) {
-                const referrerQuery = db.collection('users').where('referralCode', '==', userData.referredBy).limit(1);
-                const referrerSnapshot = await t.get(referrerQuery);
-                if (!referrerSnapshot.empty) {
-                    const referrerDoc = referrerSnapshot.docs[0];
-                    const referrerRef = referrerDoc.ref;
-                    const commissionAmount = amount * commissionSettings.rate; // Dynamic commission rate
-                    t.update(referrerRef, {
-                        walletBalance: firestore_1.FieldValue.increment(commissionAmount),
-                        referralEarnings: firestore_1.FieldValue.increment(commissionAmount)
-                    });
-                    const commissionTxRef = db.collection(`users/${referrerDoc.id}/transactions`).doc();
-                    const commissionPercentage = (commissionSettings.rate * 100).toFixed(0);
-                    t.set(commissionTxRef, {
-                        amount: commissionAmount,
-                        type: "referral_bonus",
-                        status: "completed",
-                        description: `${commissionPercentage}% commission from ${userData.name || 'a referred user'}'s deposit.`,
-                        createdAt: firestore_1.FieldValue.serverTimestamp(),
-                        relatedId: context.params.depositId,
-                    });
-                }
-            }
-        });
-        functions.logger.info(`Deposit processed for ${userId}.`);
-        // Send notification to the user
-        await sendNotification(userId, 'Deposit Approved', `Your deposit of ₹${amount} has been successfully added to your wallet.`);
-    }
-    catch (error) {
-        functions.logger.error(`Transaction failed for deposit ${context.params.depositId}:`, error);
-        await change.after.ref.update({ status: "failed", error: error.message });
-    }
-    return null;
-});
-exports.autoVerifyResults = functions.firestore
-    .document('matches/{matchId}/results/{userId}')
-    .onCreate(async (snap, context) => {
-    const { matchId } = context.params;
-    const matchRef = db.collection('matches').doc(matchId);
-    try {
-        await db.runTransaction(async (transaction) => {
-            const matchDoc = await transaction.get(matchRef);
-            if (!matchDoc.exists)
-                return;
-            const matchData = matchDoc.data();
-            if (!matchData)
-                return;
-            // If match is already processed, do nothing.
-            if (['completed', 'disputed', 'verification'].includes(matchData.status)) {
-                return;
-            }
-            // Set match status to processing as soon as the first result is in
-            if (matchData.status === 'ongoing') {
-                transaction.update(matchRef, { status: 'processing' });
-            }
-            const resultsSnapshot = await transaction.get(matchRef.collection('results'));
-            const submittedResults = resultsSnapshot.docs.map(doc => doc.data());
-            // Check if all players have submitted their results.
-            if (submittedResults.length !== matchData.maxPlayers) {
-                return; // Wait for all results
-            }
-            // --- AUTO-VERIFICATION LOGIC ---
-            const positions = new Set();
-            const winners = new Set();
-            for (const result of submittedResults) {
-                if (result.confirmedPosition) {
-                    positions.add(result.confirmedPosition);
-                }
-                if (result.confirmedWinStatus === 'win') {
-                    winners.add(result.userId);
-                }
-            }
-            // CHECK 1: Duplicate positions submitted (e.g., two 1st places)
-            const hasDuplicatePositions = positions.size !== submittedResults.length;
-            // CHECK 2: More than one winner claimed
-            const hasMultipleWinners = winners.size > 1;
-            if (hasDuplicatePositions || hasMultipleWinners) {
-                // If any check fails, mark as disputed for admin review.
-                transaction.update(matchRef, { status: 'disputed' });
-                functions.logger.info(`Match ${matchId} marked as disputed due to result conflict.`);
-            }
-            else {
-                // If all checks pass, mark for admin verification.
-                transaction.update(matchRef, { status: 'verification' });
-                functions.logger.info(`Match ${matchId} pending verification.`);
-            }
-        });
-    }
-    catch (error) {
-        functions.logger.error(`Error processing results for match ${matchId}:`, error);
-        await matchRef.update({ status: 'disputed', error: error.message });
-    }
-    return null;
-});
-exports.onMatchResultUpdate = functions.firestore
-    .document("matches/{matchId}")
-    .onUpdate(async (change, context) => {
-    const beforeData = change.before.data();
-    const afterData = change.after.data();
-    const { matchId } = context.params;
-    if (beforeData.status !== 'completed' && afterData.status === 'completed' && afterData.winnerId) {
-        const { winnerId, prizePool, players, title } = afterData;
-        if (!winnerId || !prizePool || prizePool <= 0) {
-            functions.logger.error("Missing or invalid winnerId/prizePool", { id: matchId });
-            return null;
-        }
-        try {
-            await db.runTransaction(async (t) => {
-                const winnerRef = db.collection("users").doc(winnerId);
-                const winnerDoc = await t.get(winnerRef);
-                if (!winnerDoc.exists) {
-                    throw new Error(`Winner user ${winnerId} not found.`);
-                }
-                // 1. Update winner's balance, rating, xp, and stats
-                t.update(winnerRef, {
-                    walletBalance: firestore_1.FieldValue.increment(prizePool),
-                    rating: firestore_1.FieldValue.increment(10),
-                    xp: firestore_1.FieldValue.increment(25),
-                    matchesPlayed: firestore_1.FieldValue.increment(1),
-                    matchesWon: firestore_1.FieldValue.increment(1)
-                });
-                // 2. Create prize transaction for winner
-                const transactionRef = db.collection(`users/${winnerId}/transactions`).doc();
-                t.set(transactionRef, {
-                    amount: prizePool,
-                    type: "prize",
-                    status: "completed",
-                    description: `Prize money from match: ${afterData.title}`,
-                    relatedId: matchId,
-                    createdAt: firestore_1.FieldValue.serverTimestamp(),
-                });
-                // 3. Update stats and ratings for all other players (losers)
-                const loserIds = players.filter((pId) => pId !== winnerId);
-                for (const loserId of loserIds) {
-                    const loserRef = db.collection("users").doc(loserId);
-                    // We can update loser stats without fetching them first using FieldValue
-                    t.update(loserRef, {
-                        rating: firestore_1.FieldValue.increment(-5),
-                        matchesPlayed: firestore_1.FieldValue.increment(1)
-                    });
-                }
-            });
-            functions.logger.info(`Prize money, rating, and XP updated for match ${matchId}.`);
-            // Send notifications
-            await sendNotification(winnerId, 'You Won!', `Congratulations! You won ₹${prizePool} in the match "${title}".`, `/match/${matchId}`);
-            const loserIds = players.filter((pId) => pId !== winnerId);
-            for (const loserId of loserIds) {
-                await sendNotification(loserId, 'Match Result', `The match "${title}" has ended. Better luck next time!`, `/match/${matchId}`);
-            }
-        }
-        catch (error) {
-            functions.logger.error(`Failed to process results for match ${matchId}:`, error);
-            await change.after.ref.update({ status: "error", error: error.message });
-        }
-        return null;
-    }
-    return null;
-});
-// =================================================================
-//  MATCH & TOURNAMENT CREATION
-// =================================================================
+// =============================================
+// USER-FACING MATCH FUNCTIONS
+// =============================================
 exports.createMatch = functions.https.onCall(async (data, context) => {
-    // 1. Authentication Check
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to create a match.");
-    }
+    if (!context.auth)
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in.");
     const userId = context.auth.uid;
-    // 2. Maintenance Check
-    const maintenanceDoc = await db.collection('settings').doc('maintenance').get();
-    const maintenanceSettings = maintenanceDoc.data();
-    if (maintenanceSettings === null || maintenanceSettings === void 0 ? void 0 : maintenanceSettings.areMatchesDisabled) {
-        throw new functions.https.HttpsError("unavailable", "Match creation is temporarily disabled by the admin.");
+    const { entryFee } = data;
+    if (typeof entryFee !== "number" || ![50, 100].includes(entryFee)) {
+        throw new functions.https.HttpsError("invalid-argument", "Entry fee must be 50 or 100.");
     }
-    // 3. Data Validation
-    const { title, entryFee, maxPlayers } = data;
-    if (!title || typeof title !== "string" || title.length === 0 || title.length > 50) {
-        throw new functions.https.HttpsError("invalid-argument", "Match title is required and must be 50 characters or less.");
-    }
-    if (typeof entryFee !== "number" || entryFee < 0) {
-        throw new functions.https.HttpsError("invalid-argument", "A valid, non-negative entry fee is required.");
-    }
-    if (maxPlayers !== 2 && maxPlayers !== 4) {
-        throw new functions.https.HttpsError("invalid-argument", "Max players must be either 2 or 4.");
-    }
-    // 4. Calculate Prize Pool (e.g., 95% of total entry fees for a 5% commission)
-    const prizePool = (entryFee * maxPlayers) * 0.95;
     const userRef = db.collection("users").doc(userId);
     const matchRef = db.collection("matches").doc();
     try {
-        const newMatchId = await db.runTransaction(async (t) => {
+        const matchId = await db.runTransaction(async (t) => {
             const userDoc = await t.get(userRef);
-            if (!userDoc.exists) {
-                throw new functions.https.HttpsError("not-found", "Your user profile does not exist.");
-            }
-            const userData = userDoc.data();
-            const currentBalance = userData.walletBalance || 0;
-            if (currentBalance < entryFee) {
-                throw new functions.https.HttpsError("failed-precondition", "Insufficient funds to create this match.");
-            }
-            if (entryFee > 0) {
-                t.update(userRef, { walletBalance: firestore_1.FieldValue.increment(-entryFee) });
-                const transactionRef = db.collection(`users/${userId}/transactions`).doc();
-                t.set(transactionRef, {
-                    amount: -entryFee,
-                    type: "entry_fee",
-                    status: "completed",
-                    description: `Entry fee for new match: ${title}`,
-                    createdAt: firestore_1.FieldValue.serverTimestamp(),
-                    relatedId: matchRef.id,
-                });
-            }
+            if (!userDoc.exists)
+                throw new functions.https.HttpsError("not-found", "User profile not found.");
+            if ((userDoc.data().walletBalance || 0) < entryFee)
+                throw new functions.https.HttpsError("failed-precondition", "Insufficient funds.");
+            t.update(userRef, { walletBalance: firestore_1.FieldValue.increment(-entryFee) });
+            const txRef = db.collection(`users/${userId}/transactions`).doc();
+            t.set(txRef, { amount: -entryFee, type: "entry_fee", status: "completed", description: `Fee for match: ${matchRef.id}`, createdAt: firestore_1.FieldValue.serverTimestamp(), relatedId: matchRef.id });
             t.set(matchRef, {
-                title,
-                entryFee,
-                prizePool,
-                maxPlayers,
-                creatorId: userId,
-                players: [userId], // Creator is the first player
-                status: 'open',
-                roomCode: null,
+                title: `Ludo Match for ₹${entryFee}`,
+                entryFee, prizePool: (entryFee * 2), maxPlayers: 2,
+                creatorId: userId, players: [userId], status: 'waiting',
                 createdAt: firestore_1.FieldValue.serverTimestamp(),
-                startedAt: null,
-                completedAt: null,
-                winnerId: null,
+                fraudReasons: [],
             });
             return matchRef.id;
         });
-        return {
-            status: "success",
-            message: "Match created successfully!",
-            matchId: newMatchId,
-        };
+        return { status: "success", matchId };
     }
     catch (error) {
-        functions.logger.error(`Failed to create match for user ${userId}:`, error);
-        if (error instanceof functions.https.HttpsError) {
+        functions.logger.error(`Match creation failed for ${userId}:`, error);
+        if (error instanceof functions.https.HttpsError)
             throw error;
-        }
-        else {
-            throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the match.");
-        }
+        throw new functions.https.HttpsError("internal", "An error occurred.");
     }
 });
-exports.createTournament = functions.https.onCall(async (data, context) => {
-    // 1. Authentication & Authorization Check
-    if (!context.auth || !['superadmin', 'match_admin'].includes(context.auth.token.role)) {
-        throw new functions.https.HttpsError("permission-denied", "You must be an admin to create a tournament.");
+exports.joinMatch = functions.https.onCall(async (data, context) => {
+    if (!context.auth)
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in.");
+    const { matchId } = data;
+    if (!matchId)
+        throw new functions.https.HttpsError("invalid-argument", "Match ID is required.");
+    const userId = context.auth.uid;
+    const matchRef = db.collection("matches").doc(matchId);
+    const userRef = db.collection("users").doc(userId);
+    return db.runTransaction(async (t) => {
+        const matchDoc = await t.get(matchRef);
+        if (!matchDoc.exists)
+            throw new functions.https.HttpsError("not-found", "Match not found.");
+        const matchData = matchDoc.data();
+        if (matchData.status !== 'waiting')
+            throw new functions.https.HttpsError("failed-precondition", "Match not open for joining.");
+        if (matchData.players.includes(userId))
+            throw new functions.https.HttpsError("failed-precondition", "You already joined.");
+        const userDoc = await t.get(userRef);
+        if (!userDoc.exists)
+            throw new functions.https.HttpsError("not-found", "User profile not found.");
+        if ((userDoc.data().walletBalance || 0) < matchData.entryFee)
+            throw new functions.https.HttpsError("failed-precondition", "Insufficient funds.");
+        t.update(userRef, { walletBalance: firestore_1.FieldValue.increment(-matchData.entryFee) });
+        const feeTxRef = db.collection(`users/${userId}/transactions`).doc();
+        t.set(feeTxRef, { amount: -matchData.entryFee, type: "entry_fee", status: "completed", description: `Fee for match: ${matchData.title}`, createdAt: firestore_1.FieldValue.serverTimestamp(), relatedId: matchId });
+        t.update(matchRef, { players: firestore_1.FieldValue.arrayUnion(userId), joinerId: userId, status: 'room_code_pending' });
+        return { success: true };
+    });
+});
+exports.submitResult = functions.https.onCall(async (data, context) => {
+    if (!context.auth)
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in.");
+    const { matchId, position, screenshotUrl } = data;
+    if (!matchId || !position || !screenshotUrl)
+        throw new functions.https.HttpsError("invalid-argument", "Required data missing.");
+    if (typeof position !== 'number' || position < 1 || position > 2)
+        throw new functions.https.HttpsError("invalid-argument", "Invalid position.");
+    const userId = context.auth.uid;
+    const matchRef = db.collection("matches").doc(matchId);
+    const matchDoc = await matchRef.get();
+    if (!matchDoc.exists)
+        throw new functions.https.HttpsError("not-found", "Match not found.");
+    const matchData = matchDoc.data();
+    if (!matchData.players.includes(userId))
+        throw new functions.https.HttpsError("permission-denied", "You are not in this match.");
+    if (matchData.status !== 'game_started')
+        throw new functions.https.HttpsError("failed-precondition", "Match not in 'game_started' state.");
+    const resultRef = db.collection(`matches/${matchId}/results`).doc(userId);
+    const winStatus = (position === 1) ? 'I WON' : 'I LOST';
+    await resultRef.set({
+        userId, position, winStatus, screenshotUrl,
+        submittedAt: firestore_1.FieldValue.serverTimestamp(),
+        deviceId: context.instanceIdToken || null,
+    });
+    return { success: true };
+});
+// =============================================
+// AUTOMATED SYSTEM TRIGGERS
+// =============================================
+exports.autoVerifyResults = functions.firestore.document('matches/{matchId}/results/{userId}').onCreate(async (snap, context) => {
+    const { matchId } = context.params;
+    const matchRef = db.collection('matches').doc(matchId);
+    return db.runTransaction(async (t) => {
+        const matchDoc = await t.get(matchRef);
+        if (!matchDoc.exists)
+            return;
+        const matchData = matchDoc.data();
+        if (['AUTO_VERIFIED', 'FLAGGED', 'PAID'].includes(matchData.status))
+            return;
+        const resultsRef = matchRef.collection('results');
+        const resultsSnap = await t.get(resultsRef);
+        if (resultsSnap.size < matchData.maxPlayers) {
+            t.update(matchRef, { status: 'result_submitted' });
+            return;
+        }
+        const results = resultsSnap.docs.map(doc => doc.data());
+        const fraudReasons = [];
+        const positions = results.map(r => r.position);
+        const uniquePositions = new Set(positions);
+        if (uniquePositions.size !== matchData.maxPlayers)
+            fraudReasons.push('DUPLICATE_OR_MISSING_POSITIONS');
+        if (!positions.includes(1) || !positions.includes(2))
+            fraudReasons.push('INVALID_POSITIONS_FOR_2P');
+        const winner = results.find(r => r.position === 1);
+        const loser = results.find(r => r.position === 2);
+        if (!winner || winner.winStatus !== 'I WON')
+            fraudReasons.push('WINNER_STATE_MISMATCH');
+        if (!loser || loser.winStatus !== 'I LOST')
+            fraudReasons.push('LOSER_STATE_MISMATCH');
+        if (fraudReasons.length > 0) {
+            t.update(matchRef, { status: 'FLAGGED', fraudReasons });
+        }
+        else {
+            t.update(matchRef, { status: 'AUTO_VERIFIED', winnerId: winner.userId });
+        }
+    });
+});
+exports.autoPayout = functions.firestore.document("matches/{matchId}").onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+    const { matchId } = context.params;
+    if (before.status === 'AUTO_VERIFIED' || after.status !== 'AUTO_VERIFIED')
+        return null;
+    if (!after.winnerId)
+        return null;
+    const { winnerId, prizePool, title } = after;
+    const winnerRef = db.collection("users").doc(winnerId);
+    return db.runTransaction(async (t) => {
+        const winnerDoc = await t.get(winnerRef);
+        if (!winnerDoc.exists)
+            throw new Error(`Winner ${winnerId} not found.`);
+        const commissionRate = 0.10;
+        const payoutAmount = prizePool * (1 - commissionRate);
+        t.update(winnerRef, { walletBalance: firestore_1.FieldValue.increment(payoutAmount) });
+        const prizeTxRef = db.collection(`users/${winnerId}/transactions`).doc();
+        t.set(prizeTxRef, { amount: payoutAmount, type: "prize_win", status: "completed", description: `Prize for: ${title}`, relatedId: matchId, createdAt: firestore_1.FieldValue.serverTimestamp() });
+        t.update(change.after.ref, { status: 'PAID', completedAt: firestore_1.FieldValue.serverTimestamp() });
+    }).catch(error => {
+        functions.logger.error(`Payout failed for ${matchId}:`, error);
+        return change.after.ref.update({ status: 'FLAGGED', fraudReasons: ['PAYOUT_FAILED'] });
+    });
+});
+// =============================================
+// ADMIN-ONLY FUNCTIONS
+// =============================================
+const ensureAdmin = async (uid) => {
+    var _a;
+    const user = await admin.auth().getUser(uid);
+    if (((_a = user.customClaims) === null || _a === void 0 ? void 0 : _a.role) !== 'superadmin') {
+        throw new functions.https.HttpsError('permission-denied', 'Admin role required.');
     }
-    const adminUid = context.auth.uid;
-    // 2. Data Validation
-    const { name, description, entryFee, maxPlayers, commissionRate, prizeDistribution, startDate, endDate, bannerUrl } = data;
-    if (!name || !description || typeof entryFee !== 'number' || typeof maxPlayers !== 'number' || typeof commissionRate !== 'number' || !prizeDistribution || !startDate) {
-        throw new functions.https.HttpsError("invalid-argument", "Missing required tournament information.");
-    }
-    // 3. Calculate final prize pool after commission
-    const totalCollection = entryFee * maxPlayers;
-    const adminCommission = totalCollection * commissionRate;
-    const finalPrizePool = totalCollection - adminCommission;
-    try {
-        const tournamentRef = await db.collection("tournaments").add({
-            name,
-            description,
-            entryFee,
-            maxPlayers,
-            commissionRate,
-            prizePool: finalPrizePool,
-            prizeDistribution,
-            startDate: admin.firestore.Timestamp.fromDate(new Date(startDate)),
-            endDate: endDate ? admin.firestore.Timestamp.fromDate(new Date(endDate)) : null,
-            bannerUrl: bannerUrl || null,
-            status: 'upcoming',
-            players: [],
-            creatorId: adminUid,
-            createdAt: firestore_1.FieldValue.serverTimestamp()
-        });
-        return {
-            status: "success",
-            message: "Tournament created successfully!",
-            tournamentId: tournamentRef.id,
-        };
-    }
-    catch (error) {
-        functions.logger.error(`Failed to create tournament by admin ${adminUid}:`, error);
-        throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the tournament.");
-    }
+};
+exports.resolveFlaggedMatch = functions.https.onCall(async (data, context) => {
+    if (!context.auth)
+        throw new functions.https.HttpsError("unauthenticated", "Authentication required.");
+    await ensureAdmin(context.auth.uid);
+    const { matchId, winnerId } = data;
+    if (!matchId || !winnerId)
+        throw new functions.https.HttpsError("invalid-argument", "Match ID and Winner ID are required.");
+    const matchRef = db.collection('matches').doc(matchId);
+    return db.runTransaction(async (t) => {
+        const matchDoc = await t.get(matchRef);
+        if (!matchDoc.exists)
+            throw new functions.https.HttpsError("not-found", "Match not found.");
+        const matchData = matchDoc.data();
+        if (matchData.status !== 'FLAGGED')
+            throw new functions.https.HttpsError("failed-precondition", "Match is not flagged.");
+        if (!matchData.players.includes(winnerId))
+            throw new functions.https.HttpsError("invalid-argument", "Winner is not a player in this match.");
+        const commissionRate = 0.10; // 10%
+        const payoutAmount = matchData.prizePool * (1 - commissionRate);
+        const winnerRef = db.collection('users').doc(winnerId);
+        t.update(winnerRef, { walletBalance: firestore_1.FieldValue.increment(payoutAmount) });
+        const prizeTxRef = db.collection(`users/${winnerId}/transactions`).doc();
+        t.set(prizeTxRef, { amount: payoutAmount, type: "prize_win", status: "completed", description: `Admin resolved prize for: ${matchData.title}`, relatedId: matchId, createdAt: firestore_1.FieldValue.serverTimestamp() });
+        t.update(matchRef, { status: 'PAID', winnerId, completedAt: firestore_1.FieldValue.serverTimestamp(), resolvedBy: context.auth.uid });
+        return { success: true };
+    });
+});
+exports.cancelFlaggedMatch = functions.https.onCall(async (data, context) => {
+    if (!context.auth)
+        throw new functions.https.HttpsError("unauthenticated", "Authentication required.");
+    await ensureAdmin(context.auth.uid);
+    const { matchId } = data;
+    if (!matchId)
+        throw new functions.https.HttpsError("invalid-argument", "Match ID is required.");
+    const matchRef = db.collection('matches').doc(matchId);
+    return db.runTransaction(async (t) => {
+        const matchDoc = await t.get(matchRef);
+        if (!matchDoc.exists)
+            throw new functions.https.HttpsError("not-found", "Match not found.");
+        const matchData = matchDoc.data();
+        if (matchData.status !== 'FLAGGED')
+            throw new functions.https.HttpsError("failed-precondition", "Match is not flagged.");
+        for (const playerId of matchData.players) {
+            const playerRef = db.collection('users').doc(playerId);
+            t.update(playerRef, { walletBalance: firestore_1.FieldValue.increment(matchData.entryFee) });
+            const refundTxRef = db.collection(`users/${playerId}/transactions`).doc();
+            t.set(refundTxRef, { amount: matchData.entryFee, type: "refund", status: "completed", description: `Admin cancelled match: ${matchData.title}`, relatedId: matchId, createdAt: firestore_1.FieldValue.serverTimestamp() });
+        }
+        t.update(matchRef, { status: 'cancelled', resolvedBy: context.auth.uid, completedAt: firestore_1.FieldValue.serverTimestamp() });
+        return { success: true };
+    });
 });
 //# sourceMappingURL=index.js.map

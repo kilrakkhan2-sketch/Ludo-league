@@ -44,7 +44,7 @@ const MatchCard = ({ match }: { match: Match }) => {
 
   const getStatusVariant = (status: Match['status']) => {
     switch (status) {
-      case 'open':
+      case 'waiting':
         return isFull ? 'destructive' : 'secondary';
       case 'ongoing':
       case 'processing':
@@ -72,7 +72,7 @@ const MatchCard = ({ match }: { match: Match }) => {
             </CardDescription>
           </div>
           <Badge variant={getStatusVariant(match.status)} className="capitalize">
-            {isFull && match.status === 'open' ? 'Full' : match.status.replace('_', ' ')}
+            {isFull && match.status === 'waiting' ? 'Full' : match.status.replace('_', ' ')}
           </Badge>
         </div>
       </CardHeader>
@@ -150,11 +150,11 @@ export default function MatchesPage() {
     
     const activeMatches = allMatches.filter(m => !['completed', 'cancelled'].includes(m.status));
 
-    if (filter === 'open') {
-        return activeMatches.filter(m => m.status === 'open' && m.players.length < m.maxPlayers);
+    if (filter === 'waiting') {
+        return activeMatches.filter(m => m.status === 'waiting' && m.players.length < m.maxPlayers);
     }
      if (filter === 'ongoing') {
-        return activeMatches.filter(m => ['ongoing', 'processing', 'verification', 'disputed'].includes(m.status) || (m.status === 'open' && m.players.length >= m.maxPlayers));
+        return activeMatches.filter(m => ['ongoing', 'processing', 'verification', 'disputed'].includes(m.status) || (m.status === 'waiting' && m.players.length >= m.maxPlayers));
     }
     // 'all' filter
     return activeMatches;
@@ -186,13 +186,13 @@ export default function MatchesPage() {
          <Tabs value={filter} onValueChange={setFilter} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="open">Open</TabsTrigger>
+                <TabsTrigger value="waiting">Open</TabsTrigger>
                 <TabsTrigger value="ongoing">Ongoing</TabsTrigger>
             </TabsList>
             <TabsContent value="all">
                 <MatchesList matches={filteredMatches} loading={loading} />
             </TabsContent>
-             <TabsContent value="open">
+             <TabsContent value="waiting">
                 <MatchesList matches={filteredMatches} loading={loading} />
             </TabsContent>
             <TabsContent value="ongoing">
