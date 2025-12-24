@@ -21,6 +21,14 @@ export default function LoginPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) {
+        toast({
+            variant: "destructive",
+            title: "Missing Fields",
+            description: "Please enter both email and password.",
+        });
+        return;
+    }
     signInWithEmailAndPassword(email, password);
   };
 
@@ -35,11 +43,13 @@ export default function LoginPage() {
   }, [error, toast]);
 
   useEffect(() => {
-    if (user) {
+    // Only redirect if the user object and its UID exist.
+    // This prevents re-renders on other state changes.
+    if (user?.user?.uid) {
       toast({ title: "Logged In", description: "Welcome back!" });
       router.replace('/dashboard');
     }
-  }, [user, router, toast]);
+  }, [user?.user?.uid, router, toast]);
 
 
   return (
