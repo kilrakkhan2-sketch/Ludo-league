@@ -39,7 +39,7 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, email, password);
       toast({ title: "Logged In", description: "Welcome back!" });
       router.replace('/');
-    } catch (error: any) => {
+    } catch (error: any) {
       console.error("Login Error:", error);
       toast({
         variant: "destructive",

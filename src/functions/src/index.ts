@@ -119,6 +119,104 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
   }
 });
 
+export const setUserBlockedStatus = functions.https.onCall(async (data, context) => {
+    if (context.auth?.token.role !== 'superadmin') {
+        throw new functions.https.HttpsError('permission-denied', 'Only superadmins can block users.');
+    }
+    const { userId, blocked } = data;
+    if (typeof userId !== 'string' || typeof blocked !== 'boolean') {
+        throw new functions.https.HttpsError('invalid-argument', 'userId (string) and blocked (boolean) are required.');
+    }
+    try {
+        await admin.auth().updateUser(userId, { disabled: blocked });
+        await db.collection('users').doc(userId).update({ isBlocked: blocked });
+        return { success: true, message: `User ${userId} has been ${blocked ? 'blocked' : 'unblocked'}.` };
+    } catch (error: any) {
+        functions.logger.error(`Failed to update blocked status for user ${userId}:`, error);
+        throw new functions.https.HttpsError('internal', error.message);
+    }
+});
+
+export const deleteUserAccount = functions.https.onCall(async (_, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to delete your account.");
+    }
+    const uid = context.auth.uid;
+    try {
+        await admin.auth().deleteUser(uid);
+        await db.collection('users').doc(uid).delete();
+        functions.logger.info(`User ${uid} successfully deleted their account.`);
+        return { success: true };
+    } catch (error: any) {
+        functions.logger.error(`Failed to delete user account for ${uid}:`, error);
+        throw new functions.https.HttpsError('internal', "An error occurred while deleting your account.");
+    }
+});
+
+
+// =================================================================
+//  PENALTY & MODERATION FUNCTIONS
+// =================================================================
+
+export const applyPenalty = functions.https.onCall(async (data, context) => {
+    // 1. Authentication & Authorization Check
+    if (context.auth?.token.role !== 'superadmin') {
+        throw new functions.https.HttpsError("permission-denied", "Only superadmins can apply penalties.");
+    }
+    const adminId = context.auth.uid;
+
+    // 2. Data Validation
+    const { userId, reason, amount, description, relatedMatchId } = data;
+    if (!userId || !reason || typeof amount !== 'number' || amount <= 0) {
+        throw new functions.https.HttpsError("invalid-argument", "userId, reason, and a positive amount are required.");
+    }
+
+    const userRef = db.collection("users").doc(userId);
+
+    // 3. Transaction to ensure atomicity
+    return db.runTransaction(async (t) => {
+        const userDoc = await t.get(userRef);
+        if (!userDoc.exists) {
+            throw new functions.https.HttpsError("not-found", `User with ID ${userId} not found.`);
+        }
+        
+        // A. Deduct amount from user's wallet
+        t.update(userRef, { walletBalance: FieldValue.increment(-amount) });
+
+        // B. Create a transaction log for the user
+        const userTxRef = db.collection(`users/${userId}/transactions`).doc();
+        t.set(userTxRef, {
+            amount: -amount, // Negative amount for deduction
+            type: 'penalty',
+            status: 'completed',
+            description: `Penalty for: ${reason.replace(/_/g, ' ')}. ${description || ''}`,
+            relatedId: relatedMatchId || null,
+            createdAt: FieldValue.serverTimestamp(),
+        });
+
+        // C. Create a record in the penalties subcollection for auditing
+        const penaltyRef = db.collection(`users/${userId}/penalties`).doc();
+        t.set(penaltyRef, {
+            userId,
+            adminId,
+            amount,
+            reason,
+            description: description || null,
+            relatedMatchId: relatedMatchId || null,
+            createdAt: FieldValue.serverTimestamp()
+        });
+        
+        await sendNotification(userId, 'Penalty Applied', `A penalty of ₹${amount} has been deducted from your wallet for: ${reason.replace(/_/g, ' ')}.`);
+        
+        return { success: true, message: `Penalty of ₹${amount} applied to user ${userId}.` };
+    }).catch(error => {
+        functions.logger.error(`Failed to apply penalty to user ${userId} by admin ${adminId}:`, error);
+        if (error instanceof functions.https.HttpsError) throw error;
+        throw new functions.https.HttpsError('internal', 'An unexpected error occurred while applying the penalty.');
+    });
+});
+
+
 // =================================================================
 //  STORAGE MANAGEMENT FUNCTIONS
 // =================================================================
@@ -586,11 +684,11 @@ export const onMatchResultUpdate = functions.firestore
 });
 
 // =================================================================
-//  MATCH & TOURNAMENT CREATION
+//  MATCH & TOURNAMENT MANAGEMENT
 // =================================================================
 export const cancelMatch = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to cancel a match.");
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in.");
     }
     const { matchId } = data;
     if (!matchId) {
@@ -607,52 +705,74 @@ export const cancelMatch = functions.https.onCall(async (data, context) => {
         }
         const matchData = matchDoc.data()!;
 
-        if (matchData.status !== 'waiting' || matchData.roomCode) {
-            throw new functions.https.HttpsError("failed-precondition", "This match cannot be cancelled now.");
+        // Allow cancellation if match is waiting or if an admin is calling
+        const isAdmin = ['superadmin', 'match_admin'].includes(context.auth?.token.role);
+        if (matchData.status !== 'waiting' && !isAdmin) {
+            throw new functions.https.HttpsError("failed-precondition", "This match has already started and cannot be cancelled.");
         }
 
-        if (userId === matchData.creatorId) {
-            // Creator cancels, refund everyone and delete match
-            for (const playerId of matchData.players) {
-                const playerRef = db.collection("users").doc(playerId);
-                t.update(playerRef, { walletBalance: FieldValue.increment(matchData.entryFee) });
-                // Also create a refund transaction for each player
-                const refundTxRef = db.collection(`users/${playerId}/transactions`).doc();
-                t.set(refundTxRef, {
-                    amount: matchData.entryFee,
-                    type: "entry_fee_refund",
-                    status: "completed",
-                    description: `Refund for cancelled match: ${matchData.title}`,
-                    relatedId: matchId,
-                    createdAt: FieldValue.serverTimestamp(),
-                });
-            }
-            t.update(matchRef, { status: 'cancelled' });
-        } else if (matchData.players.includes(userId)) {
-            // A player leaves
-            const playerRef = db.collection("users").doc(userId);
+        // Refund entry fee to all players involved
+        for (const playerId of matchData.players) {
+            const playerRef = db.collection("users").doc(playerId);
             t.update(playerRef, { walletBalance: FieldValue.increment(matchData.entryFee) });
-            t.update(matchRef, { players: FieldValue.arrayRemove(userId) });
-            // Create refund transaction for the player leaving
-             const refundTxRef = db.collection(`users/${userId}/transactions`).doc();
-             t.set(refundTxRef, {
+            const refundTxRef = db.collection(`users/${playerId}/transactions`).doc();
+            t.set(refundTxRef, {
                 amount: matchData.entryFee,
                 type: "entry_fee_refund",
                 status: "completed",
-                description: `Refund for leaving match: ${matchData.title}`,
+                description: `Refund for cancelled match: ${matchData.title}`,
                 relatedId: matchId,
                 createdAt: FieldValue.serverTimestamp(),
             });
-        } else {
-            throw new functions.https.HttpsError("permission-denied", "You are not part of this match.");
         }
+        
+        t.update(matchRef, { 
+            status: 'cancelled',
+            completedAt: FieldValue.serverTimestamp(),
+            resolvedBy: isAdmin ? userId : 'creator_cancellation'
+        });
         
         return { success: true };
     }).catch(error => {
-        functions.logger.error(`Failed to cancel participation for match ${matchId}:`, error);
+        functions.logger.error(`Failed to cancel match ${matchId}:`, error);
         if (error instanceof functions.https.HttpsError) throw error;
-        throw new functions.https.HttpsError('internal', 'An unexpected error occurred.');
+        throw new functions.https.HttpsError('internal', 'An unexpected error occurred during match cancellation.');
     });
+});
+
+export const resolveMatch = functions.https.onCall(async (data, context) => {
+    if (!context.auth || !['superadmin', 'match_admin'].includes(context.auth.token.role)) {
+        throw new functions.https.HttpsError('permission-denied', 'Only match admins can resolve matches.');
+    }
+    const adminUid = context.auth.uid;
+    const { matchId, winnerId } = data;
+    if (!matchId || !winnerId) {
+        throw new functions.https.HttpsError("invalid-argument", "matchId and winnerId are required.");
+    }
+
+    const matchRef = db.collection('matches').doc(matchId);
+    const matchDoc = await matchRef.get();
+    if (!matchDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Match not found.");
+    }
+    const matchData = matchDoc.data()!;
+
+    if (!matchData.players.includes(winnerId)) {
+        throw new functions.https.HttpsError("invalid-argument", "The declared winner is not a player in this match.");
+    }
+    if (['COMPLETED', 'PAID', 'cancelled'].includes(matchData.status)) {
+        throw new functions.https.HttpsError('failed-precondition', `Match is already ${matchData.status}.`);
+    }
+
+    // This update will trigger the onMatchResultUpdate function for payout
+    await matchRef.update({
+        status: 'COMPLETED',
+        winnerId: winnerId,
+        completedAt: FieldValue.serverTimestamp(),
+        resolvedBy: adminUid,
+    });
+
+    return { success: true, message: `Match resolved. Payout for ${winnerId} has been triggered.` };
 });
 
 
@@ -751,6 +871,22 @@ export const createMatch = functions.https.onCall(async (data, context) => {
 
     } catch (error) {
         functions.logger.error(`Failed to create match for user ${userId}:`, error);
+        
+        const errorMessage = (error instanceof Error) ? error.message : "An unexpected error occurred.";
+        if (errorMessage.includes("permission-denied") || errorMessage.includes("PERMISSION_DENIED")) {
+            const context = {
+                userId,
+                operation: 'createMatchTransaction',
+                userRefPath: userRef.path,
+                matchRefPath: matchRef.path,
+            };
+            throw new functions.https.HttpsError(
+                'permission-denied',
+                `Firestore Security Rules denied the operation. Context: ${JSON.stringify(context)}`,
+                { error, context }
+            );
+        }
+        
         if (error instanceof functions.https.HttpsError) {
             throw error;
         } else {
@@ -807,3 +943,140 @@ export const createTournament = functions.https.onCall(async (data, context) => 
         throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the tournament.");
     }
 });
+
+export const joinMatch = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to join a match.");
+    }
+    const userId = context.auth.uid;
+    const { matchId } = data;
+
+    if (!matchId) {
+        throw new functions.https.HttpsError("invalid-argument", "Match ID is required.");
+    }
+
+    const matchRef = db.collection("matches").doc(matchId);
+    const userRef = db.collection("users").doc(userId);
+
+    try {
+        await db.runTransaction(async (t) => {
+            const matchDoc = await t.get(matchRef);
+            if (!matchDoc.exists) throw new functions.https.HttpsError("not-found", "Match not found.");
+            
+            const matchData = matchDoc.data()!;
+            if (matchData.status !== 'waiting') throw new functions.https.HttpsError("failed-precondition", "This match is no longer open to join.");
+            if (matchData.players.includes(userId)) throw new functions.https.HttpsError("failed-precondition", "You have already joined this match.");
+            if (matchData.players.length >= matchData.maxPlayers) throw new functions.https.HttpsError("failed-precondition", "This match is already full.");
+
+            const userDoc = await t.get(userRef);
+            if (!userDoc.exists) throw new functions.https.HttpsError("not-found", "Your user profile does not exist.");
+            
+            const userData = userDoc.data()!;
+            if ((userData.walletBalance || 0) < matchData.entryFee) throw new functions.https.HttpsError("failed-precondition", "Insufficient funds to join this match.");
+
+            // Deduct entry fee
+            if (matchData.entryFee > 0) {
+                t.update(userRef, { walletBalance: FieldValue.increment(-matchData.entryFee) });
+                 const transactionRef = db.collection(`users/${userId}/transactions`).doc();
+                 t.set(transactionRef, {
+                    amount: -matchData.entryFee,
+                    type: "entry_fee",
+                    status: "completed",
+                    description: `Entry fee for: ${matchData.title}`,
+                    createdAt: FieldValue.serverTimestamp(),
+                    relatedId: matchId,
+                });
+            }
+
+            // Add user to match and update status
+            const newPlayers = [...matchData.players, userId];
+            const isNowFull = newPlayers.length === matchData.maxPlayers;
+            
+            t.update(matchRef, {
+                players: newPlayers,
+                joinerId: userId,
+                status: isNowFull ? 'room_code_pending' : 'waiting',
+            });
+             await sendNotification(matchData.creatorId, 'Player Joined!', `${userData.displayName || 'A new player'} has joined your match. Get ready!`, `/match/${matchId}`);
+        });
+
+        return { success: true, message: "Successfully joined the match!" };
+
+    } catch (error) {
+        functions.logger.error(`User ${userId} failed to join match ${matchId}:`, error);
+        
+        const errorMessage = (error instanceof Error) ? error.message : "An unexpected error occurred.";
+        if (errorMessage.includes("permission-denied") || errorMessage.includes("PERMISSION_DENIED")) {
+            const contextData = {
+                userId,
+                operation: 'joinMatchTransaction',
+                matchRefPath: matchRef.path,
+                userRefPath: userRef.path,
+            };
+            throw new functions.https.HttpsError(
+                'permission-denied',
+                `Firestore Security Rules denied the operation. Context: ${JSON.stringify(contextData)}`,
+                { error, context: contextData }
+            );
+        }
+
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        }
+        throw new functions.https.HttpsError("internal", "An unexpected error occurred while joining the match.");
+    }
+});
+
+
+export const submitResult = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in.");
+    }
+    const userId = context.auth.uid;
+    const { matchId, position, screenshotUrl } = data;
+
+    if (!matchId || !position || !screenshotUrl) {
+        throw new functions.https.HttpsError("invalid-argument", "matchId, position, and screenshotUrl are required.");
+    }
+
+    const matchRef = db.collection('matches').doc(matchId);
+    const resultRef = matchRef.collection('results').doc(userId);
+
+    try {
+        await db.runTransaction(async (t) => {
+            const matchDoc = await t.get(matchRef);
+            if (!matchDoc.exists) throw new functions.https.HttpsError("not-found", "Match not found.");
+            
+            const matchData = matchDoc.data()!;
+            if (matchData.status !== 'game_started') throw new functions.https.HttpsError("failed-precondition", "Results can only be submitted for started games.");
+            if (!matchData.players.includes(userId)) throw new functions.https.HttpsError("permission-denied", "You are not a player in this match.");
+            
+            const existingResultDoc = await t.get(resultRef);
+            if (existingResultDoc.exists) throw new functions.https.HttpsError("already-exists", "You have already submitted a result for this match.");
+            
+            const resultData: any = {
+                userId: userId,
+                confirmedWinStatus: position === 1 ? 'win' : 'loss',
+                screenshotUrl: screenshotUrl,
+                submittedAt: FieldValue.serverTimestamp(),
+            };
+
+            if (userId === matchData.creatorId) {
+                resultData.creatorPosition = position;
+            } else {
+                resultData.joinerPosition = position;
+            }
+
+            t.set(resultRef, resultData);
+            t.update(matchRef, { status: 'result_submitted' });
+        });
+
+        return { success: true, message: "Result submitted successfully." };
+    } catch (error) {
+        functions.logger.error(`Error submitting result for match ${matchId} by user ${userId}:`, error);
+        if (error instanceof functions.https.HttpsError) throw error;
+        throw new functions.https.HttpsError("internal", "An unexpected error occurred.");
+    }
+});
+
+    
