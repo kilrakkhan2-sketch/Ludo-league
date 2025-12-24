@@ -560,3 +560,4 @@ export default function MatchPage({ params }: { params: { id: string } }) {
   return <div className="bg-muted/30">{renderContent()}</div>;
 }
 
+    
