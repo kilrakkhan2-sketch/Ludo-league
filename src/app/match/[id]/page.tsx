@@ -74,8 +74,10 @@ const PlayerList = ({ playerIds, maxPlayers, creatorId, title = "Players" }: { p
 
     const { data: players, loading } = useCollection<UserProfile>('users', queryOptions);
     const playersMap = useMemo(() => new Map(players.map(p => [p.uid, p])), [players]);
-    const emptySlotsCount = Math.max(0, maxPlayers - playerIds.length);
-
+    
+    // Create an array representing all player slots
+    const allSlots = Array.from({ length: maxPlayers });
+    
     return (
         <Card>
             <CardHeader className="text-center">
@@ -83,35 +85,39 @@ const PlayerList = ({ playerIds, maxPlayers, creatorId, title = "Players" }: { p
                 <CardDescription>{playerIds.length} / {maxPlayers} joined</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-                {playerIds.map(uid => {
-                    const p = playersMap.get(uid);
-                    return (
-                        <div key={uid} className="flex items-center justify-between p-3 bg-muted rounded-lg shadow-sm">
-                            <div className="flex items-center gap-3">
-                                <Avatar>
-                                    <AvatarImage src={p?.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${uid}`} />
-                                    <AvatarFallback>{p?.displayName?.[0] || '?'}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                    <p className="font-semibold">{p?.displayName || (loading ? 'Loading...' : 'Player')}</p>
-                                    <p className="text-xs text-muted-foreground">{uid === creatorId ? 'Creator' : 'Player'}</p>
+                {allSlots.map((_, index) => {
+                    const uid = playerIds[index];
+                    if (uid) {
+                        const p = playersMap.get(uid);
+                        return (
+                             <div key={uid} className="flex items-center justify-between p-3 bg-muted rounded-lg shadow-sm">
+                                <div className="flex items-center gap-3">
+                                    <Avatar>
+                                        <AvatarImage src={p?.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${uid}`} />
+                                        <AvatarFallback>{p?.displayName?.[0] || '?'}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="font-semibold">{p?.displayName || (loading ? 'Loading...' : 'Player')}</p>
+                                        <p className="text-xs text-muted-foreground">{uid === creatorId ? 'Creator' : 'Player'}</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    );
-                })}
-                {Array.from({ length: emptySlotsCount }).map((_, index) => (
-                    <div key={`empty-${index}`} className="flex items-center p-3 bg-card border border-dashed rounded-lg">
-                        <div className="flex items-center gap-3">
-                            <Avatar>
-                                <AvatarFallback>?</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <p className="font-semibold text-muted-foreground">Waiting for player...</p>
+                        );
+                    } else {
+                         return (
+                            <div key={`empty-${index}`} className="flex items-center p-3 bg-card border border-dashed rounded-lg">
+                                <div className="flex items-center gap-3">
+                                    <Avatar>
+                                        <AvatarFallback>?</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="font-semibold text-muted-foreground">Waiting for player...</p>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                ))}
+                        );
+                    }
+                })}
             </CardContent>
         </Card>
     );
@@ -225,6 +231,7 @@ const RoomCodeManager = ({ match }: { match: Match }) => {
     const { toast } = useToast();
     const [roomCode, setRoomCode] = useState(match.roomCode || '');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [gameStarted, setGameStarted] = useState(false);
 
     const isCreator = user?.uid === match.creatorId;
 
@@ -240,7 +247,7 @@ const RoomCodeManager = ({ match }: { match: Match }) => {
         setIsSubmitting(true);
         try {
             const matchRef = doc(firestore, 'matches', match.id);
-            await updateDoc(matchRef, { roomCode: roomCode });
+            await updateDoc(matchRef, { roomCode: roomCode, status: 'room_code_shared' });
             toast({ title: 'Room Code Updated' });
         } catch(e) {
             toast({ variant: 'destructive', title: 'Error', description: 'Could not update room code.'});
@@ -248,8 +255,23 @@ const RoomCodeManager = ({ match }: { match: Match }) => {
             setIsSubmitting(false);
         }
     }
+
+    const openLudoKing = () => {
+      window.location.href = "intent://#Intent;package=com.ludo.king;end";
+    }
+
+    const handleGameStarted = async () => {
+        if (!firestore) return;
+        try {
+            const matchRef = doc(firestore, 'matches', match.id);
+            await updateDoc(matchRef, { status: 'game_started' });
+            setGameStarted(true);
+        } catch(e) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not update match status.'});
+        }
+    }
     
-    if (isCreator && !match.roomCode) {
+    if (isCreator && match.status === 'room_code_pending') {
          return (
             <Card>
                 <CardHeader>
@@ -272,60 +294,37 @@ const RoomCodeManager = ({ match }: { match: Match }) => {
         )
     }
 
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Ludo King Room Code</CardTitle>
-                <CardDescription>Join this room in Ludo King to play.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                {match.roomCode ? (
-                    <div className="font-mono tracking-widest text-2xl bg-muted p-4 rounded-lg flex items-center justify-between cursor-pointer" onClick={copyRoomCode}>
-                        <span>{match.roomCode}</span>
-                        <ClipboardCopy className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <Hourglass className="h-4 w-4 animate-spin" />
-                        <span>Waiting for creator to add room code...</span>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    );
+    if (match.status === 'room_code_shared' || (match.status === 'room_code_pending' && !isCreator)) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Ludo King Room Code</CardTitle>
+                    <CardDescription>Join this room in Ludo King to play.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {match.roomCode ? (
+                        <>
+                            <div className="font-mono tracking-widest text-2xl bg-muted p-4 rounded-lg flex items-center justify-between cursor-pointer" onClick={copyRoomCode}>
+                                <span>{match.roomCode}</span>
+                                <ClipboardCopy className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                            <Button onClick={openLudoKing} className="w-full">▶ Play in Ludo King</Button>
+                            <Button onClick={handleGameStarted} variant="outline" className="w-full">Confirm Game Started</Button>
+                        </>
+                    ) : (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <Hourglass className="h-4 w-4 animate-spin" />
+                            <span>Waiting for creator to add room code...</span>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        );
+    }
+    
+    return null;
 };
 
-
-const MatchOngoingContent = ({ match, results }: { match: Match, results: MatchResult[] }) => {
-    const { user } = useUser();
-    
-    const userResult = useMemo(() => {
-        if (!user) return null;
-        return results.find(r => r.userId === user.uid);
-    }, [user, results]);
-
-    return (
-        <div className="flex flex-col flex-grow">
-            <main className="flex-grow p-4 space-y-4">
-                <RoomCodeManager match={match} />
-
-                {userResult ? (
-                    <Alert>
-                        <CheckCircle className="h-4 w-4" />
-                        <AlertTitle>Result Submitted</AlertTitle>
-                        <AlertDescription>
-                            Your result has been recorded. Waiting for other players to submit their results.
-                        </AlertDescription>
-                    </Alert>
-                ) : (
-                    <ResultSubmissionForm match={match} />
-                )}
-
-                 <PlayerList playerIds={match.players} maxPlayers={match.maxPlayers} creatorId={match.creatorId} title="Players in Match" />
-            </main>
-        </div>
-    )
-}
 
 const MatchOpenContent = ({ match }: { match: Match }) => {
     const { user } = useUser();
@@ -346,7 +345,7 @@ const MatchOpenContent = ({ match }: { match: Match }) => {
         const matchRef = doc(firestore, 'matches', match.id);
         const userRef = doc(firestore, 'users', user.uid);
         
-        const activeStatuses: Match['status'][] = ['open', 'ongoing', 'processing', 'verification', 'disputed'];
+        const activeStatuses: Match['status'][] = ['waiting', 'room_code_pending', 'room_code_shared', 'game_started', 'result_submitted', 'verification', 'disputed'];
         const userMatchesQuery = query(
             collection(firestore, 'matches'),
             where('players', 'array-contains', user.uid),
@@ -383,18 +382,14 @@ const MatchOpenContent = ({ match }: { match: Match }) => {
                     throw new Error("Insufficient wallet balance.");
                 }
 
-                // 1. Deduct entry fee
                 transaction.update(userRef, { walletBalance: userData.walletBalance - matchData.entryFee });
-
-                // 2. Add player to match
-                const updatedPlayers = [...matchData.players, user.uid];
+                
                 transaction.update(matchRef, { 
-                    players: updatedPlayers,
-                    status: updatedPlayers.length === matchData.maxPlayers ? 'ongoing' : 'open',
-                    startedAt: updatedPlayers.length === matchData.maxPlayers ? Timestamp.now() : null
+                    players: arrayUnion(user.uid),
+                    joinerId: user.uid,
+                    status: 'room_code_pending',
                 });
                  
-                // 3. Create entry fee transaction
                 const feeTxRef = doc(collection(firestore, `users/${user.uid}/transactions`));
                 transaction.set(feeTxRef, {
                     amount: -matchData.entryFee,
@@ -443,7 +438,7 @@ const MatchOpenContent = ({ match }: { match: Match }) => {
             <main className="flex-grow p-4 space-y-4">
                 <PlayerList playerIds={match.players} maxPlayers={match.maxPlayers} creatorId={match.creatorId} />
 
-                {match.status === 'open' && !match.roomCode && (
+                {match.status === 'waiting' && (
                     <>
                         {isCreator ? (
                             <Button onClick={handleCancel} disabled={isCancelling} variant="destructive" className="w-full">
@@ -470,16 +465,24 @@ const MatchOpenContent = ({ match }: { match: Match }) => {
 export default function MatchPage({ params }: { params: { id: string } }) {
   const { data: match, loading: matchLoading } = useDoc<Match>(`matches/${params.id}`);
   
-  const resultsQueryOptions = useMemo(() => ({
-    orderBy: ['submittedAt', 'desc'] as const
-  }), []);
-  const { data: results, loading: resultsLoading } = useCollection<MatchResult>(`matches/${params.id}/results`, resultsQueryOptions);
+  const { data: results, loading: resultsLoading } = useCollection<MatchResult>(`matches/${params.id}/results`);
   
+  const playerIds = useMemo(() => {
+    if (!match?.players || match.players.length === 0) return ['_']; // Handle empty or loading case
+    return match.players;
+  }, [match?.players]);
+
   const { data: playersData, loading: playersLoading } = useCollection<UserProfile>('users', {
-    where: ['uid', 'in', match?.players.length ? match.players : ['_']]
+    where: ['uid', 'in', playerIds]
   });
 
   const { width, height } = useWindowSize();
+  const { user } = useUser();
+
+  const userResult = useMemo(() => {
+    if (!user) return null;
+    return results.find(r => r.userId === user.uid);
+  }, [user, results]);
 
   const loading = matchLoading || resultsLoading || playersLoading;
 
@@ -494,28 +497,40 @@ export default function MatchPage({ params }: { params: { id: string } }) {
     const winner = playersData.find(p => p.uid === match.winnerId);
 
     switch(match.status) {
-        case 'open':
+        case 'waiting':
             title = 'Waiting for Players';
             content = <MatchOpenContent match={match} />;
             break;
-        case 'ongoing':
-            title = 'Match In Progress';
-            content = <MatchOngoingContent match={match} results={results} />;
+        case 'room_code_pending':
+        case 'room_code_shared':
+            title = 'Share Room Code';
+            content = (
+                <div className="flex flex-col flex-grow p-4 space-y-4">
+                    <RoomCodeManager match={match} />
+                    <PlayerList playerIds={match.players} maxPlayers={match.maxPlayers} creatorId={match.creatorId} title="Players in Match" />
+                </div>
+            );
             break;
-        case 'processing':
-             title = 'Processing Results';
+        case 'game_started':
+             title = 'Game in Progress';
              content = (
-                <div className="p-4">
-                    <Alert>
-                        <Hourglass className="h-4 w-4" />
-                        <AlertTitle>Results Submitted</AlertTitle>
-                        <AlertDescription>
-                            All results have been submitted. Please wait a few moments for confirmation and final verification.
-                        </AlertDescription>
-                    </Alert>
+                <div className="flex flex-col flex-grow p-4 space-y-4">
+                    {userResult ? (
+                         <Alert>
+                            <CheckCircle className="h-4 w-4" />
+                            <AlertTitle>Result Submitted</AlertTitle>
+                            <AlertDescription>
+                                Your result has been recorded. Waiting for other players to submit their results.
+                            </AlertDescription>
+                        </Alert>
+                    ) : (
+                        <ResultSubmissionForm match={match} />
+                    )}
+                    <PlayerList playerIds={match.players} maxPlayers={match.maxPlayers} creatorId={match.creatorId} title="Players in Match" />
                 </div>
             )
             break;
+        case 'result_submitted':
         case 'verification':
              title = 'Verifying Results';
              content = (
@@ -568,7 +583,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
             )
             break;
         default:
-            title = "Match: " + match.status.replace('_', ' ');
+            title = "Match: " + match.status.replace(/_/g, ' ');
             content = <div className="p-4"><PlayerList playerIds={match.players} maxPlayers={match.maxPlayers} creatorId={match.creatorId} title={`Status: ${match.status}`} /></div>
             break;
     }

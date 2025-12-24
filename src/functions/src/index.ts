@@ -1,4 +1,5 @@
 
+
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
@@ -450,11 +451,12 @@ export const autoVerifyResults = functions.firestore
                 const submittedCount = resultsSnapshot.size;
 
                 if (submittedCount < matchData.maxPlayers) {
-                     if (matchData.status === 'ongoing' && submittedCount > 0) {
-                        transaction.update(matchRef, { status: 'processing' });
-                    }
                     return; 
                 }
+                
+                // If we reach here, it means all results are in.
+                transaction.update(matchRef, { status: 'result_submitted' });
+
 
                 const submittedResults = resultsSnapshot.docs.map(doc => doc.data() as MatchResult);
                 
@@ -582,7 +584,7 @@ export const cancelMatch = functions.https.onCall(async (data, context) => {
         }
         const matchData = matchDoc.data()!;
 
-        if (matchData.status !== 'open' || matchData.roomCode) {
+        if (matchData.status !== 'waiting' || matchData.roomCode) {
             throw new functions.https.HttpsError("failed-precondition", "This match cannot be cancelled now.");
         }
 
@@ -639,7 +641,7 @@ export const createMatch = functions.https.onCall(async (data, context) => {
     const userId = context.auth.uid;
 
     // 2. Active Match Limit Check
-    const activeStatuses = ['open', 'ongoing', 'processing', 'verification', 'disputed'];
+    const activeStatuses = ['waiting', 'room_code_pending', 'room_code_shared', 'game_started', 'result_submitted', 'verification', 'disputed'];
     const matchesQuery = db.collection('matches')
         .where('players', 'array-contains', userId)
         .where('status', 'in', activeStatuses);
@@ -707,7 +709,7 @@ export const createMatch = functions.https.onCall(async (data, context) => {
                 maxPlayers,
                 creatorId: userId,
                 players: [userId], // Creator is the first player
-                status: 'open',
+                status: 'waiting',
                 roomCode: null,
                 createdAt: FieldValue.serverTimestamp(),
                 startedAt: null,

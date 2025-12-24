@@ -43,14 +43,16 @@ export type Match = {
   maxPlayers: number;
   creatorId: string;
   players: string[];
+  joinerId?: string | null;
   roomCode: string | null;
-  status: "open" | "ongoing" | "processing" | "verification" | "completed" | "disputed" | "cancelled";
-  resultStage?: "none" | "stage1" | "stage2" | "verified";
-  autoPayoutAllowed?: boolean;
+  status: 'waiting' | 'room_code_pending' | 'room_code_shared' | 'game_started' | 'result_submitted' | 'verification' | 'completed' | 'disputed' | 'cancelled';
+  creatorPosition?: number | null;
+  joinerPosition?: number | null;
   createdAt: any;
   startedAt: any | null;
   completedAt: any | null;
   winnerId?: string;
+  proofImage?: string;
 };
 
 export type MatchResult = {

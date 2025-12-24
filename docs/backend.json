@@ -116,6 +116,9 @@
         "creatorId": {
           "type": "string"
         },
+        "joinerId": {
+            "type": "string"
+        },
         "players": {
           "type": "array",
           "items": {
@@ -129,12 +132,29 @@
         "status": {
           "type": "string",
           "enum": [
-            "open",
-            "ongoing",
+            "waiting",
+            "cancelled",
+            "room_code_pending",
+            "room_code_shared",
+            "game_started",
+            "result_submitted",
             "verification",
             "completed",
             "disputed"
           ]
+        },
+         "creatorPosition": {
+            "type": "number"
+        },
+        "joinerPosition": {
+            "type": "number"
+        },
+        "winnerId": {
+            "type": "string"
+        },
+        "proofImage": {
+            "type": "string",
+            "format": "uri"
         },
         "createdAt": {
           "type": "string",

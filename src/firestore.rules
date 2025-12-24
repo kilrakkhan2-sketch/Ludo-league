@@ -1,0 +1,159 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    function isSuperAdmin() {
+      return getRole() == 'superadmin';
+    }
+    
+    function isMatchAdmin() {
+      return getRole() in ['superadmin', 'match_admin'];
+    }
+    
+    function isWithdrawalAdmin() {
+      return getRole() in ['superadmin', 'withdrawal_admin'];
+    }
+    
+    function isDepositAdmin() {
+      return getRole() in ['superadmin', 'deposit_admin'];
+    }
+
+    // User profiles
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if !isSignedIn() || isOwner(userId); // Allow creating user doc on signup or if user doesn't have one yet
+      allow update: if isOwner(userId) || isSuperAdmin(); // Users can update their own profile, admins can too
+      
+      // Personal notifications and transactions are subcollections
+      match /personal_notifications/{notificationId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /transactions/{transactionId} {
+        allow read: if isOwner(userId) || isSuperAdmin();
+        allow create: if false; // Transactions created by server/rules only
+      }
+    }
+
+    // Publicly readable, admin-writable settings
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+    
+    // Admin wallet transactions for accounting
+    match /admin-wallet-transactions/{transactionId} {
+        allow read, list: if isSuperAdmin();
+        allow create: if false; // Server-side only
+    }
+
+    // UPI accounts for deposits, admin-managed
+    match /upi-accounts/{accountId} {
+       allow read: if isSignedIn();
+       allow list, create, update, delete: if isSuperAdmin();
+       
+       match /daily_stats/{date} {
+         allow read, write: if isSuperAdmin();
+       }
+    }
+
+    // Deposit and withdrawal requests
+    match /deposit-requests/{requestId} {
+      allow read, list: if isDepositAdmin() || isSuperAdmin() || (isOwner(resource.data.userId) && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn();
+      allow update: if isDepositAdmin() || isSuperAdmin(); // Admins change status
+    }
+    
+    match /withdrawal-requests/{requestId} {
+      allow read, list: if isWithdrawalAdmin() || isSuperAdmin() || isOwner(resource.data.userId);
+      allow create: if isSignedIn();
+      allow update: if isWithdrawalAdmin() || isSuperAdmin(); // Admins change status
+    }
+
+    // Matches
+    match /matches/{matchId} {
+      allow read, list: if isSignedIn();
+      allow create: if isSignedIn();
+      
+      allow update: if isSignedIn() && (
+                      // Player joining a waiting match
+                      (
+                        resource.data.status == 'waiting' &&
+                        request.resource.data.status == 'room_code_pending' &&
+                        request.resource.data.joinerId == request.auth.uid &&
+                        request.resource.data.players == resource.data.players + [request.auth.uid]
+                      ) ||
+                      // Creator adding room code
+                      (
+                        request.auth.uid == resource.data.creatorId &&
+                        resource.data.status == 'room_code_pending' &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['roomCode', 'status']) &&
+                        request.resource.data.status == 'room_code_shared'
+                      ) ||
+                       // Any player confirming game start
+                      (
+                        request.auth.uid in resource.data.players &&
+                        resource.data.status == 'room_code_shared' &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+                        request.resource.data.status == 'game_started'
+                      ) ||
+                      // Admin or server changing status to completed/disputed etc.
+                      (isMatchAdmin() || request.auth.uid == null)
+                    );
+      
+      // Results and Chat subcollections
+      match /results/{userId} {
+        allow read: if isSignedIn();
+        // Allow write if user is part of the match's player list
+        allow create, update: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
+      }
+      match /messages/{messageId} {
+        allow read: if isSignedIn();
+        // Allow write if user is part of the match's player list
+        allow create: if request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
+      }
+       match /admin-chat/{messageId} {
+        allow read, write: if isMatchAdmin() || isDepositAdmin() || isWithdrawalAdmin();
+      }
+    }
+    
+    // Tournaments - readable by all, writable by match admins
+    match /tournaments/{tournamentId} {
+        allow read: if true;
+        allow create, update, delete: if isMatchAdmin();
+        
+        match /players/{userId} {
+            allow read: if true;
+            allow create: if isSignedIn(); // Add rules for entry fee etc.
+            allow delete: if isOwner(userId) || isMatchAdmin();
+        }
+    }
+    
+    // KYC documents - only accessible by user and superadmin
+    match /kyc-requests/{kycId} {
+      allow read, list: if isSuperAdmin() || (isOwner(resource.data.userId) && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn();
+      allow update: if isSuperAdmin(); // Only admins can change status
+    }
+    
+    // Announcements - readable by all, writable by superadmins
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow create, update, delete: if isSuperAdmin();
+    }
+  }
+}
