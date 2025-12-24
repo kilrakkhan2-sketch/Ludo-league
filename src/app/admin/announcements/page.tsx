@@ -1,27 +1,41 @@
+
 'use client';
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useCollection } from '@/firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Megaphone } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
-// Define the type for our announcement object
 type Announcement = {
     id: string;
     title: string;
     content: string;
     type: 'News' | 'Promo' | 'Update' | 'Warning';
-    createdAt: any;
+    createdAt: Timestamp;
+};
+
+const getTypeVariant = (type: Announcement['type']) => {
+    switch (type) {
+        case 'Warning': return 'destructive';
+        case 'Promo': return 'default'; // Often primary color
+        case 'Update': return 'secondary';
+        case 'News': return 'outline';
+        default: return 'outline';
+    }
 };
 
 const AnnouncementForm = ({ announcement, onSave, onOpenChange }: { announcement?: Announcement | null, onSave: () => void, onOpenChange: (open: boolean) => void }) => {
@@ -29,34 +43,27 @@ const AnnouncementForm = ({ announcement, onSave, onOpenChange }: { announcement
     const { toast } = useToast();
     const [title, setTitle] = useState(announcement?.title || '');
     const [content, setContent] = useState(announcement?.content || '');
-    const [type, setType] = useState<'News' | 'Promo' | 'Update' | 'Warning'>(announcement?.type || 'News');
+    const [type, setType] = useState<Announcement['type']>(announcement?.type || 'News');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async () => {
-        if (!firestore || !title || !content) {
-            toast({ variant: 'destructive', title: 'Missing fields', description: 'Please fill in title and content.' });
+        if (!firestore || !title.trim() || !content.trim()) {
+            toast({ variant: 'destructive', title: 'Missing Fields', description: 'Please fill in both title and content.' });
             return;
         }
         setIsSubmitting(true);
         try {
             if (announcement) {
-                // Update existing announcement
                 const docRef = doc(firestore, 'announcements', announcement.id);
                 await updateDoc(docRef, { title, content, type });
                 toast({ title: 'Announcement Updated' });
             } else {
-                // Create new announcement
-                await addDoc(collection(firestore, 'announcements'), {
-                    title,
-                    content,
-                    type,
-                    createdAt: serverTimestamp(),
-                });
+                await addDoc(collection(firestore, 'announcements'), { title, content, type, createdAt: serverTimestamp() });
                 toast({ title: 'Announcement Created' });
             }
             onSave();
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Error', description: error.message });
+            toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
         } finally {
             setIsSubmitting(false);
         }
@@ -66,39 +73,22 @@ const AnnouncementForm = ({ announcement, onSave, onOpenChange }: { announcement
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>{announcement ? 'Edit' : 'Create'} Announcement</DialogTitle>
-                <DialogDescription>
-                    {announcement ? 'Edit the details of the announcement.' : 'Create a new announcement for all users.'}
-                </DialogDescription>
+                <DialogDescription>Craft a message to be displayed to all users on their dashboard.</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                    <label htmlFor="title">Title</label>
-                    <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., New Tournament Alert!" />
-                </div>
-                <div className="space-y-2">
-                    <label htmlFor="content">Content</label>
-                    <Textarea id="content" value={content} onChange={(e) => setContent(e.target.value)} placeholder="Describe the announcement..." />
-                </div>
-                <div className="space-y-2">
-                    <label htmlFor="type">Type</label>
-                    <Select value={type} onValueChange={(v: any) => setType(v)}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select a type" />
-                        </SelectTrigger>
+            <div className="grid gap-4 py-4">
+                <div className="grid gap-2"><Label htmlFor="title">Title</Label><Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New Tournament Alert!" /></div>
+                <div className="grid gap-2"><Label htmlFor="content">Content</Label><Textarea id="content" value={content} onChange={(e) => setContent(e.target.value)} placeholder="Describe the announcement..." /></div>
+                <div className="grid gap-2"><Label htmlFor="type">Type</Label>
+                    <Select value={type} onValueChange={(v: any) => setType(v)}><SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="News">News</SelectItem>
-                            <SelectItem value="Update">Update</SelectItem>
-                            <SelectItem value="Promo">Promo</SelectItem>
-                            <SelectItem value="Warning">Warning</SelectItem>
+                            {['News', 'Update', 'Promo', 'Warning'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                         </SelectContent>
                     </Select>
                 </div>
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                <Button onClick={handleSubmit} disabled={isSubmitting}>
-                    {isSubmitting ? 'Saving...' : 'Save Announcement'}
-                </Button>
+                <Button onClick={handleSubmit} disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save'}</Button>
             </DialogFooter>
         </DialogContent>
     );
@@ -108,80 +98,59 @@ export default function AdminAnnouncementsPage() {
     const { data: announcements, loading } = useCollection<Announcement>('announcements', { orderBy: ['createdAt', 'desc'] });
     const { firestore } = useFirebase();
     const { toast } = useToast();
-    const [isFormOpen, setIsFormOpen] = useState(false);
-    const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
+    const [formOpen, setFormOpen] = useState(false);
+    const [deleteAlert, setDeleteAlert] = useState<string | null>(null);
+    const [selected, setSelected] = useState<Announcement | null>(null);
 
-    const handleDelete = async (id: string) => {
-        if (!firestore || !window.confirm('Are you sure you want to delete this announcement?')) return;
+    const handleDelete = async () => {
+        if (!firestore || !deleteAlert) return;
         try {
-            await deleteDoc(doc(firestore, 'announcements', id));
+            await deleteDoc(doc(firestore, 'announcements', deleteAlert));
             toast({ title: 'Announcement Deleted' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
         }
+        setDeleteAlert(null);
     };
     
-    const openFormForEdit = (announcement: Announcement) => {
-        setSelectedAnnouncement(announcement);
-        setIsFormOpen(true);
-    }
-    
-    const openFormForCreate = () => {
-        setSelectedAnnouncement(null);
-        setIsFormOpen(true);
-    }
-    
-    const onFormSave = () => {
-        setIsFormOpen(false);
-        setSelectedAnnouncement(null);
-    }
-
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold font-headline">News & Announcements</h1>
-                <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                    <DialogTrigger asChild>
-                        <Button onClick={openFormForCreate}>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Create New
-                        </Button>
-                    </DialogTrigger>
-                    <AnnouncementForm announcement={selectedAnnouncement} onSave={onFormSave} onOpenChange={setIsFormOpen} />
-                </Dialog>
+                <div>
+                    <h1 className="text-2xl font-bold">News & Announcements</h1>
+                    <p className="text-muted-foreground">Manage platform-wide notifications for users.</p>
+                </div>
+                <Button onClick={() => { setSelected(null); setFormOpen(true); }}><PlusCircle className="mr-2 h-4 w-4" /> Create New</Button>
             </div>
+
             <Card>
-                <CardHeader>
-                    <CardTitle>Manage Announcements</CardTitle>
-                    <CardDescription>
-                        Create, edit, or delete announcements that will be shown to users on their dashboard.
-                    </CardDescription>
-                </CardHeader>
+                <CardHeader><CardTitle>Published Announcements</CardTitle></CardHeader>
                 <CardContent>
-                    {loading ? (
-                        <div className="space-y-4">
-                            <Skeleton className="h-20 w-full" />
-                            <Skeleton className="h-20 w-full" />
-                            <Skeleton className="h-20 w-full" />
-                        </div>
-                    ) : announcements.length === 0 ? (
-                        <div className="text-center py-10">
-                            <p className="text-muted-foreground">No announcements found.</p>
-                            <Button variant="link" onClick={openFormForCreate}>Create the first one</Button>
+                    {loading && <div className="space-y-4">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}</div>}
+                    {!loading && announcements.length === 0 ? (
+                        <div className="text-center py-16 border-2 border-dashed rounded-lg">
+                            <Megaphone className="mx-auto h-12 w-12 text-muted-foreground" />
+                            <h3 className="mt-4 text-lg font-semibold">No Announcements Yet</h3>
+                            <p className="text-muted-foreground mt-1 mb-4">Get started by creating the first announcement.</p>
+                            <Button onClick={() => { setSelected(null); setFormOpen(true); }}>Create Announcement</Button>
                         </div>
                     ) : (
                         <div className="space-y-4">
                             {announcements.map(ann => (
-                                <div key={ann.id} className="border p-4 rounded-lg flex items-start justify-between">
-                                    <div>
-                                        <p className="font-bold text-lg">{ann.title} <span className="ml-2 text-xs font-medium bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full">{ann.type}</span></p>
-                                        <p className="text-muted-foreground mt-1">{ann.content}</p>
-                                        <p className="text-xs text-muted-foreground mt-2">
-                                            Posted on {ann.createdAt ? format(ann.createdAt.toDate(), 'PPP') : '...'}
+                                <div key={ann.id} className="border p-4 rounded-lg flex items-start justify-between gap-4">
+                                    <div className="flex-grow">
+                                        <div className="flex items-center gap-3 mb-1">
+                                            <Badge variant={getTypeVariant(ann.type)}>{ann.type}</Badge>
+                                            <p className="font-semibold text-base">{ann.title}</p>
+                                        </div>
+                                        <p className="text-muted-foreground text-sm">{ann.content}</p>
+                                        <p className="text-xs text-muted-foreground mt-3">
+                                            Posted on {ann.createdAt ? format(ann.createdAt.toDate(), 'dd MMM, yyyy') : '...'}
                                         </p>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <Button variant="ghost" size="icon" onClick={() => openFormForEdit(ann)}><Edit className="h-4 w-4" /></Button>
-                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(ann.id)}><Trash2 className="h-4 w-4" /></Button>
+                                    <div className="flex gap-1">
+                                        <Button variant="ghost" size="icon" onClick={() => { setSelected(ann); setFormOpen(true); }}><Edit className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeleteAlert(ann.id)}><Trash2 className="h-4 w-4" /></Button>
                                     </div>
                                 </div>
                             ))}
@@ -189,6 +158,17 @@ export default function AdminAnnouncementsPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <Dialog open={formOpen} onOpenChange={setFormOpen}>
+                <AnnouncementForm announcement={selected} onSave={() => { setFormOpen(false); setSelected(null); }} onOpenChange={setFormOpen} />
+            </Dialog>
+            
+            <AlertDialog open={!!deleteAlert} onOpenChange={(isOpen) => !isOpen && setDeleteAlert(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete the announcement.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction></AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

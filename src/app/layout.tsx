@@ -1,22 +1,24 @@
 
 import type { Metadata } from "next";
-import { PT_Sans } from "next/font/google";
+import { GeistSans } from 'geist/font/sans';
+import { Bespoke_Serif } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase";
+import { ThemeProvider } from "@/components/theme-provider";
 import { MaintenanceShield } from "@/components/layout/MaintenanceShield";
-import Script from "next/script";
+import { Header } from "@/components/layout/Header"; // Import the Header
 
-const ptSans = PT_Sans({
+const bespoke = Bespoke_Serif({
   subsets: ["latin"],
   weight: ["400", "700"],
-  variable: "--font-pt-sans",
+  variable: "--font-serif",
 });
 
 export const metadata: Metadata = {
-  title: "LudoLeague",
-  description: "The ultimate platform for competitive Ludo.",
+  title: "LudoLeague - Where Champions are Made",
+  description: "The ultimate platform for competitive Ludo. Join tournaments, win prizes, and prove your skill.",
   icons: {
     icon: "/favicon.ico",
   },
@@ -28,17 +30,31 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={cn("font-sans antialiased", ptSans.variable)}>
-        <FirebaseClientProvider>
-          {/* 
-            Temporarily bypassing the MaintenanceShield to allow admin access.
-            The user should disable the maintenance mode setting and then this shield should be re-enabled
-            with the proper logic to ignore admin routes.
-          */}
-          {children}
-        </FirebaseClientProvider>
-        <Toaster />
+    <html lang="en" suppressHydrationWarning className="dark">
+      <body className={cn(
+          "font-sans antialiased",
+          GeistSans.variable,
+          bespoke.variable
+      )}>
+        <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+        >
+            <FirebaseClientProvider>
+                <div className="relative flex min-h-screen flex-col bg-background">
+                    <Header />
+                    <main className="flex-1">
+                        <MaintenanceShield>
+                            {children}
+                        </MaintenanceShield>
+                    </main>
+                    {/* Add a Footer component here if you have one */}
+                </div>
+            </FirebaseClientProvider>
+            <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -4,62 +4,81 @@
 @tailwind utilities;
 
 @layer base {
+  /* Define brand color palette as CSS variables */
   :root {
-    /* Light theme (fallback) */
-    --background: 0 0% 100%;
-    --foreground: 170 65% 8%; /* Dark Text */
-    --card: 0 0% 98%;
-    --card-foreground: 170 65% 8%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 170 65% 8%;
-    --primary: 45 68% 52%; /* Gold */
-    --primary-foreground: 170 65% 8%; /* Dark text on gold */
-    --secondary: 158 44% 28%; /* Royal Green */
-    --secondary-foreground: 45 25% 95%; /* White text on green */
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 64%;
-    --accent: 158 44% 28%;
-    --accent-foreground: 45 25% 95%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 45 25% 95%;
-    --border: 0 0% 89%;
-    --input: 0 0% 89%;
-    --ring: 45 68% 52%; /* Gold */
+    --royal-green: 158 44% 28%; /* #286B52 */
+    --gold: 45 68% 52%; /* #D4AF37 */
+    --border-gold: 45 56% 55%; /* #C9A24D */
+    --deep-green-black: 160 50% 10%; /* #0c2921 */
+    --dark-green: 160 50% 15%; /* #123d32 */
+    --off-white: 45 25% 95%; /* #F5F3EE */
+    --steel-gray: 170 65% 8%; /* #0A1C1A */
+    --light-gray: 210 40% 98%; /* For light theme background */
+    --light-card: 0 0% 100%;
+
     --radius: 0.8rem;
   }
 
+  /* Light Theme Definition */
+  .light {
+    --background: var(--light-gray);
+    --foreground: var(--steel-gray);
+    
+    --card: var(--light-card);
+    --card-foreground: var(--steel-gray);
+    
+    --popover: var(--light-card);
+    --popover-foreground: var(--steel-gray);
+
+    --primary: var(--royal-green);
+    --primary-foreground: var(--off-white);
+
+    --secondary: var(--gold);
+    --secondary-foreground: var(--steel-gray);
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 215.4 16.3% 46.9%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: var(--off-white);
+    
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: var(--royal-green);
+  }
+
+  /* Dark (Royal) Theme Definition */
   .dark {
-    /* Royal Green & Gold Theme */
-    --background: 160 50% 10%; /* #0c2921 - Deep Green/Black */
-    --foreground: 45 25% 95%; /* #F5F3EE */
+    --background: var(--deep-green-black);
+    --foreground: var(--off-white);
     
-    --card: 160 50% 15%; /* #123d32 - Darker Green */
-    --card-foreground: 45 25% 95%; /* #F5F3EE */
+    --card: var(--dark-green);
+    --card-foreground: var(--off-white);
     
-    --popover: 160 50% 8%; /* Almost black green */
-    --popover-foreground: 45 25% 95%;
+    --popover: var(--deep-green-black);
+    --popover-foreground: var(--off-white);
 
-    /* Gold */
-    --primary: 45 68% 52%; /* #D4AF37 */
-    --primary-foreground: 160 50% 10%; /* Dark text for gold buttons */
+    --primary: var(--gold);
+    --primary-foreground: var(--steel-gray);
 
-    /* Royal Green */
-    --secondary: 158 44% 28%; /* #286B52 */
-    --secondary-foreground: 45 25% 95%;
+    --secondary: var(--royal-green);
+    --secondary-foreground: var(--off-white);
 
-    --muted: 160 50% 15%; 
-    --muted-foreground: 45 25% 80%;
+    --muted: var(--dark-green); 
+    --muted-foreground: 215 20.2% 65.1%;
 
-    /* Accent is Gold */
-    --accent: 45 68% 52%; 
-    --accent-foreground: 160 50% 10%;
+    --accent: var(--gold); 
+    --accent-foreground: var(--steel-gray);
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 45 25% 95%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: var(--off-white);
     
-    --border: 45 56% 55%; /* #C9A24D - Border Gold */
-    --input: 160 50% 15%;
-    --ring: 45 56% 55%;
+    --border: var(--border-gold);
+    --input: var(--dark-green);
+    --ring: var(--border-gold);
   }
 }
 
@@ -69,22 +88,27 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* Gradient Background: #0c2921 -> #123d32 */
-    background: hsl(var(--background));
-    background-image: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 100%);
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Apply gradient background to body */
+  .light body {
+    background-color: hsl(var(--background));
+    background-image: linear-gradient(180deg, hsl(var(--background)) 0%, #E9EBF0 100%);
     background-repeat: no-repeat;
     min-height: 100vh;
   }
+
+  .dark body {
+     background-color: hsl(var(--background));
+     background-image: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 100%);
+     background-repeat: no-repeat;
+     min-height: 100vh;
+  }
 }
-    
+
 @layer utilities {
-  .animation-delay-200 {
-    animation-delay: 200ms;
-  }
-  .animation-delay-400 {
-    animation-delay: 400ms;
-  }
-  .animation-delay-600 {
-    animation-delay: 600ms;
+  .font-headline {
+      @apply font-serif font-semibold tracking-tight;
   }
 }

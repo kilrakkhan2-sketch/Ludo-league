@@ -3,16 +3,22 @@
 
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { useCollection, useUser, useDoc } from '@/firebase';
+import { useCollection, useDoc } from '@/firebase';
 import { Tournament, UserProfile } from '@/types';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { PlusCircle, Users, Award, Calendar } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { PlusCircle, Users, Award, Calendar, MoreHorizontal, Trash2, Edit } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { useFirebase } from '@/firebase/provider';
+import { useToast } from '@/hooks/use-toast';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
-const getStatusVariant = (status: string) => {
+const getStatusVariant = (status: Tournament['status']) => {
   switch (status) {
     case 'upcoming': return 'secondary';
     case 'live': return 'destructive';
@@ -21,71 +27,86 @@ const getStatusVariant = (status: string) => {
   }
 };
 
-const UserCell = ({ userId }: { userId: string }) => {
-    const { data: user, loading } = useDoc<UserProfile>(`users/${userId}`);
+const CreatorCell = ({ uid }: { uid: string }) => {
+    const { data: user, loading } = useDoc<UserProfile>(`users/${uid}`);
     if (loading) return <Skeleton className="h-5 w-24" />;
-    return <>{user?.displayName || 'Unknown Admin'}</>;
+    return <span className="font-medium">{user?.displayName || 'Unknown'}</span>;
 }
 
-
 export default function AdminTournamentsPage() {
-  const { data: tournaments, loading } = useCollection<Tournament>('tournaments', {
-    orderBy: ['startDate', 'desc'],
-  });
+  const { data: tournaments, loading, refetch } = useCollection<Tournament>('tournaments', { orderBy: ['startDate', 'desc'] });
+  const { firestore } = useFirebase();
+  const { toast } = useToast();
+  const [deleteAlert, setDeleteAlert] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    if (!firestore || !deleteAlert) return;
+    await deleteDoc(doc(firestore, "tournaments", deleteAlert));
+    toast({ title: "Tournament Deleted" });
+    setDeleteAlert(null);
+    refetch();
+  }
 
   return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold font-headline">Manage Tournaments</h1>
+            <div>
+                <h1 className="text-2xl font-bold">Tournament Control Center</h1>
+                <p className="text-muted-foreground">Manage all upcoming, live, and completed tournaments.</p>
+            </div>
              <Button asChild>
                 <Link href="/admin/tournaments/create"><PlusCircle className="mr-2 h-4 w-4" />Create Tournament</Link>
             </Button>
         </div>
         
-        {loading ? (
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Skeleton className="h-64 w-full" />
-                <Skeleton className="h-64 w-full" />
-             </div>
-        ) : tournaments.length === 0 ? (
-           <div className="text-center py-12">
-                <p className="text-muted-foreground">No tournaments created yet.</p>
-            </div>
-        ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {tournaments.map((t: Tournament) => (
-                    <Card key={t.id} className="flex flex-col">
-                        <CardHeader>
-                            <div className="flex justify-between items-start">
-                                <CardTitle>{t.name}</CardTitle>
-                                <Badge variant={getStatusVariant(t.status)}>{t.status}</Badge>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="flex-grow space-y-3">
-                           <div className="flex justify-between items-center text-sm">
-                                <span className="text-muted-foreground flex items-center gap-2"><Award className="h-4 w-4" /> Prize Pool</span>
-                                <span className="font-semibold">₹{t.prizePool}</span>
-                            </div>
-                             <div className="flex justify-between items-center text-sm">
-                                <span className="text-muted-foreground">Entry Fee</span>
-                                <span className="font-semibold">₹{t.entryFee}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-muted-foreground flex items-center gap-2"><Users className="h-4 w-4" /> Players</span>
-                                <span className="font-semibold">{t.players.length} / {t.maxPlayers}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-muted-foreground flex items-center gap-2"><Calendar className="h-4 w-4" /> Starts</span>
-                                <span className="font-semibold">{t.startDate ? format((t.startDate as any).toDate(), 'dd MMM yyyy') : 'N/A'}</span>
-                            </div>
-                        </CardContent>
-                        <CardFooter>
-                            <Button variant="outline" size="sm" className="w-full" disabled>Manage</Button>
-                        </CardFooter>
-                    </Card>
-                ))}
-            </div>
-        )}
+        <Card>
+            <CardHeader><CardTitle>All Tournaments</CardTitle></CardHeader>
+            <CardContent>
+                 <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Tournament</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Prize / Entry</TableHead>
+                            <TableHead>Players</TableHead>
+                            <TableHead>Starts On</TableHead>
+                            <TableHead>Created By</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading && [...Array(5)].map((_, i) => <TableRow key={i}>{Array(7).fill(0).map((_, c) => <TableCell key={c}><Skeleton className="h-8 w-full" /></TableCell>)}</TableRow>)}
+                        {!loading && tournaments.length === 0 && <TableRow><TableCell colSpan={7} className="h-24 text-center">No tournaments found.</TableCell></TableRow>}
+                        {!loading && tournaments.map((t: Tournament) => (
+                            <TableRow key={t.id}>
+                                <TableCell className="font-medium">{t.name}</TableCell>
+                                <TableCell><Badge variant={getStatusVariant(t.status)}>{t.status}</Badge></TableCell>
+                                <TableCell>₹{t.prizePool} / ₹{t.entryFee}</TableCell>
+                                <TableCell>{t.players.length} / {t.maxPlayers}</TableCell>
+                                <TableCell>{t.startDate ? format((t.startDate as any).toDate(), 'dd MMM yyyy') : 'N/A'}</TableCell>
+                                <TableCell><CreatorCell uid={t.creatorId} /></TableCell>
+                                <TableCell className="text-right">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                            {/* <DropdownMenuItem>Edit</DropdownMenuItem> */}
+                                            <DropdownMenuItem onClick={() => setDeleteAlert(t.id)} className="text-destructive">Delete</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+         <AlertDialog open={!!deleteAlert} onOpenChange={(isOpen) => !isOpen && setDeleteAlert(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the tournament and all its data. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction></AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
       </div>
   );
 }
