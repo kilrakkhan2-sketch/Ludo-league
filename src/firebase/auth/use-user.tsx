@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { onIdTokenChanged, User } from 'firebase/auth';
 import { useAuth, useFirestore } from '../provider';
 import { UserProfile } from '@/types';
@@ -17,64 +16,59 @@ export function useUser(): AuthState {
   const auth = useAuth();
   const firestore = useFirestore();
 
-  const [state, setState] = useState<AuthState>(() => ({
+  const [state, setState] = useState<AuthState>({
     user: auth?.currentUser || null,
     userData: null,
     loading: true,
-  }));
-
-  const updateUserAndClaims = useCallback(async (authUser: User | null) => {
-    if (!auth || !firestore) {
-      setState({ user: null, userData: null, loading: false });
-      return () => {};
-    }
-
-    if (!authUser) {
-      setState({ user: null, userData: null, loading: false });
-      return () => {};
-    }
-    
-    // Get fresh token to ensure custom claims are up to date
-    await authUser.getIdToken(true);
-
-    const userDocRef = doc(firestore, 'users', authUser.uid);
-    const unsubscribeFirestore = onSnapshot(userDocRef, (docSnapshot) => {
-      const profileData = docSnapshot.exists()
-        ? { id: docSnapshot.id, ...docSnapshot.data() } as UserProfile
-        : null;
-        
-      setState({ user: authUser, userData: profileData, loading: false });
-    }, (error) => {
-      console.error("Error fetching user profile:", error);
-      setState({ user: authUser, userData: null, loading: false });
-    });
-
-    return unsubscribeFirestore;
-  }, [auth, firestore]);
+  });
 
   useEffect(() => {
-    if (!auth) {
-        setState({ user: null, userData: null, loading: false });
-        return;
+    if (!auth || !firestore) {
+      setState({ user: null, userData: null, loading: false });
+      return;
     }
 
-    let unsubscribeFirestore: Unsubscribe | undefined;
+    let firestoreUnsubscribe: Unsubscribe | undefined;
 
-    const unsubscribeAuth = onIdTokenChanged(auth, async (authUser) => {
-      if (unsubscribeFirestore) {
-        unsubscribeFirestore();
+    const authUnsubscribe = onIdTokenChanged(auth, async (authUser) => {
+      // First, cancel any existing Firestore listener
+      if (firestoreUnsubscribe) {
+        firestoreUnsubscribe();
       }
-      setState(prevState => ({ ...prevState, loading: true }));
-      unsubscribeFirestore = await updateUserAndClaims(authUser) as Unsubscribe;
+
+      if (authUser) {
+        // If there's a user, set loading and get their profile
+        setState((prevState) => ({ ...prevState, user: authUser, loading: true }));
+        
+        await authUser.getIdToken(true); // Refresh token for custom claims
+        
+        const userDocRef = doc(firestore, 'users', authUser.uid);
+
+        firestoreUnsubscribe = onSnapshot(userDocRef, (docSnapshot) => {
+          const profileData = docSnapshot.exists()
+            ? ({ id: docSnapshot.id, ...docSnapshot.data() } as UserProfile)
+            : null;
+          setState({ user: authUser, userData: profileData, loading: false });
+        }, (error) => {
+          console.error("Error fetching user profile:", error);
+          setState({ user: authUser, userData: null, loading: false });
+        });
+        
+      } else {
+        // If there's no user, set state to not loading and clear data
+        setState({ user: null, userData: null, loading: false });
+      }
     });
 
+    // Cleanup function
     return () => {
-      unsubscribeAuth();
-      if (unsubscribeFirestore) {
-        unsubscribeFirestore();
+      authUnsubscribe();
+      if (firestoreUnsubscribe) {
+        firestoreUnsubscribe();
       }
     };
-  }, [auth, updateUserAndClaims]);
+    // Dependencies are the core Firebase services.
+  }, [auth, firestore]);
 
   return state;
 }
