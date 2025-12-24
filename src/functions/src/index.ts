@@ -1,5 +1,4 @@
 
-
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
@@ -430,7 +429,7 @@ export const onDepositStatusChange = functions.firestore
 
 export const autoVerifyResults = functions.firestore
     .document('matches/{matchId}/results/{userId}')
-    .onCreate(async (snap, context) => {
+    .onWrite(async (change, context) => { // Changed from onCreate to onWrite
         const { matchId } = context.params;
         const matchRef = db.collection('matches').doc(matchId);
 
@@ -441,7 +440,6 @@ export const autoVerifyResults = functions.firestore
                 const matchData = matchDoc.data();
                 if (!matchData) return;
 
-                // If match is already processed, do nothing.
                 if (['completed', 'disputed', 'verification'].includes(matchData.status)) {
                     return;
                 }
@@ -449,22 +447,17 @@ export const autoVerifyResults = functions.firestore
                 const resultsCollectionRef = matchRef.collection('results');
                 const resultsSnapshot = await transaction.get(resultsCollectionRef);
                 
-                // The number of documents in the results subcollection.
                 const submittedCount = resultsSnapshot.size;
 
-                // Wait for all players to submit their results.
                 if (submittedCount < matchData.maxPlayers) {
-                     // Set match status to processing as soon as the first result is in
-                     if (matchData.status === 'ongoing') {
+                     if (matchData.status === 'ongoing' && submittedCount > 0) {
                         transaction.update(matchRef, { status: 'processing' });
                     }
                     return; 
                 }
 
-                // If we reach here, all players have submitted. Let's verify.
                 const submittedResults = resultsSnapshot.docs.map(doc => doc.data() as MatchResult);
                 
-                // --- AUTO-VERIFICATION LOGIC ---
                 const positions = new Set<number>();
                 const winners = new Set<string>();
 
@@ -477,18 +470,13 @@ export const autoVerifyResults = functions.firestore
                     }
                 }
 
-                // CHECK 1: Duplicate positions submitted (e.g., two 1st places)
                 const hasDuplicatePositions = positions.size !== submittedResults.length;
-                
-                // CHECK 2: More than one winner claimed
                 const hasMultipleWinners = winners.size > 1;
 
                 if (hasDuplicatePositions || hasMultipleWinners) {
-                    // If any check fails, mark as disputed for admin review.
                     transaction.update(matchRef, { status: 'disputed' });
                     functions.logger.info(`Match ${matchId} marked as disputed due to result conflict.`);
                 } else {
-                    // If all checks pass, mark for admin verification.
                     transaction.update(matchRef, { status: 'verification' });
                     functions.logger.info(`Match ${matchId} pending verification.`);
                 }
@@ -650,14 +638,25 @@ export const createMatch = functions.https.onCall(async (data, context) => {
     }
     const userId = context.auth.uid;
 
-    // 2. Maintenance Check
+    // 2. Active Match Limit Check
+    const activeStatuses = ['open', 'ongoing', 'processing', 'verification', 'disputed'];
+    const matchesQuery = db.collection('matches')
+        .where('players', 'array-contains', userId)
+        .where('status', 'in', activeStatuses);
+        
+    const activeMatchesSnapshot = await matchesQuery.get();
+    if (activeMatchesSnapshot.size >= 3) {
+        throw new functions.https.HttpsError("failed-precondition", "You can only have 3 active matches at a time. Please complete your existing matches first.");
+    }
+
+    // 3. Maintenance Check
     const maintenanceDoc = await db.collection('settings').doc('maintenance').get();
     const maintenanceSettings = maintenanceDoc.data() as MaintenanceSettings;
     if (maintenanceSettings?.areMatchesDisabled) {
         throw new functions.https.HttpsError("unavailable", "Match creation is temporarily disabled by the admin.");
     }
      
-    // 3. Data Validation
+    // 4. Data Validation
     const { title, entryFee, maxPlayers } = data;
     if (!title || typeof title !== "string" || title.length === 0 || title.length > 50) {
         throw new functions.https.HttpsError("invalid-argument", "Match title is required and must be 50 characters or less.");
@@ -669,7 +668,7 @@ export const createMatch = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("invalid-argument", "Max players must be either 2 or 4.");
     }
 
-    // 4. Calculate Prize Pool (e.g., 95% of total entry fees for a 5% commission)
+    // 5. Calculate Prize Pool (e.g., 95% of total entry fees for a 5% commission)
     const prizePool = (entryFee * maxPlayers) * 0.95;
 
     const userRef = db.collection("users").doc(userId);

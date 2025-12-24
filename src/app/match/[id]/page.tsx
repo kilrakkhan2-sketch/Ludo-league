@@ -67,32 +67,41 @@ const MatchPageSkeleton = () => (
     </>
 )
 
-const PlayerList = ({ match, players, title = "Players" }: { match: Match, players: UserProfile[], title?: string }) => {
-    const emptySlots = Array.from({ length: Math.max(0, match.maxPlayers - players.length) });
+const PlayerList = ({ playerIds, maxPlayers, creatorId, title = "Players" }: { playerIds: string[], maxPlayers: number, creatorId: string, title?: string }) => {
+    const queryOptions = useMemo(() => ({
+        where: ['uid', 'in', playerIds.length > 0 ? playerIds : ['_']] as const,
+    }), [playerIds]);
+
+    const { data: players, loading } = useCollection<UserProfile>('users', queryOptions);
+    const playersMap = useMemo(() => new Map(players.map(p => [p.uid, p])), [players]);
+    const emptySlotsCount = Math.max(0, maxPlayers - playerIds.length);
 
     return (
         <Card>
             <CardHeader className="text-center">
                 <CardTitle className="text-2xl">{title}</CardTitle>
-                <CardDescription>{players.length} / {match.maxPlayers} joined</CardDescription>
+                <CardDescription>{playerIds.length} / {maxPlayers} joined</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-                {players.map(p => (
-                     <div key={p.id} className="flex items-center justify-between p-3 bg-muted rounded-lg shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <Avatar>
-                                <AvatarImage src={p.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${p.uid}`} />
-                                <AvatarFallback>{p.displayName?.[0]}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <p className="font-semibold">{p.displayName}</p>
-                                <p className="text-xs text-muted-foreground">{p.uid === match.creatorId ? 'Creator' : 'Player'}</p>
+                {playerIds.map(uid => {
+                    const p = playersMap.get(uid);
+                    return (
+                        <div key={uid} className="flex items-center justify-between p-3 bg-muted rounded-lg shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <Avatar>
+                                    <AvatarImage src={p?.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${uid}`} />
+                                    <AvatarFallback>{p?.displayName?.[0] || '?'}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="font-semibold">{p?.displayName || (loading ? 'Loading...' : 'Player')}</p>
+                                    <p className="text-xs text-muted-foreground">{uid === creatorId ? 'Creator' : 'Player'}</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
-                 {emptySlots.map((_, index) => (
-                     <div key={`empty-${index}`} className="flex items-center p-3 bg-card border border-dashed rounded-lg">
+                    );
+                })}
+                {Array.from({ length: emptySlotsCount }).map((_, index) => (
+                    <div key={`empty-${index}`} className="flex items-center p-3 bg-card border border-dashed rounded-lg">
                         <div className="flex items-center gap-3">
                             <Avatar>
                                 <AvatarFallback>?</AvatarFallback>
@@ -107,6 +116,7 @@ const PlayerList = ({ match, players, title = "Players" }: { match: Match, playe
         </Card>
     );
 };
+
 
 const ResultSubmissionForm = ({ match }: { match: Match }) => {
     const { user } = useUser();
@@ -137,7 +147,7 @@ const ResultSubmissionForm = ({ match }: { match: Match }) => {
                 confirmedWinStatus: winStatus,
                 screenshotUrl,
                 submittedAt: Timestamp.now(),
-            } as Omit<MatchResult, 'id' | 'status' | 'confirmedAt'>);
+            } as Omit<MatchResult, 'id' | 'status' | 'confirmedAt'>, { merge: true });
             
             toast({ title: 'Result Submitted', description: 'Your result has been recorded. Waiting for other players to submit.' });
         } catch (error: any) {
@@ -286,7 +296,7 @@ const RoomCodeManager = ({ match }: { match: Match }) => {
 };
 
 
-const MatchOngoingContent = ({ match, players, results }: { match: Match, players: UserProfile[], results: MatchResult[] }) => {
+const MatchOngoingContent = ({ match, results }: { match: Match, results: MatchResult[] }) => {
     const { user } = useUser();
     
     const userResult = useMemo(() => {
@@ -311,13 +321,13 @@ const MatchOngoingContent = ({ match, players, results }: { match: Match, player
                     <ResultSubmissionForm match={match} />
                 )}
 
-                 <PlayerList match={match} players={players} title="Players in Match" />
+                 <PlayerList playerIds={match.players} maxPlayers={match.maxPlayers} creatorId={match.creatorId} title="Players in Match" />
             </main>
         </div>
     )
 }
 
-const MatchOpenContent = ({ match, players }: { match: Match, players: UserProfile[] }) => {
+const MatchOpenContent = ({ match }: { match: Match }) => {
     const { user } = useUser();
     const { toast } = useToast();
     const { firestore } = useFirebase();
@@ -431,7 +441,7 @@ const MatchOpenContent = ({ match, players }: { match: Match, players: UserProfi
     return (
         <div className="flex flex-col flex-grow">
             <main className="flex-grow p-4 space-y-4">
-                <PlayerList match={match} players={players} />
+                <PlayerList playerIds={match.players} maxPlayers={match.maxPlayers} creatorId={match.creatorId} />
 
                 {match.status === 'open' && !match.roomCode && (
                     <>
@@ -465,35 +475,32 @@ export default function MatchPage({ params }: { params: { id: string } }) {
   }), []);
   const { data: results, loading: resultsLoading } = useCollection<MatchResult>(`matches/${params.id}/results`, resultsQueryOptions);
   
-  const { width, height } = useWindowSize();
-  
-  const playerIds = useMemo(() => {
-      if (!match?.players) return ['_']; // Firestore 'in' queries cannot be empty.
-      return match.players.length > 0 ? match.players : ['_'];
-  }, [match?.players]);
-
-  const { data: players, loading: playersLoading } = useCollection<UserProfile>('users', {
-      where: ['uid', 'in', playerIds]
+  const { data: playersData, loading: playersLoading } = useCollection<UserProfile>('users', {
+    where: ['uid', 'in', match?.players.length ? match.players : ['_']]
   });
 
-  const loading = matchLoading || playersLoading || resultsLoading;
+  const { width, height } = useWindowSize();
+
+  const loading = matchLoading || resultsLoading || playersLoading;
 
   const renderContent = () => {
-    if (loading || !match || !players) {
+    if (loading || !match) {
       return <MatchPageSkeleton />;
     }
 
     let title = "Match Details";
     let content;
+    
+    const winner = playersData.find(p => p.uid === match.winnerId);
 
     switch(match.status) {
         case 'open':
             title = 'Waiting for Players';
-            content = <MatchOpenContent match={match} players={players} />;
+            content = <MatchOpenContent match={match} />;
             break;
         case 'ongoing':
             title = 'Match In Progress';
-            content = <MatchOngoingContent match={match} players={players} results={results} />;
+            content = <MatchOngoingContent match={match} results={results} />;
             break;
         case 'processing':
              title = 'Processing Results';
@@ -538,12 +545,11 @@ export default function MatchPage({ params }: { params: { id: string } }) {
             )
             break;
         case 'completed':
-            const winner = players.find(p => p.uid === match.winnerId);
             title = "Match Completed";
             content = (
                 <div className="p-4 space-y-4">
                     {winner && <Confetti width={width} height={height} recycle={false} numberOfPieces={400} />}
-                    <PlayerList match={match} players={players} title={winner ? `Winner: ${winner.displayName}` : 'Match Completed'} />
+                    <PlayerList playerIds={match.players} maxPlayers={match.maxPlayers} creatorId={match.creatorId} title={winner ? `Winner: ${winner.displayName}` : 'Match Completed'} />
                 </div>
             )
             break;
@@ -563,7 +569,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
             break;
         default:
             title = "Match: " + match.status.replace('_', ' ');
-            content = <div className="p-4"><PlayerList match={match} players={players} title={`Status: ${match.status}`} /></div>
+            content = <div className="p-4"><PlayerList playerIds={match.players} maxPlayers={match.maxPlayers} creatorId={match.creatorId} title={`Status: ${match.status}`} /></div>
             break;
     }
     
