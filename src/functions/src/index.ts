@@ -575,6 +575,74 @@ export const onMatchResultUpdate = functions.firestore
 // =================================================================
 //  MATCH & TOURNAMENT CREATION
 // =================================================================
+export const cancelMatch = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to cancel a match.");
+    }
+    const { matchId } = data;
+    if (!matchId) {
+        throw new functions.https.HttpsError("invalid-argument", "The function must be called with a 'matchId'.");
+    }
+
+    const userId = context.auth.uid;
+    const matchRef = db.collection("matches").doc(matchId);
+
+    return db.runTransaction(async (t) => {
+        const matchDoc = await t.get(matchRef);
+        if (!matchDoc.exists) {
+            throw new functions.https.HttpsError("not-found", "Match not found.");
+        }
+        const matchData = matchDoc.data()!;
+
+        if (matchData.status !== 'open' || matchData.roomCode) {
+            throw new functions.https.HttpsError("failed-precondition", "This match cannot be cancelled now.");
+        }
+
+        if (userId === matchData.creatorId) {
+            // Creator cancels, refund everyone and delete match
+            for (const playerId of matchData.players) {
+                const playerRef = db.collection("users").doc(playerId);
+                t.update(playerRef, { walletBalance: FieldValue.increment(matchData.entryFee) });
+                // Also create a refund transaction for each player
+                const refundTxRef = db.collection(`users/${playerId}/transactions`).doc();
+                t.set(refundTxRef, {
+                    amount: matchData.entryFee,
+                    type: "entry_fee_refund",
+                    status: "completed",
+                    description: `Refund for cancelled match: ${matchData.title}`,
+                    relatedId: matchId,
+                    createdAt: FieldValue.serverTimestamp(),
+                });
+            }
+            t.update(matchRef, { status: 'cancelled' });
+        } else if (matchData.players.includes(userId)) {
+            // A player leaves
+            const playerRef = db.collection("users").doc(userId);
+            t.update(playerRef, { walletBalance: FieldValue.increment(matchData.entryFee) });
+            t.update(matchRef, { players: FieldValue.arrayRemove(userId) });
+            // Create refund transaction for the player leaving
+             const refundTxRef = db.collection(`users/${userId}/transactions`).doc();
+             t.set(refundTxRef, {
+                amount: matchData.entryFee,
+                type: "entry_fee_refund",
+                status: "completed",
+                description: `Refund for leaving match: ${matchData.title}`,
+                relatedId: matchId,
+                createdAt: FieldValue.serverTimestamp(),
+            });
+        } else {
+            throw new functions.https.HttpsError("permission-denied", "You are not part of this match.");
+        }
+        
+        return { success: true };
+    }).catch(error => {
+        functions.logger.error(`Failed to cancel participation for match ${matchId}:`, error);
+        if (error instanceof functions.https.HttpsError) throw error;
+        throw new functions.https.HttpsError('internal', 'An unexpected error occurred.');
+    });
+});
+
+
 export const createMatch = functions.https.onCall(async (data, context) => {
     // 1. Authentication Check
     if (!context.auth) {

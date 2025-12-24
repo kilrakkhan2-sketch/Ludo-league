@@ -1,13 +1,13 @@
 
 'use client';
 
-import { doc, runTransaction, updateDoc, arrayUnion, Timestamp, collection, getDocs, query, where, writeBatch, setDoc } from 'firebase/firestore';
-import { useDoc, useUser, useCollection, useFirebase } from '@/firebase';
+import { doc, runTransaction, updateDoc, arrayUnion, Timestamp, collection, getDocs, query, where, writeBatch, setDoc, arrayRemove } from 'firebase/firestore';
+import { useDoc, useUser, useCollection, useFirebase, useFunctions } from '@/firebase';
 import { Match, UserProfile, MatchResult } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, Trophy, Swords, Calendar, Hourglass, ClipboardCopy, Upload, Crown, ArrowLeft, CheckCircle, Plus, Info, ShieldAlert, BadgeInfo, Gamepad2 } from 'lucide-react';
+import { Users, Trophy, Swords, Calendar, Hourglass, ClipboardCopy, Upload, Crown, ArrowLeft, CheckCircle, Plus, Info, ShieldAlert, BadgeInfo, Gamepad2, XCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -23,6 +23,8 @@ import { useWindowSize } from 'react-use';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { httpsCallable } from 'firebase/functions';
+import { PlayerAvatarList } from '@/components/matches/PlayerAvatarList';
 
 const MatchPageHeader = ({ title, showBackButton = true }: { title: string, showBackButton?: boolean }) => {
     const router = useRouter();
@@ -319,9 +321,13 @@ const MatchOpenContent = ({ match, players }: { match: Match, players: UserProfi
     const { user } = useUser();
     const { toast } = useToast();
     const { firestore } = useFirebase();
+    const functions = useFunctions();
+    const router = useRouter();
     const [isJoining, setIsJoining] = useState(false);
+    const [isCancelling, setIsCancelling] = useState(false);
 
     const hasJoined = useMemo(() => user && match.players.includes(user.uid), [user, match.players]);
+    const isCreator = user?.uid === match.creatorId;
 
      const handleJoinMatch = async () => {
         if (!user || !firestore || hasJoined) return;
@@ -359,6 +365,17 @@ const MatchOpenContent = ({ match, players }: { match: Match, players: UserProfi
                     status: updatedPlayers.length === matchData.maxPlayers ? 'ongoing' : 'open',
                     startedAt: updatedPlayers.length === matchData.maxPlayers ? Timestamp.now() : null
                 });
+                 
+                // 3. Create entry fee transaction
+                const feeTxRef = doc(collection(firestore, `users/${user.uid}/transactions`));
+                transaction.set(feeTxRef, {
+                    amount: -matchData.entryFee,
+                    type: "entry_fee",
+                    status: "completed",
+                    description: `Entry fee for match: ${matchData.title}`,
+                    createdAt: Timestamp.now(),
+                    relatedId: match.id,
+                });
             });
 
             toast({ title: "Successfully Joined!", description: `You have joined the match "${match.title}".` });
@@ -369,15 +386,53 @@ const MatchOpenContent = ({ match, players }: { match: Match, players: UserProfi
         }
     };
 
+    const handleCancel = async () => {
+        if (!functions || !user) return;
+        
+        const confirmMessage = isCreator
+            ? 'Are you sure you want to delete this match? All players will be refunded.'
+            : 'Are you sure you want to leave this match? Your entry fee will be refunded.';
+        
+        if (!window.confirm(confirmMessage)) return;
+
+        setIsCancelling(true);
+        const cancelMatchFn = httpsCallable(functions, 'cancelMatch');
+        try {
+            await cancelMatchFn({ matchId: match.id });
+            toast({ title: 'Action Successful', description: isCreator ? 'Match has been deleted.' : 'You have left the match.' });
+            if (isCreator) {
+                router.push('/matches');
+            }
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Action Failed', description: error.message });
+        } finally {
+            setIsCancelling(false);
+        }
+    };
 
     return (
         <div className="flex flex-col flex-grow">
             <main className="flex-grow p-4 space-y-4">
                 <PlayerList match={match} players={players} />
-                 {!hasJoined && (
-                    <Button onClick={handleJoinMatch} disabled={isJoining} className="w-full">
-                        {isJoining ? 'Joining...' : `Join Match for ₹${match.entryFee}`}
-                    </Button>
+
+                {match.status === 'open' && !match.roomCode && (
+                    <>
+                        {isCreator ? (
+                            <Button onClick={handleCancel} disabled={isCancelling} variant="destructive" className="w-full">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                {isCancelling ? 'Deleting...' : 'Delete Match'}
+                            </Button>
+                        ) : hasJoined ? (
+                            <Button onClick={handleCancel} disabled={isCancelling} variant="destructive" className="w-full">
+                                <XCircle className="mr-2 h-4 w-4" />
+                                {isCancelling ? 'Leaving...' : 'Leave Match'}
+                            </Button>
+                        ) : (
+                            <Button onClick={handleJoinMatch} disabled={isJoining} className="w-full">
+                                {isJoining ? 'Joining...' : `Join Match for ₹${match.entryFee}`}
+                            </Button>
+                        )}
+                    </>
                 )}
             </main>
         </div>
@@ -479,6 +534,20 @@ export default function MatchPage({ params }: { params: { id: string } }) {
                 </div>
             )
             break;
+        case 'cancelled':
+             title = 'Match Cancelled';
+             content = (
+                <div className="p-4">
+                    <Alert variant="destructive">
+                        <XCircle className="h-4 w-4" />
+                        <AlertTitle>Match Cancelled</AlertTitle>
+                        <AlertDescription>
+                           This match has been cancelled. Entry fees have been refunded to all players.
+                        </AlertDescription>
+                    </Alert>
+                </div>
+            )
+            break;
         default:
             title = "Match: " + match.status.replace('_', ' ');
             content = <div className="p-4"><PlayerList match={match} players={players} title={`Status: ${match.status}`} /></div>
@@ -495,4 +564,3 @@ export default function MatchPage({ params }: { params: { id: string } }) {
   
   return <div className="bg-muted/30">{renderContent()}</div>;
 }
-

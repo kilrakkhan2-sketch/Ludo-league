@@ -93,6 +93,7 @@ service cloud.firestore {
                       // Player joining an open match and updating players array
                       (
                         resource.data.status == 'open' &&
+                        resource.data.roomCode == null &&
                         request.resource.data.players == resource.data.players + [request.auth.uid] &&
                         request.resource.data.players.size() <= resource.data.maxPlayers &&
                         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.walletBalance >= resource.data.entryFee
@@ -100,10 +101,17 @@ service cloud.firestore {
                        // Player joining and filling the match, updating status and startedAt
                       (
                         resource.data.status == 'open' &&
+                        resource.data.roomCode == null &&
                         request.resource.data.players == resource.data.players + [request.auth.uid] &&
                         request.resource.data.players.size() == resource.data.maxPlayers &&
                         request.resource.data.status == 'ongoing' &&
                         request.resource.data.keys().hasAll(['players', 'status', 'startedAt'])
+                      ) ||
+                      // Player leaving a match before room code is set
+                      (
+                        resource.data.status == 'open' &&
+                        resource.data.roomCode == null &&
+                        request.resource.data.players == resource.data.players.removeAll([request.auth.uid])
                       ) ||
                       // Creator updating room code
                       (
@@ -111,8 +119,8 @@ service cloud.firestore {
                         resource.data.status == 'ongoing' &&
                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['roomCode'])
                       ) ||
-                      // Admin managing the match state
-                      (isMatchAdmin())
+                      // Admin or server changing status (e.g., to 'cancelled', 'completed')
+                      (isMatchAdmin() || request.auth.uid == null)
                     );
       
       // Results and Chat subcollections
@@ -157,5 +165,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
