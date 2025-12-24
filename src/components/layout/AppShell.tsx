@@ -130,9 +130,11 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
     // If not logged in, redirect to login page.
     // Use a redirect in a useEffect to avoid server/client mismatch errors.
     React.useEffect(() => {
-      router.replace('/login');
-    }, [router]);
-    // Render a loader while redirecting
+      if (!loading && !user) {
+        router.replace('/login');
+      }
+    }, [loading, user, router]);
+    // Render a loader while waiting for the redirect
     return <AppShellSkeleton />;
   }
 
