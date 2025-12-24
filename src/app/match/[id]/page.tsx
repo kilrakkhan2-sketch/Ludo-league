@@ -335,8 +335,26 @@ const MatchOpenContent = ({ match, players }: { match: Match, players: UserProfi
 
         const matchRef = doc(firestore, 'matches', match.id);
         const userRef = doc(firestore, 'users', user.uid);
+        
+        const activeStatuses: Match['status'][] = ['open', 'ongoing', 'processing', 'verification', 'disputed'];
+        const userMatchesQuery = query(
+            collection(firestore, 'matches'),
+            where('players', 'array-contains', user.uid),
+            where('status', 'in', activeStatuses)
+        );
 
         try {
+            const userActiveMatches = await getDocs(userMatchesQuery);
+            if (userActiveMatches.size >= 3) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Active Match Limit Reached',
+                    description: 'You can only have 3 active matches at a time. Please complete one first.'
+                });
+                setIsJoining(false);
+                return;
+            }
+
             await runTransaction(firestore, async (transaction) => {
                 const matchDoc = await transaction.get(matchRef);
                 const userDoc = await transaction.get(userRef);
@@ -461,7 +479,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
   const loading = matchLoading || playersLoading || resultsLoading;
 
   const renderContent = () => {
-    if (loading || !match) {
+    if (loading || !match || !players) {
       return <MatchPageSkeleton />;
     }
 
@@ -559,5 +577,3 @@ export default function MatchPage({ params }: { params: { id: string } }) {
   
   return <div className="bg-muted/30">{renderContent()}</div>;
 }
-
-    

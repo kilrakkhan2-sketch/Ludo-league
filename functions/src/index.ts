@@ -7,6 +7,7 @@ import { getStorage } from "firebase-admin/storage";
 
 admin.initializeApp();
 const db = admin.firestore();
+const BUCKET_NAME = "studio-4431476254-c1156.appspot.com";
 
 // Type definitions for robust data handling
 interface UserData {
@@ -120,6 +121,37 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
 // =================================================================
 //  STORAGE MANAGEMENT FUNCTIONS
 // =================================================================
+export const listStorageFiles = functions.https.onCall(async (data, context) => {
+    if (context.auth?.token.role !== 'superadmin') {
+        throw new functions.https.HttpsError("permission-denied", "You must be a superadmin to list files.");
+    }
+    const { prefix } = data;
+    if (!prefix || typeof prefix !== 'string') {
+        throw new functions.https.HttpsError("invalid-argument", "A valid folder prefix is required.");
+    }
+
+    try {
+        const bucket = getStorage().bucket(BUCKET_NAME);
+        const [files] = await bucket.getFiles({ prefix: prefix });
+
+        const fileDetails = files.map(file => {
+            const metadata = file.metadata;
+            return {
+                name: metadata.name,
+                size: metadata.size,
+                contentType: metadata.contentType,
+                createdAt: metadata.timeCreated,
+            };
+        });
+
+        return { files: fileDetails };
+    } catch (error) {
+        functions.logger.error(`Failed to list files for prefix ${prefix}:`, error);
+        throw new functions.https.HttpsError("internal", "An unexpected error occurred while listing files.");
+    }
+});
+
+
 export const deleteStorageFile = functions.https.onCall(async (data, context) => {
     // 1. Authentication & Authorization Check
     if (context.auth?.token.role !== 'superadmin') {
@@ -133,7 +165,7 @@ export const deleteStorageFile = functions.https.onCall(async (data, context) =>
     }
     
     try {
-        const bucket = getStorage().bucket();
+        const bucket = getStorage().bucket(BUCKET_NAME);
         const file = bucket.file(filePath);
         
         const [exists] = await file.exists();
@@ -414,11 +446,14 @@ export const autoVerifyResults = functions.firestore
                     return;
                 }
                 
-                const resultsSnapshot = await transaction.get(matchRef.collection('results'));
-                const submittedResults = resultsSnapshot.docs.map(doc => doc.data() as MatchResult);
+                const resultsCollectionRef = matchRef.collection('results');
+                const resultsSnapshot = await transaction.get(resultsCollectionRef);
+                
+                // The number of documents in the results subcollection.
+                const submittedCount = resultsSnapshot.size;
 
                 // Wait for all players to submit their results.
-                if (submittedResults.length < matchData.maxPlayers) {
+                if (submittedCount < matchData.maxPlayers) {
                      // Set match status to processing as soon as the first result is in
                      if (matchData.status === 'ongoing') {
                         transaction.update(matchRef, { status: 'processing' });
@@ -426,6 +461,9 @@ export const autoVerifyResults = functions.firestore
                     return; 
                 }
 
+                // If we reach here, all players have submitted. Let's verify.
+                const submittedResults = resultsSnapshot.docs.map(doc => doc.data() as MatchResult);
+                
                 // --- AUTO-VERIFICATION LOGIC ---
                 const positions = new Set<number>();
                 const winners = new Set<string>();
@@ -537,6 +575,74 @@ export const onMatchResultUpdate = functions.firestore
 // =================================================================
 //  MATCH & TOURNAMENT CREATION
 // =================================================================
+export const cancelMatch = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to cancel a match.");
+    }
+    const { matchId } = data;
+    if (!matchId) {
+        throw new functions.https.HttpsError("invalid-argument", "The function must be called with a 'matchId'.");
+    }
+
+    const userId = context.auth.uid;
+    const matchRef = db.collection("matches").doc(matchId);
+
+    return db.runTransaction(async (t) => {
+        const matchDoc = await t.get(matchRef);
+        if (!matchDoc.exists) {
+            throw new functions.https.HttpsError("not-found", "Match not found.");
+        }
+        const matchData = matchDoc.data()!;
+
+        if (matchData.status !== 'open' || matchData.roomCode) {
+            throw new functions.https.HttpsError("failed-precondition", "This match cannot be cancelled now.");
+        }
+
+        if (userId === matchData.creatorId) {
+            // Creator cancels, refund everyone and delete match
+            for (const playerId of matchData.players) {
+                const playerRef = db.collection("users").doc(playerId);
+                t.update(playerRef, { walletBalance: FieldValue.increment(matchData.entryFee) });
+                // Also create a refund transaction for each player
+                const refundTxRef = db.collection(`users/${playerId}/transactions`).doc();
+                t.set(refundTxRef, {
+                    amount: matchData.entryFee,
+                    type: "entry_fee_refund",
+                    status: "completed",
+                    description: `Refund for cancelled match: ${matchData.title}`,
+                    relatedId: matchId,
+                    createdAt: FieldValue.serverTimestamp(),
+                });
+            }
+            t.update(matchRef, { status: 'cancelled' });
+        } else if (matchData.players.includes(userId)) {
+            // A player leaves
+            const playerRef = db.collection("users").doc(userId);
+            t.update(playerRef, { walletBalance: FieldValue.increment(matchData.entryFee) });
+            t.update(matchRef, { players: FieldValue.arrayRemove(userId) });
+            // Create refund transaction for the player leaving
+             const refundTxRef = db.collection(`users/${userId}/transactions`).doc();
+             t.set(refundTxRef, {
+                amount: matchData.entryFee,
+                type: "entry_fee_refund",
+                status: "completed",
+                description: `Refund for leaving match: ${matchData.title}`,
+                relatedId: matchId,
+                createdAt: FieldValue.serverTimestamp(),
+            });
+        } else {
+            throw new functions.https.HttpsError("permission-denied", "You are not part of this match.");
+        }
+        
+        return { success: true };
+    }).catch(error => {
+        functions.logger.error(`Failed to cancel participation for match ${matchId}:`, error);
+        if (error instanceof functions.https.HttpsError) throw error;
+        throw new functions.https.HttpsError('internal', 'An unexpected error occurred.');
+    });
+});
+
+
 export const createMatch = functions.https.onCall(async (data, context) => {
     // 1. Authentication Check
     if (!context.auth) {
@@ -544,14 +650,25 @@ export const createMatch = functions.https.onCall(async (data, context) => {
     }
     const userId = context.auth.uid;
 
-    // 2. Maintenance Check
+    // 2. Active Match Limit Check
+    const activeStatuses = ['open', 'ongoing', 'processing', 'verification', 'disputed'];
+    const matchesQuery = db.collection('matches')
+        .where('players', 'array-contains', userId)
+        .where('status', 'in', activeStatuses);
+        
+    const activeMatchesSnapshot = await matchesQuery.get();
+    if (activeMatchesSnapshot.size >= 3) {
+        throw new functions.https.HttpsError("failed-precondition", "You can only have 3 active matches at a time. Please complete your existing matches first.");
+    }
+
+    // 3. Maintenance Check
     const maintenanceDoc = await db.collection('settings').doc('maintenance').get();
     const maintenanceSettings = maintenanceDoc.data() as MaintenanceSettings;
     if (maintenanceSettings?.areMatchesDisabled) {
         throw new functions.https.HttpsError("unavailable", "Match creation is temporarily disabled by the admin.");
     }
      
-    // 3. Data Validation
+    // 4. Data Validation
     const { title, entryFee, maxPlayers } = data;
     if (!title || typeof title !== "string" || title.length === 0 || title.length > 50) {
         throw new functions.https.HttpsError("invalid-argument", "Match title is required and must be 50 characters or less.");
@@ -563,7 +680,7 @@ export const createMatch = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("invalid-argument", "Max players must be either 2 or 4.");
     }
 
-    // 4. Calculate Prize Pool (e.g., 95% of total entry fees for a 5% commission)
+    // 5. Calculate Prize Pool (e.g., 95% of total entry fees for a 5% commission)
     const prizePool = (entryFee * maxPlayers) * 0.95;
 
     const userRef = db.collection("users").doc(userId);
