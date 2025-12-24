@@ -2,36 +2,29 @@
 'use client';
 
 import type { ReactNode } from "react";
+import React, { useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Button } from "../ui/button";
-import { ArrowLeft, Home, Swords, Wallet, User, LogOut, Menu, Shield, Users as FriendsIcon, Trophy } from "lucide-react";
-import { cn } from "@/lib/utils";
-import {
-  Sidebar, SidebarContent, SidebarHeader, SidebarProvider, SidebarMenu,
-  SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarTrigger
-} from "@/components/ui/sidebar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUser } from "@/firebase";
 import { getAuth, signOut } from "firebase/auth";
+import { ArrowLeft, Home, Swords, Wallet, User, LogOut, Menu, Shield, Users as FriendsIcon, Trophy } from "lucide-react";
+
+import { useUser } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+
 import { AppShellSkeleton } from "../app-shell-skeleton";
-import { BottomNav, NavItem } from "./BottomNav";
-import { useMemo } from "react";
+import { Button } from "../ui/button";
+import { Sidebar, SidebarContent, SidebarHeader, SidebarProvider, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarTrigger } from "@/components/ui/sidebar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sparkle } from "../ui/sparkle";
+import { BottomNav, NavItem } from "./BottomNav";
 
 interface AppShellProps {
   children: ReactNode;
-  className?: string;
+  pageTitle: string;
+  showBackButton?: boolean;
 }
 
 const baseNavItems: NavItem[] = [
@@ -39,20 +32,19 @@ const baseNavItems: NavItem[] = [
   { href: "/matches", icon: Swords, label: "Matches" },
   { href: "/tournaments", icon: Trophy, label: "Tournaments" },
   { href: "/friends", icon: FriendsIcon, label: "Friends" },
-  { href: "/wallet", icon: Wallet, label: "Wallet" },
+  { href: "/wallet/history", icon: Wallet, label: "Wallet" },
   { href: "/profile", icon: User, label: "Profile" },
 ];
 
-// Condensed list for bottom navigation
 const bottomNavItems: NavItem[] = [
   { href: "/dashboard", icon: Home, label: "Home" },
   { href: "/matches", icon: Swords, label: "Matches" },
+  { href: "/create-match", icon: PlusCircle, label: "Create", isCentral: true },
   { href: "/tournaments", icon: Trophy, label: "Tournaments" },
-  { href: "/wallet", icon: Wallet, label: "Wallet" },
+  { href: "/profile", icon: User, label: "Profile" },
 ];
 
-
-export function AppShell({ children, className }: AppShellProps) {
+export function AppShell({ children, pageTitle, showBackButton = false }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
@@ -85,18 +77,11 @@ export function AppShell({ children, className }: AppShellProps) {
       return <AppShellSkeleton />;
   }
 
-  if (!user) {
-    React.useEffect(() => {
-      if (!loading && !user) {
-        router.replace('/login');
-      }
-    }, [loading, user, router]);
+  if (!user && !loading) {
+    router.replace('/login');
     return <AppShellSkeleton />;
   }
   
-  const pageTitle = pathname?.split('/').pop()?.replace('-', ' ') || 'Dashboard';
-  const showBackButton = pathname !== '/dashboard';
-
   const userMenu = user ? (
      <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -136,8 +121,8 @@ export function AppShell({ children, className }: AppShellProps) {
 
   return (
     <SidebarProvider>
-      <div className={cn("min-h-screen w-full bg-background text-foreground", className)}>
-        <Sidebar className="bg-secondary border-r border-border/50">
+      <div className={cn("min-h-screen w-full bg-background text-foreground")}>
+        <Sidebar className="bg-card border-r border-border/50">
           <SidebarContent>
             <SidebarHeader>
               <Link href="/dashboard" className="flex items-center gap-2">
@@ -157,7 +142,7 @@ export function AppShell({ children, className }: AppShellProps) {
                       tooltip={item.label}
                       current={pathname === item.href}
                       className={cn(
-                        "text-secondary-foreground/80 hover:text-secondary-foreground hover:bg-accent/40",
+                        "text-card-foreground/80 hover:text-card-foreground hover:bg-accent/40",
                         pathname === item.href && "text-primary bg-primary/20 hover:bg-primary/30 hover:text-primary"
                       )}
                   >
@@ -168,50 +153,13 @@ export function AppShell({ children, className }: AppShellProps) {
               ))}
             </SidebarMenu>
              <SidebarFooter>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="w-full justify-start gap-2 p-2 h-auto text-secondary-foreground/80 hover:text-secondary-foreground hover:bg-accent/40">
-                      <Avatar className="h-8 w-8 border border-border/50">
-                        <AvatarImage src={userData?.photoURL || undefined} alt={userData?.displayName || ''} />
-                        <AvatarFallback>{userData?.displayName?.charAt(0) || user?.email?.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div className="text-left overflow-hidden group-data-[collapsible=icon]:hidden">
-                          <p className="font-medium truncate">{userData?.displayName || 'User'}</p>
-                          <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-                      </div>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56 mb-2" align="end" side="right" forceMount>
-                     <DropdownMenuLabel className="font-normal">
-                        <div className="flex flex-col space-y-1">
-                            <p className="text-sm font-medium leading-none">{userData?.displayName}</p>
-                            <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
-                        </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => router.push('/settings')}>
-                        <User className="mr-2 h-4 w-4" />
-                        <span>Settings</span>
-                    </DropdownMenuItem>
-                    {isAdmin && (
-                      <DropdownMenuItem onClick={() => router.push('/admin/dashboard')}>
-                        <Shield className="mr-2 h-4 w-4" />
-                        <span>Admin Panel</span>
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        <span>Log out</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {userMenu}
             </SidebarFooter>
           </SidebarContent>
         </Sidebar>
           
         <div className="flex flex-col h-screen sm:pl-14">
-              <header className="bg-secondary p-3 sm:p-4 flex items-center justify-between gap-4 z-10 shrink-0 border-b border-primary/20">
+              <header className="bg-card p-3 sm:p-4 flex items-center justify-between gap-4 z-10 shrink-0 border-b border-border/20">
                   <div className="flex items-center gap-2">
                     <SidebarTrigger className="sm:hidden">
                         <Menu />
@@ -229,7 +177,7 @@ export function AppShell({ children, className }: AppShellProps) {
                       {userMenu}
                     </div>
               </header>
-              <main className="flex-grow overflow-y-auto pb-16 sm:pb-0">
+              <main className="flex-grow overflow-y-auto pb-16 sm:pb-0 bg-muted/20">
                   {children}
               </main>
               <BottomNav items={bottomNavItems} />

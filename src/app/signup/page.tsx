@@ -12,6 +12,7 @@ import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 import { SocialLogins } from '@/components/auth/SocialLogins';
+import { UserProfile } from '@/types';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -31,7 +32,7 @@ export default function SignupPage() {
     }
     
     // Basic client-side validation
-    if (!displayName || !email || !password) {
+    if (!displayName.trim() || !email.trim() || !password.trim()) {
         toast({ variant: "destructive", title: "Missing Fields", description: "Please fill in all fields." });
         return;
     }
@@ -54,10 +55,10 @@ export default function SignupPage() {
       const sanitizedName = displayName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase();
       const referralCode = `${sanitizedName}${nanoid(4)}`;
       
-      await setDoc(userRef, {
+      const newUserProfile: Omit<UserProfile, 'id'> = {
           uid: user.uid,
           displayName: displayName,
-          email: email,
+          email: user.email || '',
           photoURL: user.photoURL || '',
           role: 'user',
           wallet: {
@@ -66,16 +67,18 @@ export default function SignupPage() {
           stats: {
             matchesPlayed: 0,
             matchesWon: 0,
-            totalEarnings: 0,
+            totalWinnings: 0,
           },
           referralCode: referralCode,
           referralEarnings: 0,
           isVerified: false,
           createdAt: Timestamp.now(),
-      });
+      };
+
+      await setDoc(userRef, newUserProfile);
 
       toast({ title: "Account Created", description: "Welcome to LudoLeague!" });
-      router.replace('/');
+      router.replace('/dashboard');
 
     } catch (error: any) {
       console.error("Signup Error:", error);

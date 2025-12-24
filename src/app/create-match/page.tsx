@@ -35,16 +35,14 @@ export default function CreateMatchPage() {
 
     try {
       const result = await createMatchFn({ title: `Ludo Match for ₹${finalFee}`, entryFee: finalFee, maxPlayers: 2 });
-      const data = result.data as { matchId?: string };
+      const data = result.data as { matchId?: string; status?: string };
 
-      toast({ title: 'Match Created!', description: 'Your match is now live.' });
-      
-      if (data.matchId) {
+      if (data.status === 'success' && data.matchId) {
+        toast({ title: 'Match Created!', description: 'Your match is now live.' });
         router.push(`/match/${data.matchId}`);
       } else {
-        router.push('/'); // Fallback to home
+         throw new Error('Failed to create match.');
       }
-
     } catch (error: any) {
       console.error("Error creating match:", error);
       toast({ 
@@ -57,7 +55,7 @@ export default function CreateMatchPage() {
     }
   };
 
-  const prizeAmount = (parseInt(entryFee, 10) * 2 * 0.9).toFixed(2);
+  const prizeAmount = (parseInt(entryFee, 10) * 2 * 0.95).toFixed(2); // Assuming 5% commission for display
 
   return (
     <AppShell pageTitle="Create New Match" showBackButton>
@@ -79,7 +77,7 @@ export default function CreateMatchPage() {
                       ))}
                   </RadioGroup>
                    <div className="text-center text-sm text-muted-foreground pt-2">
-                     <p>Winner gets <span className="font-bold text-foreground">₹{prizeAmount}</span> (after 10% platform fee)</p>
+                     <p>Winner gets <span className="font-bold text-foreground">₹{prizeAmount}</span> (after platform fee)</p>
                    </div>
               </CardContent>
               <CardFooter>

@@ -6,21 +6,30 @@ export interface UserProfile {
   displayName: string;
   email: string;
   photoURL: string;
-  roles: string[];
+  role: 'superadmin' | 'deposit_admin' | 'withdrawal_admin' | 'match_admin' | 'user';
   isBlocked?: boolean;
   isVerified?: boolean;
   stats: {
     matchesPlayed: number;
     matchesWon: number;
-    totalEarnings: number;
+    totalWinnings: number;
   };
   wallet: {
     balance: number;
   };
+  referralCode?: string;
+  referralEarnings?: number;
+  referredBy?: string;
+  notifications?: {
+    friendRequests: boolean;
+    matchUpdates: boolean;
+    newsletter: boolean;
+  }
   createdAt: FieldValue;
 }
 
-export type MatchStatus = 'waiting' | 'in-progress' | 'completed' | 'cancelled' | 'disputed';
+export type MatchStatus = 'waiting' | 'room_code_pending' | 'room_code_shared' | 'game_started' | 'result_submitted' | 'AUTO_VERIFIED' | 'FLAGGED' | 'COMPLETED' | 'PAID' | 'verification' | 'disputed' | 'cancelled';
+
 
 export interface Match {
   id: string;
@@ -39,54 +48,80 @@ export interface Match {
   winnerId?: string | null;
   startedAt?: any | null;
   completedAt?: any | null;
+  fraudReasons?: string[];
+  payoutStatus?: 'pending' | 'paid' | 'failed';
+  finalCommission?: number;
+  payoutAmount?: number;
+  resolvedBy?: string;
 }
 
 export interface Transaction {
   id: string;
   userId: string;
-  type: 'deposit' | 'withdrawal' | 'entry-fee' | 'prize-money';
+  type: 'deposit' | 'withdrawal' | 'entry_fee' | 'prize' | 'referral_bonus' | 'win' | 'add_money' | 'refund' | 'platform-fee' | 'prize_win';
   amount: number;
   status: 'pending' | 'completed' | 'failed';
   createdAt: any;
-  details: any; 
+  description?: string;
+  relatedId?: string;
 }
 
-export interface DepositRequest extends Transaction {
-  type: 'deposit';
-  method: string; // e.g., 'upi', 'razorpay'
-  transactionId: string;
-  screenshotUrl?: string; // Added this line
+export interface DepositRequest {
+    id: string;
+    userId: string;
+    userName: string;
+    userEmail: string;
+    amount: number;
+    transactionId: string;
+    screenshotUrl: string;
+    upiAccountId: string;
+    status: 'pending' | 'completed' | 'failed';
+    createdAt: any;
+    processedAt?: any;
+    processedBy?: string;
+    method?: string; // e.g. 'upi'
 }
 
-export interface WithdrawalRequest extends Transaction {
-  type: 'withdrawal';
-  method: string; // e.g., 'upi', 'bank'
-  details: {
-    accountHolderName: string;
-    upiId?: string;
-    bankAccountNumber?: string;
-    ifscCode?: string;
-  };
+export interface WithdrawalRequest {
+  id: string;
+  userId: string;
+  amount: number;
+  method: string;
+  details: any;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: any;
+  processedAt?: any;
+  processedBy?: string;
+  rejectionReason?: string;
 }
+
+export interface MatchResult {
+  id: string;
+  userId: string;
+  position: number;
+  screenshotUrl: string;
+  submittedAt: any;
+}
+
 
 export interface KycRequest {
     id: string;
     userId: string;
-    name: string;
-    dob: string;
-    documentType: 'aadhar' | 'pan';
+    fullName: string;
+    documentType: string;
     documentNumber: string;
-    documentFrontImage: string;
-    documentBackImage?: string;
+    documentUrl: string;
     status: 'pending' | 'approved' | 'rejected';
     createdAt: any;
-    lastUpdated: any;
+    processedAt?: any;
+    documentFrontImage?: string;
 }
 
 export interface Tournament {
     id: string;
     name: string;
-    game: string; // e.g., 'ludo', 'freefire'
+    description?: string;
+    game?: string;
     entryFee: number;
     prizePool: number;
     maxPlayers: number;
@@ -94,8 +129,13 @@ export interface Tournament {
     status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
     startTime: any;
     endTime?: any;
-    rounds: any[]; // Define a more specific type for rounds if needed
+    rounds?: any[];
+    bannerUrl?: string;
+    prizeDistribution?: any;
+    creatorId?: string;
+    createdAt?: any;
 }
+
 
 export interface MaintenanceSettings {
   isAppDisabled: boolean;
@@ -126,4 +166,33 @@ export interface UpiAccount {
   dailyAmountReceived: number;
   dailyTransactionCount: number;
   createdAt: any;
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  type: 'News' | 'Promo' | 'Update' | 'Warning';
+  createdAt: any;
+}
+
+export interface Message {
+  id: string;
+  userId: string;
+  text: string;
+  role: 'user' | 'admin';
+  createdAt: any;
+}
+
+export interface AdminChatMessage {
+  id: string;
+  userId: string;
+  userName: string;
+  text: string;
+  createdAt: any;
+}
+
+export interface CommissionSettings {
+    isEnabled: boolean;
+    rate: number;
 }
