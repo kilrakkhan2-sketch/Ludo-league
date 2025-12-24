@@ -1,16 +1,17 @@
 
 import type { Metadata } from "next";
 import { GeistSans } from 'geist/font/sans';
-import { Bespoke_Serif } from "next/font/google";
+import { Playfair_Display } from "next/font/google"; // Corrected Font: Was Bespoke_Serif
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase";
 import { ThemeProvider } from "@/components/theme-provider";
 import { MaintenanceShield } from "@/components/layout/MaintenanceShield";
-import { Header } from "@/components/layout/Header"; // Import the Header
+import { Header } from "@/components/layout/Header";
 
-const bespoke = Bespoke_Serif({
+// Corrected Font import and setup
+const playfair = Playfair_Display({
   subsets: ["latin"],
   weight: ["400", "700"],
   variable: "--font-serif",
@@ -34,7 +35,7 @@ export default function RootLayout({
       <body className={cn(
           "font-sans antialiased",
           GeistSans.variable,
-          bespoke.variable
+          playfair.variable // Corrected variable
       )}>
         <ThemeProvider
             attribute="class"
