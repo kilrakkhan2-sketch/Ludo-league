@@ -2,173 +2,203 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useCollection, useCollectionGroup } from "@/firebase";
-import { UserProfile, Transaction } from "@/types";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useCollection } from "@/firebase";
+import { UserProfile } from "@/types";
+import { MoreHorizontal } from "lucide-react";
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from '@/lib/utils';
 
-const UserCardSkeleton = () => (
-    <div className="bg-card p-4 rounded-xl shadow-sm border space-y-4">
-        <div className="flex items-center">
-            <Skeleton className="h-14 w-14 rounded-full" />
-            <div className="ml-4 space-y-2">
-                <Skeleton className="h-5 w-32" />
-                <Skeleton className="h-4 w-40" />
-            </div>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
-        </div>
-        <div className="flex gap-2 pt-2">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-        </div>
-    </div>
-);
-
-const UserCard = ({ user, stats }: { user: UserProfile, stats: any }) => {
-    const isProfit = stats.netProfit >= 0;
-    
-    return (
-        <div className="bg-card p-4 rounded-xl shadow-md border space-y-4">
-            <div className="flex items-center">
-                <Avatar className="h-14 w-14 border-2 border-primary/20">
-                    <AvatarImage src={user.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${user.id}`} alt={user.displayName} />
-                    <AvatarFallback>{user.displayName?.[0]}</AvatarFallback>
-                </Avatar>
-                <div className="ml-4">
-                    <p className="font-bold text-base">{user.displayName}</p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-muted-foreground">Wallet</p>
-                    <p className="font-bold text-base truncate">₹{user.walletBalance?.toLocaleString() || '0'}</p>
-                </div>
-                <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-muted-foreground">Profit/Loss</p>
-                    <p className={`font-bold text-base truncate ${isProfit ? 'text-green-500' : 'text-red-500'}`}>
-                        {isProfit ? '+' : '-'}₹{Math.abs(stats.netProfit).toLocaleString()}
-                    </p>
-                </div>
-                <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-muted-foreground">Deposited</p>
-                    <p className="font-bold text-base truncate">₹{stats.totalDeposited.toLocaleString()}</p>
-                </div>
-                <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-muted-foreground">Withdrawn</p>
-                    <p className="font-bold text-base truncate">₹{stats.totalWithdrawn.toLocaleString()}</p>
-                </div>
-                <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-muted-foreground">Played</p>
-                    <p className="font-bold text-base">{user.matchesPlayed || 0}</p>
-                </div>
-                <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-muted-foreground">Won / Lost</p>
-                    <p className="font-bold text-base">{user.matchesWon || 0} / {stats.matchesLost}</p>
-                </div>
-                <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-muted-foreground">Win %</p>
-                    <p className="font-bold text-base">{stats.winRate}%</p>
-                </div>
-                 <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-muted-foreground">Role</p>
-                    <p className="font-bold text-base capitalize">{user.role.replace('_', ' ')}</p>
-                </div>
-            </div>
-
-             <div className="flex gap-2 pt-2">
-                <Button variant="outline" className="w-full">View Details</Button>
-                <Button variant="destructive" className="w-full">Block</Button>
-            </div>
-        </div>
-    )
-}
+const PAGE_SIZE = 10;
 
 export default function AdminUsersPage() {
-  const { data: users, loading: usersLoading } = useCollection<UserProfile>('users');
-  const { data: transactions, loading: txsLoading } = useCollectionGroup<Transaction>('transactions');
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
 
-  const userStats = useMemo(() => {
-    const statsMap = new Map();
-    if (!users || !transactions) return statsMap;
-
-    users.forEach(user => {
-      const userTxs = transactions.filter(t => t.userId === user.uid);
-      const totalDeposited = userTxs.filter(t => t.type === 'deposit' && t.status === 'completed').reduce((sum, t) => sum + t.amount, 0);
-      const totalWithdrawn = userTxs.filter(t => t.type === 'withdrawal' && t.status === 'completed').reduce((sum, t) => sum + t.amount, 0);
-      const prizeMoney = userTxs.filter(t => t.type === 'prize').reduce((sum, t) => sum + t.amount, 0);
-      const entryFees = userTxs.filter(t => t.type === 'entry_fee').reduce((sum, t) => sum + Math.abs(t.amount), 0);
-      
-      const matchesPlayed = user.matchesPlayed || 0;
-      const matchesWon = user.matchesWon || 0;
-      const matchesLost = matchesPlayed > matchesWon ? matchesPlayed - matchesWon : 0;
-      const winRate = matchesPlayed > 0 ? Math.round((matchesWon / matchesPlayed) * 100) : 0;
-      const netProfit = prizeMoney - entryFees;
-
-      statsMap.set(user.uid, {
-        totalDeposited,
-        totalWithdrawn,
-        netProfit,
-        matchesLost,
-        winRate,
-      });
-    });
-    return statsMap;
-  }, [users, transactions]);
+  // In a real, scalable app, search and pagination would be done server-side.
+  // We simulate it here on the client-side for demonstration.
+  const { data: users, loading } = useCollection<UserProfile>('users', {
+      // For real-world use:
+      // where: ['keywords', 'array-contains', searchTerm.toLowerCase()],
+      // limit: PAGE_SIZE,
+      // startAfter: lastVisible, -> for pagination
+  });
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
-    if (!searchTerm) return users;
-    
     const lowercasedFilter = searchTerm.toLowerCase();
+    if (!lowercasedFilter) return users;
+    
     return users.filter(user => 
         user.displayName?.toLowerCase().includes(lowercasedFilter) ||
         user.email?.toLowerCase().includes(lowercasedFilter) ||
         user.uid?.toLowerCase().includes(lowercasedFilter)
     );
   }, [users, searchTerm]);
-  
-  const loading = usersLoading || txsLoading;
+
+  const handleBlockUser = () => {
+    if (!selectedUser) return;
+    console.log(`Blocking user ${selectedUser.uid}`);
+    // Mock function call
+    // const blockUser = httpsCallable(functions, 'setUserBlockedStatus');
+    // blockUser({ uid: selectedUser.uid, blocked: !selectedUser.isBlocked })
+    toast({ 
+        title: `User ${selectedUser.isBlocked ? 'Unblocked' : 'Blocked'}!`, 
+        description: `${selectedUser.displayName} has been ${selectedUser.isBlocked ? 'unblocked' : 'blocked'}.`
+    });
+    setIsAlertOpen(false);
+    setSelectedUser(null);
+  };
+
+  const openConfirmation = (user: UserProfile) => {
+      setSelectedUser(user);
+      setIsAlertOpen(true);
+  }
 
   return (
-    <div className="space-y-6">
-        <h1 className="text-2xl font-bold font-headline">Users Management</h1>
-        <div className="sticky top-[76px] sm:top-0 bg-background/80 backdrop-blur-sm py-4 z-10">
+    <div className="space-y-4">
+        <h1 className="text-2xl font-bold">Users Management</h1>
+        <div className="bg-card p-4 rounded-lg border shadow-sm">
             <Input 
                 type="text" 
                 placeholder="Search by name, email or UID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-sm"
             />
         </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {loading ? (
-            <>
-              <UserCardSkeleton />
-              <UserCardSkeleton />
-              <UserCardSkeleton />
-              <UserCardSkeleton />
-            </>
-          ) : (
-            filteredUsers.map((user) => {
-                const stats = userStats.get(user.uid);
-                if (!stats) return <UserCardSkeleton key={user.id} />
-                return <UserCard key={user.id} user={user} stats={stats} />
-            })
+      <div className="bg-card rounded-lg border shadow-sm">
+          <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead className='hidden md:table-cell'>Wallet Balance</TableHead>
+                    <TableHead className='hidden lg:table-cell'>Stats</TableHead>
+                    <TableHead className='hidden sm:table-cell'>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead><span className="sr-only">Actions</span></TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {loading && [...Array(PAGE_SIZE)].map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell><Skeleton className="h-8 w-48" /></TableCell>
+                        <TableCell className='hidden md:table-cell'><Skeleton className="h-8 w-24" /></TableCell>
+                        <TableCell className='hidden lg:table-cell'><Skeleton className="h-8 w-20" /></TableCell>
+                        <TableCell className='hidden sm:table-cell'><Skeleton className="h-8 w-16" /></TableCell>
+                        <TableCell><Skeleton className="h-8 w-12" /></TableCell>
+                        <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                    </TableRow>
+                ))}
+                {!loading && filteredUsers.map((user) => (
+                    <TableRow key={user.uid}>
+                        <TableCell>
+                           <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9">
+                                    <AvatarImage src={user.photoURL} alt={user.displayName} />
+                                    <AvatarFallback>{user.displayName?.[0]}</AvatarFallback>
+                                </Avatar>
+                                <div className="grid gap-0.5">
+                                    <p className="font-medium">{user.displayName}</p>
+                                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                                </div>
+                            </div>
+                        </TableCell>
+                        <TableCell className='hidden md:table-cell font-mono font-medium'>
+                            ₹{user.walletBalance?.toLocaleString() || 0}
+                        </TableCell>
+                        <TableCell className='hidden lg:table-cell text-xs'>
+                           <div>Won: {user.matchesWon || 0}</div>
+                           <div>Played: {user.matchesPlayed || 0}</div>
+                        </TableCell>
+                        <TableCell className='hidden sm:table-cell'>
+                            <Badge variant="outline" className="capitalize">{user.role?.replace('_', ' ') || 'Player'}</Badge>
+                        </TableCell>
+                        <TableCell>
+                            <Badge variant={user.isBlocked ? 'destructive' : 'default'} className={cn(!user.isBlocked && 'bg-green-500')}>
+                                {user.isBlocked ? 'Blocked' : 'Active'}
+                            </Badge>
+                        </TableCell>
+                        <TableCell>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button aria-haspopup="true" size="icon" variant="ghost">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                        <span className="sr-only">Toggle menu</span>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                    <DropdownMenuItem>View Details</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => openConfirmation(user)} className='text-red-500'>
+                                        {user.isBlocked ? 'Unblock User' : 'Block User'}
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+          {!loading && filteredUsers.length === 0 && (
+              <div className="text-center py-16">
+                <p className="text-muted-foreground">No users found matching your search.</p>
+              </div>
           )}
       </div>
-      {!loading && filteredUsers.length === 0 && (
-          <div className="text-center py-16 col-span-full">
-            <p className="text-muted-foreground">No users found.</p>
-          </div>
-      )}
+       {/* Add Pagination Controls here */}
+
+        <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This action will {selectedUser?.isBlocked ? 'unblock' : 'block'} the user <span className='font-semibold'>{selectedUser?.displayName}</span>. 
+                    {selectedUser?.isBlocked ? 'They will be able to access their account again.' : 'They will not be able to log in or use the app.'}
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleBlockUser} className={cn(selectedUser?.isBlocked ? '' : 'bg-destructive text-destructive-foreground')}>
+                    Confirm
+                </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
     </div>
   );
 }

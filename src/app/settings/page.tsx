@@ -23,22 +23,56 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import type { UserProfile } from '@/types';
+import { httpsCallable } from 'firebase/functions';
+
+const SettingsSection = ({ title, description, children, footer }: { title: string, description: string, children: React.ReactNode, footer?: React.ReactNode }) => (
+    <Card>
+        <CardHeader>
+            <CardTitle>{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            {children}
+        </CardContent>
+        {footer && (
+            <CardFooter className="border-t pt-6">
+                {footer}
+            </CardFooter>
+        )}
+    </Card>
+);
+
+const NotificationRow = ({ id, label, description, checked, onCheckedChange }: { id: string, label: string, description: string, checked: boolean, onCheckedChange: (checked: boolean) => void }) => (
+    <div className="flex items-center justify-between rounded-lg border p-4">
+        <Label htmlFor={id} className="flex flex-col gap-1 cursor-pointer">
+            <span>{label}</span>
+            <span className="text-xs font-normal text-muted-foreground">{description}</span>
+        </Label>
+        <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
+    </div>
+);
+
 
 export default function SettingsPage() {
-    const { user } = useUser();
-    const { data: profile } = useDoc<UserProfile>(user ? `users/${user.uid}`: '');
-    const { firestore, storage, auth } = useFirebase();
+    const { user, auth } = useUser();
+    const { data: profile, setData: setProfile } = useDoc<UserProfile>(user ? `users/${user.uid}`: undefined);
+    const { firestore, storage, functions } = useFirebase();
     const { toast } = useToast();
     
     const [displayName, setDisplayName] = useState('');
     const [newPassword, setNewPassword] = useState('');
+    
+    // Loading states
     const [isUploading, setIsUploading] = useState(false);
-    const [isSavingProfile, setIsSavingProfile] = useState(false);
-    const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const defaultNotifications = { friendRequests: true, matchUpdates: true, newsletter: false };
+    const [notifications, setNotifications] = useState(defaultNotifications);
 
     useEffect(() => {
         if(profile) {
             setDisplayName(profile.displayName || '');
+            setNotifications(profile.notifications || defaultNotifications);
         }
     }, [profile]);
 
@@ -48,148 +82,160 @@ export default function SettingsPage() {
 
       setIsUploading(true);
       try {
-        const filePath = `profile-pictures/${user.uid}/${file.name}`;
+        const filePath = `avatars/${user.uid}`;
         const storageRef = ref(storage, filePath);
+        const snapshot = await uploadBytes(storageRef, file);
+        const photoURL = await getDownloadURL(snapshot.ref);
         
-        await uploadBytes(storageRef, file);
-        const photoURL = await getDownloadURL(storageRef);
-        
-        const userDocRef = doc(firestore, 'users', user.uid);
-        await updateDoc(userDocRef, { photoURL });
         await updateProfile(auth.currentUser, { photoURL });
-        
+        await setProfile({ photoURL });
 
-        toast({ title: 'Avatar Updated!', description: 'Your new profile picture has been saved.' });
+        toast({ title: 'Avatar Updated!', description: 'Your new profile picture looks great.' });
       } catch (error) {
-        toast({ variant: 'destructive', title: 'Upload Failed' });
+        console.error(error);
+        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Please try a smaller image (PNG, JPG).' });
       } finally {
         setIsUploading(false);
       }
     };
 
     const handleProfileSave = async () => {
-      if(!user || !firestore || !displayName || !auth?.currentUser) return;
-      setIsSavingProfile(true);
-      try {
-        const userDocRef = doc(firestore, 'users', user.uid);
-        await updateDoc(userDocRef, { name: displayName, displayName: displayName });
-        await updateProfile(auth.currentUser, { displayName });
+      if(!user || !displayName || !auth?.currentUser) return;
+      if(displayName === profile?.displayName && JSON.stringify(notifications) === JSON.stringify(profile?.notifications)) {
+          toast({ title: 'No changes to save.' });
+          return;
+      }
 
-        toast({ title: 'Profile Saved!' });
+      setIsSaving(true);
+      try {
+        await updateProfile(auth.currentUser, { displayName });
+        await setProfile({ displayName, notifications });
+        toast({ title: 'Settings Saved!', description: 'Your changes have been updated.' });
       } catch(error) {
-        toast({ variant: 'destructive', title: 'Save Failed' });
+        console.error(error);
+        toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save your settings.' });
       } finally {
-        setIsSavingProfile(false);
+        setIsSaving(false);
       }
     };
 
     const handlePasswordUpdate = async () => {
-      if(!auth?.currentUser || !newPassword) return;
-      setIsUpdatingPassword(true);
+      if(!auth?.currentUser || !newPassword) {
+        toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please enter a new password.'});
+        return;
+      }
+      setIsSaving(true);
       try {
         await updatePassword(auth.currentUser, newPassword);
         toast({ title: 'Password Updated Successfully!' });
         setNewPassword('');
       } catch (error: any) {
-         toast({ variant: 'destructive', title: 'Password Update Failed', description: error.message });
+         console.error(error);
+         toast({ variant: 'destructive', title: 'Password Update Failed', description: 'This is a sensitive action. Please log out and log back in before trying again.' });
       } finally {
-        setIsUpdatingPassword(false);
+        setIsSaving(false);
       }
     }
+    
+    const handleDeleteAccount = async () => {
+        if (!functions) return;
 
+        const confirmed = window.confirm("Are you absolutely sure you want to delete your account? This action is irreversible and all your data will be lost.");
+        if (!confirmed) return;
+
+        setIsSaving(true);
+        try {
+            const deleteUserAccount = httpsCallable(functions, 'deleteUserAccount');
+            await deleteUserAccount();
+            toast({ title: "Account Deletion Initiated", description: "Your account is being deleted. You will be logged out shortly." });
+            // The user will be automatically logged out by the backend/rules
+        } catch (error: any) { 
+            console.error(error);
+            toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message });
+        } finally {
+            setIsSaving(false);
+        }
+    }
 
   return (
-    <AppShell pageTitle="Settings" showBackButton>
-      <main className="flex-grow p-4 space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile</CardTitle>
-            <CardDescription>
-              Update your public profile information.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center gap-6">
-                <Avatar className="w-20 h-20">
-                    <AvatarImage src={user?.photoURL || profile?.photoURL || undefined} />
-                    <AvatarFallback>{displayName?.[0]}</AvatarFallback>
-                </Avatar>
-                <div className="flex-grow">
-                     <Label htmlFor="avatar-upload">Profile Picture</Label>
-                    <Input id="avatar-upload" type="file" onChange={handleAvatarUpload} disabled={isUploading}/>
-                    <p className="text-xs text-muted-foreground mt-1">PNG, JPG up to 5MB.</p>
-                </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="username">Display Name</Label>
-              <Input id="username" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-            </div>
-          </CardContent>
-          <CardFooter className="border-t pt-6">
-            <Button onClick={handleProfileSave} disabled={isSavingProfile}>
-              {isSavingProfile ? 'Saving...' : 'Save Profile'}
-            </Button>
-          </CardFooter>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Account</CardTitle>
-            <CardDescription>
-              Manage your email and password.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" defaultValue={user?.email || ''} disabled />
-            </div>
-             <div className="space-y-2">
-              <Label htmlFor="password">New Password</Label>
-              <Input id="password" type="password" placeholder="Enter a new password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-            </div>
-          </CardContent>
-           <CardFooter className="border-t pt-6 flex justify-between items-center">
-            <Button onClick={handlePasswordUpdate} disabled={isUpdatingPassword}>
-              {isUpdatingPassword ? 'Updating...' : 'Update Password'}
-            </Button>
-            <Button variant="destructive">Delete Account</Button>
-          </CardFooter>
-        </Card>
+    <AppShell pageTitle="Profile & Settings" showBackButton>
+      <div className="grid gap-6 p-4 sm:p-6 lg:grid-cols-3">
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Notifications</CardTitle>
-            <CardDescription>
-              Control how you receive notifications.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-             <div className="flex items-center justify-between rounded-lg border p-4">
-              <Label htmlFor="friend-requests" className="flex flex-col gap-1">
-                <span>Friend Requests</span>
-                <span className="text-xs text-muted-foreground">Notify me about new friend requests.</span>
-              </Label>
-              <Switch id="friend-requests" defaultChecked />
-            </div>
-             <div className="flex items-center justify-between rounded-lg border p-4">
-              <Label htmlFor="match-invites" className="flex flex-col gap-1">
-                <span>Match Updates</span>
-                <span className="text-xs text-muted-foreground">Notify me about match starts, results, etc.</span>
-              </Label>
-              <Switch id="match-invites" defaultChecked />
-            </div>
-             <div className="flex items-center justify-between rounded-lg border p-4">
-              <Label htmlFor="newsletter" className="flex flex-col gap-1">
-                <span>Newsletter</span>
-                <span className="text-xs text-muted-foreground">Receive updates about new features and promotions.</span>
-              </Label>
-              <Switch id="newsletter" />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Main Settings Column */}
+        <div className="lg:col-span-2 flex flex-col gap-6">
+           <SettingsSection title="Public Profile" description="This information will be visible to other players.">
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                    <div className="relative">
+                        <Avatar className="w-24 h-24">
+                            <AvatarImage src={profile?.photoURL} />
+                            <AvatarFallback>{displayName?.[0]?.toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        {isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full"><div className="w-6 h-6 border-4 border-t-transparent border-white rounded-full animate-spin"></div></div>}
+                    </div>
+                    <div className="flex-grow w-full">
+                        <Label htmlFor="avatar-upload" className="mb-2 block">Profile Picture</Label>
+                        <Input id="avatar-upload" type="file" accept="image/png, image/jpeg" onChange={handleAvatarUpload} disabled={isUploading}/>
+                        <p className="text-xs text-muted-foreground mt-1.5">Recommended: Square, 200x200px. Max 2MB.</p>
+                    </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="username">Display Name</Label>
+                  <Input id="username" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your public name" />
+                </div>
+            </SettingsSection>
 
-      </main>
+             <SettingsSection title="Notifications" description="Control how you receive game and platform updates.">
+                <NotificationRow 
+                    id="matchUpdates" 
+                    label="Match Updates" 
+                    description="When a match starts, result is submitted, etc."
+                    checked={notifications.matchUpdates}
+                    onCheckedChange={(c) => setNotifications(p => ({...p, matchUpdates: c}))}
+                />
+                 <NotificationRow 
+                    id="friendRequests" 
+                    label="Social Alerts" 
+                    description="When you receive a friend request or message."
+                    checked={notifications.friendRequests}
+                    onCheckedChange={(c) => setNotifications(p => ({...p, friendRequests: c}))}
+                />
+                 <NotificationRow 
+                    id="newsletter" 
+                    label="Promotions & News"
+                    description="Receive our newsletter with new features and offers."
+                    checked={notifications.newsletter}
+                    onCheckedChange={(c) => setNotifications(p => ({...p, newsletter: c}))}
+                />
+            </SettingsSection>
+
+            <div className="flex justify-end">
+                 <Button onClick={handleProfileSave} disabled={isSaving || isUploading} size="lg">
+                    {isSaving ? 'Saving...' : 'Save All Changes'}
+                </Button>
+            </div>
+
+        </div>
+
+        {/* Right Sidebar Column */}
+        <div className="lg:col-span-1 flex flex-col gap-6">
+            <SettingsSection title="Account Security" description="Manage your login credentials.">
+                 <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" value={user?.email || ''} disabled />
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="password">New Password</Label>
+                    <Input id="password" type="password" placeholder="••••••••" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                </div>
+                <Button onClick={handlePasswordUpdate} disabled={isSaving} className="w-full">Update Password</Button>
+            </SettingsSection>
+            
+            <SettingsSection title="Danger Zone" description="These actions are permanent and cannot be undone.">
+                 <Button variant="destructive" className="w-full" onClick={handleDeleteAccount} disabled={isSaving}>Delete My Account</Button>
+            </SettingsSection>
+        </div>
+
+      </div>
     </AppShell>
   );
 }

@@ -2,9 +2,8 @@
 'use client';
 
 import type { ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "../ui/button";
-import { ArrowLeft } from "lucide-react";
+import { AppShell } from "./AppShell";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface InfoPageShellProps {
@@ -13,22 +12,25 @@ interface InfoPageShellProps {
   className?: string;
 }
 
+/**
+ * A shell for static content pages like Privacy Policy, Terms, etc.
+ * It provides a consistent, centered, and readable layout.
+ */
 export function InfoPageShell({ children, pageTitle, className }: InfoPageShellProps) {
-  const router = useRouter();
-
   return (
-    <div className={cn("min-h-screen w-full bg-background", className)}>
-      <header className="bg-card p-4 flex items-center justify-between gap-4 z-10 shadow-sm shrink-0 border-b sticky top-0">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                <ArrowLeft />
-            </Button>
-            <h1 className="text-xl font-bold">{pageTitle}</h1>
-          </div>
-      </header>
-      <main className="flex-grow">
-          {children}
-      </main>
-    </div>
+    <AppShell pageTitle={pageTitle} showBackButton>
+      <div className={cn("p-4 sm:p-6 lg:p-8 flex justify-center", className)}>
+        <div className="w-full max-w-3xl">
+            <Card>
+                <CardContent className="p-6">
+                    {/* The prose class styles the raw HTML from a CMS or markdown file */}
+                    <div className="prose dark:prose-invert max-w-none">
+                        {children}
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+      </div>
+    </AppShell>
   );
 }

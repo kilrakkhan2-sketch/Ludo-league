@@ -8,23 +8,6 @@ import { useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
-  Bell,
-  CircleUser,
-  Home,
-  LineChart,
-  Menu,
-  Package,
-  Package2,
-  ShoppingCart,
-  Users,
-  Sword,
-  CircleArrowUp,
-  Landmark,
-  FileKey,
-  ShieldAlert,
-  Ticket
-} from 'lucide-react';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -33,43 +16,96 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import {
+  Bell,
+  CircleUser,
+  Home,
+  LineChart,
+  Menu,
+  Package2,
+  Users,
+  Sword,
+  CircleArrowUp,
+  Landmark,
+  FileKey,
+  ShieldAlert,
+  Ticket,
+  Settings,
+  Server,
+  Megaphone,
+  Banknote,
+  ShieldCheck
+} from 'lucide-react';
 
-// Define navigation items
-const navItems = [
-  { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
-  { href: '/admin/deposits', icon: CircleArrowUp, label: 'Deposits' },
-  { href: '/admin/withdrawals', icon: Landmark, label: 'Withdrawals' },
-  { href: '/admin/kyc', icon: FileKey, label: 'KYC Requests' },
-  { href: '/admin/matches', icon: Sword, label: 'Matches' },
-  { href: '/admin/tournaments', icon: Ticket, label: 'Tournaments' },
-  { href: '/admin/users', icon: Users, label: 'Users' },
-];
+// Define a map of all possible navigation items
+const allNavItems = {
+  main: [
+    { href: '/admin/dashboard', icon: Home, label: 'Dashboard', roles: ['superadmin', 'match_admin', 'deposit_admin', 'withdrawal_admin'] },
+  ],
+  finance: [
+    { href: '/admin/deposits', icon: CircleArrowUp, label: 'Deposits', roles: ['superadmin', 'deposit_admin'] },
+    { href: '/admin/withdrawals', icon: Landmark, label: 'Withdrawals', roles: ['superadmin', 'withdrawal_admin'] },
+    { href: '/admin/transactions', icon: Banknote, label: 'Transactions', roles: ['superadmin'] },
+    { href: '/admin/upi-management', icon: Settings, label: 'UPI Settings', roles: ['superadmin'] },
+  ],
+  users: [
+    { href: '/admin/users', icon: Users, label: 'All Users', roles: ['superadmin'] },
+    { href: '/admin/kyc', icon: FileKey, label: 'KYC Requests', roles: ['superadmin'] },
+    { href: '/admin/manage-admins', icon: ShieldCheck, label: 'Manage Admins', roles: ['superadmin'] },
+  ],
+  game: [
+    { href: '/admin/matches', icon: Sword, label: 'Matches', roles: ['superadmin', 'match_admin'] },
+    { href: '/admin/tournaments', icon: Ticket, label: 'Tournaments', roles: ['superadmin', 'match_admin'] },
+  ],
+  platform: [
+    { href: '/admin/announcements', icon: Megaphone, label: 'Announcements', roles: ['superadmin'] },
+    { href: '/admin/status', icon: Server, label: 'Platform Status', roles: ['superadmin'] },
+  ]
+};
 
-const AdminSidebar = ({ className }: { className?: string }) => {
+const NavSection = ({ title, items, userRole, pathname }: { title: string, items: any[], userRole: string, pathname: string }) => {
+  const visibleItems = items.filter(item => item.roles.includes(userRole));
+  if (visibleItems.length === 0) return null;
+
+  return (
+    <div className="px-2 lg:px-4 py-2">
+      <h3 className="mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{title}</h3>
+      {visibleItems.map((item) => (
+        <Link
+          key={item.label}
+          href={item.href}
+          className={cn(
+            'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
+            pathname === item.href ? 'bg-muted text-primary' : ''
+          )}
+        >
+          <item.icon className="h-4 w-4" />
+          {item.label}
+        </Link>
+      ))}
+    </div>
+  );
+};
+
+const AdminSidebar = ({ userRole, className }: { userRole: string, className?: string }) => {
   const pathname = usePathname();
   return (
     <div className={className}>
-      <div className="flex h-full max-h-screen flex-col gap-2">
+      <div className="flex h-full max-h-screen flex-col">
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-          <Link href="/" className="flex items-center gap-2 font-semibold">
+          <Link href="/admin/dashboard" className="flex items-center gap-2 font-semibold">
             <Package2 className="h-6 w-6" />
-            <span className="">Ludo King</span>
+            <span>Ludo Admin</span>
           </Link>
         </div>
-        <div className="flex-1">
-          <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
-                  pathname === item.href ? 'bg-muted text-primary' : ''
-                }`}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            ))}
+        <div className="flex-1 overflow-y-auto">
+          <nav className="grid items-start text-sm font-medium py-4">
+             <NavSection title="Main" items={allNavItems.main} userRole={userRole} pathname={pathname} />
+             <NavSection title="Users & KYC" items={allNavItems.users} userRole={userRole} pathname={pathname} />
+             <NavSection title="Finance" items={allNavItems.finance} userRole={userRole} pathname={pathname} />
+             <NavSection title="Game" items={allNavItems.game} userRole={userRole} pathname={pathname} />
+             <NavSection title="Platform" items={allNavItems.platform} userRole={userRole} pathname={pathname} />
           </nav>
         </div>
       </div>
@@ -79,31 +115,29 @@ const AdminSidebar = ({ className }: { className?: string }) => {
 
 const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, loading, error, signOut } = useUser();
-  const router = usePathname();
-
+  
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p>Loading admin...</p>
-      </div>
-    );
+    return <div className="flex h-screen items-center justify-center">Loading Admin Panel...</div>;
   }
 
   if (error || !user) {
      return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex h-screen flex-col items-center justify-center gap-4">
         <p>You must be logged in to view this page.</p>
         <Button asChild><Link href="/login">Login</Link></Button>
       </div>
     );
   }
   
-  if (!['superadmin', 'match_admin', 'deposit_admin', 'withdrawal_admin'].includes(user.role || '')) {
+  const userRole = user.role || '';
+  const allowedRoles = ['superadmin', 'match_admin', 'deposit_admin', 'withdrawal_admin'];
+  if (!allowedRoles.includes(userRole)) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4">
+      <div className="flex h-screen flex-col items-center justify-center gap-4">
+        <ShieldAlert className='w-16 h-16 text-destructive' />
         <h1 className='text-2xl font-bold'>Access Denied</h1>
-        <p>You do not have permission to view the admin panel.</p>
-        <Button asChild><Link href="/">Go to Homepage</Link></Button>
+        <p className='text-muted-foreground'>You do not have the necessary permissions for the admin panel.</p>
+        <Button asChild><Link href="/">Return to App</Link></Button>
       </div>
     );
   }
@@ -111,15 +145,12 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
-      {/* Desktop Sidebar */}
       <div className="hidden border-r bg-muted/40 md:block">
-        <AdminSidebar />
+        <AdminSidebar userRole={userRole} />
       </div>
       
-      {/* Mobile Header & Main Content */}
       <div className="flex flex-col">
         <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
-          {/* Mobile Sidebar Toggle */}
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="outline" size="icon" className="shrink-0 md:hidden">
@@ -128,15 +159,14 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="flex flex-col p-0">
-              <AdminSidebar />
+              <AdminSidebar userRole={userRole} />
             </SheetContent>
           </Sheet>
 
           <div className="w-full flex-1">
-            {/* Can add breadcrumbs or search here if needed */}
+             <h1 className="text-lg font-semibold">{usePathname().split('/').pop()?.replace('-', ' ')}</h1>
           </div>
 
-          {/* User Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="secondary" size="icon" className="rounded-full">
@@ -145,18 +175,20 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuLabel className='flex flex-col'>
+                <span>{user.displayName || 'Admin'}</span>
+                <Badge variant='outline' className='w-fit mt-1'>{userRole}</Badge>
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => window.location.href='/profile'}>Profile</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.location.href='/'}>App</DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/profile">Profile</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/">Go to App</Link></DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={signOut}>Logout</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
 
-        {/* Main Content Area */}
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-muted/20">
           {children}
         </main>
       </div>
@@ -165,4 +197,3 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
 }
 
 export default AdminLayout;
-
