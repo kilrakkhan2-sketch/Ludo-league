@@ -26,7 +26,21 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth || !firestore) return;
+    if (!auth || !firestore) {
+        toast({ variant: "destructive", title: "Error", description: "Authentication service is not available." });
+        return;
+    }
+    
+    // Basic client-side validation
+    if (!displayName || !email || !password) {
+        toast({ variant: "destructive", title: "Missing Fields", description: "Please fill in all fields." });
+        return;
+    }
+    if (password.length < 6) {
+        toast({ variant: "destructive", title: "Password Too Short", description: "Password must be at least 6 characters long." });
+        return;
+    }
+
     setLoading(true);
 
     try {
@@ -38,34 +52,38 @@ export default function SignupPage() {
 
       // Create user document in Firestore
       const userRef = doc(firestore, "users", user.uid);
-      const referralCode = `${displayName.substring(0, 4).toUpperCase()}${nanoid(4)}`;
+      const sanitizedName = displayName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase();
+      const referralCode = `${sanitizedName}${nanoid(4)}`;
       
       await setDoc(userRef, {
           uid: user.uid,
-          name: displayName,
           displayName: displayName,
           email: email,
-          photoURL: '',
+          photoURL: user.photoURL || '',
           role: 'user',
-          walletBalance: 0,
+          wallet: {
+            balance: 0,
+          },
+          stats: {
+            matchesPlayed: 0,
+            matchesWon: 0,
+            totalEarnings: 0,
+          },
+          referralCode: referralCode,
           referralEarnings: 0,
           isVerified: false,
-          xp: 0,
-          matchesPlayed: 0,
-          matchesWon: 0,
-          rating: 1000,
-          referralCode: referralCode,
           createdAt: Timestamp.now(),
       });
 
       toast({ title: "Account Created", description: "Welcome to LudoLeague!" });
-      router.push('/dashboard');
+      router.replace('/dashboard');
 
     } catch (error: any) {
+      console.error("Signup Error:", error);
       toast({
         variant: "destructive",
         title: "Signup Failed",
-        description: error.message,
+        description: error.message || "An unknown error occurred. Please try again.",
       });
     } finally {
       setLoading(false);

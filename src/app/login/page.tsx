@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,10 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth) return;
+    if (!auth) {
+        toast({ variant: "destructive", title: "Error", description: "Authentication service is not available." });
+        return;
+    }
 
     if (!email || !password) {
         toast({
@@ -38,10 +41,11 @@ export default function LoginPage() {
       toast({ title: "Logged In", description: "Welcome back!" });
       router.replace('/dashboard');
     } catch (error: any) {
+      console.error("Login Error:", error);
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: error.message,
+        description: error.message || "An unknown error occurred. Please try again.",
       });
     } finally {
       setLoading(false);
