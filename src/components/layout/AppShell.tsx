@@ -24,17 +24,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser } from "@/firebase";
 import { getAuth, signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
-import { UserProfile } from "@/types";
-import { Skeleton } from "../ui/skeleton";
+import { AppShellSkeleton } from "../app-shell-skeleton";
 import { BottomNav, NavItem } from "./BottomNav";
 import { useMemo } from "react";
 import { Sparkle } from "../ui/sparkle";
-import { AppShellSkeleton } from "../app-shell-skeleton";
 
 interface AppShellProps {
   children: ReactNode;
-  pageTitle: string;
-  showBackButton?: boolean;
   className?: string;
 }
 
@@ -56,7 +52,7 @@ const bottomNavItems: NavItem[] = [
 ];
 
 
-export function AppShell({ children, pageTitle, showBackButton = false, className }: AppShellProps) {
+export function AppShell({ children, className }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
@@ -85,6 +81,22 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
     }
   };
   
+  if (loading) {
+      return <AppShellSkeleton />;
+  }
+
+  if (!user) {
+    React.useEffect(() => {
+      if (!loading && !user) {
+        router.replace('/login');
+      }
+    }, [loading, user, router]);
+    return <AppShellSkeleton />;
+  }
+  
+  const pageTitle = pathname?.split('/').pop()?.replace('-', ' ') || 'Dashboard';
+  const showBackButton = pathname !== '/dashboard';
+
   const userMenu = user ? (
      <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -121,22 +133,6 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
         </DropdownMenuContent>
     </DropdownMenu>
   ) : null;
-
-  if (loading) {
-      return <AppShellSkeleton />;
-  }
-
-  if (!user) {
-    // If not logged in, redirect to login page.
-    // Use a redirect in a useEffect to avoid server/client mismatch errors.
-    React.useEffect(() => {
-      if (!loading && !user) {
-        router.replace('/login');
-      }
-    }, [loading, user, router]);
-    // Render a loader while waiting for the redirect
-    return <AppShellSkeleton />;
-  }
 
   return (
     <SidebarProvider>
@@ -226,7 +222,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                         </Button>
                     )}
                      <Sparkle>
-                      <h1 className="text-lg sm:text-xl font-bold text-primary">{pageTitle}</h1>
+                      <h1 className="text-lg sm:text-xl font-bold text-primary capitalize">{pageTitle}</h1>
                      </Sparkle>
                     </div>
                     <div className="hidden sm:block">

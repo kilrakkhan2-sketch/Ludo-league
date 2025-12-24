@@ -18,13 +18,14 @@ interface InfoPageShellProps {
  */
 export function InfoPageShell({ children, pageTitle, className }: InfoPageShellProps) {
   return (
-    <AppShell pageTitle={pageTitle} showBackButton>
+    <AppShell>
       <div className={cn("p-4 sm:p-6 lg:p-8 flex justify-center", className)}>
         <div className="w-full max-w-3xl">
             <Card>
                 <CardContent className="p-6">
                     {/* The prose class styles the raw HTML from a CMS or markdown file */}
                     <div className="prose dark:prose-invert max-w-none">
+                        <h1>{pageTitle}</h1>
                         {children}
                     </div>
                 </CardContent>

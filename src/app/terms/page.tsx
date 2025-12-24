@@ -4,7 +4,6 @@ import { InfoPageShell } from "@/components/layout/InfoPageShell";
 export default function TermsPage() {
   return (
     <InfoPageShell pageTitle="Terms of Service">
-        <h1>Terms of Service</h1>
         <p>Last updated: [Date]</p>
 
         <h2>1. Introduction</h2>

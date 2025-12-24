@@ -4,7 +4,6 @@ import { InfoPageShell } from "@/components/layout/InfoPageShell";
 export default function AboutPage() {
   return (
     <InfoPageShell pageTitle="About Us">
-        <h1>About LudoLeague</h1>
         <p>Welcome to the ultimate arena for competitive Ludo enthusiasts! LudoLeague was founded by a group of passionate gamers who wanted to elevate the classic board game into a modern, skill-based competition.</p>
 
         <h2>Our Mission</h2>
@@ -19,7 +18,6 @@ export default function AboutPage() {
 
         <h2>The Future of Ludo</h2>
         <p>We are constantly working to improve our platform, introduce new features, and host larger tournaments. Join us on this exciting journey to redefine the world of online Ludo!</p>
-
     </InfoPageShell>
   );
 }

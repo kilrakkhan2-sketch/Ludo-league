@@ -4,7 +4,6 @@ import { InfoPageShell } from "@/components/layout/InfoPageShell";
 export default function PrivacyPage() {
   return (
     <InfoPageShell pageTitle="Privacy Policy">
-        <h1>Privacy Policy</h1>
         <p>Last updated: [Date]</p>
 
         <h2>1. Information We Collect</h2>
