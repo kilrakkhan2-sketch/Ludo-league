@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -76,7 +75,7 @@ export default function SignupPage() {
       });
 
       toast({ title: "Account Created", description: "Welcome to LudoLeague!" });
-      router.replace('/dashboard');
+      router.replace('/');
 
     } catch (error: any) {
       console.error("Signup Error:", error);

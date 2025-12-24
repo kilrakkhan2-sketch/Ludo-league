@@ -1,4 +1,3 @@
-
 import type { Metadata } from "next";
 import { GeistSans } from 'geist/font/sans';
 import { Playfair_Display } from "next/font/google";
@@ -8,6 +7,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase";
 import { ThemeProvider } from "@/components/theme-provider";
 import { MaintenanceShield } from "@/components/layout/MaintenanceShield";
+import { cookies } from "next/headers";
+import { AppShell } from "@/components/layout/AppShell";
+import LandingPage from "@/components/landing-page";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -28,6 +30,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = cookies();
+  const isLoggedIn = cookieStore.get('firebaseIdToken');
+
   return (
     <html lang="en" suppressHydrationWarning className="dark">
       <body className={cn(

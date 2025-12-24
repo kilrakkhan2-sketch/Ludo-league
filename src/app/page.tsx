@@ -1,9 +1,15 @@
-
+import { AppShell } from "@/components/layout/AppShell";
 import LandingPage from "@/components/landing-page";
+import { cookies } from "next/headers";
+import DashboardPage from "./dashboard/page";
 
 export default function RootPage() {
-  // The root page now simply renders the static landing page.
-  // The logic for redirecting logged-in vs. logged-out users
-  // is handled by the individual pages and the AppShell.
+  const cookieStore = cookies();
+  const isLoggedIn = cookieStore.get('firebaseIdToken');
+
+  if (isLoggedIn) {
+    return <DashboardPage />;
+  }
+
   return <LandingPage />;
 }

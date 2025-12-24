@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -39,8 +38,8 @@ export default function LoginPage() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({ title: "Logged In", description: "Welcome back!" });
-      router.replace('/dashboard');
-    } catch (error: any) {
+      router.replace('/');
+    } catch (error: any) => {
       console.error("Login Error:", error);
       toast({
         variant: "destructive",
