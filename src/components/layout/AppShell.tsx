@@ -21,6 +21,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sparkle } from "../ui/sparkle";
 import { BottomNav } from "./BottomNav";
+import DashboardClientContent from "@/app/dashboard/components/DashboardClientContent";
+import NewsCarousel from "@/app/dashboard/components/NewsCarousel";
 
 interface AppShellProps {
   children: ReactNode;
@@ -138,8 +140,8 @@ export function AppShell({ children, pageTitle, showBackButton = false }: AppShe
             <SidebarHeader>
               <Link href="/dashboard" className="flex items-center gap-2">
                 <Sparkle>
-                  <div className="p-2 bg-primary rounded-lg">
-                    <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
+                  <div className="p-2 rounded-lg">
+                    <Image src="https://firebasestorage.googleapis.com/v0/b/studio-4431476254-c1156.appspot.com/o/appImages%2F26323-removebg-preview.png?alt=media&token=6ffa1383-0a70-44ca-acce-98d738ef99ed" alt="LudoLeague Logo" width={32} height={32} />
                   </div>
                 </Sparkle>
                 <h1 className="text-xl font-bold font-headline text-primary">LudoLeague</h1>
@@ -197,3 +199,5 @@ export function AppShell({ children, pageTitle, showBackButton = false }: AppShe
     </SidebarProvider>
   );
 }
+
+    

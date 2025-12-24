@@ -56,9 +56,8 @@ export default function LandingPage() {
         <div className="container flex h-14 items-center">
           <div className="mr-4 flex items-center">
             <Link href="/" className="flex items-center gap-2 font-bold">
-               <div className="p-1 bg-primary rounded-md">
-                {/* Assuming favicon.ico is the intended logo icon */}
-                <Image src="/favicon.ico" alt="LudoLeague Logo" width={24} height={24} />
+               <div className="p-1 rounded-md">
+                <Image src="https://firebasestorage.googleapis.com/v0/b/studio-4431476254-c1156.appspot.com/o/appImages%2F26323-removebg-preview.png?alt=media&token=6ffa1383-0a70-44ca-acce-98d738ef99ed" alt="LudoLeague Logo" width={32} height={32} />
               </div>
               <span className="font-headline text-lg text-primary">LudoLeague</span>
             </Link>
@@ -201,3 +200,5 @@ export default function LandingPage() {
     </div>
   );
 }
+
+    

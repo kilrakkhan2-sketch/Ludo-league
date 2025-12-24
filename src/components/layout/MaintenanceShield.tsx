@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useDoc } from "@/firebase";
@@ -8,8 +9,8 @@ import Image from "next/image";
 
 const FullScreenLoader = () => (
     <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
-        <div className="p-2 bg-primary rounded-lg mb-4">
-            <Image src="/favicon.ico" alt="LudoLeague Logo" width={32} height={32} />
+        <div className="p-2 rounded-lg mb-4">
+            <Image src="https://firebasestorage.googleapis.com/v0/b/studio-4431476254-c1156.appspot.com/o/appImages%2F26323-removebg-preview.png?alt=media&token=6ffa1383-0a70-44ca-acce-98d738ef99ed" alt="LudoLeague Logo" width={40} height={40} />
         </div>
         <p className="text-muted-foreground">Loading application...</p>
     </div>
@@ -63,3 +64,5 @@ export function MaintenanceShield({ children }: { children: React.ReactNode }) {
     // but for now, the check happens here and at the feature-specific pages.
     return <>{children}</>;
 }
+
+    
