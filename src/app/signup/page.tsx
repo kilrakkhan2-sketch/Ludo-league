@@ -1,7 +1,6 @@
 'use client';
 
-import React from 'react';
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCreateUserWithEmailAndPassword } from 'react-firebase-hooks/auth';
 import { useAuth, useFirestore } from '@/firebase';
 import { Button } from "@/components/ui/button";
@@ -25,50 +24,12 @@ export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firestore) {
-      toast({ variant: "destructive", title: "Error", description: "Database not available." });
-      return;
-    }
-    
-    try {
-      const newUserCredential = await createUserWithEmailAndPassword(email, password);
-      if (newUserCredential) {
-        const user = newUserCredential.user;
-        
-        // Update Firebase Auth profile
-        await updateProfile(user, { displayName });
-
-        // Create user document in Firestore
-        const referralCode = `${displayName.substring(0, 4).toUpperCase()}${nanoid(4)}`;
-        await setDoc(doc(firestore, "users", user.uid), {
-          uid: user.uid,
-          name: displayName,
-          displayName: displayName,
-          email: email,
-          photoURL: '',
-          role: 'user',
-          walletBalance: 0,
-          referralEarnings: 0,
-          isVerified: false,
-          xp: 0,
-          matchesPlayed: 0,
-          matchesWon: 0,
-          rating: 1000,
-          referralCode: referralCode,
-          createdAt: Timestamp.now(),
-        });
-        
-        toast({ title: "Account Created", description: "Welcome to LudoLeague!" });
-        router.push('/dashboard');
-      }
-    } catch (err: any) {
-       toast({ variant: "destructive", title: "Signup Failed", description: err.message });
-    }
+    createUserWithEmailAndPassword(email, password);
   };
 
-   React.useEffect(() => {
+  useEffect(() => {
     if (error) {
       toast({
         variant: "destructive",
@@ -78,6 +39,45 @@ export default function SignupPage() {
     }
   }, [error, toast]);
 
+  useEffect(() => {
+    const setupUser = async () => {
+      if (user && firestore && displayName) {
+        try {
+            // Update Firebase Auth profile
+            await updateProfile(user.user, { displayName });
+
+            // Create user document in Firestore
+            const userRef = doc(firestore, "users", user.user.uid);
+            const referralCode = `${displayName.substring(0, 4).toUpperCase()}${nanoid(4)}`;
+            
+            await setDoc(userRef, {
+                uid: user.user.uid,
+                name: displayName,
+                displayName: displayName,
+                email: email,
+                photoURL: '',
+                role: 'user',
+                walletBalance: 0,
+                referralEarnings: 0,
+                isVerified: false,
+                xp: 0,
+                matchesPlayed: 0,
+                matchesWon: 0,
+                rating: 1000,
+                referralCode: referralCode,
+                createdAt: Timestamp.now(),
+            });
+
+            toast({ title: "Account Created", description: "Welcome to LudoLeague!" });
+            router.push('/dashboard');
+
+        } catch (setupError: any) {
+            toast({ variant: "destructive", title: "Setup Failed", description: setupError.message });
+        }
+      }
+    };
+    setupUser();
+  }, [user, firestore, displayName, email, router, toast]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">

@@ -1,8 +1,6 @@
-
 'use client';
 
-import React from 'react';
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSignInWithEmailAndPassword } from 'react-firebase-hooks/auth';
 import { useAuth } from '@/firebase';
 import { Button } from "@/components/ui/button";
@@ -21,21 +19,12 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const res = await signInWithEmailAndPassword(email, password);
-      if (res) {
-        toast({ title: "Logged In", description: "Welcome back!" });
-        router.replace('/dashboard');
-      }
-    } catch (err: any) {
-      // Errors are handled by the useEffect below
-    }
+    signInWithEmailAndPassword(email, password);
   };
 
-  // Display toast on error change
-  React.useEffect(() => {
+  useEffect(() => {
     if (error) {
       toast({
         variant: "destructive",
@@ -44,6 +33,13 @@ export default function LoginPage() {
       });
     }
   }, [error, toast]);
+
+  useEffect(() => {
+    if (user) {
+      toast({ title: "Logged In", description: "Welcome back!" });
+      router.replace('/dashboard');
+    }
+  }, [user, router, toast]);
 
 
   return (
