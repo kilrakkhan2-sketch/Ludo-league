@@ -53,11 +53,7 @@ export const isTimeInDisabledRange = (startTimeStr?: string, endTimeStr?: string
 
 
 export function MaintenanceShield({ children }: { children: React.ReactNode }) {
-    const { data: settings, loading } = useDoc<MaintenanceSettings>('settings/maintenance');
-
-    if (loading) {
-        return <FullScreenLoader />;
-    }
+    const { data: settings } = useDoc<MaintenanceSettings>('settings/maintenance');
 
     if (settings?.isAppDisabled) {
         return <MaintenanceScreen message={settings.appDisabledMessage} />;

@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUser, useDoc } from "@/firebase";
+import { useUser } from "@/firebase";
 import { getAuth, signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { UserProfile } from "@/types";
@@ -29,6 +29,7 @@ import { Skeleton } from "../ui/skeleton";
 import { BottomNav, NavItem } from "./BottomNav";
 import { useMemo } from "react";
 import { Sparkle } from "../ui/sparkle";
+import { AppShellSkeleton } from "../app-shell-skeleton";
 
 interface AppShellProps {
   children: ReactNode;
@@ -59,8 +60,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const { user, loading: userLoading, userData } = useUser();
-  const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
+  const { user, loading, userData } = useUser();
 
   const isAdmin = useMemo(() => 
     userData?.role && ['superadmin', 'deposit_admin', 'withdrawal_admin', 'match_admin'].includes(userData.role)
@@ -74,8 +74,6 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
     return items;
   }, [isAdmin]);
 
-  const loading = userLoading || profileLoading;
-
   const handleLogout = async () => {
     const auth = getAuth();
     try {
@@ -87,22 +85,20 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
     }
   };
   
-  const userMenu = loading ? (
-    <Skeleton className="h-8 w-8 rounded-full bg-background/50" />
-  ) : user ? (
+  const userMenu = user ? (
      <DropdownMenu>
         <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8 border border-border/50">
-                    <AvatarImage src={profile?.photoURL || undefined} alt={profile?.displayName || ''} />
-                    <AvatarFallback>{profile?.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={userData?.photoURL || undefined} alt={userData?.displayName || ''} />
+                    <AvatarFallback>{userData?.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
                 </Avatar>
             </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{profile?.displayName}</p>
+                    <p className="text-sm font-medium leading-none">{userData?.displayName}</p>
                     <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                 </div>
             </DropdownMenuLabel>
@@ -126,14 +122,18 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
     </DropdownMenu>
   ) : null;
 
-  if (userLoading) {
-      return (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
-             <div className="p-2 bg-primary rounded-lg animate-pulse">
-                <Image src="/favicon.ico" alt="LudoLeague Logo" width={32} height={32} />
-            </div>
-        </div>
-      )
+  if (loading) {
+      return <AppShellSkeleton />;
+  }
+
+  if (!user) {
+    // If not logged in, redirect to login page.
+    // Use a redirect in a useEffect to avoid server/client mismatch errors.
+    React.useEffect(() => {
+      router.replace('/login');
+    }, [router]);
+    // Render a loader while redirecting
+    return <AppShellSkeleton />;
   }
 
   return (
@@ -174,11 +174,11 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="w-full justify-start gap-2 p-2 h-auto text-secondary-foreground/80 hover:text-secondary-foreground hover:bg-accent/40">
                       <Avatar className="h-8 w-8 border border-border/50">
-                        <AvatarImage src={profile?.photoURL || undefined} alt={profile?.displayName || ''} />
-                        <AvatarFallback>{profile?.displayName?.charAt(0) || user?.email?.charAt(0)}</AvatarFallback>
+                        <AvatarImage src={userData?.photoURL || undefined} alt={userData?.displayName || ''} />
+                        <AvatarFallback>{userData?.displayName?.charAt(0) || user?.email?.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div className="text-left overflow-hidden group-data-[collapsible=icon]:hidden">
-                          <p className="font-medium truncate">{profile?.displayName || 'User'}</p>
+                          <p className="font-medium truncate">{userData?.displayName || 'User'}</p>
                           <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                       </div>
                     </Button>
@@ -186,7 +186,7 @@ export function AppShell({ children, pageTitle, showBackButton = false, classNam
                   <DropdownMenuContent className="w-56 mb-2" align="end" side="right" forceMount>
                      <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
-                            <p className="text-sm font-medium leading-none">{profile?.displayName}</p>
+                            <p className="text-sm font-medium leading-none">{userData?.displayName}</p>
                             <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                         </div>
                     </DropdownMenuLabel>

@@ -1,16 +1,14 @@
 
 import type { Metadata } from "next";
 import { GeistSans } from 'geist/font/sans';
-import { Playfair_Display } from "next/font/google"; // Corrected Font: Was Bespoke_Serif
+import { Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase";
 import { ThemeProvider } from "@/components/theme-provider";
 import { MaintenanceShield } from "@/components/layout/MaintenanceShield";
-import { Header } from "@/components/layout/Header";
 
-// Corrected Font import and setup
 const playfair = Playfair_Display({
   subsets: ["latin"],
   weight: ["400", "700"],
@@ -35,7 +33,7 @@ export default function RootLayout({
       <body className={cn(
           "font-sans antialiased",
           GeistSans.variable,
-          playfair.variable // Corrected variable
+          playfair.variable
       )}>
         <ThemeProvider
             attribute="class"
@@ -45,13 +43,11 @@ export default function RootLayout({
         >
             <FirebaseClientProvider>
                 <div className="relative flex min-h-screen flex-col bg-background">
-                    <Header />
                     <main className="flex-1">
                         <MaintenanceShield>
                             {children}
                         </MaintenanceShield>
                     </main>
-                    {/* Add a Footer component here if you have one */}
                 </div>
             </FirebaseClientProvider>
             <Toaster />

@@ -1,21 +1,18 @@
 
 'use client';
 
-import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { useCollection, useUser, useDoc } from "@/firebase";
 import type { Match, UserProfile } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Bell, MessageCircle, PlusCircle, Swords, Wallet, Gift, ShieldCheck, Gamepad2 } from "lucide-react";
 import Link from "next/link";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Trophy } from "lucide-react";
-import { useMemo } from "react";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 import Image from "next/image";
 import { PlayerAvatarList } from "@/components/matches/PlayerAvatarList";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 // MatchCard is now flexible and will adapt to its container
 const MatchCard = ({ match }: { match: Match }) => {
@@ -24,7 +21,10 @@ const MatchCard = ({ match }: { match: Match }) => {
     const getStatusVariant = (status: Match['status']) => {
         switch (status) {
             case 'waiting': return isFull ? 'destructive' : 'outline';
-            case 'in-progress': return 'default';
+            case 'room_code_pending': return 'default';
+            case 'room_code_shared': return 'default';
+            case 'game_started': return 'default';
+            case 'result_submitted': return 'secondary';
             case 'completed': return 'secondary';
             case 'disputed': return 'destructive';
             default: return 'default';
@@ -45,7 +45,7 @@ const MatchCard = ({ match }: { match: Match }) => {
               variant={getStatusVariant(match.status)}
               className="capitalize shrink-0"
             >
-              {isFull && match.status === 'waiting' ? 'Full' : match.status.replace('_', ' ')}
+              {isFull && match.status === 'waiting' ? 'Full' : match.status.replace(/_/g, ' ')}
             </Badge>
           </div>
         </CardHeader>
@@ -95,87 +95,82 @@ const CategoryCard = ({ title, href, icon: Icon, imageId }: { title: string, hre
 }
 
 function DashboardClientContent() {
-    const { user, loading: userLoading } = useUser();
-    const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : null);
+    const { user, userData, loading } = useUser();
 
     const { data: openMatches, loading: openMatchesLoading } = useCollection<Match>('matches', {
         where: ['status', '==', 'waiting'],
         orderBy: ['createdAt', 'desc'],
         limit: 20
     });
-    
-    const loading = userLoading || profileLoading;
 
     return (
-        <AppShell pageTitle="Dashboard">
-            <div className="min-h-screen">
-                {/* Header Section */}
-                <div className="bg-card text-foreground p-4 sm:p-6 border-b">
-                    <header className="flex justify-between items-center mb-4">
-                        {loading ? <Skeleton className="h-7 w-32"/> : <h1 className="text-xl sm:text-2xl font-bold">Hi, {profile?.displayName || 'Player'}!</h1>}
-                        <div className="flex items-center gap-2 sm:gap-4">
-                           <Button variant="ghost" size="icon" asChild><Link href="/messages"><MessageCircle className="h-5 w-5" /></Link></Button>
-                           <Button variant="ghost" size="icon" asChild><Link href="/notifications"><Bell className="h-5 w-5" /></Link></Button>
-                        </div>
-                    </header>
+        <div className="min-h-screen">
+            {/* Header Section */}
+            <div className="bg-card text-foreground p-4 sm:p-6 border-b">
+                <header className="flex justify-between items-center mb-4">
+                    {loading ? <Skeleton className="h-7 w-32"/> : <h1 className="text-xl sm:text-2xl font-bold">Hi, {userData?.displayName || 'Player'}!</h1>}
+                    <div className="flex items-center gap-2 sm:gap-4">
+                        <Button variant="ghost" size="icon" asChild><Link href="/messages"><MessageCircle className="h-5 w-5" /></Link></Button>
+                        <Button variant="ghost" size="icon" asChild><Link href="/notifications"><Bell className="h-5 w-5" /></Link></Button>
+                    </div>
+                </header>
 
-                    <div className="bg-background/80 p-4 rounded-lg border">
-                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                            <div>
-                                <p className="text-sm text-muted-foreground">Wallet Balance</p>
-                                {loading ? <Skeleton className="h-8 w-36 mt-1"/> : <p className="text-3xl font-bold">₹{profile?.wallet.balance?.toLocaleString('en-IN') ?? '0.00'}</p>}
-                            </div>
-                            <div className="flex items-center gap-2 w-full sm:w-auto">
-                                <Button variant="outline" className="flex-1" asChild><Link href="/add-money">Add Money</Link></Button>
-                                <Button className="flex-1" asChild><Link href="/create-match">Create Match</Link></Button>
-                            </div>
+                <div className="bg-background/80 p-4 rounded-lg border">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div>
+                            <p className="text-sm text-muted-foreground">Wallet Balance</p>
+                            {loading ? <Skeleton className="h-8 w-36 mt-1"/> : <p className="text-3xl font-bold">₹{userData?.walletBalance?.toLocaleString('en-IN') ?? '0.00'}</p>}
+                        </div>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <Button variant="outline" className="flex-1" asChild><Link href="/add-money">Add Money</Link></Button>
+                            <Button className="flex-1" asChild><Link href="/create-match">Create Match</Link></Button>
                         </div>
                     </div>
                 </div>
-                
-                <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
-                    {/* Category Links with improved responsive grid */}
-                    <section>
-                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                            <CategoryCard title="KYC" href="/kyc" icon={ShieldCheck} imageId="kyc_card" />
-                            <CategoryCard title="Refer & Earn" href="/refer" icon={Gift} imageId="hero" />
-                            <CategoryCard title="My Wallet" href="/wallet/history" icon={Wallet} imageId="wallet_icon" />
-                            <CategoryCard title="My Matches" href="/matches/my-matches" icon={Gamepad2} imageId="tournament_card" />
-                        </div>
-                    </section>
+            </div>
+            
+            <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
+                {/* Category Links with improved responsive grid */}
+                <section>
+                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                        <CategoryCard title="KYC" href="/kyc" icon={ShieldCheck} imageId="kyc_card" />
+                        <CategoryCard title="Refer & Earn" href="/refer" icon={Gift} imageId="hero" />
+                        <CategoryCard title="My Wallet" href="/wallet/history" icon={Wallet} imageId="wallet_icon" />
+                        <CategoryCard title="My Matches" href="/matches/my-matches" icon={Gamepad2} imageId="tournament_card" />
+                    </div>
+                </section>
 
-                    {/* Open Matches - NOW A RESPONSIVE GRID */}
-                    <section>
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-bold text-primary">Open Matches</h2>
-                            <Button variant="link" asChild>
-                                <Link href="/matches/open">View All</Link>
+                {/* Open Matches - NOW A RESPONSIVE GRID */}
+                <section>
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-primary">Open Matches</h2>
+                        <Button variant="link" asChild>
+                            <Link href="/matches">View All</Link>
+                        </Button>
+                    </div>
+                    {openMatchesLoading ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            <Skeleton className="w-full h-56 rounded-lg" />
+                            <Skeleton className="w-full h-56 rounded-lg" />
+                            <Skeleton className="w-full h-56 rounded-lg hidden sm:block" />
+                            <Skeleton className="w-full h-56 rounded-lg hidden lg:block" />
+                        </div>
+                    ): openMatches && openMatches.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {openMatches.map(match => <MatchCard key={match.id} match={match}/>)}
+                        </div>
+                    ) : (
+                        <div className="text-center py-10 px-4 border-2 border-dashed rounded-lg bg-card/50">
+                            <h3 className="text-lg font-semibold">No Open Matches</h3>
+                            <p className="text-muted-foreground mt-1 mb-4 text-sm">Be the first to create a new challenge!</p>
+                            <Button asChild>
+                                <Link href="/create-match">Create a Match</Link>
                             </Button>
                         </div>
-                        {openMatchesLoading ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                <Skeleton className="w-full h-56 rounded-lg" />
-                                <Skeleton className="w-full h-56 rounded-lg" />
-                                <Skeleton className="w-full h-56 rounded-lg hidden sm:block" />
-                                <Skeleton className="w-full h-56 rounded-lg hidden lg:block" />
-                            </div>
-                        ): openMatches && openMatches.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                {openMatches.map(match => <MatchCard key={match.id} match={match}/>)}
-                            </div>
-                        ) : (
-                            <div className="text-center py-10 px-4 border-2 border-dashed rounded-lg bg-card/50">
-                                <h3 className="text-lg font-semibold">No Open Matches</h3>
-                                <p className="text-muted-foreground mt-1 mb-4 text-sm">Be the first to create a new challenge!</p>
-                                <Button asChild>
-                                    <Link href="/create-match">Create a Match</Link>
-                                </Button>
-                            </div>
-                        )}
-                    </section>
-                </div>
+                    )}
+                </section>
             </div>
-        </AppShell>
+        </div>
     );
 }
 

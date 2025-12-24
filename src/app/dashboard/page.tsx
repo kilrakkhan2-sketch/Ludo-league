@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCollection } from "@/firebase";
 import type { Announcement } from '@/types';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import DashboardClientContent from './DashboardClientContent';
 import { cn } from "@/lib/utils";
@@ -18,10 +18,17 @@ const NewsCarousel = () => {
     });
 
     if (loading) {
-      return null; // Don't show skeleton, just hide section while loading
+      return (
+        <section className="px-4 sm:px-6">
+          <Skeleton className="h-8 w-48 mb-3" />
+          <div className="pl-4">
+             <Skeleton className="h-40 w-full md:w-1/2 lg:w-1/3" />
+          </div>
+        </section>
+      )
     }
 
-    if (announcements.length === 0) {
+    if (!announcements || announcements.length === 0) {
         return null;
     }
 
@@ -59,10 +66,10 @@ const NewsCarousel = () => {
                         </CarouselItem>
                     ))}
                 </CarouselContent>
-                 {announcements.length > 1 && (
+                 {announcements.length > 2 && (
                     <>
-                        <CarouselPrevious className="hidden sm:flex" />
-                        <CarouselNext className="hidden sm:flex" />
+                        <CarouselPrevious className="hidden sm:flex ml-12" />
+                        <CarouselNext className="hidden sm:flex mr-12" />
                     </>
                 )}
             </Carousel>
@@ -73,13 +80,11 @@ const NewsCarousel = () => {
 
 export default function DashboardPage() {
     return (
-        <>
-             <DashboardClientContent />
-             <div className="pb-20">
+        <AppShell pageTitle="Dashboard">
+             <div className="space-y-8">
+                <DashboardClientContent />
                 <NewsCarousel />
-            </div>
-        </>
+             </div>
+        </AppShell>
     );
 }
-
-    

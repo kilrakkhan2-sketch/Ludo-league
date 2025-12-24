@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -26,13 +27,10 @@ export default function LoginPage() {
       const res = await signInWithEmailAndPassword(email, password);
       if (res) {
         toast({ title: "Logged In", description: "Welcome back!" });
-        router.push('/dashboard');
-      }
-      if (error) {
-         toast({ variant: "destructive", title: "Login Failed", description: error.message });
+        router.replace('/dashboard');
       }
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: err.message });
+      // Errors are handled by the useEffect below
     }
   };
 
