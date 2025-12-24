@@ -7,7 +7,8 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { getAuth, signOut } from "firebase/auth";
-import { ArrowLeft, Home, Swords, Wallet, User, LogOut, Menu, Shield, Users as FriendsIcon, Trophy } from "lucide-react";
+import { ArrowLeft, Home, Swords, Wallet, User, LogOut, Menu, Shield, Users as FriendsIcon, Trophy, PlusCircle } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import { useUser } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
@@ -19,12 +20,19 @@ import { Sidebar, SidebarContent, SidebarHeader, SidebarProvider, SidebarMenu, S
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sparkle } from "../ui/sparkle";
-import { BottomNav, NavItem } from "./BottomNav";
+import { BottomNav } from "./BottomNav";
 
 interface AppShellProps {
   children: ReactNode;
-  pageTitle: string;
+  pageTitle?: string; // Made optional as it might not always be needed
   showBackButton?: boolean;
+}
+
+interface NavItem {
+    href: string;
+    icon: LucideIcon;
+    label: string;
+    isCentral?: boolean;
 }
 
 const baseNavItems: NavItem[] = [
@@ -119,6 +127,9 @@ export function AppShell({ children, pageTitle, showBackButton = false }: AppShe
     </DropdownMenu>
   ) : null;
 
+  const finalPageTitle = pageTitle || pathname?.split('/').pop()?.replace('-', ' ') || 'Dashboard';
+
+
   return (
     <SidebarProvider>
       <div className={cn("min-h-screen w-full bg-background text-foreground")}>
@@ -170,7 +181,7 @@ export function AppShell({ children, pageTitle, showBackButton = false }: AppShe
                         </Button>
                     )}
                      <Sparkle>
-                      <h1 className="text-lg sm:text-xl font-bold text-primary capitalize">{pageTitle}</h1>
+                      <h1 className="text-lg sm:text-xl font-bold text-primary capitalize">{finalPageTitle}</h1>
                      </Sparkle>
                     </div>
                     <div className="hidden sm:block">
