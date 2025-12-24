@@ -1,13 +1,19 @@
-import { AppShell } from "@/components/layout/AppShell";
+
+'use client';
+
+import { useUser } from "@/firebase";
 import LandingPage from "@/components/landing-page";
-import { cookies } from "next/headers";
 import DashboardPage from "./dashboard/page";
+import { AppShellSkeleton } from "@/components/app-shell-skeleton";
 
 export default function RootPage() {
-  const cookieStore = cookies();
-  const isLoggedIn = cookieStore.get('firebaseIdToken');
+  const { user, loading } = useUser();
 
-  if (isLoggedIn) {
+  if (loading) {
+    return <AppShellSkeleton />;
+  }
+
+  if (user) {
     return <DashboardPage />;
   }
 
