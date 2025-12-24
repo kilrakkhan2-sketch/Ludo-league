@@ -111,7 +111,7 @@ service cloud.firestore {
                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
                         request.resource.data.status == 'game_started'
                       ) ||
-                      // Admin or server changing status to completed/disputed etc.
+                      // Admin or server changing status (e.g., to cancelled, completed, flagged)
                       (isMatchAdmin() || request.auth.uid == null)
                     );
       

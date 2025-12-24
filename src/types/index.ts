@@ -45,7 +45,7 @@ export type Match = {
   players: string[];
   joinerId?: string | null;
   roomCode: string | null;
-  status: 'waiting' | 'room_code_pending' | 'room_code_shared' | 'game_started' | 'result_submitted' | 'verification' | 'completed' | 'disputed' | 'cancelled';
+  status: 'waiting' | 'cancelled' | 'room_code_pending' | 'room_code_shared' | 'game_started' | 'result_submitted' | 'AUTO_VERIFIED' | 'FLAGGED' | 'COMPLETED' | 'PAID' | 'verification' | 'disputed';
   creatorPosition?: number | null;
   joinerPosition?: number | null;
   createdAt: any;
@@ -53,6 +53,7 @@ export type Match = {
   completedAt: any | null;
   winnerId?: string;
   proofImage?: string;
+  fraudReasons?: string[];
 };
 
 export type MatchResult = {
@@ -60,7 +61,8 @@ export type MatchResult = {
   userId: string;
   screenshotUrl: string;
   submittedAt: any;
-  confirmedPosition: number;
+  creatorPosition: number;
+  joinerPosition: number;
   confirmedWinStatus: 'win' | 'loss';
   confirmedAt?: any;
   status: 'submitted' | 'confirmed' | 'mismatch' | 'locked';

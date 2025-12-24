@@ -8,7 +8,7 @@ export interface Match {
   prizePool: number;
   maxPlayers: number;
   players: string[];
-  status: 'waiting' | 'room_code_pending' | 'room_code_shared' | 'game_started' | 'result_submitted' | 'verification' | 'completed' | 'disputed' | 'cancelled';
+  status: 'waiting' | 'cancelled' | 'room_code_pending' | 'room_code_shared' | 'game_started' | 'result_submitted' | 'AUTO_VERIFIED' | 'FLAGGED' | 'COMPLETED' | 'PAID' | 'verification' | 'disputed';
   creatorId: string;
   joinerId?: string | null;
   winnerId?: string | null;
@@ -19,4 +19,5 @@ export interface Match {
   createdAt: Timestamp;
   startedAt?: Timestamp | null;
   completedAt?: Timestamp | null;
+  fraudReasons?: string[];
 }

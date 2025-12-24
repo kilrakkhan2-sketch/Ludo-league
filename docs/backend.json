@@ -138,8 +138,11 @@
             "room_code_shared",
             "game_started",
             "result_submitted",
+            "AUTO_VERIFIED",
+            "FLAGGED",
+            "COMPLETED",
+            "PAID",
             "verification",
-            "completed",
             "disputed"
           ]
         },
@@ -155,6 +158,10 @@
         "proofImage": {
             "type": "string",
             "format": "uri"
+        },
+        "fraudReasons": {
+            "type": "array",
+            "items": { "type": "string" }
         },
         "createdAt": {
           "type": "string",
@@ -188,8 +195,11 @@
         "userId": {
           "type": "string"
         },
-        "confirmedPosition": {
-          "type": "number"
+        "creatorPosition": {
+            "type": "number"
+        },
+        "joinerPosition": {
+            "type": "number"
         },
         "confirmedWinStatus": {
           "type": "string",

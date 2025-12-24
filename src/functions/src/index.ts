@@ -38,7 +38,8 @@ interface CommissionSettings {
 
 interface MatchResult {
     userId: string;
-    confirmedPosition: number;
+    creatorPosition: number;
+    joinerPosition: number;
     confirmedWinStatus: 'win' | 'loss';
     screenshotUrl: string;
     submittedAt: any;
@@ -427,10 +428,9 @@ export const onDepositStatusChange = functions.firestore
     return null;
 });
 
-
 export const autoVerifyResults = functions.firestore
     .document('matches/{matchId}/results/{userId}')
-    .onWrite(async (change, context) => { // Changed from onCreate to onWrite
+    .onWrite(async (change, context) => { // Using onWrite to capture creates and updates
         const { matchId } = context.params;
         const matchRef = db.collection('matches').doc(matchId);
 
@@ -438,58 +438,77 @@ export const autoVerifyResults = functions.firestore
             await db.runTransaction(async (transaction) => {
                 const matchDoc = await transaction.get(matchRef);
                 if (!matchDoc.exists) return;
-                const matchData = matchDoc.data();
-                if (!matchData) return;
 
-                if (['completed', 'disputed', 'verification'].includes(matchData.status)) {
-                    return;
+                const matchData = matchDoc.data();
+                if (!matchData || ['AUTO_VERIFIED', 'FLAGGED', 'COMPLETED', 'PAID'].includes(matchData.status)) {
+                    return; // Already processed, no need to re-verify
                 }
-                
+
                 const resultsCollectionRef = matchRef.collection('results');
                 const resultsSnapshot = await transaction.get(resultsCollectionRef);
-                
-                const submittedCount = resultsSnapshot.size;
 
-                if (submittedCount < matchData.maxPlayers) {
-                    return; 
-                }
-                
-                // If we reach here, it means all results are in.
-                transaction.update(matchRef, { status: 'result_submitted' });
-
-
-                const submittedResults = resultsSnapshot.docs.map(doc => doc.data() as MatchResult);
-                
-                const positions = new Set<number>();
-                const winners = new Set<string>();
-
-                for (const result of submittedResults) {
-                    if (result.confirmedPosition) {
-                        positions.add(result.confirmedPosition);
-                    }
-                    if (result.confirmedWinStatus === 'win') {
-                        winners.add(result.userId);
-                    }
+                // Wait until all players have submitted their results
+                if (resultsSnapshot.size < matchData.maxPlayers) {
+                    return;
                 }
 
-                const hasDuplicatePositions = positions.size !== submittedResults.length;
-                const hasMultipleWinners = winners.size > 1;
+                // --- ADVANCED AUTO-VERIFICATION LOGIC ---
+                const results = resultsSnapshot.docs.map(doc => doc.data());
+                let fraudReasons: string[] = [];
 
-                if (hasDuplicatePositions || hasMultipleWinners) {
-                    transaction.update(matchRef, { status: 'disputed' });
-                    functions.logger.info(`Match ${matchId} marked as disputed due to result conflict.`);
+                // RULE 1: Position Uniqueness
+                const positions = results.map(r => r.creatorPosition || r.joinerPosition);
+                const uniquePositions = new Set(positions);
+                if (uniquePositions.size !== matchData.maxPlayers) {
+                    fraudReasons.push('DUPLICATE_OR_MISSING_POSITIONS');
+                }
+
+                if (matchData.maxPlayers === 2) {
+                    // RULE 2 (2P): Positions must be 1 and 2
+                    if (!uniquePositions.has(1) || !uniquePositions.has(2)) {
+                        fraudReasons.push('INVALID_POSITIONS_FOR_2P');
+                    }
+                    // RULE 3 (2P): Position vs State Consistency
+                    const winnerResult = results.find(r => (r.creatorPosition || r.joinerPosition) === 1);
+                    const loserResult = results.find(r => (r.creatorPosition || r.joinerPosition) === 2);
+                    if (!winnerResult || winnerResult.confirmedWinStatus !== 'win' || !loserResult || loserResult.confirmedWinStatus !== 'loss') {
+                        fraudReasons.push('WIN_LOSS_STATE_MISMATCH_2P');
+                    }
+                }
+
+                // RULE 4: Cross-Player Validation (Winner ID consistency)
+                const declaredWinners = results.filter(r => r.confirmedWinStatus === 'win');
+                if (declaredWinners.length > 1) {
+                    fraudReasons.push('MULTIPLE_WINNERS_DECLARED');
+                }
+                
+                // Add more rules here (device ID, IP, etc.) if needed in future
+
+                // FINAL DECISION
+                if (fraudReasons.length > 0) {
+                    transaction.update(matchRef, { 
+                        status: 'FLAGGED',
+                        fraudReasons: fraudReasons,
+                    });
+                    functions.logger.warn(`Match ${matchId} flagged for fraud. Reasons:`, fraudReasons);
                 } else {
-                    transaction.update(matchRef, { status: 'verification' });
-                    functions.logger.info(`Match ${matchId} pending verification.`);
+                    // All checks passed, mark for automatic payout
+                    const winner = results.find(r => (r.creatorPosition || r.joinerPosition) === 1);
+                    transaction.update(matchRef, { 
+                        status: 'AUTO_VERIFIED',
+                        winnerId: winner?.userId, // Set the winnerId for the payout function
+                    });
+                    functions.logger.info(`Match ${matchId} auto-verified successfully.`);
                 }
             });
         } catch (error) {
-            functions.logger.error(`Error processing results for match ${matchId}:`, error);
-            await matchRef.update({ status: 'disputed', error: (error as Error).message });
+            functions.logger.error(`Error during auto-verification for match ${matchId}:`, error);
+            await matchRef.update({ status: 'FLAGGED', fraudReasons: ['INTERNAL_ERROR'] });
         }
         
         return null;
     });
+
 
 export const onMatchResultUpdate = functions.firestore
     .document("matches/{matchId}")
@@ -497,13 +516,14 @@ export const onMatchResultUpdate = functions.firestore
     const beforeData = change.before.data();
     const afterData = change.after.data();
     const { matchId } = context.params;
-
-    if (beforeData.status !== 'completed' && afterData.status === 'completed' && afterData.winnerId) {
+    
+    // Trigger payout only when a match is verified (auto or manual) and not yet paid
+    if (beforeData.status !== 'PAID' && (afterData.status === 'AUTO_VERIFIED' || (beforeData.status !== 'COMPLETED' && afterData.status === 'COMPLETED')) && afterData.winnerId) {
         const { winnerId, prizePool, players, title } = afterData;
 
         if (!winnerId || !prizePool || prizePool <= 0) {
-            functions.logger.error("Missing or invalid winnerId/prizePool", { id: matchId });
-            return null;
+            functions.logger.error("Payout failed: Missing or invalid winnerId/prizePool", { id: matchId });
+            return change.after.ref.update({ status: 'FLAGGED', fraudReasons: ['PAYOUT_ERROR_INVALID_DATA'] });
         }
         
         try {
@@ -538,14 +558,17 @@ export const onMatchResultUpdate = functions.firestore
                 const loserIds = players.filter((pId: string) => pId !== winnerId);
                 for (const loserId of loserIds) {
                     const loserRef = db.collection("users").doc(loserId);
-                    // We can update loser stats without fetching them first using FieldValue
                     t.update(loserRef, {
                          rating: FieldValue.increment(-5),
                          matchesPlayed: FieldValue.increment(1)
                     });
                 }
+
+                // 4. Finalize the match status to PAID
+                t.update(change.after.ref, { status: 'PAID', completedAt: FieldValue.serverTimestamp() });
             });
-            functions.logger.info(`Prize money, rating, and XP updated for match ${matchId}.`);
+
+            functions.logger.info(`Payout processed for match ${matchId}. Winner: ${winnerId}`);
             // Send notifications
             await sendNotification(winnerId, 'You Won!', `Congratulations! You won ₹${prizePool} in the match "${title}".`, `/match/${matchId}`);
             const loserIds = players.filter((pId: string) => pId !== winnerId);
@@ -554,8 +577,8 @@ export const onMatchResultUpdate = functions.firestore
             }
 
         } catch (error) {
-            functions.logger.error(`Failed to process results for match ${matchId}:`, error);
-            await change.after.ref.update({ status: "error", error: (error as Error).message });
+            functions.logger.error(`Payout transaction failed for match ${matchId}:`, error);
+            await change.after.ref.update({ status: "FLAGGED", fraudReasons: ['PAYOUT_TRANSACTION_FAILED'] });
         }
         return null
     }
