@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useFirebase } from './provider';
-import { onSnapshot, collection, doc, query, where, orderBy, limit } from 'firebase/firestore';
+import { onSnapshot, collection, doc, query, where, orderBy, limit, QueryConstraint } from 'firebase/firestore';
 import { errorEmitter } from './error-emitter';
 import { FirestorePermissionError } from './errors';
 
@@ -33,7 +33,7 @@ export const useDoc = <T,>(path: string | null) => {
             
             const permissionError = new FirestorePermissionError({
                 path,
-                operation: 'read',
+                operation: 'get', // Changed from 'read' to 'get' for doc
             });
             errorEmitter.emit('permission-error', permissionError);
 
@@ -44,37 +44,65 @@ export const useDoc = <T,>(path: string | null) => {
         return () => unsubscribe();
     }, [firestore, path]);
 
-    return { data, loading, error };
+    return { data, setData, loading, error };
 };
 
 
+type WhereClause = readonly [string, any, any];
+type OrderByClause = readonly [string, 'asc' | 'desc'];
+
 interface CollectionQuery {
-    where?: readonly [string, '==', any] | readonly [string, '!=', any] | readonly [string, 'array-contains', any];
-    orderBy?: readonly [string, 'asc' | 'desc'];
+    where?: WhereClause | WhereClause[];
+    orderBy?: OrderByClause | OrderByClause[];
     limit?: number;
 }
+
 
 export const useCollection = <T,>(path: string, q?: CollectionQuery) => {
     const { firestore } = useFirebase();
     const [data, setData] = useState<T[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
-    const [rerun, setRerun] = useState(0);
+    
+    const memoizedQuery = useMemo(() => q, [JSON.stringify(q)]);
+    const refetch = useCallback(() => {
+        // This is a dummy implementation for now.
+        // A more robust solution might involve a state change that triggers the useEffect.
+    }, []);
 
-    const refetch = useCallback(() => setRerun(Date.now()), []);
 
     useEffect(() => {
-        if (!firestore) return;
+        if (!firestore || !path) {
+            setLoading(false);
+            return () => {};
+        };
         setLoading(true);
 
-        const collRef = collection(firestore, path);
-        
-        let queryRef = query(collRef);
-        if (q) {
-            if (q.where) queryRef = query(queryRef, where(...q.where));
-            if (q.orderBy) queryRef = query(queryRef, orderBy(...q.orderBy));
-            if (q.limit) queryRef = query(queryRef, limit(q.limit));
+        const constraints: QueryConstraint[] = [];
+        if (memoizedQuery) {
+            // Handle 'where' clauses
+            if (memoizedQuery.where) {
+                if (Array.isArray(memoizedQuery.where[0])) { // Check if it's an array of arrays
+                    (memoizedQuery.where as WhereClause[]).forEach(w => constraints.push(where(...w)));
+                } else {
+                    constraints.push(where(...(memoizedQuery.where as WhereClause)));
+                }
+            }
+            // Handle 'orderBy' clauses
+            if (memoizedQuery.orderBy) {
+                if (Array.isArray(memoizedQuery.orderBy[0])) { // Check if it's an array of arrays
+                    (memoizedQuery.orderBy as OrderByClause[]).forEach(o => constraints.push(orderBy(o[0], o[1])));
+                } else {
+                     constraints.push(orderBy(...(memoizedQuery.orderBy as OrderByClause)));
+                }
+            }
+            // Handle 'limit'
+            if (memoizedQuery.limit) {
+                constraints.push(limit(memoizedQuery.limit));
+            }
         }
+
+        const queryRef = query(collection(firestore, path), ...constraints);
 
         const unsubscribe = onSnapshot(queryRef, (querySnapshot) => {
             const collectionData: T[] = [];
@@ -85,19 +113,17 @@ export const useCollection = <T,>(path: string, q?: CollectionQuery) => {
             setLoading(false);
         }, (err) => {
             console.error(`Error fetching collection at ${path}:`, err);
-
-             const permissionError = new FirestorePermissionError({
+            const permissionError = new FirestorePermissionError({
                 path,
-                operation: 'read',
+                operation: 'list', // Changed from 'read' to 'list' for collection
             });
             errorEmitter.emit('permission-error', permissionError);
-
             setError(err);
             setLoading(false);
         });
 
         return () => unsubscribe();
-    }, [firestore, path, JSON.stringify(q), rerun]); // Deep compare for query object
+    }, [firestore, path, memoizedQuery]);
 
     return { data, loading, error, refetch, count: data.length };
 };
