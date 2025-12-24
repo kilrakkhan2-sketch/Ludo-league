@@ -58,7 +58,7 @@ export interface Match {
 export interface Transaction {
   id: string;
   userId: string;
-  type: 'deposit' | 'withdrawal' | 'entry_fee' | 'prize' | 'referral_bonus' | 'win' | 'add_money' | 'refund' | 'platform-fee' | 'prize_win';
+  type: 'deposit' | 'withdrawal' | 'entry_fee' | 'prize' | 'referral_bonus' | 'win' | 'add_money' | 'refund' | 'platform-fee' | 'prize_win' | 'penalty';
   amount: number;
   status: 'pending' | 'completed' | 'failed';
   createdAt: any;
@@ -195,4 +195,15 @@ export interface AdminChatMessage {
 export interface CommissionSettings {
     isEnabled: boolean;
     rate: number;
+}
+
+export interface Penalty {
+    id: string;
+    userId: string;
+    reason: 'wrong_result' | 'abusive_language' | 'other';
+    amount: number;
+    description: string;
+    adminId: string;
+    createdAt: FieldValue;
+    relatedMatchId?: string;
 }

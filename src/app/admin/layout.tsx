@@ -32,7 +32,8 @@ import {
   Megaphone,
   Banknote,
   ShieldCheck,
-  CircleUser
+  CircleUser,
+  ShieldX
 } from 'lucide-react';
 import { signOut as firebaseSignOut } from 'firebase/auth';
 
@@ -50,6 +51,7 @@ const allNavItems = {
     { href: '/admin/users', icon: Users, label: 'All Users', roles: ['superadmin'] },
     { href: '/admin/kyc', icon: FileKey, label: 'KYC Requests', roles: ['superadmin'] },
     { href: '/admin/manage-admins', icon: ShieldCheck, label: 'Manage Admins', roles: ['superadmin'] },
+    { href: '/admin/penalties', icon: ShieldX, label: 'Penalties', roles: ['superadmin'] },
   ],
   game: [
     { href: '/admin/matches', icon: Sword, label: 'Matches', roles: ['superadmin', 'match_admin'] },

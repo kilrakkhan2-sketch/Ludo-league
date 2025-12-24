@@ -8,7 +8,7 @@ import type { Match, UserProfile, MatchResult } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Trophy, Hourglass, ClipboardCopy, Upload, Gamepad2, Trash2, Swords, CheckCircle2, AlertTriangle, Users } from 'lucide-react';
+import { Trophy, Hourglass, ClipboardCopy, Upload, Gamepad2, Trash2, Swords, CheckCircle2, AlertTriangle, Users, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { ChatRoom } from '@/components/chat/ChatRoom';
@@ -284,6 +284,13 @@ const ResultSubmissionContent = ({ match, results }: { match: Match; results: Ma
                         <Input id="screenshot" type="file" className="hidden" onChange={(e) => setScreenshot(e.target.files?.[0] || null)} accept="image/*" />
                     </label>
                 </div>
+                 <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Warning: Penalty for Wrong Submission</AlertTitle>
+                    <AlertDescription>
+                        Submitting incorrect results or tampered screenshots will result in a penalty of **₹50** being deducted from your wallet.
+                    </AlertDescription>
+                </Alert>
             </CardContent>
             <CardFooter>
                 <Button className="w-full" onClick={handleSubmitResult} disabled={isSubmitting || !position || !screenshot}>{isSubmitting ? 'Submitting...' : 'Submit Final Result'}</Button>
@@ -387,4 +394,3 @@ export default function MatchPage({ params }: { params: { id: string } }) {
     </AppShell>
   );
 }
-

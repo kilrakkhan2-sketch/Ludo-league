@@ -286,7 +286,8 @@
             "withdrawal",
             "entry_fee",
             "prize",
-            "referral_bonus"
+            "referral_bonus",
+            "penalty"
           ]
         },
         "amount": {
@@ -803,6 +804,21 @@
         "isRead",
         "createdAt"
       ]
+    },
+    "PenaltyTransaction": {
+      "title": "Penalty Transaction",
+      "description": "A record of a penalty applied to a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "adminId": { "type": "string" },
+        "amount": { "type": "number" },
+        "reason": { "type": "string", "enum": ["wrong_result", "abusive_language", "other"] },
+        "description": { "type": "string" },
+        "relatedMatchId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "adminId", "amount", "reason", "createdAt"]
     }
   },
   "auth": {
@@ -860,6 +876,12 @@
         "$ref": "#/entities/Transaction"
       },
       "description": "Stores a user's wallet transactions."
+    },
+     "/users/{userId}/penalties/{penaltyId}": {
+      "schema": {
+        "$ref": "#/entities/PenaltyTransaction"
+      },
+      "description": "Stores all penalties applied to a user."
     },
     "/deposit-requests/{depositId}": {
       "schema": {
