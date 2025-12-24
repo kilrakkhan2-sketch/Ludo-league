@@ -13,6 +13,7 @@ import type { Match, UserProfile } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PlayerAvatarList } from '@/components/matches/PlayerAvatarList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Image from 'next/image';
 
 const MatchCardSkeleton = () => (
   <Card>
@@ -46,7 +47,14 @@ const MyMatchCard = ({ match }: { match: Match }) => {
   const isArchived = ['PAID', 'cancelled'].includes(match.status);
 
   return (
-    <Card className="flex flex-col hover:shadow-lg transition-shadow bg-card border">
+    <Card className="relative overflow-hidden flex flex-col hover:shadow-lg transition-shadow bg-card border">
+        <Image
+            src="https://firebasestorage.googleapis.com/v0/b/studio-4431476254-c1156.appspot.com/o/appImages%2F26323-removebg-preview.png?alt=media&token=6ffa1383-0a70-44ca-acce-98d738ef99ed"
+            alt="LudoLeague Watermark"
+            width={120}
+            height={120}
+            className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 opacity-5 pointer-events-none"
+        />
       <CardHeader className="p-4">
         <div className="flex justify-between items-start gap-2">
           <CardTitle className="text-base leading-tight truncate">{match.title}</CardTitle>

@@ -36,7 +36,14 @@ const MatchCard = ({ match }: { match: Match }) => {
     }
 
     return (
-      <Card className="flex flex-col hover:shadow-lg transition-shadow w-full bg-card border border-border">
+      <Card className="relative overflow-hidden flex flex-col hover:shadow-lg transition-shadow w-full bg-card border border-border">
+        <Image
+            src="https://firebasestorage.googleapis.com/v0/b/studio-4431476254-c1156.appspot.com/o/appImages%2F26323-removebg-preview.png?alt=media&token=6ffa1383-0a70-44ca-acce-98d738ef99ed"
+            alt="LudoLeague Watermark"
+            width={80}
+            height={80}
+            className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 opacity-5 pointer-events-none"
+        />
         <CardHeader className="p-4">
           <div className="flex justify-between items-start gap-2">
             <div>
@@ -177,4 +184,3 @@ export default function DashboardClientContent() {
         </div>
     );
 }
-
