@@ -39,20 +39,6 @@ export default function RootLayout({
           {children}
         </FirebaseClientProvider>
         <Toaster />
-        <Script
-          id="service-worker-unregister"
-          strategy="afterInteractive"
-        >
-          {`
-            if ('serviceWorker' in navigator) {
-              navigator.serviceWorker.ready.then(registration => {
-                registration.unregister();
-              }).catch(error => {
-                console.error('Service worker unregistration failed:', error);
-              });
-            }
-          `}
-        </Script>
       </body>
     </html>
   );
