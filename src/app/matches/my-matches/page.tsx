@@ -17,9 +17,9 @@ import Image from 'next/image';
 
 const MatchCardSkeleton = () => (
   <Card>
-    <CardHeader className="p-4"><Skeleton className="h-5 w-3/4 mb-2" /><Skeleton className="h-4 w-1/2" /></CardHeader>
-    <CardContent className="p-4 pt-0"><Skeleton className="h-8 w-full" /></CardContent>
-    <CardFooter className="flex justify-between items-center py-3 px-4"><Skeleton className="h-8 w-1/4" /><Skeleton className="h-10 w-20" /></CardFooter>
+    <CardHeader className="p-3 sm:p-4"><Skeleton className="h-5 w-3/4 mb-2" /><Skeleton className="h-4 w-1/2" /></CardHeader>
+    <CardContent className="p-3 sm:p-4 pt-0"><Skeleton className="h-8 w-full" /></CardContent>
+    <CardFooter className="flex justify-between items-center py-3 px-3 sm:px-4"><Skeleton className="h-8 w-1/4" /><Skeleton className="h-10 w-20" /></CardFooter>
   </Card>
 );
 
@@ -55,13 +55,13 @@ const MyMatchCard = ({ match }: { match: Match }) => {
             height={120}
             className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 opacity-5 pointer-events-none"
         />
-      <CardHeader className="p-4">
+      <CardHeader className="p-3 sm:p-4">
         <div className="flex justify-between items-start gap-2">
           <CardTitle className="text-base leading-tight truncate">{match.title}</CardTitle>
           <Badge variant={statusInfo.variant} className="capitalize shrink-0">{statusInfo.text}</Badge>
         </div>
       </CardHeader>
-      <CardContent className="p-4 pt-0 flex-grow space-y-3">
+      <CardContent className="p-3 sm:p-4 pt-0 flex-grow space-y-3">
         <PlayerAvatarList playerIds={match.players} maxPlayers={match.maxPlayers} />
         {isArchived && (
           <div className='text-sm font-medium'>
@@ -75,7 +75,7 @@ const MyMatchCard = ({ match }: { match: Match }) => {
           </div>
         )}
       </CardContent>
-      <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-4">
+      <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-3 sm:px-4">
         <div className="flex items-center gap-1.5">
           <Trophy className="h-5 w-5 text-yellow-500" />
           <p className="text-lg font-bold">₹{match.prizePool}</p>

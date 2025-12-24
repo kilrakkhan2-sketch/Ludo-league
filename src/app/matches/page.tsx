@@ -26,15 +26,15 @@ import Image from 'next/image';
 
 const MatchCardSkeleton = () => (
   <Card className="flex flex-col">
-    <CardHeader className="p-4">
+    <CardHeader className="p-3 sm:p-4">
       <Skeleton className="h-5 w-3/4 mb-2" />
       <Skeleton className="h-4 w-1/2" />
     </CardHeader>
-    <CardContent className="p-4 pt-0 flex-grow">
+    <CardContent className="p-3 sm:p-4 pt-0 flex-grow">
       <Skeleton className="h-6 w-1/4 mb-2" />
       <Skeleton className="h-5 w-1/2" />
     </CardContent>
-    <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-4">
+    <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-3 sm:px-4">
       <Skeleton className="h-8 w-1/4" />
       <Skeleton className="h-10 w-20" />
     </CardFooter>
@@ -72,7 +72,7 @@ const MatchCard = ({ match }: { match: Match }) => {
             height={120}
             className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 opacity-5 pointer-events-none"
         />
-      <CardHeader className="p-4">
+      <CardHeader className="p-3 sm:p-4">
         <div className="flex justify-between items-start">
           <div>
             <CardTitle className="text-lg truncate">{match.title}</CardTitle>
@@ -85,7 +85,7 @@ const MatchCard = ({ match }: { match: Match }) => {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="p-4 pt-0 flex-grow">
+      <CardContent className="p-3 sm:p-4 pt-0 flex-grow">
         <div className="mb-2">
             <PlayerAvatarList playerIds={match.players} maxPlayers={match.maxPlayers} />
         </div>
@@ -96,7 +96,7 @@ const MatchCard = ({ match }: { match: Match }) => {
           </span>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-4">
+      <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-3 sm:px-4">
         <div className="flex items-center gap-1.5">
           <Trophy className="h-5 w-5 text-yellow-500" />
           <p className="text-lg font-bold">₹{match.prizePool}</p>

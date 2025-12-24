@@ -44,7 +44,7 @@ const MatchCard = ({ match }: { match: Match }) => {
             height={80}
             className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 opacity-5 pointer-events-none"
         />
-        <CardHeader className="p-4">
+        <CardHeader className="p-3 sm:p-4">
           <div className="flex justify-between items-start gap-2">
             <div>
               <CardTitle className="text-base leading-tight text-primary">{match.title}</CardTitle>
@@ -60,7 +60,7 @@ const MatchCard = ({ match }: { match: Match }) => {
             </Badge>
           </div>
         </CardHeader>
-        <CardContent className="p-4 pt-0 flex-grow space-y-3">
+        <CardContent className="p-3 sm:p-4 pt-0 flex-grow space-y-3">
           <PlayerAvatarList playerIds={match.players} maxPlayers={match.maxPlayers} />
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
             <Users className="h-4 w-4 shrink-0" />
@@ -69,7 +69,7 @@ const MatchCard = ({ match }: { match: Match }) => {
             </span>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-4 rounded-b-lg">
+        <CardFooter className="flex justify-between items-center bg-muted/50 py-3 px-3 sm:px-4 rounded-b-lg">
           <div className="flex items-center gap-1.5">
             <Trophy className="h-5 w-5 text-yellow-500" />
             <p className="text-lg font-bold text-foreground">₹{match.prizePool}</p>
