@@ -11,7 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Users, Trophy, PlusCircle, Gamepad2, CheckCircle, Hourglass, XCircle, ShieldQuestion } from 'lucide-react';
 import Link from 'next/link';
@@ -20,6 +19,7 @@ import type { Match } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WalletBalance } from '@/components/wallet-balance';
 import { Separator } from '@/components/ui/separator';
+import { PlayerAvatarList } from '@/components/matches/PlayerAvatarList';
 
 const MatchCardSkeleton = () => (
   <Card className="flex flex-col">
@@ -76,18 +76,8 @@ const MatchCard = ({ match }: { match: Match }) => {
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-0 flex-grow">
-        <div className="flex items-center -space-x-2 mb-2">
-          {match.players.map((playerId, i) => (
-            <Avatar key={playerId} className="h-6 w-6 border-2 border-background">
-              <AvatarImage src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${playerId}`} />
-              <AvatarFallback>P{i + 1}</AvatarFallback>
-            </Avatar>
-          ))}
-          {Array.from({ length: Math.max(0, match.maxPlayers - match.players.length) }).map((_, i) => (
-            <Avatar key={`empty-${i}`} className="h-6 w-6 border-2 border-background bg-muted">
-              <AvatarFallback>?</AvatarFallback>
-            </Avatar>
-          ))}
+        <div className="mb-2">
+            <PlayerAvatarList playerIds={match.players} maxPlayers={match.maxPlayers} />
         </div>
         <div className="flex items-center gap-2 text-muted-foreground text-sm">
           <Users className="h-4 w-4" />
