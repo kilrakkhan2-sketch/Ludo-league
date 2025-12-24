@@ -16,59 +16,57 @@ export function useUser(): AuthState {
   const auth = useAuth();
   const firestore = useFirestore();
 
-  const [state, setState] = useState<AuthState>({
-    user: auth?.currentUser || null,
-    userData: null,
-    loading: true,
-  });
+  const [user, setUser] = useState<User | null>(auth?.currentUser || null);
+  const [userData, setUserData] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!auth || !firestore) {
-      setState({ user: null, userData: null, loading: false });
+      setLoading(false);
       return;
     }
 
-    let firestoreUnsubscribe: Unsubscribe | undefined;
+    let profileUnsubscribe: Unsubscribe | undefined;
 
-    const authUnsubscribe = onIdTokenChanged(auth, async (authUser) => {
-      // First, cancel any existing Firestore listener
-      if (firestoreUnsubscribe) {
-        firestoreUnsubscribe();
+    const authUnsubscribe = onIdTokenChanged(auth, (authUser) => {
+      // If there's an existing profile listener, unsubscribe from it
+      if (profileUnsubscribe) {
+        profileUnsubscribe();
+        profileUnsubscribe = undefined;
       }
+      
+      setUser(authUser); // Update the user state immediately
 
       if (authUser) {
-        // If there's a user, set loading and get their profile
-        setState((prevState) => ({ ...prevState, user: authUser, loading: true }));
-        
-        await authUser.getIdToken(true); // Refresh token for custom claims
-        
+        // If user is logged in, listen to their profile document
         const userDocRef = doc(firestore, 'users', authUser.uid);
-
-        firestoreUnsubscribe = onSnapshot(userDocRef, (docSnapshot) => {
-          const profileData = docSnapshot.exists()
-            ? ({ id: docSnapshot.id, ...docSnapshot.data() } as UserProfile)
-            : null;
-          setState({ user: authUser, userData: profileData, loading: false });
+        profileUnsubscribe = onSnapshot(userDocRef, (docSnapshot) => {
+          if (docSnapshot.exists()) {
+            setUserData({ id: docSnapshot.id, ...docSnapshot.data() } as UserProfile);
+          } else {
+            setUserData(null);
+          }
+          setLoading(false); // Stop loading once profile is fetched (or not found)
         }, (error) => {
           console.error("Error fetching user profile:", error);
-          setState({ user: authUser, userData: null, loading: false });
+          setUserData(null);
+          setLoading(false);
         });
-        
       } else {
-        // If there's no user, set state to not loading and clear data
-        setState({ user: null, userData: null, loading: false });
+        // If user is logged out, clear profile data and stop loading
+        setUserData(null);
+        setLoading(false);
       }
     });
 
-    // Cleanup function
+    // Cleanup function to unsubscribe from listeners when the component unmounts
     return () => {
       authUnsubscribe();
-      if (firestoreUnsubscribe) {
-        firestoreUnsubscribe();
+      if (profileUnsubscribe) {
+        profileUnsubscribe();
       }
     };
-    // Dependencies are the core Firebase services.
   }, [auth, firestore]);
 
-  return state;
+  return { user, userData, loading };
 }
