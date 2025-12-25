@@ -274,6 +274,70 @@ export const deleteStorageFile = functions.https.onCall(async (data, context) =>
 // =================================================================
 //  WITHDRAWAL MANAGEMENT FUNCTIONS
 // =================================================================
+export const createWithdrawalRequest = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to make a withdrawal.");
+    }
+    const userId = context.auth.uid;
+    const { amount, method, details } = data;
+
+    if (typeof amount !== 'number' || amount <= 0) {
+        throw new functions.https.HttpsError("invalid-argument", "A valid, positive amount is required.");
+    }
+    if (!method || !details) {
+        throw new functions.https.HttpsError("invalid-argument", "Withdrawal method and details are required.");
+    }
+
+    const userRef = db.collection("users").doc(userId);
+    const withdrawalRef = db.collection("withdrawal-requests").doc();
+
+    try {
+        await db.runTransaction(async (t) => {
+            const userDoc = await t.get(userRef);
+            if (!userDoc.exists) throw new functions.https.HttpsError("not-found", "User profile not found.");
+
+            const userData = userDoc.data() as UserData;
+            const currentBalance = userData.wallet?.balance || 0;
+            if (currentBalance < amount) {
+                throw new functions.https.HttpsError("failed-precondition", "Insufficient funds.");
+            }
+
+            // 1. Deduct from user's balance
+            t.update(userRef, { 'wallet.balance': FieldValue.increment(-amount) });
+
+            // 2. Create the withdrawal request document
+            t.set(withdrawalRef, {
+                userId,
+                amount,
+                method,
+                details,
+                status: 'pending',
+                createdAt: FieldValue.serverTimestamp(),
+            });
+
+            // 3. Create a "pending" transaction log for the user
+            const transactionRef = db.collection(`users/${userId}/transactions`).doc();
+            t.set(transactionRef, {
+                amount: -amount,
+                type: "withdrawal",
+                status: "pending",
+                description: `Withdrawal request for ₹${amount}`,
+                relatedId: withdrawalRef.id,
+                createdAt: FieldValue.serverTimestamp(),
+            });
+        });
+
+        return { success: true, message: "Withdrawal request submitted successfully." };
+    } catch (error) {
+        functions.logger.error(`Withdrawal request failed for user ${userId}:`, error);
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        } else {
+            throw new functions.https.HttpsError("internal", "An unexpected error occurred.");
+        }
+    }
+});
+
 
 export const approveWithdrawal = functions.https.onCall(async (data, context) => {
     // 1. Check permissions
@@ -380,7 +444,7 @@ export const rejectWithdrawal = functions.https.onCall(async (data, context) => 
         if (userTxRef) {
             t.update(userTxRef, { 
                 status: 'failed', 
-                description: reason || 'Withdrawal request rejected by admin' 
+                description: `Withdrawal rejected. Reason: ${reason || 'Rejected by admin'}`
             });
         }
         
@@ -1050,3 +1114,103 @@ export const submitResult = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("internal", "An unexpected error occurred.");
     }
 });
+
+
+// New Tournament Management Functions
+
+export const cancelTournament = functions.https.onCall(async (data, context) => {
+    if (context.auth?.token.role !== 'superadmin' && context.auth?.token.role !== 'match_admin') {
+        throw new functions.https.HttpsError("permission-denied", "Only admins can cancel tournaments.");
+    }
+
+    const { tournamentId } = data;
+    if (!tournamentId) {
+        throw new functions.https.HttpsError("invalid-argument", "Tournament ID is required.");
+    }
+
+    const tournamentRef = db.collection('tournaments').doc(tournamentId);
+
+    return db.runTransaction(async (t) => {
+        const tournamentDoc = await t.get(tournamentRef);
+        if (!tournamentDoc.exists) {
+            throw new functions.https.HttpsError("not-found", "Tournament not found.");
+        }
+        const tournamentData = tournamentDoc.data()!;
+
+        if (tournamentData.status === 'cancelled') {
+             throw new functions.https.HttpsError("failed-precondition", "Tournament is already cancelled.");
+        }
+        
+        // Refund all players
+        const playersSnapshot = await db.collection(`tournaments/${tournamentId}/players`).get();
+        for (const playerDoc of playersSnapshot.docs) {
+            const playerId = playerDoc.id;
+            const playerRef = db.collection('users').doc(playerId);
+            t.update(playerRef, { 'wallet.balance': FieldValue.increment(tournamentData.entryFee) });
+            const refundTxRef = db.collection(`users/${playerId}/transactions`).doc();
+            t.set(refundTxRef, {
+                amount: tournamentData.entryFee,
+                type: 'entry_fee_refund',
+                status: 'completed',
+                description: `Refund for cancelled tournament: ${tournamentData.name}`,
+                relatedId: tournamentId,
+                createdAt: FieldValue.serverTimestamp(),
+            });
+        }
+        
+        // Update tournament status
+        t.update(tournamentRef, { status: 'cancelled' });
+    });
+});
+
+
+export const updateTournament = functions.https.onCall(async (data, context) => {
+    if (context.auth?.token.role !== 'superadmin' && context.auth?.token.role !== 'match_admin') {
+        throw new functions.https.HttpsError("permission-denied", "Only admins can update tournaments.");
+    }
+    const { tournamentId, name, description } = data;
+    if (!tournamentId) throw new functions.https.HttpsError("invalid-argument", "Tournament ID is required.");
+
+    const tournamentRef = db.collection('tournaments').doc(tournamentId);
+    await tournamentRef.update({
+        ...(name && { name }),
+        ...(description && { description }),
+    });
+    return { success: true };
+});
+
+export const removePlayerFromTournament = functions.https.onCall(async (data, context) => {
+     if (context.auth?.token.role !== 'superadmin' && context.auth?.token.role !== 'match_admin') {
+        throw new functions.https.HttpsError("permission-denied", "Only admins can remove players.");
+    }
+    const { tournamentId, playerId } = data;
+    if (!tournamentId || !playerId) throw new functions.https.HttpsError("invalid-argument", "Tournament ID and Player ID are required.");
+    
+    const tournamentRef = db.collection('tournaments').doc(tournamentId);
+    const playerInTournamentRef = db.collection(`tournaments/${tournamentId}/players`).doc(playerId);
+
+    return db.runTransaction(async (t) => {
+        const tournamentDoc = await t.get(tournamentRef);
+        if (!tournamentDoc.exists) throw new functions.https.HttpsError("not-found", "Tournament not found.");
+        const tournamentData = tournamentDoc.data()!;
+        
+        // Refund player
+        const playerRef = db.collection('users').doc(playerId);
+        t.update(playerRef, { 'wallet.balance': FieldValue.increment(tournamentData.entryFee) });
+        const refundTxRef = db.collection(`users/${playerId}/transactions`).doc();
+        t.set(refundTxRef, {
+            amount: tournamentData.entryFee,
+            type: 'entry_fee_refund',
+            status: 'completed',
+            description: `Refund for removal from tournament: ${tournamentData.name}`,
+            relatedId: tournamentId,
+            createdAt: FieldValue.serverTimestamp(),
+        });
+        
+        // Remove player from tournament subcollection and players array
+        t.delete(playerInTournamentRef);
+        t.update(tournamentRef, { players: FieldValue.arrayRemove(playerId) });
+    });
+});
+
+    
