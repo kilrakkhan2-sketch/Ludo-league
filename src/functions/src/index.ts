@@ -1,4 +1,5 @@
 
+
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
@@ -35,26 +36,6 @@ interface MaintenanceSettings {
 interface CommissionSettings {
     isEnabled?: boolean;
     rate?: number;
-}
-
-interface MatchResult {
-    userId: string;
-    creatorPosition: number;
-    joinerPosition: number;
-    confirmedWinStatus: 'win' | 'loss';
-    screenshotUrl: string;
-    submittedAt: any;
-    confirmedAt: any;
-    status: 'submitted' | 'confirmed' | 'mismatch' | 'locked';
-}
-
-interface UserProfile {
-    adminWallet?: {
-        balance: number;
-        totalUsed: number;
-        totalReceived: number;
-    };
-    [key: string]: any;
 }
 
 // Helper function to send a personal notification
@@ -148,7 +129,7 @@ export const deleteUserAccount = functions.https.onCall(async (_, context) => {
         await db.collection('users').doc(uid).delete();
         functions.logger.info(`User ${uid} successfully deleted their account.`);
         return { success: true };
-    } catch (error: any) => {
+    } catch (error) {
         functions.logger.error(`Failed to delete user account for ${uid}:`, error);
         throw new functions.https.HttpsError('internal', "An error occurred while deleting your account.");
     }
@@ -182,7 +163,7 @@ export const applyPenalty = functions.https.onCall(async (data, context) => {
         }
         
         // A. Deduct amount from user's wallet
-        t.update(userRef, { walletBalance: FieldValue.increment(-amount) });
+        t.update(userRef, { 'wallet.balance': FieldValue.increment(-amount) });
 
         // B. Create a transaction log for the user
         const userTxRef = db.collection(`users/${userId}/transactions`).doc();

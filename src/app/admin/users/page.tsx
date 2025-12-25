@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useCollection } from "@/firebase";
+import { useCollection, useFunctions } from "@/firebase";
 import { UserProfile } from "@/types";
 import { MoreHorizontal } from "lucide-react";
 import { Input } from '@/components/ui/input';
@@ -38,23 +38,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
+import { httpsCallable } from 'firebase/functions';
 
 const PAGE_SIZE = 10;
 
 export default function AdminUsersPage() {
   const { toast } = useToast();
+  const functions = useFunctions();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // In a real, scalable app, search and pagination would be done server-side.
   // We simulate it here on the client-side for demonstration.
-  const { data: users, loading } = useCollection<UserProfile>('users', {
-      // For real-world use:
-      // where: ['keywords', 'array-contains', searchTerm.toLowerCase()],
-      // limit: PAGE_SIZE,
-      // startAfter: lastVisible, -> for pagination
-  });
+  const { data: users, loading, refetch } = useCollection<UserProfile>('users');
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
@@ -68,18 +66,26 @@ export default function AdminUsersPage() {
     );
   }, [users, searchTerm]);
 
-  const handleBlockUser = () => {
-    if (!selectedUser) return;
-    console.log(`Blocking user ${selectedUser.uid}`);
-    // Mock function call
-    // const blockUser = httpsCallable(functions, 'setUserBlockedStatus');
-    // blockUser({ uid: selectedUser.uid, blocked: !selectedUser.isBlocked })
-    toast({ 
-        title: `User ${selectedUser.isBlocked ? 'Unblocked' : 'Blocked'}!`, 
-        description: `${selectedUser.displayName} has been ${selectedUser.isBlocked ? 'unblocked' : 'blocked'}.`
-    });
-    setIsAlertOpen(false);
-    setSelectedUser(null);
+  const handleBlockUser = async () => {
+    if (!selectedUser || !functions) return;
+    
+    setIsSubmitting(true);
+    try {
+        const setUserBlockedStatus = httpsCallable(functions, 'setUserBlockedStatus');
+        await setUserBlockedStatus({ userId: selectedUser.uid, blocked: !selectedUser.isBlocked });
+        
+        toast({ 
+            title: `User ${selectedUser.isBlocked ? 'Unblocked' : 'Blocked'}!`, 
+            description: `${selectedUser.displayName} has been ${selectedUser.isBlocked ? 'unblocked' : 'blocked'}.`
+        });
+        refetch(); // Re-fetch the user data to show the updated status
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Action Failed', description: error.message });
+    } finally {
+        setIsAlertOpen(false);
+        setSelectedUser(null);
+        setIsSubmitting(false);
+    }
   };
 
   const openConfirmation = (user: UserProfile) => {
@@ -192,8 +198,8 @@ export default function AdminUsersPage() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleBlockUser} className={cn(selectedUser?.isBlocked ? '' : 'bg-destructive text-destructive-foreground')}>
-                    Confirm
+                <AlertDialogAction onClick={handleBlockUser} disabled={isSubmitting} className={cn(selectedUser?.isBlocked ? '' : 'bg-destructive text-destructive-foreground')}>
+                    {isSubmitting ? 'Processing...' : 'Confirm'}
                 </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

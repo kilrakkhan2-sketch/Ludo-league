@@ -10,12 +10,14 @@ export interface UserProfile {
   role: 'superadmin' | 'deposit_admin' | 'withdrawal_admin' | 'match_admin' | 'user';
   isBlocked?: boolean;
   isVerified?: boolean;
-  stats: {
+  stats?: {
     matchesPlayed: number;
     matchesWon: number;
     totalWinnings: number;
+    rating?: number;
+    xp?: number;
   };
-  wallet: {
+  wallet?: {
     balance: number;
   };
   referralCode?: string;
@@ -76,7 +78,7 @@ export interface DepositRequest {
     transactionId: string;
     screenshotUrl: string;
     upiAccountId: string;
-    status: 'pending' | 'completed' | 'failed';
+    status: 'pending' | 'approved' | 'rejected' | 'completed' | 'failed';
     createdAt: any;
     processedAt?: any;
     processedBy?: string;
