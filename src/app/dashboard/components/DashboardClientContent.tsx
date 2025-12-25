@@ -65,7 +65,7 @@ const MatchCard = ({ match }: { match: Match }) => {
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
             <Users className="h-4 w-4 shrink-0" />
             <span>
-              {match.players.length} / {match.maxPlayers} Players
+              {match.players.length} / {match.players.length} Players
             </span>
           </div>
         </CardContent>
@@ -115,33 +115,36 @@ export default function DashboardClientContent() {
     });
 
     return (
-        <div>
+        <div className="space-y-4 sm:space-y-6">
             {/* Header Section */}
-            <div className="bg-card text-foreground p-4 sm:p-6 border-b">
-                <header className="flex justify-between items-center mb-4">
+            <div className="bg-card text-foreground p-4 border-b">
+                <header className="flex justify-between items-center">
                     {loading ? <Skeleton className="h-7 w-32"/> : <h1 className="text-xl sm:text-2xl font-bold">Hi, {userData?.displayName || 'Player'}!</h1>}
-                    <div className="flex items-center gap-2 sm:gap-4">
+                    <div className="flex items-center gap-2">
                         <Button variant="ghost" size="icon" asChild><Link href="/messages"><MessageCircle className="h-5 w-5" /></Link></Button>
                         <Button variant="ghost" size="icon" asChild><Link href="/notifications"><Bell className="h-5 w-5" /></Link></Button>
                     </div>
                 </header>
-
-                <div className="bg-background/80 p-4 rounded-lg border">
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <div>
-                            <p className="text-sm text-muted-foreground">Wallet Balance</p>
-                            {loading ? <Skeleton className="h-8 w-36 mt-1"/> : <p className="text-3xl font-bold">₹{userData?.wallet?.balance?.toLocaleString('en-IN') ?? '0.00'}</p>}
-                        </div>
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <Button variant="outline" className="flex-1" asChild><Link href="/add-money">Add Money</Link></Button>
-                            <Button className="flex-1" asChild><Link href="/create-match">Create Match</Link></Button>
-                        </div>
-                    </div>
-                </div>
             </div>
-            
-            <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
-                {/* Category Links with improved responsive grid */}
+
+            <div className="px-4 space-y-4">
+                 {/* Combined Wallet and Actions Card */}
+                <Card className="bg-background/80 border">
+                    <CardContent className="p-3">
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
+                            <div>
+                                <p className="text-xs text-muted-foreground">Wallet Balance</p>
+                                {loading ? <Skeleton className="h-8 w-36 mt-1"/> : <p className="text-2xl font-bold">₹{userData?.wallet?.balance?.toLocaleString('en-IN') ?? '0.00'}</p>}
+                            </div>
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                                <Button variant="outline" className="flex-1" asChild><Link href="/add-money">Add Money</Link></Button>
+                                <Button className="flex-1" asChild><Link href="/create-match">Create Match</Link></Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                 {/* Category Links */}
                 <section>
                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                         <CategoryCard title="KYC" href="/kyc" icon={ShieldCheck} imageId="kyc_card" />
@@ -151,29 +154,29 @@ export default function DashboardClientContent() {
                     </div>
                 </section>
 
-                {/* Open Matches - NOW A RESPONSIVE GRID */}
+                {/* Open Matches */}
                 <section>
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-primary">Open Matches</h2>
+                    <div className="flex justify-between items-center mb-3">
+                        <h2 className="text-lg font-bold text-primary">Open Matches</h2>
                         <Button variant="link" asChild>
                             <Link href="/matches">View All</Link>
                         </Button>
                     </div>
                     {openMatchesLoading ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            <Skeleton className="w-full h-56 rounded-lg" />
-                            <Skeleton className="w-full h-56 rounded-lg" />
-                            <Skeleton className="w-full h-56 rounded-lg hidden sm:block" />
-                            <Skeleton className="w-full h-56 rounded-lg hidden lg:block" />
+                            <Skeleton className="w-full h-52 rounded-lg" />
+                            <Skeleton className="w-full h-52 rounded-lg" />
+                            <Skeleton className="w-full h-52 rounded-lg hidden sm:block" />
+                            <Skeleton className="w-full h-52 rounded-lg hidden lg:block" />
                         </div>
                     ): openMatches && openMatches.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {openMatches.map(match => <MatchCard key={match.id} match={match}/>)}
                         </div>
                     ) : (
-                        <div className="text-center py-10 px-4 border-2 border-dashed rounded-lg bg-card/50">
-                            <h3 className="text-lg font-semibold">No Open Matches</h3>
-                            <p className="text-muted-foreground mt-1 mb-4 text-sm">Be the first to create a new challenge!</p>
+                        <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg bg-card/50">
+                            <h3 className="text-base font-semibold">No Open Matches</h3>
+                            <p className="text-muted-foreground mt-1 mb-3 text-sm">Be the first to create a new challenge!</p>
                             <Button asChild>
                                 <Link href="/create-match">Create a Match</Link>
                             </Button>
@@ -184,3 +187,4 @@ export default function DashboardClientContent() {
         </div>
     );
 }
+
