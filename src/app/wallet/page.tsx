@@ -7,8 +7,9 @@ import { History, ArrowUpCircle, ArrowDownCircle, Gamepad2, Award, PlusCircle, M
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { cn } from "@/lib/utils";
-import { format, formatDistanceToNow } from 'date-fns';
-import { useUser } from "@/firebase";
+import { formatDistanceToNow } from 'date-fns';
+import { useUser, useCollection } from "@/firebase";
+import type { Transaction } from "@/types";
 
 const TransactionIcon = ({ type }: { type: string }) => {
     switch (type) {
@@ -20,31 +21,35 @@ const TransactionIcon = ({ type }: { type: string }) => {
     }
 }
 
-const TransactionRow = ({ tx }: { tx: any }) => (
-    <div className="flex items-center justify-between py-4 transition-colors hover:bg-white/5">
-        <div className="flex items-center gap-4">
-            <div className="bg-card/50 p-2 rounded-full">
-                <TransactionIcon type={tx.type} />
+const TransactionRow = ({ tx }: { tx: Transaction }) => {
+    const isCredit = tx.amount > 0;
+    return (
+        <div className="flex items-center justify-between py-4 transition-colors hover:bg-white/5">
+            <div className="flex items-center gap-4">
+                <div className="bg-card/50 p-2 rounded-full">
+                    <TransactionIcon type={tx.type} />
+                </div>
+                <div>
+                    <p className="font-bold capitalize">{tx.description || tx.type.replace(/_/g, ' ')}</p>
+                    <p className="text-xs text-muted-foreground">{tx.createdAt?.seconds ? formatDistanceToNow(new Date(tx.createdAt.seconds * 1000), { addSuffix: true }) : ''}</p>
+                </div>
             </div>
-            <div>
-                <p className="font-bold capitalize">{tx.type.replace('-', ' ')}</p>
-                <p className="text-xs text-muted-foreground">{tx.timestamp ? formatDistanceToNow(new Date(tx.timestamp), { addSuffix: true }) : ''}</p>
-            </div>
+            <p className={cn(
+                "font-bold font-mono text-lg",
+                isCredit ? 'text-green-400' : 'text-red-400'
+            )}>
+                {isCredit ? '+' : '-'}{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Math.abs(tx.amount))}
+            </p>
         </div>
-        <p className={cn(
-            "font-bold font-mono text-lg",
-            tx.type === 'deposit' || tx.type === 'prize' ? 'text-green-400' : 'text-red-400'
-        )}>
-            {tx.type === 'deposit' || tx.type === 'prize' ? '+' : '-'}{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(tx.amount)}
-        </p>
-    </div>
-);
+    )
+};
 
 export default function WalletPage() {
-    const { userData, loading } = useUser();
-
-    // In a real app, transactions would be fetched via a hook like useCollection
-    const transactions: any[] = []; 
+    const { user, userData, loading } = useUser();
+    const { data: transactions, loading: txLoading } = useCollection<Transaction>(
+        user ? `users/${user.uid}/transactions` : undefined,
+        { orderBy: ['createdAt', 'desc'], limit: 5 }
+    );
 
     return (
         <div className="container py-12 md:py-16">
@@ -92,17 +97,17 @@ export default function WalletPage() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            {loading && (
+                            {(loading || txLoading) && (
                                 <div className="space-y-4 pt-4">
                                     {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full bg-card" />)}
                                 </div>
                             )}
-                            {!loading && transactions && transactions.length > 0 ? (
+                            {!(loading || txLoading) && transactions && transactions.length > 0 ? (
                                 <div className="divide-y divide-white/10 -mt-2">
                                     {transactions.map(tx => <TransactionRow key={tx.id} tx={tx} />)}
                                 </div>
                             ) : (
-                                !loading && <p className="text-center text-muted-foreground py-8">No recent transactions.</p>
+                                !(loading || txLoading) && <p className="text-center text-muted-foreground py-8">No recent transactions.</p>
                             )}
                         </CardContent>
                     </Card>

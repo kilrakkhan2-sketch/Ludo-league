@@ -125,7 +125,7 @@ export default function TournamentsPage() {
                  {filteredTournaments.length > 0 ? (
                     filteredTournaments.map(t => <TournamentCard key={t.id} tournament={t} />)
                  ) : (
-                    <div className="md:col-span-3 text-center py-16 bg-card/30 rounded-lg">
+                    <div className="md:col-span-2 lg:col-span-3 text-center py-16 bg-card/30 rounded-lg">
                         <p className="text-lg text-muted-foreground">No {tab} tournaments at the moment.</p>
                         <p className="text-sm text-muted-foreground">Check back soon!</p>
                     </div>
