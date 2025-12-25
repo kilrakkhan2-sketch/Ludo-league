@@ -15,11 +15,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useFunctions } from '@/firebase/provider';
 import { cn } from '@/lib/utils';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const getStatusVariant = (status: string) => {
   switch (status) {
     case 'pending': return 'secondary';
-    case 'approved': return 'default';
+    case 'approved': return 'success';
     case 'rejected': return 'destructive';
     default: return 'outline';
   }
@@ -61,9 +63,9 @@ export default function AdminWithdrawalsPage() {
     try {
       const callableFunction = type === 'approve' ? httpsCallable(functions, 'approveWithdrawal') : httpsCallable(functions, 'rejectWithdrawal');
       await callableFunction({ withdrawalId: request.id });
-      toast({ title: 'Success', description: `Request has been ${type}.` });
+      toast({ title: 'Success', description: `Request has been ${type}d.` });
     } catch(error: any) {
-      console.error(`Error ${type} withdrawal:`, error);
+      console.error(`Error ${type}ing withdrawal:`, error);
       toast({ variant: 'destructive', title: 'Processing Error', description: error.message || 'Could not process the request.' });
     } finally {
       setIsSubmitting(false);
@@ -86,53 +88,60 @@ export default function AdminWithdrawalsPage() {
             <p className="text-muted-foreground">Review and process user withdrawal requests.</p>
         </div>
 
-        <div className="flex space-x-2 border-b pb-4">
-            <Button size="sm" variant={statusFilter === 'pending' ? 'default' : 'outline'} onClick={() => setStatusFilter('pending')}>Pending</Button>
-            <Button size="sm" variant={statusFilter === 'approved' ? 'default' : 'outline'} onClick={() => setStatusFilter('approved')}>Approved</Button>
-            <Button size="sm" variant={statusFilter === 'rejected' ? 'default' : 'outline'} onClick={() => setStatusFilter('rejected')}>Rejected</Button>
-        </div>
+        <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value)}>
+          <TabsList>
+            <TabsTrigger value="pending">Pending</TabsTrigger>
+            <TabsTrigger value="approved">Approved</TabsTrigger>
+            <TabsTrigger value="rejected">Rejected</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
-        <div className="border rounded-lg bg-card">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>User</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead className="hidden md:table-cell">Method & Details</TableHead>
-                        <TableHead className="hidden lg:table-cell">Submitted</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {loading && [...Array(5)].map((_, i) => <TableRow key={i}>{Array(6).fill(0).map((_, c) => <TableCell key={c}><Skeleton className="h-8 w-full" /></TableCell>)}</TableRow>)}
-                    {!loading && requests?.length === 0 && <TableRow><TableCell colSpan={6} className="h-24 text-center">No {statusFilter} withdrawals.</TableCell></TableRow>}
-                    {!loading && requests?.map((req: WithdrawalRequest) => (
-                        <TableRow key={req.id}>
-                            <TableCell><UserCell userId={req.userId} /></TableCell>
-                            <TableCell className="font-semibold text-red-600">-₹{req.amount.toLocaleString()}</TableCell>
-                            <TableCell className="hidden md:table-cell">
-                                <div className="font-medium capitalize">{req.method}</div>
-                                <div className="flex items-center gap-2">
-                                    <span className='font-mono text-xs text-muted-foreground'>{formatDetails(req.details)}</span>
-                                    <Copy className='h-3 w-3 cursor-pointer' onClick={() => navigator.clipboard.writeText(formatDetails(req.details))} />
-                                </div>
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell text-sm">{req.createdAt ? formatDistanceToNow((req.createdAt as any).toDate(), { addSuffix: true }) : 'N/A'}</TableCell>
-                            <TableCell><Badge variant={getStatusVariant(req.status)}>{req.status}</Badge></TableCell>
-                            <TableCell className="text-right">
-                                {req.status === 'pending' && (
-                                    <div className="space-x-2">
-                                        <Button variant="destructive" size="icon" onClick={() => setAction({ type: 'reject', request: req })} disabled={isSubmitting}><XCircle className="h-4 w-4" /><span className="sr-only">Reject</span></Button>
-                                        <Button size="icon" onClick={() => setAction({ type: 'approve', request: req })} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700"><CheckCircle className="h-4 w-4" /><span className="sr-only">Approve</span></Button>
-                                    </div>
-                                )}
-                            </TableCell>
+        <Card>
+            <CardHeader>
+                <CardTitle className="capitalize">{statusFilter} Requests</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>User</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead className="hidden md:table-cell">Method & Details</TableHead>
+                            <TableHead className="hidden lg:table-cell">Submitted</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </div>
+                    </TableHeader>
+                    <TableBody>
+                        {loading && [...Array(5)].map((_, i) => <TableRow key={i}>{Array(6).fill(0).map((_, c) => <TableCell key={c}><Skeleton className="h-8 w-full" /></TableCell>)}</TableRow>)}
+                        {!loading && requests?.length === 0 && <TableRow><TableCell colSpan={6} className="h-24 text-center">No {statusFilter} withdrawals.</TableCell></TableRow>}
+                        {!loading && requests?.map((req: WithdrawalRequest) => (
+                            <TableRow key={req.id}>
+                                <TableCell><UserCell userId={req.userId} /></TableCell>
+                                <TableCell className="font-semibold text-red-600">-₹{req.amount.toLocaleString()}</TableCell>
+                                <TableCell className="hidden md:table-cell">
+                                    <div className="font-medium capitalize">{req.method}</div>
+                                    <div className="flex items-center gap-2">
+                                        <span className='font-mono text-xs text-muted-foreground'>{formatDetails(req.details)}</span>
+                                        <Copy className='h-3 w-3 cursor-pointer' onClick={() => navigator.clipboard.writeText(formatDetails(req.details))} />
+                                    </div>
+                                </TableCell>
+                                <TableCell className="hidden lg:table-cell text-sm">{req.createdAt ? formatDistanceToNow((req.createdAt as any).toDate(), { addSuffix: true }) : 'N/A'}</TableCell>
+                                <TableCell><Badge variant={getStatusVariant(req.status)}>{req.status}</Badge></TableCell>
+                                <TableCell className="text-right">
+                                    {req.status === 'pending' && (
+                                        <div className="space-x-2">
+                                            <Button variant="destructive" size="icon" onClick={() => setAction({ type: 'reject', request: req })} disabled={isSubmitting}><XCircle className="h-4 w-4" /><span className="sr-only">Reject</span></Button>
+                                            <Button size="icon" onClick={() => setAction({ type: 'approve', request: req })} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700"><CheckCircle className="h-4 w-4" /><span className="sr-only">Approve</span></Button>
+                                        </div>
+                                    )}
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
 
          <AlertDialog open={!!action} onOpenChange={(isOpen) => !isOpen && setAction(null)}>
             <AlertDialogContent>
@@ -145,7 +154,7 @@ export default function AdminWithdrawalsPage() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleProcessRequest} disabled={isSubmitting} className={cn(action?.type === 'reject' ? "bg-destructive text-destructive-foreground" : "bg-green-600 text-green-foreground")}>
+                    <AlertDialogAction onClick={handleProcessRequest} disabled={isSubmitting} className={cn(action?.type === 'reject' ? "bg-destructive text-destructive-foreground" : "bg-green-600 text-green-foreground hover:bg-green-700")}>
                         {isSubmitting ? 'Processing...' : 'Confirm'}
                     </AlertDialogAction>
                 </AlertDialogFooter>
