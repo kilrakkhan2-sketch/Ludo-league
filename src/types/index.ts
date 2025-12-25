@@ -129,7 +129,7 @@ export interface Tournament {
     prizePool: number;
     maxPlayers: number;
     registeredPlayers: number;
-    status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+    status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'live';
     startTime: any;
     endTime?: any;
     rounds?: any[];
@@ -137,6 +137,7 @@ export interface Tournament {
     prizeDistribution?: any;
     creatorId?: string;
     createdAt?: any;
+    players: string[];
 }
 
 

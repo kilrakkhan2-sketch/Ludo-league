@@ -112,9 +112,9 @@ export default function DashboardClientContent() {
     });
 
     return (
-        <div className="space-y-4 sm:space-y-6">
+        <div className="space-y-4">
             {/* Header Section */}
-            <div className="bg-card text-foreground p-4 border-b">
+            <div className="bg-card text-foreground px-4 pt-4 pb-0">
                 <header className="flex justify-between items-center">
                     {loading ? <Skeleton className="h-7 w-32"/> : <h1 className="text-xl sm:text-2xl font-bold">Hi, {userData?.displayName || 'Player'}!</h1>}
                      <div className="flex items-center gap-2">
@@ -124,7 +124,7 @@ export default function DashboardClientContent() {
                 </header>
             </div>
 
-            <div className="px-4 space-y-4">
+            <div className="px-4 space-y-6">
                  {/* Combined Wallet and Actions Card */}
                 <Card className="bg-background/80 border">
                     <CardContent className="p-3">

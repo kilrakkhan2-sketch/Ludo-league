@@ -7,6 +7,7 @@ import { doc } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
 import { Wallet } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UserProfile } from '@/types';
 
 export function WalletBalance() {
   const auth = useAuth();
@@ -21,7 +22,7 @@ export function WalletBalance() {
   return (
     <div className="flex items-center gap-2 border rounded-md px-3 py-1.5 text-sm font-medium bg-background">
       <Wallet className="h-4 w-4 text-primary" />
-      <span>₹{userData?.walletBalance ?? 0}</span>
+      <span>₹{(userData as UserProfile)?.wallet?.balance ?? 0}</span>
     </div>
   );
 }
