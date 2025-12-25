@@ -173,8 +173,11 @@ const RoomCodeContent = ({ match }: { match: Match }) => {
     // UI for Creator to submit code
     if (isCreator && match.status === 'room_code_pending') {
         return (
-            <Card>
-                <CardHeader><CardTitle>Share Room Code</CardTitle><CardDescription>Create a private room in Ludo King and enter the code below.</CardDescription></CardHeader>
+            <Card className="bg-neutral-900 border-neutral-700 shadow-lg">
+                <CardHeader>
+                    <CardTitle className="text-neutral-100">Share Room Code</CardTitle>
+                    <CardDescription className="text-neutral-400">Create a private room in Ludo King and enter the code below.</CardDescription>
+                </CardHeader>
                 <CardContent className="flex gap-2">
                     <Input placeholder="Ludo King Code" value={roomCode} onChange={(e) => setRoomCode(e.target.value)} className="text-center text-lg tracking-widest font-mono"/>
                     <Button onClick={handleUpdateRoomCode} disabled={isSubmitting || !roomCode}>{isSubmitting ? 'Saving...' : 'Save'}</Button>

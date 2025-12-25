@@ -23,6 +23,7 @@ interface UserData {
     referredBy?: string;
     referralCode?: string;
     name?: string;
+    displayName?: string;
     [key: string]: any;
 }
 
@@ -440,14 +441,25 @@ export const rejectWithdrawal = functions.https.onCall(async (data, context) => 
         // B. Refund the user
         t.update(userRef, { 'wallet.balance': FieldValue.increment(amount) });
 
-        // C. Mark user's transaction as failed
+        // C. Mark user's transaction as failed and update description
         if (userTxRef) {
-            t.update(userTxRef, { 
-                status: 'failed', 
+            t.update(userTxRef, {
+                status: 'failed',
                 description: `Withdrawal rejected. Reason: ${reason || 'Rejected by admin'}`
             });
         }
-        
+        else {
+            const refundTxRef = db.collection(`users/${userId}/transactions`).doc();
+            t.set(refundTxRef, {
+                amount: amount,
+                type: 'withdrawal_refund',
+                status: 'completed',
+                description: `Refund for rejected withdrawal. Reason: ${reason || 'Rejected by admin'}`,
+                relatedId: withdrawalId,
+                createdAt: FieldValue.serverTimestamp(),
+            });
+        }
+
         await sendNotification(userId, 'Withdrawal Rejected', `Your withdrawal request for ₹${amount} was rejected. The amount has been refunded to your wallet.`);
         return { success: true, message: 'Withdrawal rejected and funds refunded.' };
 

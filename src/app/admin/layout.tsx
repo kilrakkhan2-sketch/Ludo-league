@@ -3,7 +3,8 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useUser, useAuth } from '@/firebase';
+import { useUser } from '@/firebase';
+import { getAuth, signOut } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
@@ -35,7 +36,7 @@ import {
   CircleUser,
   ShieldX
 } from 'lucide-react';
-import { signOut as firebaseSignOut } from 'firebase/auth';
+
 
 const allNavItems = {
   main: [
@@ -45,7 +46,7 @@ const allNavItems = {
     { href: '/admin/deposits', icon: CircleArrowUp, label: 'Deposits', roles: ['superadmin', 'deposit_admin'] },
     { href: '/admin/withdrawals', icon: Landmark, label: 'Withdrawals', roles: ['superadmin', 'withdrawal_admin'] },
     { href: '/admin/transactions', icon: Banknote, label: 'Transactions', roles: ['superadmin'] },
-    { href: '/admin/upi-management', icon: Settings, label: 'UPI Settings', roles: ['superadmin'] },
+    { href: '/admin/upi-management', icon: Settings, label: 'UPI Settings', roles: ['superadmin', 'deposit_admin'] },
   ],
   users: [
     { href: '/admin/users', icon: Users, label: 'All Users', roles: ['superadmin'] },
@@ -112,12 +113,12 @@ const AdminSidebar = ({ userRole, className }: { userRole: string, className?: s
 
 const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, userData, loading } = useUser();
-  const auth = useAuth();
+  const auth = getAuth();
   const pathname = usePathname();
   
   const handleSignOut = async () => {
     if (auth) {
-      await firebaseSignOut(auth);
+      await signOut(auth);
     }
   };
 
