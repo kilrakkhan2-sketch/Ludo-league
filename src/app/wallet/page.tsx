@@ -2,33 +2,19 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { History, ArrowUpCircle, ArrowDownCircle, Gamepad2, Award, PlusCircle, MinusCircle } from "lucide-react";
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow } from 'date-fns';
-
-// NOTE: In a real app, you would use the Firebase hooks as you had before.
-// For styling consistency and demonstration, we'll use mock data.
-
-const mockUser = {
-    walletBalance: 5850.75,
-};
-
-const mockTransactions = [
-    { id: '1', type: 'prize', amount: 500, timestamp: new Date().toISOString() },
-    { id: '2', type: 'match-fee', amount: 100, timestamp: new Date(Date.now() - 3600000).toISOString() },
-    { id: '3', type: 'withdrawal', amount: 1000, timestamp: new Date(Date.now() - 86400000).toISOString() },
-    { id: '4', type: 'deposit', amount: 2000, timestamp: new Date(Date.now() - 172800000).toISOString() },
-    { id: '5', type: 'match-fee', amount: 50, timestamp: new Date(Date.now() - 259200000).toISOString() },
-];
+import { useUser } from "@/firebase";
 
 const TransactionIcon = ({ type }: { type: string }) => {
     switch (type) {
         case 'deposit': return <ArrowUpCircle className="h-6 w-6 text-green-400" />;
         case 'withdrawal': return <ArrowDownCircle className="h-6 w-6 text-red-400" />;
-        case 'match-fee': return <Gamepad2 className="h-6 w-6 text-yellow-400" />;
+        case 'entry_fee': return <Gamepad2 className="h-6 w-6 text-yellow-400" />;
         case 'prize': return <Award className="h-6 w-6 text-amber-400" />;
         default: return <History className="h-6 w-6 text-gray-400" />;
     }
@@ -42,7 +28,7 @@ const TransactionRow = ({ tx }: { tx: any }) => (
             </div>
             <div>
                 <p className="font-bold capitalize">{tx.type.replace('-', ' ')}</p>
-                <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(tx.timestamp), { addSuffix: true })}</p>
+                <p className="text-xs text-muted-foreground">{tx.timestamp ? formatDistanceToNow(new Date(tx.timestamp), { addSuffix: true }) : ''}</p>
             </div>
         </div>
         <p className={cn(
@@ -55,9 +41,10 @@ const TransactionRow = ({ tx }: { tx: any }) => (
 );
 
 export default function WalletPage() {
-    const loading = false; // Set to false to show styled data
-    const userData = mockUser;
-    const transactions = mockTransactions;
+    const { userData, loading } = useUser();
+
+    // In a real app, transactions would be fetched via a hook like useCollection
+    const transactions: any[] = []; 
 
     return (
         <div className="container py-12 md:py-16">
@@ -76,7 +63,7 @@ export default function WalletPage() {
                         <CardContent>
                             {loading ? <Skeleton className="h-12 w-48 bg-white/20"/> : 
                                 <p className="text-5xl font-bold font-headline">
-                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(userData.walletBalance)}
+                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(userData?.wallet?.balance || 0)}
                                 </p>
                             }
                         </CardContent>
@@ -94,8 +81,15 @@ export default function WalletPage() {
                 <div className="lg:col-span-2">
                      <Card className="bg-card/50 backdrop-blur-sm border-primary/20">
                         <CardHeader>
-                            <CardTitle className="font-headline text-2xl">Recent Activity</CardTitle>
-                            <CardDescription>Here are your last 5 transactions.</CardDescription>
+                             <div className="flex justify-between items-center">
+                                <div className="space-y-1">
+                                    <CardTitle className="font-headline text-2xl">Recent Activity</CardTitle>
+                                    <CardDescription>Here are your latest transactions.</CardDescription>
+                                </div>
+                                <Button asChild variant="outline">
+                                    <Link href="/wallet/history">View All</Link>
+                                </Button>
+                            </div>
                         </CardHeader>
                         <CardContent>
                             {loading && (
@@ -108,7 +102,7 @@ export default function WalletPage() {
                                     {transactions.map(tx => <TransactionRow key={tx.id} tx={tx} />)}
                                 </div>
                             ) : (
-                                !loading && <p className="text-center text-muted-foreground py-8">No transactions yet.</p>
+                                !loading && <p className="text-center text-muted-foreground py-8">No recent transactions.</p>
                             )}
                         </CardContent>
                     </Card>

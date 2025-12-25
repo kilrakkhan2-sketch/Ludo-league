@@ -1,3 +1,4 @@
+
 import { FieldValue } from 'firebase/firestore';
 
 export interface UserProfile {
@@ -58,7 +59,7 @@ export interface Match {
 export interface Transaction {
   id: string;
   userId: string;
-  type: 'deposit' | 'withdrawal' | 'entry_fee' | 'prize' | 'referral_bonus' | 'win' | 'add_money' | 'refund' | 'platform-fee' | 'prize_win' | 'penalty';
+  type: 'deposit' | 'withdrawal' | 'entry_fee' | 'prize' | 'referral_bonus' | 'win' | 'add_money' | 'refund' | 'platform-fee' | 'prize_win' | 'penalty' | 'withdrawal_refund' | 'entry_fee_refund';
   amount: number;
   status: 'pending' | 'completed' | 'failed';
   createdAt: any;
