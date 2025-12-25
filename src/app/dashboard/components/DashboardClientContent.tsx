@@ -1,17 +1,14 @@
 
 'use client';
 
-import { AppShell } from "@/components/layout/AppShell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCollection } from "@/firebase";
-import type { Announcement, Match } from '@/types';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import type { Match } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/firebase";
-import { Bell, MessageCircle, PlusCircle, Swords, Wallet, Gift, ShieldCheck, Gamepad2 } from "lucide-react";
+import { Bell, MessageCircle, Gift, ShieldCheck, Gamepad2 } from "lucide-react";
 import Link from "next/link";
 import { PlayerAvatarList } from "@/components/matches/PlayerAvatarList";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
@@ -65,7 +62,7 @@ const MatchCard = ({ match }: { match: Match }) => {
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
             <Users className="h-4 w-4 shrink-0" />
             <span>
-              {match.players.length} / {match.players.length} Players
+              {match.players.length} / {match.maxPlayers} Players
             </span>
           </div>
         </CardContent>
@@ -149,7 +146,7 @@ export default function DashboardClientContent() {
                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                         <CategoryCard title="KYC" href="/kyc" icon={ShieldCheck} imageId="kyc_card" />
                         <CategoryCard title="Refer & Earn" href="/refer" icon={Gift} imageId="hero" />
-                        <CategoryCard title="My Wallet" href="/wallet/history" icon={Wallet} imageId="wallet_icon" />
+                        <CategoryCard title="My Wallet" href="/wallet" icon={Trophy} imageId="wallet_icon" />
                         <CategoryCard title="My Matches" href="/matches/my-matches" icon={Gamepad2} imageId="tournament_card" />
                     </div>
                 </section>
@@ -187,4 +184,3 @@ export default function DashboardClientContent() {
         </div>
     );
 }
-

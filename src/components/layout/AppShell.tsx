@@ -21,8 +21,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sparkle } from "../ui/sparkle";
 import { BottomNav } from "./BottomNav";
-import DashboardClientContent from "@/app/dashboard/components/DashboardClientContent";
-import NewsCarousel from "@/app/dashboard/components/NewsCarousel";
 
 interface AppShellProps {
   children: ReactNode;
@@ -190,7 +188,7 @@ export function AppShell({ children, pageTitle, showBackButton = false }: AppShe
                       {userMenu}
                     </div>
               </header>
-              <main className="flex-grow flex flex-col overflow-auto pb-16 sm:pb-0 bg-muted/20">
+              <main className="flex-grow flex flex-col overflow-auto bg-muted/20">
                 {children}
               </main>
               <BottomNav items={bottomNavItems} />
@@ -199,5 +197,3 @@ export function AppShell({ children, pageTitle, showBackButton = false }: AppShe
     </SidebarProvider>
   );
 }
-
-    
