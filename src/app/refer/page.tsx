@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AppShell } from "@/components/layout/AppShell";
@@ -31,16 +30,18 @@ export default function ReferPage() {
   const commissionRate = commissionSettings?.isEnabled ? (commissionSettings.rate || 0) * 100 : 0;
 
   const copyCode = () => {
-    navigator.clipboard.writeText(referralCode);
-    toast({ title: "Referral Code Copied!" });
+    const referralLink = `${window.location.origin}/signup?ref=${referralCode}`;
+    navigator.clipboard.writeText(referralLink);
+    toast({ title: "Referral Link Copied!" });
   };
   
   const shareCode = () => {
+    const referralLink = `${window.location.origin}/signup?ref=${referralCode}`;
     if (navigator.share) {
       navigator.share({
         title: 'Join me on LudoLeague!',
         text: `Join me on LudoLeague and get a bonus! Use my referral code: ${referralCode}`,
-        url: window.location.origin,
+        url: referralLink,
       }).catch((error) => console.log('Error sharing', error));
     } else {
         copyCode();
@@ -65,7 +66,7 @@ export default function ReferPage() {
 
         <Card>
           <CardContent className="p-6 text-center space-y-4">
-            <p className="text-muted-foreground text-sm">Your Referral Code</p>
+            <p className="text-muted-foreground text-sm">Your Unique Referral Link</p>
             {loading ? (
                 <Skeleton className="h-10 w-40 mx-auto" />
             ) : (
@@ -73,12 +74,12 @@ export default function ReferPage() {
                     className="flex items-center justify-center gap-2 border-2 border-dashed border-primary/50 bg-primary/10 p-3 rounded-lg cursor-pointer"
                     onClick={copyCode}
                 >
-                  <p className="text-2xl font-bold font-mono tracking-widest text-primary">{referralCode}</p>
+                  <p className="text-xl font-bold font-mono tracking-widest text-primary">{referralCode}</p>
                   <Copy className="h-5 w-5 text-primary" />
                 </div>
             )}
             <Button className="w-full sm:w-auto" onClick={shareCode}>
-                <Share2 className="mr-2 h-4 w-4" /> Share with Friends
+                <Share2 className="mr-2 h-4 w-4" /> Share Your Link
             </Button>
           </CardContent>
         </Card>

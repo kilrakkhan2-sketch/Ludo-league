@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { useAuth, useFirestore } from '@/firebase';
 import { Button } from "@/components/ui/button";
@@ -8,13 +9,68 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { doc, setDoc, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, Timestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 import { SocialLogins } from '@/components/auth/SocialLogins';
 import { UserProfile } from '@/types';
+import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
-export default function SignupPage() {
+function ReferralManager() {
+    const searchParams = useSearchParams();
+    const firestore = useFirestore();
+
+    const [referralCode, setReferralCode] = useState<string | null>(null);
+    const [referrerName, setReferrerName] = useState<string | null>(null);
+    const [isValidating, setIsValidating] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const refCode = searchParams.get('ref');
+        if (refCode) {
+            setReferralCode(refCode);
+            validateReferralCode(refCode);
+        } else {
+            setIsValidating(false);
+        }
+    }, [searchParams]);
+
+    const validateReferralCode = async (code: string) => {
+        if (!firestore) return;
+        setIsValidating(true);
+        setError(null);
+        try {
+            const usersRef = collection(firestore, 'users');
+            const q = query(usersRef, where('referralCode', '==', code));
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+                const referrerDoc = querySnapshot.docs[0];
+                setReferrerName(referrerDoc.data().displayName);
+            } else {
+                setError('Invalid referral code.');
+            }
+        } catch (e) {
+            setError('Could not validate referral code.');
+        } finally {
+            setIsValidating(false);
+        }
+    };
+    
+    if (!referralCode) return null;
+
+    return (
+      <div className="space-y-2">
+        <Label htmlFor="referral">Referral Code</Label>
+        <Input id="referral" value={referralCode} disabled />
+        {isValidating && <p className="text-xs text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin"/> Verifying code...</p>}
+        {error && <p className="text-xs text-destructive flex items-center gap-2"><AlertCircle className="h-4 w-4"/> {error}</p>}
+        {referrerName && <p className="text-xs text-green-600 flex items-center gap-2"><CheckCircle className="h-4 w-4"/> Code applied from: <strong>{referrerName}</strong></p>}
+      </div>
+    );
+}
+
+function SignupPageContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -23,6 +79,7 @@ export default function SignupPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +128,7 @@ export default function SignupPage() {
           },
           referralCode: referralCode,
           referralEarnings: 0,
+          referredBy: searchParams.get('ref') || '', // Set referredBy field
           isVerified: false,
           createdAt: Timestamp.now(),
       };
@@ -151,6 +209,9 @@ export default function SignupPage() {
               className="mt-1"
             />
           </div>
+          
+          <ReferralManager />
+
           <Button type="submit" className="w-full !mt-6" disabled={loading}>
              {loading ? 'Creating Account...' : 'Sign Up'}
           </Button>
@@ -164,4 +225,12 @@ export default function SignupPage() {
       </div>
     </div>
   );
+}
+
+export default function SignupPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <SignupPageContent />
+        </Suspense>
+    )
 }
