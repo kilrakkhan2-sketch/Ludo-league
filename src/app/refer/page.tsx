@@ -11,23 +11,23 @@ import { Copy, Gift, Users, Share2, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const friends = [
-  { name: "Aarav Sharma", status: "Joined", avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Aarav" },
-  { name: "Priya Patel", status: "1st Game Pending", avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Priya" },
-  { name: "Rohan Kumar", status: "Joined", avatar: "https://api.dicebear.com/7.x/adventurer/svg?seed=Rohan" },
-];
-
 export default function ReferPage() {
   const { user, loading: userLoading } = useUser();
   const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : "");
   const { data: commissionSettings, loading: settingsLoading } = useDoc<CommissionSettings>('settings/commission');
 
+  const { data: referredUsers, loading: referralsLoading } = useCollection<UserProfile>(
+      profile?.referralCode ? `users` : undefined, 
+      { where: ['referredBy', '==', profile?.referralCode] }
+  );
+
   const { toast } = useToast();
 
-  const loading = userLoading || profileLoading || settingsLoading;
+  const loading = userLoading || profileLoading || settingsLoading || referralsLoading;
 
   const referralCode = profile?.referralCode || '...';
   const referralEarnings = profile?.referralEarnings || 0;
+  const totalReferrals = referredUsers?.length || 0;
   const commissionRate = commissionSettings?.isEnabled ? (commissionSettings.rate || 0) * 100 : 0;
 
   const copyCode = () => {
@@ -90,7 +90,7 @@ export default function ReferPage() {
                     <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    {loading ? <Skeleton className="h-6 w-8"/> : <div className="text-2xl font-bold">3</div>}
+                    {loading ? <Skeleton className="h-6 w-8"/> : <div className="text-2xl font-bold">{totalReferrals}</div>}
                 </CardContent>
             </Card>
             <Card>
@@ -107,25 +107,30 @@ export default function ReferPage() {
         <div>
             <h3 className="text-lg font-semibold mb-2">Your Referred Friends</h3>
             <div className="space-y-2">
-                {friends.map((friend, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-card border">
+                {loading && [...Array(2)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+                {!loading && referredUsers && referredUsers.map((friend) => (
+                    <div key={friend.id} className="flex items-center justify-between p-3 rounded-lg bg-card border">
                         <div className="flex items-center gap-3">
                              <Avatar className="h-10 w-10">
-                                <AvatarImage src={friend.avatar} />
-                                <AvatarFallback>{friend.name.charAt(0)}</AvatarFallback>
+                                <AvatarImage src={friend.photoURL} />
+                                <AvatarFallback>{friend.displayName?.charAt(0)}</AvatarFallback>
                             </Avatar>
                             <div>
-                                <p className="font-semibold">{friend.name}</p>
-                                <p className={`text-xs ${friend.status === 'Joined' ? 'text-green-500' : 'text-muted-foreground'}`}>{friend.status}</p>
+                                <p className="font-semibold">{friend.displayName}</p>
+                                <p className={`text-xs ${(friend.stats?.matchesPlayed || 0) > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>
+                                    {(friend.stats?.matchesPlayed || 0) > 0 ? 'First Game Played!' : 'Joined'}
+                                </p>
                             </div>
                         </div>
-                        {friend.status === 'Joined' && <CheckCircle className="h-5 w-5 text-green-500" />}
+                        {(friend.stats?.matchesPlayed || 0) > 0 && <CheckCircle className="h-5 w-5 text-green-500" />}
                     </div>
                 ))}
+                 {!loading && totalReferrals === 0 && (
+                    <p className="text-center text-muted-foreground py-8">You haven't referred anyone yet.</p>
+                )}
             </div>
         </div>
       </div>
     </AppShell>
   );
 }
-

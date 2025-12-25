@@ -35,11 +35,11 @@ const LeaderboardRow = ({ player, rank }: { player: UserProfile; rank: number })
                 </Avatar>
                 <div>
                   <span className="font-medium text-base">{player.displayName || "Anonymous Player"}</span>
-                  <p className="text-xs text-muted-foreground">Played: {player.matchesPlayed || 0}</p>
+                  <p className="text-xs text-muted-foreground">Played: {player.stats?.matchesPlayed || 0}</p>
                 </div>
             </div>
         </TableCell>
-        <TableCell className="text-right font-bold text-lg">₹{player.totalWinnings?.toLocaleString() || 0}</TableCell>
+        <TableCell className="text-right font-bold text-lg">₹{player.stats?.totalWinnings?.toLocaleString() || 0}</TableCell>
     </TableRow>
 );
 
@@ -49,7 +49,7 @@ export default function LeaderboardPage() {
     const { data: leaderboard, loading } = useCollection<UserProfile>(
         `users`,
         { 
-            orderBy: ["totalWinnings", "desc"],
+            orderBy: ["stats.totalWinnings", "desc"],
             limit: 20
         }
     );
@@ -109,15 +109,15 @@ export default function LeaderboardPage() {
                         <CardContent className="space-y-4">
                             <div className="flex justify-between items-center p-3 bg-muted rounded-md">
                                 <p className="font-medium">Matches Played</p>
-                                <p className="font-bold text-lg">{userData?.matchesPlayed || 0}</p>
+                                <p className="font-bold text-lg">{userData?.stats?.matchesPlayed || 0}</p>
                             </div>
                              <div className="flex justify-between items-center p-3 bg-muted rounded-md">
                                 <p className="font-medium">Total Winnings</p>
-                                <p className="font-bold text-lg text-green-600">₹{userData?.totalWinnings?.toLocaleString() || 0}</p>
+                                <p className="font-bold text-lg text-green-600">₹{userData?.stats?.totalWinnings?.toLocaleString() || 0}</p>
                             </div>
                              <div className="flex justify-between items-center p-3 bg-muted rounded-md">
                                 <p className="font-medium">Win Rate</p>
-                                <p className="font-bold text-lg">{userData && userData.matchesPlayed > 0 ? `${((userData.matchesWon / userData.matchesPlayed) * 100).toFixed(0)}%` : 'N/A'}</p>
+                                <p className="font-bold text-lg">{userData && userData.stats?.matchesPlayed && userData.stats.matchesPlayed > 0 ? `${((userData.stats.matchesWon / userData.stats.matchesPlayed) * 100).toFixed(0)}%` : 'N/A'}</p>
                             </div>
                         </CardContent>
                     </Card>

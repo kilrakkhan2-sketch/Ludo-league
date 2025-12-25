@@ -12,15 +12,16 @@ const BUCKET_NAME = "studio-4431476254-c1156.appspot.com";
 // Type definitions for robust data handling
 interface UserData {
     wallet?: { balance: number };
-    referralEarnings?: number;
-    referredBy?: string;
-    referralCode?: string;
     stats?: {
+        totalWinnings?: number;
         rating?: number;
         xp?: number;
         matchesPlayed?: number;
         matchesWon?: number;
     }
+    referralEarnings?: number;
+    referredBy?: string;
+    referralCode?: string;
     name?: string;
     [key: string]: any;
 }
@@ -375,25 +376,14 @@ export const rejectWithdrawal = functions.https.onCall(async (data, context) => 
         // B. Refund the user
         t.update(userRef, { 'wallet.balance': FieldValue.increment(amount) });
 
-        // C. Mark user's transaction as failed and update description
+        // C. Mark user's transaction as failed
         if (userTxRef) {
             t.update(userTxRef, { 
                 status: 'failed', 
-                description: `Withdrawal rejected. Reason: ${reason || 'Rejected by admin'}` 
-            });
-        } else {
-            // If for some reason the transaction doesn't exist, create a refund transaction
-            const refundTxRef = db.collection(`users/${userId}/transactions`).doc();
-            t.set(refundTxRef, {
-                amount: amount,
-                type: 'withdrawal_refund',
-                status: 'completed',
-                description: `Refund for rejected withdrawal. Reason: ${reason || 'Rejected by admin'}`,
-                relatedId: withdrawalId,
-                createdAt: FieldValue.serverTimestamp(),
+                description: reason || 'Withdrawal request rejected by admin' 
             });
         }
-
+        
         await sendNotification(userId, 'Withdrawal Rejected', `Your withdrawal request for ₹${amount} was rejected. The amount has been refunded to your wallet.`);
         return { success: true, message: 'Withdrawal rejected and funds refunded.' };
 
@@ -613,9 +603,10 @@ export const onMatchResultUpdate = functions.firestore
                     throw new Error(`Winner user ${winnerId} not found.`);
                 }
 
-                // 1. Update winner's balance, rating, xp, and stats
+                // 1. Update winner's balance, total winnings, and other stats
                 t.update(winnerRef, { 
                     'wallet.balance': FieldValue.increment(prizePool),
+                    'stats.totalWinnings': FieldValue.increment(prizePool),
                     'stats.rating': FieldValue.increment(10),
                     'stats.xp': FieldValue.increment(25),
                     'stats.matchesPlayed': FieldValue.increment(1),
@@ -754,73 +745,6 @@ export const resolveMatch = functions.https.onCall(async (data, context) => {
     });
 
     return { success: true, message: `Match resolved. Payout for ${winnerId} has been triggered.` };
-});
-
-
-export const createWithdrawalRequest = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to make a withdrawal.");
-    }
-
-    const userId = context.auth.uid;
-    const { amount, method, details } = data;
-
-    if (typeof amount !== 'number' || amount <= 0) {
-        throw new functions.https.HttpsError("invalid-argument", "A valid, positive amount is required.");
-    }
-    if (!method || !details) {
-        throw new functions.https.HttpsError("invalid-argument", "Withdrawal method and details are required.");
-    }
-
-    const userRef = db.collection("users").doc(userId);
-    const withdrawalRef = db.collection("withdrawal-requests").doc();
-
-    try {
-        await db.runTransaction(async (t) => {
-            const userDoc = await t.get(userRef);
-            if (!userDoc.exists) throw new functions.https.HttpsError("not-found", "User profile not found.");
-
-            const userData = userDoc.data() as UserData;
-            const currentBalance = userData.wallet?.balance || 0;
-
-            if (currentBalance < amount) {
-                throw new functions.https.HttpsError("failed-precondition", "Insufficient funds.");
-            }
-
-            // 1. Deduct from user's balance
-            t.update(userRef, { 'wallet.balance': FieldValue.increment(-amount) });
-
-            // 2. Create the withdrawal request document
-            t.set(withdrawalRef, {
-                userId,
-                amount,
-                method,
-                details,
-                status: 'pending',
-                createdAt: FieldValue.serverTimestamp(),
-            });
-
-            // 3. Create a "pending" transaction log for the user
-            const transactionRef = db.collection(`users/${userId}/transactions`).doc();
-            t.set(transactionRef, {
-                amount: -amount,
-                type: "withdrawal",
-                status: "pending",
-                description: `Withdrawal request for ₹${amount}`,
-                relatedId: withdrawalRef.id,
-                createdAt: FieldValue.serverTimestamp(),
-            });
-        });
-
-        return { success: true, message: "Withdrawal request submitted successfully." };
-    } catch (error) {
-        functions.logger.error(`Withdrawal request failed for user ${userId}:`, error);
-        if (error instanceof functions.https.HttpsError) {
-            throw error;
-        } else {
-            throw new functions.https.HttpsError("internal", "An unexpected error occurred.");
-        }
-    }
 });
 
 

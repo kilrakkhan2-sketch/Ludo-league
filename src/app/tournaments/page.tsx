@@ -6,48 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Trophy, Users, Award, Ticket, CheckCircle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-
-const mockTournaments = [
-    {
-        id: 't1',
-        name: "Weekend Warriors Cup",
-        prize: 100000,
-        entry: 500,
-        players: { current: 112, max: 128 },
-        status: "Upcoming",
-        startsIn: "3h 15m",
-    },
-    {
-        id: 't2',
-        name: "The Royal Gambit",
-        prize: 500000,
-        entry: 2000,
-        players: { current: 32, max: 64 },
-        status: "Live",
-    },
-    {
-        id: 't3',
-        name: "Daily Dash",
-        prize: 10000,
-        entry: 100,
-        players: { current: 64, max: 64 },
-        status: "Live",
-    },
-    {
-        id: 't4',
-        name: "April Fools Arena",
-        prize: 5000,
-        entry: 50,
-        players: { current: 128, max: 128 },
-        status: "Completed",
-        winner: "Ravi Kumar"
-    }
-];
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useCollection } from '@/firebase';
+import type { Tournament } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton';
+import { formatDistanceToNowStrict } from 'date-fns';
 
 const StatItem = ({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number }) => (
-    <div className="flex flex-col items-center text-center bg-white/5 p-3 rounded-lg">
+    <div className="flex flex-col items-center text-center bg-card/70 p-3 rounded-lg">
         {icon}
         <p className="text-xs text-muted-foreground mt-1">{label}</p>
         <p className="font-bold text-sm">{value}</p>
@@ -55,11 +21,12 @@ const StatItem = ({ icon, label, value }: { icon: React.ReactNode, label: string
 );
 
 
-const TournamentCard = ({ tournament }: { tournament: any }) => {
-    const isLive = tournament.status === 'Live';
-    const isUpcoming = tournament.status === 'Upcoming';
-    const isCompleted = tournament.status === 'Completed';
-    const isFull = tournament.players.current === tournament.players.max;
+const TournamentCard = ({ tournament }: { tournament: Tournament }) => {
+    const isLive = tournament.status === 'live';
+    const isUpcoming = tournament.status === 'upcoming';
+    const isCompleted = tournament.status === 'completed';
+    const isFull = tournament.players?.length >= tournament.maxPlayers;
+    const startsIn = tournament.startTime ? formatDistanceToNowStrict(new Date(tournament.startTime.seconds * 1000)) : 'N/A';
 
     return (
         <Card className="bg-card/50 backdrop-blur-sm border-primary/20 hover:border-primary/40 transition-all duration-300 flex flex-col">
@@ -78,16 +45,17 @@ const TournamentCard = ({ tournament }: { tournament: any }) => {
                 <div className="flex items-center gap-2 pt-2">
                     <Award className="w-6 h-6 text-amber-400" />
                     <span className="text-2xl lg:text-3xl font-bold text-amber-400 font-headline tracking-tighter">
-                        {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(tournament.prize)}
+                        {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(tournament.prizePool)}
                     </span>
                     <span className="text-sm text-muted-foreground">in prizes</span>
                 </div>
             </CardHeader>
             <CardContent className="grid grid-cols-3 gap-3 flex-grow">
-                <StatItem icon={<Ticket className="w-5 h-5 text-green-400" />} label="Entry Fee" value={`₹${tournament.entry}`} />
-                <StatItem icon={<Users className="w-5 h-5 text-cyan-400" />} label="Players" value={`${tournament.players.current}/${tournament.players.max}`} />
-                {isUpcoming && <StatItem icon={<Clock className="w-5 h-5 text-blue-400" />} label="Starts In" value={tournament.startsIn} />}
-                {isCompleted && <StatItem icon={<Trophy className="w-5 h-5 text-yellow-400" />} label="Winner" value={tournament.winner} />}
+                <StatItem icon={<Ticket className="w-5 h-5 text-green-400" />} label="Entry Fee" value={`₹${tournament.entryFee}`} />
+                <StatItem icon={<Users className="w-5 h-5 text-cyan-400" />} label="Players" value={`${tournament.players?.length || 0}/${tournament.maxPlayers}`} />
+                {isUpcoming && <StatItem icon={<Clock className="w-5 h-5 text-blue-400" />} label="Starts In" value={startsIn} />}
+                {isCompleted && <StatItem icon={<Trophy className="w-5 h-5 text-yellow-400" />} label="Winner" value={"TBD"} />}
+                 {isLive && <StatItem icon={<Trophy className="w-5 h-5 text-yellow-400" />} label="Live Now" value={""} />}
             </CardContent>
             <CardFooter>
                 <Button className="w-full font-bold text-lg" disabled={isCompleted || (isUpcoming && isFull)}>
@@ -101,10 +69,19 @@ const TournamentCard = ({ tournament }: { tournament: any }) => {
     );
 }
 
-export default function TournamentsPage() {
-    const [tab, setTab] = useState("live");
+const TournamentCardSkeleton = () => (
+    <Card>
+        <CardHeader><Skeleton className="h-6 w-3/4 mb-2" /><Skeleton className="h-8 w-1/2" /></CardHeader>
+        <CardContent className="grid grid-cols-3 gap-3"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></CardContent>
+        <CardFooter><Skeleton className="h-12 w-full" /></CardFooter>
+    </Card>
+)
 
-    const filteredTournaments = mockTournaments.filter(t => t.status.toLowerCase() === tab);
+export default function TournamentsPage() {
+    const [tab, setTab] = useState<Tournament['status']>("live");
+    const { data: allTournaments, loading } = useCollection<Tournament>('tournaments', { orderBy: ['startDate', 'desc'] });
+
+    const filteredTournaments = (allTournaments || []).filter(t => t.status === tab);
 
     return (
         <div className="container py-12 md:py-16">
@@ -113,7 +90,7 @@ export default function TournamentsPage() {
                 <p className="max-w-xl mx-auto mt-3 text-muted-foreground">Compete for glory and huge prize pools. Are you ready to become a legend?</p>
             </div>
 
-            <Tabs value={tab} onValueChange={setTab} className="w-full max-w-4xl mx-auto mb-8">
+            <Tabs value={tab} onValueChange={(value) => setTab(value as Tournament['status'])} className="w-full max-w-4xl mx-auto mb-8">
                 <TabsList className="grid w-full grid-cols-3 bg-card/60 backdrop-blur-sm">
                     <TabsTrigger value="live">Live</TabsTrigger>
                     <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
@@ -122,7 +99,13 @@ export default function TournamentsPage() {
             </Tabs>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                 {filteredTournaments.length > 0 ? (
+                 {loading ? (
+                    <>
+                        <TournamentCardSkeleton />
+                        <TournamentCardSkeleton />
+                        <TournamentCardSkeleton />
+                    </>
+                 ) : filteredTournaments.length > 0 ? (
                     filteredTournaments.map(t => <TournamentCard key={t.id} tournament={t} />)
                  ) : (
                     <div className="md:col-span-2 lg:col-span-3 text-center py-16 bg-card/30 rounded-lg">

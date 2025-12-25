@@ -2,7 +2,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useCollection, useCollectionGroup, useUser } from "@/firebase";
+import { useCollection, useUser } from "@/firebase";
 import type { DepositRequest, Transaction, UserProfile, WithdrawalRequest, Match, KycRequest } from "@/types";
 import { Users, Sword, CircleArrowUp, Landmark, FileKey, BadgeCheck, ShieldAlert, Gamepad2, Ticket, Wallet, Award, Banknote } from 'lucide-react';
 import { useMemo } from "react";
@@ -11,6 +11,7 @@ import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
+import { subDays, startOfDay, endOfDay, format } from 'date-fns';
 
 const StatCard = ({ title, value, icon: Icon, href, description, isLoading }: { title: string, value: string | number, icon: React.ElementType, href?: string, description?: string, isLoading: boolean }) => (
   <Card className="hover:bg-muted/50 transition-colors flex flex-col justify-between">
@@ -31,20 +32,29 @@ const StatCard = ({ title, value, icon: Icon, href, description, isLoading }: { 
   </Card>
 );
 
-// Mocks for chart data - in a real app, this would come from a backend API call
-const generateLast7DaysData = (key: string, max: number) => {
-    return [...Array(7)].map((_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        return { date: d.toLocaleDateString('en-US', { weekday: 'short' }), [key]: Math.floor(Math.random() * max) };
-    }).reverse();
+const processWeeklyData = (data: any[], key: string, dateKey = 'createdAt') => {
+  const weeklySummary: { [key: string]: number } = {};
+  for (let i = 6; i >= 0; i--) {
+    const d = subDays(new Date(), i);
+    weeklySummary[format(d, 'MMM d')] = 0;
+  }
+
+  data.forEach(item => {
+    if (item[dateKey]?.seconds) {
+      const itemDate = new Date(item[dateKey].seconds * 1000);
+      const day = format(itemDate, 'MMM d');
+      if (day in weeklySummary) {
+        if (key === 'revenue') {
+             weeklySummary[day] += item.amount;
+        } else {
+            weeklySummary[day]++;
+        }
+      }
+    }
+  });
+
+  return Object.entries(weeklySummary).map(([date, value]) => ({ date, [key]: value }));
 };
-
-const weeklyRevenueData = generateLast7DaysData('revenue', 3000);
-const weeklyRegistrationsData = generateLast7DaysData('users', 50);
-
-const revenueChartConfig = { revenue: { label: "Revenue", color: "hsl(var(--primary))" } };
-const registrationChartConfig = { users: { label: "Users", color: "hsl(var(--primary))" } };
 
 
 export default function AdminDashboardPage() {
@@ -57,17 +67,46 @@ export default function AdminDashboardPage() {
   const { count: pendingKyc, loading: l3 } = useCollection<KycRequest>("kyc-requests", { where: ["status", "==", "pending"] });
   const { count: pendingMatches, loading: l4 } = useCollection<Match>("matches", { where: ["status", "in", ["verification", "result_submitted"]] });
   const { count: disputedMatches, loading: l5 } = useCollection<Match>("matches", { where: ["status", "==", "disputed"] });
-  const { count: totalUsers, loading: l6 } = useCollection<UserProfile>("users");
+  const { data: users, loading: l6 } = useCollection<UserProfile>("users");
   const { count: ongoingMatches, loading: l7 } = useCollection<Match>("matches", { where: ["status", "in", ["room_code_pending", "room_code_shared", "game_started"]] });
   
-  const isLoading = userLoading || l1 || l2 || l3 || l4 || l5 || l6 || l7;
-  
-  const platformRevenue = 0; // Replace with actual revenue calculation if available
+  const sevenDaysAgo = startOfDay(subDays(new Date(), 6));
+  const { data: recentTransactions, loading: l8 } = useCollection<Transaction>('transactions', { 
+    where: ['createdAt', '>=', sevenDaysAgo],
+    orderBy: ['createdAt', 'desc']
+  });
 
-  const superAdminStats = [
-      { title: "Total Users", value: totalUsers, icon: Users, href: "/admin/users" },
-      { title: "Platform Revenue", value: `₹${platformRevenue.toLocaleString()}`, icon: Wallet, description: "Total fees collected" },
-  ]
+  const isLoading = userLoading || l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8;
+
+  const totalUsers = users?.length || 0;
+  
+  const platformRevenue = useMemo(() => {
+    if (!recentTransactions) return 0;
+    return recentTransactions.reduce((acc, tx) => {
+        if (tx.type === 'entry_fee' && tx.amount < 0) {
+            // Assume 5% commission on entry fees
+            return acc + (Math.abs(tx.amount) * 0.05); 
+        }
+        return acc;
+    }, 0);
+  }, [recentTransactions]);
+
+  const weeklyRevenueData = useMemo(() => {
+      if (!recentTransactions) return [];
+      const revenueTx = recentTransactions.filter(tx => tx.type === 'prize' || tx.type === 'entry_fee');
+      const processed = processWeeklyData(revenueTx, 'revenue');
+      return processed;
+  }, [recentTransactions]);
+
+  const weeklyRegistrationsData = useMemo(() => {
+      if (!users) return [];
+       const recentUsers = users.filter(u => u.createdAt?.seconds > sevenDaysAgo.getTime() / 1000);
+      return processWeeklyData(recentUsers, 'users');
+  }, [users]);
+  
+  const revenueChartConfig = { revenue: { label: "Revenue", color: "hsl(var(--primary))" } };
+  const registrationChartConfig = { users: { label: "Users", color: "hsl(var(--primary))" } };
+
 
   const actionItems = [
       { title: "Pending Deposits", value: pendingDeposits, icon: CircleArrowUp, href: "/admin/deposits", roles: ['superadmin', 'deposit_admin'] },
@@ -94,7 +133,12 @@ export default function AdminDashboardPage() {
         <h2 className="text-xl font-semibold mb-4">Platform Overview</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard title="Ongoing Matches" value={ongoingMatches} icon={Gamepad2} isLoading={isLoading} href="/admin/matches" />
-          {role === 'superadmin' && superAdminStats.map(item => <StatCard key={item.title} {...item} isLoading={isLoading} />)}
+           {role === 'superadmin' && (
+              <>
+                 <StatCard title="Total Users" value={totalUsers} icon={Users} isLoading={isLoading} href="/admin/users" />
+                 <StatCard title="Weekly Revenue" value={`₹${platformRevenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} icon={Wallet} description="Last 7 days commission" isLoading={isLoading} />
+              </>
+           )}
         </div>
       </section>
       
