@@ -9,23 +9,26 @@ import { ArrowDown, ArrowUp, Ticket, Trophy, Minus, Gift } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 const getTransactionIcon = (type: Transaction['type']) => {
     switch (type) {
         case 'deposit':
         case 'add_money':
-            return <div className="p-2 bg-green-500/10 rounded-full"><ArrowDown className="h-5 w-5 text-green-500" /></div>;
+            return <div className="p-3 bg-green-500/10 rounded-full"><ArrowDown className="h-5 w-5 text-green-500" /></div>;
         case 'withdrawal':
-            return <div className="p-2 bg-red-500/10 rounded-full"><ArrowUp className="h-5 w-5 text-red-500" /></div>;
+        case 'withdrawal_refund':
+            return <div className="p-3 bg-red-500/10 rounded-full"><ArrowUp className="h-5 w-5 text-red-500" /></div>;
         case 'entry_fee':
-            return <div className="p-2 bg-gray-500/10 rounded-full"><Ticket className="h-5 w-5 text-gray-500" /></div>;
+        case 'entry_fee_refund':
+            return <div className="p-3 bg-gray-500/10 rounded-full"><Ticket className="h-5 w-5 text-gray-500" /></div>;
         case 'prize':
         case 'win':
-            return <div className="p-2 bg-yellow-500/10 rounded-full"><Trophy className="h-5 w-5 text-yellow-500" /></div>;
+            return <div className="p-3 bg-yellow-500/10 rounded-full"><Trophy className="h-5 w-5 text-yellow-500" /></div>;
         case 'referral_bonus':
-             return <div className="p-2 bg-blue-500/10 rounded-full"><Gift className="h-5 w-5 text-blue-500" /></div>;
+             return <div className="p-3 bg-blue-500/10 rounded-full"><Gift className="h-5 w-5 text-blue-500" /></div>;
         default:
-            return <div className="p-2 bg-gray-100 rounded-full"><Minus className="h-5 w-5" /></div>;
+            return <div className="p-3 bg-gray-100 rounded-full"><Minus className="h-5 w-5" /></div>;
     }
 }
 
@@ -49,23 +52,24 @@ export default function TransactionHistoryPage() {
                      [...Array(5)].map((_, i) => <Skeleton key={i} className="h-20 w-full"/>)
                  ) : transactions.length > 0 ? (
                    transactions.map(tx => {
-                       const isCredit = tx.amount > 0 || tx.type === 'deposit' || tx.type === 'prize' || tx.type === 'referral_bonus' || tx.type === 'win' || tx.type === 'add_money';
-                       const amount = tx.type === 'entry_fee' ? Math.abs(tx.amount) : tx.amount;
-
+                       const isCredit = tx.amount > 0;
                        return (
-                            <div key={tx.id} className="flex items-center gap-4 p-3 bg-card rounded-lg shadow-sm border">
+                            <div key={tx.id} className="grid grid-cols-[auto,1fr,auto] items-center gap-4 p-3 bg-card rounded-lg shadow-sm border">
                                 {getTransactionIcon(tx.type)}
-                                <div className="flex-grow">
-                                    <p className="font-semibold capitalize">{tx.description || tx.type.replace(/_/g, ' ')}</p>
+                                <div className="overflow-hidden">
+                                    <p className="font-semibold capitalize truncate">{tx.description || tx.type.replace(/_/g, ' ')}</p>
                                     <p className="text-xs text-muted-foreground">
                                         {tx.createdAt?.seconds ? format(new Date(tx.createdAt.seconds * 1000), 'dd MMM yyyy, hh:mm a') : 'N/A'}
                                     </p>
                                 </div>
                                 <div className="text-right">
-                                     <p className={`font-bold ${isCredit ? 'text-green-500' : 'text-red-500'}`}>
-                                        {isCredit ? '+' : '-'}₹{Math.abs(amount).toLocaleString()}
+                                     <p className={cn(
+                                         "font-bold text-base",
+                                         isCredit ? 'text-green-500' : 'text-red-500'
+                                      )}>
+                                        {isCredit ? '+' : '-'}₹{Math.abs(tx.amount).toLocaleString()}
                                     </p>
-                                    <Badge variant={tx.status === 'completed' ? 'default' : 'secondary'} className="capitalize mt-1">{tx.status}</Badge>
+                                    <Badge variant={tx.status === 'completed' ? 'success' : tx.status === 'failed' ? 'destructive' : 'secondary'} className="capitalize mt-1">{tx.status}</Badge>
                                 </div>
                             </div>
                        )
