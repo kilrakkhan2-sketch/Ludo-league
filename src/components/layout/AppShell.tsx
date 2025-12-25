@@ -190,7 +190,7 @@ export function AppShell({ children, pageTitle, showBackButton = false }: AppShe
                       {userMenu}
                     </div>
               </header>
-              <main className="flex-grow overflow-y-auto pb-16 sm:pb-0 bg-muted/20">
+              <main className="flex-grow flex flex-col overflow-auto pb-16 sm:pb-0 bg-muted/20">
                   {children}
               </main>
               <BottomNav items={bottomNavItems} />

@@ -115,7 +115,7 @@ export default function DashboardClientContent() {
     });
 
     return (
-        <div className="min-h-screen">
+        <div>
             {/* Header Section */}
             <div className="bg-card text-foreground p-4 sm:p-6 border-b">
                 <header className="flex justify-between items-center mb-4">
