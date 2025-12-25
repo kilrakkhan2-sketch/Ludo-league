@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -9,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
 import { Chrome } from 'lucide-react'; // Using Chrome icon for Google
+import type { UserProfile } from '@/types';
 
 export function SocialLogins() {
   const auth = useAuth();
@@ -35,24 +37,29 @@ export function SocialLogins() {
 
             if (!userDoc.exists()) {
                 const displayName = user.user.displayName || 'New Player';
-                const referralCode = `${displayName.substring(0, 4).toUpperCase()}${nanoid(4)}`;
-                await setDoc(userRef, {
+                // Generate referral code for new social sign-up
+                const sanitizedName = displayName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase();
+                const referralCode = `${sanitizedName}${nanoid(4)}`;
+                
+                const newUserProfile: Omit<UserProfile, 'id'> = {
                     uid: user.user.uid,
-                    name: displayName,
                     displayName: displayName,
-                    email: user.user.email,
-                    photoURL: user.user.photoURL,
+                    email: user.user.email || '',
+                    photoURL: user.user.photoURL || '',
                     role: 'user',
-                    walletBalance: 0,
+                    wallet: { balance: 0 },
+                    stats: {
+                        matchesPlayed: 0,
+                        matchesWon: 0,
+                        totalWinnings: 0,
+                    },
+                    referralCode: referralCode, // Save the generated code
                     referralEarnings: 0,
                     isVerified: false,
-                    xp: 0,
-                    matchesPlayed: 0,
-                    matchesWon: 0,
-                    rating: 1000,
-                    referralCode: referralCode,
                     createdAt: Timestamp.now(),
-                });
+                };
+                
+                await setDoc(userRef, newUserProfile);
                 toast({ title: "Account Created", description: "Welcome to LudoLeague!" });
             } else {
                 toast({ title: "Logged In", description: "Welcome back!" });
