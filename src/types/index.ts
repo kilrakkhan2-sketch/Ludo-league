@@ -210,3 +210,12 @@ export interface Penalty {
     createdAt: FieldValue;
     relatedMatchId?: string;
 }
+
+export interface PersonalNotification {
+  id: string;
+  title: string;
+  body: string;
+  link?: string;
+  isRead: boolean;
+  createdAt: any;
+}

@@ -117,7 +117,7 @@ export default function DashboardClientContent() {
             <div className="bg-card text-foreground p-4 border-b">
                 <header className="flex justify-between items-center">
                     {loading ? <Skeleton className="h-7 w-32"/> : <h1 className="text-xl sm:text-2xl font-bold">Hi, {userData?.displayName || 'Player'}!</h1>}
-                    <div className="flex items-center gap-2">
+                     <div className="flex items-center gap-2">
                         <Button variant="ghost" size="icon" asChild><Link href="/messages"><MessageCircle className="h-5 w-5" /></Link></Button>
                         <Button variant="ghost" size="icon" asChild><Link href="/notifications"><Bell className="h-5 w-5" /></Link></Button>
                     </div>
