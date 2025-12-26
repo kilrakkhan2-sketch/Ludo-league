@@ -19,6 +19,7 @@ interface UserData {
     xp?: number;
     matchesPlayed?: number;
     matchesWon?: number;
+    totalWinnings?: number;
     name?: string;
     displayName?: string;
     [key: string]: any;
@@ -162,7 +163,7 @@ export const applyPenalty = functions.https.onCall(async (data, context) => {
         }
         
         // A. Deduct amount from user's wallet
-        t.update(userRef, { walletBalance: FieldValue.increment(-amount) });
+        t.update(userRef, { 'walletBalance': FieldValue.increment(-amount) });
 
         // B. Create a transaction log for the user
         const userTxRef = db.collection(`users/${userId}/transactions`).doc();
@@ -301,7 +302,7 @@ export const createWithdrawalRequest = functions.https.onCall(async (data, conte
             }
 
             // 1. Deduct from user's balance
-            t.update(userRef, { walletBalance: FieldValue.increment(-amount) });
+            t.update(userRef, { 'walletBalance': FieldValue.increment(-amount) });
 
             // 2. Create the withdrawal request document
             t.set(withdrawalRef, {
@@ -436,7 +437,7 @@ export const rejectWithdrawal = functions.https.onCall(async (data, context) => 
         });
 
         // B. Refund the user
-        t.update(userRef, { walletBalance: FieldValue.increment(amount) });
+        t.update(userRef, { 'walletBalance': FieldValue.increment(amount) });
 
         // C. Mark user's transaction as failed and update description
         if (userTxRef) {
@@ -502,7 +503,7 @@ export const onDepositStatusChange = functions.firestore
             const commissionSettings = commissionSettingsDoc.data() as CommissionSettings | undefined;
 
             // 1. Credit the user's wallet.
-            t.update(userRef, { walletBalance: FieldValue.increment(amount) });
+            t.update(userRef, { 'walletBalance': FieldValue.increment(amount) });
             
             // 2. Update the UPI account's daily stats on the main document
             t.update(upiAccountRef, {
@@ -543,7 +544,7 @@ export const onDepositStatusChange = functions.firestore
                     const commissionAmount = amount * commissionSettings.rate; // Dynamic commission rate
 
                     t.update(referrerRef, {
-                        walletBalance: FieldValue.increment(commissionAmount),
+                        'walletBalance': FieldValue.increment(commissionAmount),
                         referralEarnings: FieldValue.increment(commissionAmount)
                     });
                     const commissionTxRef = db.collection(`users/${referrerDoc.id}/transactions`).doc();
@@ -759,7 +760,7 @@ export const cancelMatch = functions.https.onCall(async (data, context) => {
         // Refund entry fee to all players involved
         for (const playerId of matchData.players) {
             const playerRef = db.collection("users").doc(playerId);
-            t.update(playerRef, { walletBalance: FieldValue.increment(matchData.entryFee) });
+            t.update(playerRef, { 'walletBalance': FieldValue.increment(matchData.entryFee) });
             const refundTxRef = db.collection(`users/${playerId}/transactions`).doc();
             t.set(refundTxRef, {
                 amount: matchData.entryFee,
@@ -877,7 +878,7 @@ export const createMatch = functions.https.onCall(async (data, context) => {
             }
             
             if (entryFee > 0) {
-                t.update(userRef, { walletBalance: FieldValue.increment(-entryFee) });
+                t.update(userRef, { 'walletBalance': FieldValue.increment(-entryFee) });
                 
                 const transactionRef = db.collection(`users/${userId}/transactions`).doc();
                 t.set(transactionRef, {
@@ -1221,5 +1222,3 @@ export const removePlayerFromTournament = functions.https.onCall(async (data, co
         t.update(tournamentRef, { players: FieldValue.arrayRemove(playerId) });
     });
 });
-
-    
