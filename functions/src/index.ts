@@ -11,15 +11,19 @@ const BUCKET_NAME = "studio-4431476254-c1156.appspot.com";
 
 // Type definitions for robust data handling
 interface UserData {
-    walletBalance?: number;
+    wallet?: { balance: number };
+    stats?: {
+        totalWinnings?: number;
+        rating?: number;
+        xp?: number;
+        matchesPlayed?: number;
+        matchesWon?: number;
+    }
     referralEarnings?: number;
     referredBy?: string;
     referralCode?: string;
-    rating?: number;
-    xp?: number;
-    matchesPlayed?: number;
-    matchesWon?: number;
     name?: string;
+    displayName?: string;
     [key: string]: any;
 }
 
@@ -34,26 +38,6 @@ interface MaintenanceSettings {
 interface CommissionSettings {
     isEnabled?: boolean;
     rate?: number;
-}
-
-interface MatchResult {
-    userId: string;
-    creatorPosition: number;
-    joinerPosition: number;
-    confirmedWinStatus: 'win' | 'loss';
-    screenshotUrl: string;
-    submittedAt: any;
-    confirmedAt: any;
-    status: 'submitted' | 'confirmed' | 'mismatch' | 'locked';
-}
-
-interface UserProfile {
-    adminWallet?: {
-        balance: number;
-        totalUsed: number;
-        totalReceived: number;
-    };
-    [key: string]: any;
 }
 
 // Helper function to send a personal notification
@@ -147,7 +131,7 @@ export const deleteUserAccount = functions.https.onCall(async (_, context) => {
         await db.collection('users').doc(uid).delete();
         functions.logger.info(`User ${uid} successfully deleted their account.`);
         return { success: true };
-    } catch (error: any) => {
+    } catch (error) {
         functions.logger.error(`Failed to delete user account for ${uid}:`, error);
         throw new functions.https.HttpsError('internal', "An error occurred while deleting your account.");
     }
@@ -181,7 +165,7 @@ export const applyPenalty = functions.https.onCall(async (data, context) => {
         }
         
         // A. Deduct amount from user's wallet
-        t.update(userRef, { walletBalance: FieldValue.increment(-amount) });
+        t.update(userRef, { 'wallet.balance': FieldValue.increment(-amount) });
 
         // B. Create a transaction log for the user
         const userTxRef = db.collection(`users/${userId}/transactions`).doc();
@@ -291,6 +275,70 @@ export const deleteStorageFile = functions.https.onCall(async (data, context) =>
 // =================================================================
 //  WITHDRAWAL MANAGEMENT FUNCTIONS
 // =================================================================
+export const createWithdrawalRequest = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to make a withdrawal.");
+    }
+    const userId = context.auth.uid;
+    const { amount, method, details } = data;
+
+    if (typeof amount !== 'number' || amount <= 0) {
+        throw new functions.https.HttpsError("invalid-argument", "A valid, positive amount is required.");
+    }
+    if (!method || !details) {
+        throw new functions.https.HttpsError("invalid-argument", "Withdrawal method and details are required.");
+    }
+
+    const userRef = db.collection("users").doc(userId);
+    const withdrawalRef = db.collection("withdrawal-requests").doc();
+
+    try {
+        await db.runTransaction(async (t) => {
+            const userDoc = await t.get(userRef);
+            if (!userDoc.exists) throw new functions.https.HttpsError("not-found", "User profile not found.");
+
+            const userData = userDoc.data() as UserData;
+            const currentBalance = userData.wallet?.balance || 0;
+            if (currentBalance < amount) {
+                throw new functions.https.HttpsError("failed-precondition", "Insufficient funds.");
+            }
+
+            // 1. Deduct from user's balance
+            t.update(userRef, { 'wallet.balance': FieldValue.increment(-amount) });
+
+            // 2. Create the withdrawal request document
+            t.set(withdrawalRef, {
+                userId,
+                amount,
+                method,
+                details,
+                status: 'pending',
+                createdAt: FieldValue.serverTimestamp(),
+            });
+
+            // 3. Create a "pending" transaction log for the user
+            const transactionRef = db.collection(`users/${userId}/transactions`).doc();
+            t.set(transactionRef, {
+                amount: -amount,
+                type: "withdrawal",
+                status: "pending",
+                description: `Withdrawal request for ₹${amount}`,
+                relatedId: withdrawalRef.id,
+                createdAt: FieldValue.serverTimestamp(),
+            });
+        });
+
+        return { success: true, message: "Withdrawal request submitted successfully." };
+    } catch (error) {
+        functions.logger.error(`Withdrawal request failed for user ${userId}:`, error);
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        } else {
+            throw new functions.https.HttpsError("internal", "An unexpected error occurred.");
+        }
+    }
+});
+
 
 export const approveWithdrawal = functions.https.onCall(async (data, context) => {
     // 1. Check permissions
@@ -391,27 +439,26 @@ export const rejectWithdrawal = functions.https.onCall(async (data, context) => 
         });
 
         // B. Refund the user
-        t.update(userRef, { walletBalance: FieldValue.increment(amount) });
+        t.update(userRef, { 'wallet.balance': FieldValue.increment(amount) });
 
-        // C. Mark user's transaction as failed
+        // C. Mark user's transaction as failed and update description
         if (userTxRef) {
-            t.update(userTxRef, { 
-                status: 'failed', 
-                description: reason || 'Withdrawal request rejected by admin' 
+            t.update(userTxRef, {
+                status: 'failed',
+                description: `Withdrawal rejected. Reason: ${reason || 'Rejected by admin'}`
             });
         }
-        
-        // D. Create a reversing admin wallet transaction
-        const adminTxRef = db.collection('admin-wallet-transactions').doc();
-        t.set(adminTxRef, {
-            adminId: adminUid,
-            type: 'credit', // Reversing the initial debit
-            amount: amount,
-            reason: 'withdrawal_rejection',
-            relatedUserId: userId,
-            relatedRequestId: withdrawalId,
-            createdAt: FieldValue.serverTimestamp(),
-        });
+        else {
+            const refundTxRef = db.collection(`users/${userId}/transactions`).doc();
+            t.set(refundTxRef, {
+                amount: amount,
+                type: 'withdrawal_refund',
+                status: 'completed',
+                description: `Refund for rejected withdrawal. Reason: ${reason || 'Rejected by admin'}`,
+                relatedId: withdrawalId,
+                createdAt: FieldValue.serverTimestamp(),
+            });
+        }
 
         await sendNotification(userId, 'Withdrawal Rejected', `Your withdrawal request for ₹${amount} was rejected. The amount has been refunded to your wallet.`);
         return { success: true, message: 'Withdrawal rejected and funds refunded.' };
@@ -458,7 +505,7 @@ export const onDepositStatusChange = functions.firestore
             const commissionSettings = commissionSettingsDoc.data() as CommissionSettings | undefined;
 
             // 1. Credit the user's wallet.
-            t.update(userRef, { walletBalance: FieldValue.increment(amount) });
+            t.update(userRef, { 'wallet.balance': FieldValue.increment(amount) });
             
             // 2. Update the UPI account's daily stats on the main document
             t.update(upiAccountRef, {
@@ -499,7 +546,7 @@ export const onDepositStatusChange = functions.firestore
                     const commissionAmount = amount * commissionSettings.rate; // Dynamic commission rate
 
                     t.update(referrerRef, {
-                        walletBalance: FieldValue.increment(commissionAmount),
+                        'wallet.balance': FieldValue.increment(commissionAmount),
                         referralEarnings: FieldValue.increment(commissionAmount)
                     });
                     const commissionTxRef = db.collection(`users/${referrerDoc.id}/transactions`).doc();
@@ -632,13 +679,14 @@ export const onMatchResultUpdate = functions.firestore
                     throw new Error(`Winner user ${winnerId} not found.`);
                 }
 
-                // 1. Update winner's balance, rating, xp, and stats
+                // 1. Update winner's balance, total winnings, and other stats
                 t.update(winnerRef, { 
-                    walletBalance: FieldValue.increment(prizePool),
-                    rating: FieldValue.increment(10),
-                    xp: FieldValue.increment(25),
-                    matchesPlayed: FieldValue.increment(1),
-                    matchesWon: FieldValue.increment(1)
+                    'wallet.balance': FieldValue.increment(prizePool),
+                    'stats.totalWinnings': FieldValue.increment(prizePool),
+                    'stats.rating': FieldValue.increment(10),
+                    'stats.xp': FieldValue.increment(25),
+                    'stats.matchesPlayed': FieldValue.increment(1),
+                    'stats.matchesWon': FieldValue.increment(1)
                 });
                 
                 // 2. Create prize transaction for winner
@@ -657,8 +705,8 @@ export const onMatchResultUpdate = functions.firestore
                 for (const loserId of loserIds) {
                     const loserRef = db.collection("users").doc(loserId);
                     t.update(loserRef, {
-                         rating: FieldValue.increment(-5),
-                         matchesPlayed: FieldValue.increment(1)
+                         'stats.rating': FieldValue.increment(-5),
+                         'stats.matchesPlayed': FieldValue.increment(1)
                     });
                 }
 
@@ -714,7 +762,7 @@ export const cancelMatch = functions.https.onCall(async (data, context) => {
         // Refund entry fee to all players involved
         for (const playerId of matchData.players) {
             const playerRef = db.collection("users").doc(playerId);
-            t.update(playerRef, { walletBalance: FieldValue.increment(matchData.entryFee) });
+            t.update(playerRef, { 'wallet.balance': FieldValue.increment(matchData.entryFee) });
             const refundTxRef = db.collection(`users/${playerId}/transactions`).doc();
             t.set(refundTxRef, {
                 amount: matchData.entryFee,
@@ -825,14 +873,14 @@ export const createMatch = functions.https.onCall(async (data, context) => {
             if (!userDoc.exists) {
                 throw new functions.https.HttpsError("not-found", "Your user profile does not exist.");
             }
-            const userData = userDoc.data()!;
-            const currentBalance = userData.walletBalance || 0;
+            const userData = userDoc.data() as UserData;
+            const currentBalance = userData.wallet?.balance || 0;
             if (currentBalance < entryFee) {
                 throw new functions.https.HttpsError("failed-precondition", "Insufficient funds to create this match.");
             }
             
             if (entryFee > 0) {
-                t.update(userRef, { walletBalance: FieldValue.increment(-entryFee) });
+                t.update(userRef, { 'wallet.balance': FieldValue.increment(-entryFee) });
                 
                 const transactionRef = db.collection(`users/${userId}/transactions`).doc();
                 t.set(transactionRef, {
@@ -971,12 +1019,12 @@ export const joinMatch = functions.https.onCall(async (data, context) => {
             const userDoc = await t.get(userRef);
             if (!userDoc.exists) throw new functions.https.HttpsError("not-found", "Your user profile does not exist.");
             
-            const userData = userDoc.data()!;
-            if ((userData.walletBalance || 0) < matchData.entryFee) throw new functions.https.HttpsError("failed-precondition", "Insufficient funds to join this match.");
+            const userData = userDoc.data() as UserData;
+            if ((userData.wallet?.balance || 0) < matchData.entryFee) throw new functions.https.HttpsError("failed-precondition", "Insufficient funds to join this match.");
 
             // Deduct entry fee
             if (matchData.entryFee > 0) {
-                t.update(userRef, { walletBalance: FieldValue.increment(-matchData.entryFee) });
+                t.update(userRef, { 'wallet.balance': FieldValue.increment(-matchData.entryFee) });
                  const transactionRef = db.collection(`users/${userId}/transactions`).doc();
                  t.set(transactionRef, {
                     amount: -matchData.entryFee,
@@ -1078,3 +1126,103 @@ export const submitResult = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("internal", "An unexpected error occurred.");
     }
 });
+
+
+// New Tournament Management Functions
+
+export const cancelTournament = functions.https.onCall(async (data, context) => {
+    if (context.auth?.token.role !== 'superadmin' && context.auth?.token.role !== 'match_admin') {
+        throw new functions.https.HttpsError("permission-denied", "Only admins can cancel tournaments.");
+    }
+
+    const { tournamentId } = data;
+    if (!tournamentId) {
+        throw new functions.https.HttpsError("invalid-argument", "Tournament ID is required.");
+    }
+
+    const tournamentRef = db.collection('tournaments').doc(tournamentId);
+
+    return db.runTransaction(async (t) => {
+        const tournamentDoc = await t.get(tournamentRef);
+        if (!tournamentDoc.exists) {
+            throw new functions.https.HttpsError("not-found", "Tournament not found.");
+        }
+        const tournamentData = tournamentDoc.data()!;
+
+        if (tournamentData.status === 'cancelled') {
+             throw new functions.https.HttpsError("failed-precondition", "Tournament is already cancelled.");
+        }
+        
+        // Refund all players
+        const playersSnapshot = await db.collection(`tournaments/${tournamentId}/players`).get();
+        for (const playerDoc of playersSnapshot.docs) {
+            const playerId = playerDoc.id;
+            const playerRef = db.collection('users').doc(playerId);
+            t.update(playerRef, { 'wallet.balance': FieldValue.increment(tournamentData.entryFee) });
+            const refundTxRef = db.collection(`users/${playerId}/transactions`).doc();
+            t.set(refundTxRef, {
+                amount: tournamentData.entryFee,
+                type: 'entry_fee_refund',
+                status: 'completed',
+                description: `Refund for cancelled tournament: ${tournamentData.name}`,
+                relatedId: tournamentId,
+                createdAt: FieldValue.serverTimestamp(),
+            });
+        }
+        
+        // Update tournament status
+        t.update(tournamentRef, { status: 'cancelled' });
+    });
+});
+
+
+export const updateTournament = functions.https.onCall(async (data, context) => {
+    if (context.auth?.token.role !== 'superadmin' && context.auth?.token.role !== 'match_admin') {
+        throw new functions.https.HttpsError("permission-denied", "Only admins can update tournaments.");
+    }
+    const { tournamentId, name, description } = data;
+    if (!tournamentId) throw new functions.https.HttpsError("invalid-argument", "Tournament ID is required.");
+
+    const tournamentRef = db.collection('tournaments').doc(tournamentId);
+    await tournamentRef.update({
+        ...(name && { name }),
+        ...(description && { description }),
+    });
+    return { success: true };
+});
+
+export const removePlayerFromTournament = functions.https.onCall(async (data, context) => {
+     if (context.auth?.token.role !== 'superadmin' && context.auth?.token.role !== 'match_admin') {
+        throw new functions.https.HttpsError("permission-denied", "Only admins can remove players.");
+    }
+    const { tournamentId, playerId } = data;
+    if (!tournamentId || !playerId) throw new functions.https.HttpsError("invalid-argument", "Tournament ID and Player ID are required.");
+    
+    const tournamentRef = db.collection('tournaments').doc(tournamentId);
+    const playerInTournamentRef = db.collection(`tournaments/${tournamentId}/players`).doc(playerId);
+
+    return db.runTransaction(async (t) => {
+        const tournamentDoc = await t.get(tournamentRef);
+        if (!tournamentDoc.exists) throw new functions.https.HttpsError("not-found", "Tournament not found.");
+        const tournamentData = tournamentDoc.data()!;
+        
+        // Refund player
+        const playerRef = db.collection('users').doc(playerId);
+        t.update(playerRef, { 'wallet.balance': FieldValue.increment(tournamentData.entryFee) });
+        const refundTxRef = db.collection(`users/${playerId}/transactions`).doc();
+        t.set(refundTxRef, {
+            amount: tournamentData.entryFee,
+            type: 'entry_fee_refund',
+            status: 'completed',
+            description: `Refund for removal from tournament: ${tournamentData.name}`,
+            relatedId: tournamentId,
+            createdAt: FieldValue.serverTimestamp(),
+        });
+        
+        // Remove player from tournament subcollection and players array
+        t.delete(playerInTournamentRef);
+        t.update(tournamentRef, { players: FieldValue.arrayRemove(playerId) });
+    });
+});
+
+    

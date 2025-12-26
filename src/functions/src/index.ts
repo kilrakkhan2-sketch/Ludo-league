@@ -1224,3 +1224,5 @@ export const removePlayerFromTournament = functions.https.onCall(async (data, co
         t.update(tournamentRef, { players: FieldValue.arrayRemove(playerId) });
     });
 });
+
+    
