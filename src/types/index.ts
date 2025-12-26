@@ -1,5 +1,4 @@
-
-import { FieldValue } from 'firebase/firestore';
+mport { FieldValue } from 'firebase/firestore';
 
 export interface UserProfile {
   id: string;
@@ -28,7 +27,7 @@ export interface UserProfile {
   createdAt: FieldValue;
 }
 
-export type MatchStatus = 'waiting' | 'room_code_pending' | 'room_code_shared' | 'game_started' | 'result_submitted' | 'AUTO_VERIFIED' | 'FLAGGED' | 'COMPLETED' | 'PAID' | 'verification' | 'disputed' | 'cancelled';
+export type MatchStatus = 'open' | 'waiting' | 'room_code_pending' | 'room_code_shared' | 'game_started' | 'result_submitted' | 'AUTO_VERIFIED' | 'FLAGGED' | 'COMPLETED' | 'PAID' | 'verification' | 'disputed' | 'cancelled';
 
 
 export interface Match {
