@@ -18,11 +18,11 @@ export default function AddMoneyPage() {
 
   const handleProceed = () => {
     const numAmount = parseInt(amount, 10);
-    if (isNaN(numAmount) || numAmount < 10) {
+    if (isNaN(numAmount) || numAmount < 100) {
       toast({
         variant: 'destructive',
         title: 'Invalid Amount',
-        description: 'Minimum deposit is ₹10.',
+        description: 'Minimum deposit is ₹100.',
       });
     } else {
       router.push(`/deposit?amount=${amount}`);
@@ -52,7 +52,7 @@ export default function AddMoneyPage() {
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    placeholder="0.00"
+                    placeholder="100"
                     className="w-full text-4xl font-bold h-auto p-4 pl-10 text-center border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
                     />
               </div>
@@ -69,18 +69,18 @@ export default function AddMoneyPage() {
           {numAmount > 0 && (
              <Card>
                 <CardContent className="p-4 space-y-3 text-sm">
-                    <p className='text-xs text-center text-muted-foreground font-semibold mb-2'>Payment Summary</p>
+                    <p className='text-xs text-center text-muted-foreground font-semibold mb-2'>GST Breakdown (For Information Only)</p>
                     <div className="flex justify-between items-center">
-                        <p className="text-muted-foreground">GST @28% (deducted)</p>
+                        <p className="text-muted-foreground">GST @28% (As per Govt. Regulation)</p>
                         <p className="font-mono text-red-500">- ₹{gstAmount}</p>
                     </div>
                     <div className="flex justify-between items-center">
-                        <p className="text-muted-foreground">GST Credit (by LudoLeague)</p>
+                        <p className="text-muted-foreground">GST 28% Credit by Company</p>
                         <p className="font-mono text-green-500">+ ₹{gstAmount}</p>
                     </div>
                     <Separator className="my-2"/>
                     <div className="flex justify-between items-center font-bold text-base">
-                        <p>Net Amount to Wallet</p>
+                        <p>Wallet Deposit Amount</p>
                         <p>₹{numAmount.toFixed(2)}</p>
                     </div>
                      <div className="flex items-start gap-2 text-xs text-muted-foreground pt-2">
@@ -93,13 +93,13 @@ export default function AddMoneyPage() {
         </main>
         
         <footer className="p-4 sticky bottom-0 bg-background border-t space-y-3">
-            {numAmount > 0 && (
+            {numAmount >= 100 && (
                  <div className="flex items-center justify-center gap-2 text-sm font-semibold text-green-600">
                     <CheckCircle2 className="h-4 w-4" />
                     <p>You will receive 100% of your deposited amount in wallet.</p>
                 </div>
             )}
-             <Button onClick={handleProceed} className="w-full text-lg py-6 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90" disabled={!amount || numAmount < 10}>
+             <Button onClick={handleProceed} className="w-full text-lg py-6 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90" disabled={!amount || numAmount < 100}>
                 Proceed to Add ₹{numAmount || 0}
             </Button>
         </footer>

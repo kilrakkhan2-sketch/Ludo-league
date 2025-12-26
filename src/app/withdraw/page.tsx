@@ -19,7 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 const withdrawalSchema = z.object({
-  amount: z.coerce.number().positive("Amount must be greater than zero."),
+  amount: z.coerce.number().min(300, "Minimum withdrawal amount is ₹300."),
   method: z.enum(['upi', 'bank'], { required_error: "You must select a withdrawal method." }),
   details: z.string().min(1, "Payment details are required."),
 });
@@ -34,7 +34,7 @@ export default function WithdrawPage() {
   const form = useForm<z.infer<typeof withdrawalSchema>>({
     resolver: zodResolver(withdrawalSchema),
     defaultValues: {
-      amount: 0,
+      amount: 300,
       method: 'upi',
       details: '',
     },
@@ -95,7 +95,7 @@ export default function WithdrawPage() {
                       <FormItem>
                         <FormLabel>Amount to Withdraw (INR)</FormLabel>
                         <FormControl>
-                            <Input type="number" {...field} placeholder="0.00" />
+                            <Input type="number" {...field} placeholder="300" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
