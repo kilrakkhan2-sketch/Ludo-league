@@ -78,6 +78,18 @@
           "type": "number",
           "description": "Total number of matches won by the user."
         },
+        "totalWinnings": {
+            "type": "number",
+            "description": "Total winnings of the user."
+        },
+        "rating": {
+            "type": "number",
+            "description": "Rating of the user."
+        },
+        "xp": {
+            "type": "number",
+            "description": "XP of the user."
+        },
         "adminWallet": {
             "type": "object",
             "description": "Wallet for admins to track funds distribution.",

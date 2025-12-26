@@ -235,7 +235,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     ```
 
 2.  **SDK संस्करण सेट करें:**
-    `android/app/src/main/build.gradle` फ़ाइल खोलें। `defaultConfig` ब्लॉक के अंदर, `minSdkVersion` को कम से कम `21` पर सेट करें।
+    `android/app/build.gradle` फ़ाइल खोलें। `defaultConfig` ब्लॉक के अंदर, `minSdkVersion` को कम से कम `21` पर सेट करें।
     ```groovy
     android {
         // ...

@@ -43,7 +43,7 @@ const bottomNavItems: NavItem[] = [
   { href: "/dashboard", icon: Home, label: "Home" },
   { href: "/matches", icon: Swords, label: "Matches" },
   { href: "/create-match", icon: PlusCircle, label: "Create", isCentral: true },
-  { href: "/tournaments", icon: Trophy, label: "Tourneys" },
+  { href: "/tournaments", icon: Trophy, label: "Tournaments" },
   { href: "/profile", icon: User, label: "Profile" },
 ];
 
