@@ -16,7 +16,7 @@ import type { UpiAccount } from '@/types';
 import { ArrowLeft, UploadCloud, Copy, RefreshCw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 
@@ -35,20 +35,28 @@ export default function DepositPageContent() {
       orderBy: ['createdAt', 'asc']
   });
   
-  const [availableUpiAccounts, setAvailableUpiAccounts] = useState<UpiAccount[]>([]);
-  const [selectedUpiId, setSelectedUpiId] = useState<string>('');
+  const [selectedUpiAccount, setSelectedUpiAccount] = useState<UpiAccount | null>(null);
 
   useEffect(() => {
     if (allUpiAccounts && allUpiAccounts.length > 0) {
+        // Filter for active accounts that are below their daily limit
         const availableAccounts = allUpiAccounts.filter(acc => 
             acc.isActive && (acc.dailyAmountReceived || 0) < acc.dailyLimit
         );
-        setAvailableUpiAccounts(availableAccounts);
+        
         if (availableAccounts.length > 0) {
-            setSelectedUpiId(availableAccounts[0].id); // Default to the first available account
+            // Logic to pick the best UPI: one that is least utilized
+            const bestAccount = availableAccounts.reduce((best, current) => {
+                const bestUtilization = (best.dailyAmountReceived / best.dailyLimit);
+                const currentUtilization = (current.dailyAmountReceived / current.dailyLimit);
+                return currentUtilization < bestUtilization ? current : best;
+            });
+            setSelectedUpiAccount(bestAccount);
+        } else {
+            setSelectedUpiAccount(null); // No accounts available
         }
     } else if (!settingsLoading) {
-        setAvailableUpiAccounts([]);
+        setSelectedUpiAccount(null);
     }
   }, [allUpiAccounts, settingsLoading]);
 
@@ -57,7 +65,14 @@ export default function DepositPageContent() {
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const selectedUpiAccount = availableUpiAccounts.find(acc => acc.id === selectedUpiId);
+  const upiUrl = selectedUpiAccount && amount 
+    ? `upi://pay?pa=${selectedUpiAccount.upiId}&pn=${selectedUpiAccount.displayName}&am=${amount}&cu=INR`
+    : '';
+  
+  const qrCodeUrl = upiUrl 
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiUrl)}`
+    : '';
+
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -93,7 +108,7 @@ export default function DepositPageContent() {
         amount: parseInt(amount, 10),
         transactionId,
         screenshotUrl,
-        upiAccountId: selectedUpiAccount.id, // Save the selected UPI account ID
+        upiAccountId: selectedUpiAccount.id,
         status: 'pending',
         createdAt: Timestamp.now(),
       });
@@ -158,37 +173,29 @@ export default function DepositPageContent() {
         </header>
       <main className="flex-grow p-4 space-y-6">
         <Card className="p-6">
-            <h2 className="text-lg font-semibold mb-4 text-center">Scan & Pay</h2>
+            <h2 className="text-lg font-semibold mb-2 text-center">1. Scan & Pay</h2>
              <div className="space-y-4">
                 <div className='text-center pt-2'>
                     <p className="text-muted-foreground">Amount to pay</p>
                     <p className="text-4xl font-bold">₹{amount}</p>
                 </div>
                  {settingsLoading ? (
-                    <Skeleton className="h-20 w-full" />
-                ) : availableUpiAccounts.length > 0 ? (
-                  <div className="space-y-4">
-                    <Label className="text-muted-foreground text-center block">1. Select a UPI ID and pay</Label>
-                    <RadioGroup value={selectedUpiId} onValueChange={setSelectedUpiId} className="grid grid-cols-1 gap-2">
-                        {availableUpiAccounts.map(acc => (
-                             <Label key={acc.id} htmlFor={acc.id} className={cn(
-                                'flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all',
-                                'has-[:checked]:border-primary has-[:checked]:bg-primary/10 has-[:checked]:shadow-md'
-                             )}>
-                                <div>
-                                    <p className="font-semibold">{acc.displayName}</p>
-                                    <p className="text-sm font-mono text-muted-foreground">{acc.upiId}</p>
-                                </div>
-                                <RadioGroupItem value={acc.id} id={acc.id} />
-                            </Label>
-                        ))}
-                    </RadioGroup>
-                    {selectedUpiAccount && (
-                         <div onClick={() => copyToClipboard(selectedUpiAccount.upiId)} className="font-mono tracking-wider bg-muted p-3 rounded-lg flex items-center justify-between cursor-pointer border-2 border-dashed border-primary">
-                            <p>{selectedUpiAccount.upiId}</p>
-                            <Copy className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                    )}
+                    <div className="flex flex-col items-center gap-4">
+                        <Skeleton className="h-48 w-48" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                ) : selectedUpiAccount ? (
+                  <div className="space-y-4 text-center">
+                    <div className="bg-white p-4 inline-block rounded-lg border shadow-md">
+                        <Image src={qrCodeUrl} alt="UPI QR Code" width={200} height={200} />
+                    </div>
+                    <div onClick={() => copyToClipboard(selectedUpiAccount.upiId)} className="font-mono tracking-wider bg-muted p-3 rounded-lg flex items-center justify-between cursor-pointer border-2 border-dashed border-primary">
+                        <p>{selectedUpiAccount.upiId}</p>
+                        <Copy className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <Button asChild size="lg" className="w-full">
+                        <a href={upiUrl}>Pay with UPI</a>
+                    </Button>
                   </div>
                 ) : (
                     <Alert variant="destructive">
@@ -236,5 +243,3 @@ export default function DepositPageContent() {
     </div>
   );
 }
-
-    
