@@ -21,27 +21,21 @@ interface ChatRoomProps {
 const PlayerInfo = ({ userId, isYou, isAdmin }: { userId: string, isYou: boolean, isAdmin: boolean }) => {
     const { data: user, loading } = useDoc<UserProfile>(`users/${userId}`);
 
-    if (loading) return <div className="flex items-center gap-2"><Skeleton className="h-8 w-8 rounded-full" /><Skeleton className="h-4 w-20" /></div>;
-    if (isYou) return <p className="text-sm font-bold">You</p>;
+    if (loading) return <div className="flex items-center gap-2"><Skeleton className="h-4 w-20" /></div>;
 
+    const displayName = user?.displayName || 'Player';
+    
+    if (isYou) return <p className="text-sm font-bold">You</p>;
+    
     return (
-        <div className="flex items-center gap-2">
-            <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.photoURL || undefined} />
-                <AvatarFallback>{user?.displayName?.[0]}</AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col">
-                <p className={`text-sm font-bold flex items-center gap-1.5 ${isAdmin ? 'text-primary' : ''}`}>
-                    {isAdmin && <Shield size={14} />} {user?.displayName || 'Player'}
-                </p>
-                {isAdmin && <p className="text-xs text-primary">Admin</p>}
-            </div>
-        </div>
+        <p className={`text-sm font-bold flex items-center gap-1.5 ${isAdmin ? 'text-amber-500' : ''}`}>
+            {isAdmin && <Shield size={14} />} {displayName}
+        </p>
     );
 }
 
 export function ChatRoom({ matchId }: ChatRoomProps) {
-  const { user, loading: userLoading } = useUser();
+  const { user: currentUser, userData, loading: userLoading } = useUser();
   const { firestore } = useFirebase();
   const [newMessage, setNewMessage] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -51,13 +45,14 @@ export function ChatRoom({ matchId }: ChatRoomProps) {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !firestore || newMessage.trim() === '') return;
+    if (!currentUser || !firestore || newMessage.trim() === '') return;
 
     await addDoc(collection(firestore, messagesPath), {
-        userId: user.uid,
+        userId: currentUser.uid,
+        userName: userData?.displayName || 'Player',
         text: newMessage,
         createdAt: serverTimestamp(),
-        role: 'user', // Explicitly set role for user messages
+        role: userData?.role?.includes('admin') ? 'admin' : 'user',
     });
     setNewMessage('');
   };
@@ -80,7 +75,7 @@ export function ChatRoom({ matchId }: ChatRoomProps) {
             </div>
         ) : messages && messages.length > 0 ? (
           messages.map((msg: Message) => {
-              const isYou = msg.userId === user?.uid;
+              const isYou = msg.userId === currentUser?.uid;
               const isAdmin = msg.role === 'admin';
               return (
                 <div key={msg.id} className={`flex gap-3 text-sm ${isYou ? 'justify-end' : 'justify-start'}`}>

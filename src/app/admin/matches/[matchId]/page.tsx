@@ -2,15 +2,14 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useDoc, useCollection } from '@/firebase';
+import { useDoc } from '@/firebase';
 import { Match, UserProfile } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { getMatchStatus } from '@/lib/match-logic';
 import MatchActions from './_components/MatchActions';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminChatRoom } from '@/components/chat/AdminChatRoom';
 
 const PlayerCard = ({ uid }: { uid: string }) => {
     const { data: player, loading } = useDoc<UserProfile>(`users/${uid}`);
@@ -43,41 +42,41 @@ export default function MatchDetailsPage() {
     if (error) return <div className="text-center text-red-500">Error: {error.message}</div>;
     if (!match) return <div className="text-center">Match not found.</div>;
 
-    const { status, color } = getMatchStatus(match);
-
     return (
-        <div className="space-y-6">
-            <div className="flex items-start justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold">Match Details</h1>
-                    <p className="text-muted-foreground">Match ID: {match.id}</p>
+        <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold">Match Details</h1>
+                        <p className="text-muted-foreground font-mono text-xs">ID: {match.id}</p>
+                    </div>
+                    <MatchActions match={match} />
                 </div>
-                <MatchActions match={match} />
-            </div>
 
-            <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                         <CardTitle className="flex items-center gap-3">Game Info <Badge style={{ backgroundColor: color }} className="text-white">{status}</Badge></CardTitle>
-                         <div className="text-sm text-muted-foreground">Created At: {new Date(match.createdAt).toLocaleString()}</div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                        <div className="p-4 bg-muted rounded-lg"><div className="text-sm text-muted-foreground">Entry Fee</div><div className="text-2xl font-bold">₹{match.entryFee}</div></div>
-                        <div className="p-4 bg-muted rounded-lg"><div className="text-sm text-muted-foreground">Prize Pool</div><div className="text-2xl font-bold">₹{match.prizePool}</div></div>
-                        <div className="p-4 bg-muted rounded-lg"><div className="text-sm text-muted-foreground">Room Code</div><div className="text-2xl font-bold font-mono">{match.roomCode}</div></div>
-                        <div className="p-4 bg-muted rounded-lg"><div className="text-sm text-muted-foreground">Winner</div><div className="text-2xl font-bold">{match.winnerId ? match.winnerId.substring(0, 6) + '..' : 'TBD'}</div></div>
-                    </div>
-                </CardContent>
-            </Card>
-            
-            <div className="grid md:grid-cols-2 gap-6">
-                {match.players.map(uid => <PlayerCard key={uid} uid={uid} />)}
+                <Card>
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                             <CardTitle className="flex items-center gap-3">Game Info <Badge className="capitalize">{match.status.replace(/_/g, ' ')}</Badge></CardTitle>
+                             <div className="text-sm text-muted-foreground">Created At: {new Date(match.createdAt.seconds * 1000).toLocaleString()}</div>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                            <div className="p-4 bg-muted rounded-lg"><div className="text-sm text-muted-foreground">Entry Fee</div><div className="text-2xl font-bold">₹{match.entryFee}</div></div>
+                            <div className="p-4 bg-muted rounded-lg"><div className="text-sm text-muted-foreground">Prize Pool</div><div className="text-2xl font-bold">₹{match.prizePool}</div></div>
+                            <div className="p-4 bg-muted rounded-lg"><div className="text-sm text-muted-foreground">Room Code</div><div className="text-2xl font-bold font-mono">{match.roomCode || 'N/A'}</div></div>
+                            <div className="p-4 bg-muted rounded-lg"><div className="text-sm text-muted-foreground">Winner</div><div className="text-2xl font-bold truncate">{match.winnerId ? match.winnerId.substring(0, 6) + '..' : 'TBD'}</div></div>
+                        </div>
+                    </CardContent>
+                </Card>
+                
+                <div className="grid md:grid-cols-2 gap-6">
+                    {match.players.map(uid => <PlayerCard key={uid} uid={uid} />)}
+                </div>
             </div>
-
+            <div className="lg:col-span-1 space-y-6">
+                 <AdminChatRoom contextPath={`matches/${matchId}`} />
+            </div>
         </div>
     );
 }
-
-    

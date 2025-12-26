@@ -10,14 +10,14 @@ export interface UserProfile {
   role: 'superadmin' | 'deposit_admin' | 'withdrawal_admin' | 'match_admin' | 'user';
   isBlocked?: boolean;
   isVerified?: boolean;
-  matchesPlayed?: number;
-  matchesWon?: number;
-  totalWinnings?: number;
-  rating?: number;
-  xp?: number;
-  walletBalance?: number;
-  referralCode?: string;
-  referralEarnings?: number;
+  matchesPlayed: number;
+  matchesWon: number;
+  totalWinnings: number;
+  rating: number;
+  xp: number;
+  walletBalance: number;
+  referralCode: string;
+  referralEarnings: number;
   referredBy?: string;
   notifications?: {
     friendRequests: boolean;
@@ -97,7 +97,9 @@ export interface WithdrawalRequest {
 export interface MatchResult {
   id: string;
   userId: string;
-  position: number;
+  confirmedWinStatus: 'win' | 'loss';
+  creatorPosition?: number;
+  joinerPosition?: number;
   screenshotUrl: string;
   submittedAt: any;
 }
@@ -179,18 +181,13 @@ export interface Announcement {
 export interface Message {
   id: string;
   userId: string;
+  userName: string; // Added for displaying name in chat
   text: string;
   role: 'user' | 'admin';
   createdAt: any;
 }
 
-export interface AdminChatMessage {
-  id: string;
-  userId: string;
-  userName: string;
-  text: string;
-  createdAt: any;
-}
+export interface AdminChatMessage extends Message {}
 
 export interface CommissionSettings {
     isEnabled: boolean;
@@ -216,5 +213,3 @@ export interface PersonalNotification {
   isRead: boolean;
   createdAt: any;
 }
-
-    
