@@ -62,8 +62,8 @@ const allNavItems = {
   ],
   platform: [
     { href: '/admin/announcements', icon: Megaphone, label: 'Announcements', roles: ['superadmin'] },
-    { href: '/admin/storage', icon: HardDrive, label: 'Storage' },
-    { href: '/admin/status', icon: Power, label: 'App Status' },
+    { href: '/admin/storage', icon: HardDrive, label: 'Storage', roles: ['superadmin', 'match_admin', 'deposit_admin', 'withdrawal_admin'] },
+    { href: '/admin/status', icon: Power, label: 'App Status', roles: ['superadmin', 'match_admin', 'deposit_admin', 'withdrawal_admin'] },
     { href: '/admin/settings', icon: Settings, label: 'App Settings', roles: ['superadmin'] },
   ]
 };
@@ -126,23 +126,15 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const userRole = userData?.role || '';
+  const allowedRoles = ['superadmin', 'match_admin', 'deposit_admin', 'withdrawal_admin'];
+
   if (loading) {
     return <div className="flex h-screen items-center justify-center">Loading Admin Panel...</div>;
   }
 
-  if (!user || !userData) {
+  if (!user || !userRole || !allowedRoles.includes(userRole)) {
      return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4">
-        <p>You must be logged in to view this page.</p>
-        <Button asChild><Link href="/login">Login</Link></Button>
-      </div>
-    );
-  }
-  
-  const userRole = userData.role || '';
-  const allowedRoles = ['superadmin', 'match_admin', 'deposit_admin', 'withdrawal_admin'];
-  if (!userRole || !allowedRoles.includes(userRole)) {
-    return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 text-center p-4">
         <ShieldAlert className='w-16 h-16 text-destructive' />
         <h1 className='text-2xl font-bold'>Access Denied</h1>
