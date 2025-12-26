@@ -1,4 +1,4 @@
-mport { FieldValue } from 'firebase/firestore';
+import { FieldValue } from 'firebase/firestore';
 
 export interface UserProfile {
   id: string;
@@ -126,7 +126,6 @@ export interface Tournament {
     entryFee: number;
     prizePool: number;
     maxPlayers: number;
-    registeredPlayers: number;
     status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'live';
     startDate: any; // Changed from startTime
     endTime?: any;

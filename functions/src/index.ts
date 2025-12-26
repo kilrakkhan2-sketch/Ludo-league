@@ -12,13 +12,11 @@ const BUCKET_NAME = "studio-4431476254-c1156.appspot.com";
 // Type definitions for robust data handling
 interface UserData {
     walletBalance?: number;
-    stats?: {
-        totalWinnings?: number;
-        rating?: number;
-        xp?: number;
-        matchesPlayed?: number;
-        matchesWon?: number;
-    }
+    totalWinnings?: number;
+    rating?: number;
+    xp?: number;
+    matchesPlayed?: number;
+    matchesWon?: number;
     referralEarnings?: number;
     referredBy?: string;
     referralCode?: string;
@@ -681,12 +679,12 @@ export const onMatchResultUpdate = functions.firestore
 
                 // 1. Update winner's balance, total winnings, and other stats
                 t.update(winnerRef, { 
-                    'walletBalance': FieldValue.increment(prizePool),
-                    'stats.totalWinnings': FieldValue.increment(prizePool),
-                    'stats.rating': FieldValue.increment(10),
-                    'stats.xp': FieldValue.increment(25),
-                    'stats.matchesPlayed': FieldValue.increment(1),
-                    'stats.matchesWon': FieldValue.increment(1)
+                    walletBalance: FieldValue.increment(prizePool),
+                    totalWinnings: FieldValue.increment(prizePool),
+                    rating: FieldValue.increment(10),
+                    xp: FieldValue.increment(25),
+                    matchesPlayed: FieldValue.increment(1),
+                    matchesWon: FieldValue.increment(1)
                 });
                 
                 // 2. Create prize transaction for winner
@@ -705,8 +703,8 @@ export const onMatchResultUpdate = functions.firestore
                 for (const loserId of loserIds) {
                     const loserRef = db.collection("users").doc(loserId);
                     t.update(loserRef, {
-                         'stats.rating': FieldValue.increment(-5),
-                         'stats.matchesPlayed': FieldValue.increment(1)
+                         rating: FieldValue.increment(-5),
+                         matchesPlayed: FieldValue.increment(1)
                     });
                 }
 
@@ -1224,7 +1222,3 @@ export const removePlayerFromTournament = functions.https.onCall(async (data, co
         t.update(tournamentRef, { players: FieldValue.arrayRemove(playerId) });
     });
 });
-
-    
-
-    

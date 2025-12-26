@@ -101,10 +101,13 @@ class _WebViewScreenState extends State<WebViewScreen> {
             });
           },
           onWebResourceError: (WebResourceError error) {
-            setState(() {
-              _isLoading = false;
-              _isError = true;
-            });
+            // केवल मुख्य URL लोड त्रुटियों के लिए त्रुटि दिखाएं
+            if (error.isForMainFrame ?? false) {
+               setState(() {
+                _isLoading = false;
+                _isError = true;
+              });
+            }
           },
           onNavigationRequest: (NavigationRequest request) {
             // यदि लिंक आपके ऐप का नहीं है, तो उसे बाहरी ब्राउज़र में खोलें
@@ -133,7 +136,24 @@ class _WebViewScreenState extends State<WebViewScreen> {
       _controller.goBack();
       return false; // ऐप को बंद न करें
     }
-    return true; // यदि पीछे नहीं जा सकते तो ऐप को बंद करें
+    // यदि कोई पिछला पृष्ठ नहीं है, तो उपयोगकर्ता से पुष्टि मांगें
+    return (await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Exit App?'),
+        content: const Text('Are you sure you want to exit?'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
+    )) ?? false;
   }
 
   @override
