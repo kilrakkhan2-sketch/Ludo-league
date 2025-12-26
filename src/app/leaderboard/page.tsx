@@ -117,7 +117,7 @@ export default function LeaderboardPage() {
                             </div>
                              <div className="flex justify-between items-center p-3 bg-muted rounded-md">
                                 <p className="font-medium">Win Rate</p>
-                                <p className="font-bold text-lg">{userData && userData.stats?.matchesPlayed && userData.stats.matchesPlayed > 0 ? `${((userData.stats.matchesWon / userData.stats.matchesPlayed) * 100).toFixed(0)}%` : 'N/A'}</p>
+                                <p className="font-bold text-lg">{userData && userData.stats?.matchesPlayed && userData.stats.matchesPlayed > 0 ? `${((userData.stats.matchesWon || 0) / userData.stats.matchesPlayed * 100).toFixed(0)}%` : 'N/A'}</p>
                             </div>
                         </CardContent>
                     </Card>

@@ -25,7 +25,7 @@ export default function ProfilePage() {
 
     const matchesPlayed = userData?.stats?.matchesPlayed || 0;
     const matchesWon = userData?.stats?.matchesWon || 0;
-    const winRate = matchesPlayed > 0 ? ((matchesWon / matchesPlayed) * 100).toFixed(1) : 0;
+    const winRate = matchesPlayed > 0 ? ((matchesWon / matchesPlayed) * 100).toFixed(1) : '0';
 
     return (
         <div className="container py-12 md:py-16">

@@ -44,7 +44,9 @@ service cloud.firestore {
       }
       match /transactions/{transactionId} {
         allow read: if isOwner(userId) || isSuperAdmin();
-        allow create: if false; // Transactions created by server only
+        // Transactions can only be created by server-side logic (Cloud Functions),
+        // which bypass these rules. This prevents clients from creating fake transactions.
+        allow create: if false; 
       }
        match /penalties/{penaltyId} {
         allow read: if isOwner(userId);
@@ -78,7 +80,9 @@ service cloud.firestore {
     }
     
     match /withdrawal-requests/{requestId} {
-      allow list, read: if isSignedIn() && (isWithdrawalAdmin() || isOwner(get(/databases/$(database)/documents/withdrawal-requests/$(requestId)).data.userId));
+      // Admin can list all requests, user can only read their own.
+      allow list: if isWithdrawalAdmin();
+      allow read: if isSignedIn() && (isWithdrawalAdmin() || isOwner(get(/databases/$(database)/documents/withdrawal-requests/$(requestId)).data.userId));
       allow create: if isSignedIn();
       allow update: if isSignedIn() && isWithdrawalAdmin();
     }
