@@ -10,16 +10,12 @@ export interface UserProfile {
   role: 'superadmin' | 'deposit_admin' | 'withdrawal_admin' | 'match_admin' | 'user';
   isBlocked?: boolean;
   isVerified?: boolean;
-  stats?: {
-    matchesPlayed: number;
-    matchesWon: number;
-    totalWinnings: number;
-    rating?: number;
-    xp?: number;
-  };
-  wallet?: {
-    balance: number;
-  };
+  matchesPlayed?: number;
+  matchesWon?: number;
+  totalWinnings?: number;
+  rating?: number;
+  xp?: number;
+  walletBalance?: number;
   referralCode?: string;
   referralEarnings?: number;
   referredBy?: string;
@@ -220,3 +216,5 @@ export interface PersonalNotification {
   isRead: boolean;
   createdAt: any;
 }
+
+    

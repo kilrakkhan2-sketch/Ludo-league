@@ -23,8 +23,8 @@ const StatCard = ({ icon, title, value, loading }: { icon: React.ReactNode, titl
 export default function ProfilePage() {
     const { userData, loading } = useUser();
 
-    const matchesPlayed = userData?.stats?.matchesPlayed || 0;
-    const matchesWon = userData?.stats?.matchesWon || 0;
+    const matchesPlayed = userData?.matchesPlayed || 0;
+    const matchesWon = userData?.matchesWon || 0;
     const winRate = matchesPlayed > 0 ? ((matchesWon / matchesPlayed) * 100).toFixed(1) : '0';
 
     return (
@@ -107,3 +107,5 @@ export default function ProfilePage() {
         </div>
     );
 }
+
+    

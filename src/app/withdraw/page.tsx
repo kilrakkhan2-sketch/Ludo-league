@@ -48,7 +48,7 @@ export default function WithdrawPage() {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not connect to services.' });
       return;
     }
-    if ((userData?.wallet?.balance || 0) < values.amount) {
+    if ((userData?.walletBalance || 0) < values.amount) {
         form.setError('amount', { message: 'Withdrawal amount cannot exceed your balance.' });
         return;
     }
@@ -68,7 +68,7 @@ export default function WithdrawPage() {
     }
   };
 
-  const balance = userData?.wallet?.balance || 0;
+  const balance = userData?.walletBalance || 0;
 
   return (
     <AppShell pageTitle="Withdraw Funds" showBackButton>
@@ -150,3 +150,5 @@ export default function WithdrawPage() {
     </AppShell>
   );
 }
+
+    
