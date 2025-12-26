@@ -20,6 +20,12 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.ico",
   },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
 };
 
 export default function RootLayout({
@@ -30,7 +36,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="dark">
       <body className={cn(
-          "font-sans antialiased",
+          "font-sans antialiased bg-muted/40",
           GeistSans.variable,
           playfair.variable
       )}>
@@ -41,7 +47,7 @@ export default function RootLayout({
             disableTransitionOnChange
         >
             <FirebaseClientProvider>
-                <div className="relative flex min-h-screen flex-col bg-background">
+                <div className="relative flex min-h-screen flex-col">
                     <main className="flex-1">
                         <MaintenanceShield>
                             {children}

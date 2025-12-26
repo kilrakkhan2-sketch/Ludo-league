@@ -132,7 +132,7 @@ export function AppShell({ children, pageTitle, showBackButton = false }: AppShe
 
   return (
     <SidebarProvider>
-      <div className={cn("min-h-screen w-full bg-background text-foreground")}>
+      <div className={cn("min-h-screen w-full bg-background text-foreground max-w-md mx-auto shadow-lg border-x")}>
         <Sidebar className="bg-card border-r border-border/50">
           <SidebarContent>
             <SidebarHeader>
@@ -188,7 +188,7 @@ export function AppShell({ children, pageTitle, showBackButton = false }: AppShe
                       {userMenu}
                     </div>
               </header>
-              <main className="flex-grow flex flex-col overflow-auto bg-muted/20">
+              <main className="flex-grow flex flex-col overflow-auto bg-muted/20 pb-16 sm:pb-0">
                 {children}
               </main>
               <BottomNav items={bottomNavItems} />

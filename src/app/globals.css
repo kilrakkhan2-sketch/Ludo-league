@@ -73,21 +73,6 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-  
-  /* Apply gradient background to body */
-  .light body {
-    background-color: hsl(var(--background));
-    background-image: linear-gradient(180deg, hsl(var(--background)) 0%, #E9EBF0 100%);
-    background-repeat: no-repeat;
-    min-height: 100vh;
-  }
-
-  .dark body {
-     background-color: hsl(var(--background));
-     background-image: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 100%);
-     background-repeat: no-repeat;
-     min-height: 100vh;
-  }
 }
 
 @layer utilities {
