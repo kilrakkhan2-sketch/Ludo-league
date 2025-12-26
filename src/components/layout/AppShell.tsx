@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { getAuth, signOut } from "firebase/auth";
-import { ArrowLeft, Home, Swords, Wallet, User, LogOut, Menu, Shield, Users as FriendsIcon, Trophy, PlusCircle } from "lucide-react";
+import { ArrowLeft, Home, Swords, Wallet, User, LogOut, Menu, Shield, Users as FriendsIcon, Trophy, PlusCircle, Info, Mail, FileText, Receipt } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { useUser } from "@/firebase";
@@ -44,6 +44,14 @@ const baseNavItems: NavItem[] = [
   { href: "/profile", icon: User, label: "Profile" },
 ];
 
+const infoNavItems: NavItem[] = [
+    { href: "/about", icon: Info, label: "About Us"},
+    { href: "/contact", icon: Mail, label: "Contact Us"},
+    { href: "/terms", icon: FileText, label: "Terms of Service"},
+    { href: "/privacy", icon: Shield, label: "Privacy Policy"},
+    { href: "/gst-policy", icon: Receipt, label: "GST Policy"},
+]
+
 const bottomNavItems: NavItem[] = [
   { href: "/dashboard", icon: Home, label: "Home" },
   { href: "/matches", icon: Swords, label: "Matches" },
@@ -63,7 +71,7 @@ export function AppShell({ children, pageTitle, showBackButton = false }: AppShe
   , [userData]);
 
   const navItems = useMemo(() => {
-    let items = [...baseNavItems];
+    let items = [...baseNavItems, ...infoNavItems];
     if (isAdmin) {
       items.push({ href: "/admin/dashboard", icon: Shield, label: "Admin" });
     }
