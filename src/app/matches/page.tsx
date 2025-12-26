@@ -66,7 +66,7 @@ const MatchCard = ({ match }: { match: Match }) => {
   return (
     <Card className="relative overflow-hidden flex flex-col hover:shadow-lg transition-shadow">
         <Image
-            src="https://firebasestorage.googleapis.com/v0/b/studio-4431476254-c1156.appspot.com/o/appImages%2F26323-removebg-preview.png?alt=media&token=6ffa1383-0a70-44ca-acce-98d738ef99ed"
+            src="/logo.svg"
             alt="LudoLeague Watermark"
             width={120}
             height={120}

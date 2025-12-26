@@ -29,7 +29,7 @@ const MyMatchCard = ({ match }: { match: Match }) => {
 
   const getStatusInfo = (status: Match['status']) => {
     switch (status) {
-      case 'open': return { variant: 'outline', text: 'Waiting' };
+      case 'waiting': return { variant: 'outline', text: 'Waiting' };
       case 'room_code_pending':
       case 'room_code_shared':
       case 'game_started': return { variant: 'default', text: 'In Progress' };
@@ -49,7 +49,7 @@ const MyMatchCard = ({ match }: { match: Match }) => {
   return (
     <Card className="relative overflow-hidden flex flex-col hover:shadow-lg transition-shadow bg-card border">
         <Image
-            src="https://firebasestorage.googleapis.com/v0/b/studio-4431476254-c1156.appspot.com/o/appImages%2F26323-removebg-preview.png?alt=media&token=6ffa1383-0a70-44ca-acce-98d738ef99ed"
+            src="/logo.svg"
             alt="LudoLeague Watermark"
             width={120}
             height={120}
@@ -137,7 +137,7 @@ export default function MyMatchesPage() {
     for (const match of myMatches) {
         if (['PAID', 'cancelled'].includes(match.status)) {
             history.push(match);
-        } else if (match.status === 'open') {
+        } else if (match.status === 'waiting') {
             waiting.push(match);
         } else {
             active.push(match);
