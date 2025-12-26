@@ -854,8 +854,8 @@ export const createMatch = functions.https.onCall(async (data, context) => {
     if (!title || typeof title !== "string" || title.length === 0 || title.length > 50) {
         throw new functions.https.HttpsError("invalid-argument", "Match title is required and must be 50 characters or less.");
     }
-    if (typeof entryFee !== "number" || entryFee < 0) {
-        throw new functions.https.HttpsError("invalid-argument", "A valid, non-negative entry fee is required.");
+    if (typeof entryFee !== "number" || entryFee < 50) {
+        throw new functions.https.HttpsError("invalid-argument", "Entry fee must be at least ₹50.");
     }
     if (maxPlayers !== 2 && maxPlayers !== 4) {
         throw new functions.https.HttpsError("invalid-argument", "Max players must be either 2 or 4.");
@@ -1224,3 +1224,5 @@ export const removePlayerFromTournament = functions.https.onCall(async (data, co
         t.update(tournamentRef, { players: FieldValue.arrayRemove(playerId) });
     });
 });
+
+    

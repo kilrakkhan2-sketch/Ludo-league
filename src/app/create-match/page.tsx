@@ -12,7 +12,7 @@ import { useFunctions } from '@/firebase';
 import { AppShell } from '@/components/layout/AppShell';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
-const feeOptions = [50, 100, 250, 500]; // Added more options
+const feeOptions = [50, 100, 250, 500]; // Minimum fee is now 50
 
 export default function CreateMatchPage() {
   const router = useRouter();
@@ -29,6 +29,11 @@ export default function CreateMatchPage() {
     }
       
     const finalFee = parseInt(entryFee, 10);
+    if (finalFee < 50) {
+        toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Minimum entry fee is ₹50.' });
+        return;
+    }
+
     setIsSubmitting(true);
     
     const createMatchFn = httpsCallable(functions, 'createMatch');
@@ -48,14 +53,15 @@ export default function CreateMatchPage() {
       toast({ 
         variant: 'destructive', 
         title: 'Creation Failed', 
-        description: error.message || 'Your wallet may have insufficient funds.' 
+        description: error.message || 'Your wallet may have insufficient funds or the entry fee is too low.' 
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const prizeAmount = (parseInt(entryFee, 10) * 2 * 0.95).toFixed(2); // Assuming 5% commission for display
+  const prizeAmount = (parseInt(entryFee, 10) * 2 * 0.95).toFixed(2);
+  const isValidFee = parseInt(entryFee, 10) >= 50;
 
   return (
     <AppShell pageTitle="Create New Match" showBackButton>
@@ -65,7 +71,7 @@ export default function CreateMatchPage() {
             <Card>
               <CardHeader>
                   <CardTitle>Set Match Fee</CardTitle>
-                  <CardDescription>Choose the entry fee for your match. The prize will be calculated automatically.</CardDescription>
+                  <CardDescription>Choose the entry fee for your match. Minimum fee is ₹50.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                    <RadioGroup defaultValue={entryFee} onValueChange={setEntryFee} className="grid grid-cols-2 gap-4">
@@ -81,7 +87,7 @@ export default function CreateMatchPage() {
                    </div>
               </CardContent>
               <CardFooter>
-                  <Button onClick={handleCreateMatch} size="lg" className="w-full" disabled={isSubmitting}>
+                  <Button onClick={handleCreateMatch} size="lg" className="w-full" disabled={isSubmitting || !isValidFee}>
                     {isSubmitting ? 'Creating Match...' : `Create ₹${entryFee} Match`}
                   </Button>
               </CardFooter>
