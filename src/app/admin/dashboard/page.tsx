@@ -143,7 +143,7 @@ export default function AdminDashboardPage() {
       </section>
       
       {role === 'superadmin' && (
-        <section className="grid gap-6 pt-4 md:grid-cols-2">
+        <section className="grid gap-6 pt-4 md:grid-cols-1 lg:grid-cols-2">
             <Card>
                 <CardHeader>
                     <CardTitle>Weekly Revenue</CardTitle>
