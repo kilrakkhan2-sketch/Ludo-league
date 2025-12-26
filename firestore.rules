@@ -74,9 +74,10 @@ service cloud.firestore {
     }
 
     match /deposit-requests/{requestId} {
-      allow list, read: if isSignedIn() && (isDepositAdmin() || isOwner(get(/databases/$(database)/documents/deposit-requests/$(requestId)).data.userId));
+      allow list: if isDepositAdmin() || isSuperAdmin();
+      allow read: if isDepositAdmin() || isSuperAdmin() || isOwner(resource.data.userId);
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && isDepositAdmin();
+      allow update: if isDepositAdmin() || isSuperAdmin();
     }
     
     match /withdrawal-requests/{requestId} {
@@ -161,5 +162,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
