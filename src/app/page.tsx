@@ -1,21 +1,37 @@
-
 'use client';
 
-import { useUser } from "@/firebase";
-import LandingPage from "@/components/landing-page";
-import DashboardPage from "./dashboard/page";
-import { AppShellSkeleton } from "@/components/app-shell-skeleton";
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useUser } from '@/firebase';
+import { AppShell } from "@/components/layout/AppShell";
+import DashboardClientContent from "./dashboard/components/DashboardClientContent";
+import NewsCarousel from "./dashboard/components/NewsCarousel";
+import { AppShellSkeleton } from '@/components/app-shell-skeleton';
 
-export default function RootPage() {
-  const { user, loading } = useUser();
 
-  if (loading) {
-    return <AppShellSkeleton />;
-  }
+export default function DashboardPage() {
+    const { user, loading } = useUser();
+    const router = useRouter();
 
-  if (user) {
-    return <DashboardPage />;
-  }
+    useEffect(() => {
+        // If not loading and no user, redirect to the landing page.
+        if (!loading && !user) {
+            router.replace('/landing');
+        }
+    }, [user, loading, router]);
 
-  return <LandingPage />;
+    // Show a skeleton while checking for auth state
+    if (loading || !user) {
+        return <AppShellSkeleton />;
+    }
+
+    // If user is logged in, show the dashboard content.
+    return (
+        <AppShell>
+            <div className="space-y-8">
+                <DashboardClientContent />
+                <NewsCarousel />
+            </div>
+        </AppShell>
+    );
 }
