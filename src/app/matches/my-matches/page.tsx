@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from '@/components/ui/badge';
+import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Users, Trophy, Gamepad2, Hourglass, History } from 'lucide-react';
 import Link from 'next/link';
 import { useCollection, useUser, useDoc } from '@/firebase';
@@ -27,7 +27,7 @@ const MyMatchCard = ({ match }: { match: Match }) => {
   const { user } = useUser();
   const { data: winnerProfile } = useDoc<UserProfile>(match.winnerId ? `users/${match.winnerId}` : undefined);
 
-  const getStatusInfo = (status: Match['status']) => {
+  const getStatusInfo = (status: Match['status']): { variant: VariantProps<typeof badgeVariants>["variant"], text: string } => {
     switch (status) {
       case 'waiting': return { variant: 'outline', text: 'Waiting' };
       case 'room_code_pending':
@@ -120,7 +120,7 @@ export default function MyMatchesPage() {
   const { user } = useUser();
   
   const queryOptions = useMemo(() => ({
-    where: user ? ['players', 'array-contains', user.uid] : null,
+    where: user ? ['players', 'array-contains', user.uid] : undefined,
     orderBy: [['createdAt', 'desc'] as const],
     limit: 50,
   }), [user]);
