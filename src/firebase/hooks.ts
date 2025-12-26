@@ -64,7 +64,14 @@ export const useCollection = <T,>(path: string, q?: CollectionQuery) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
     
-    const memoizedQuery = useMemo(() => q, [JSON.stringify(q)]);
+    // The query object `q` is memoized to prevent re-running the effect on every render.
+    // The effect should only re-run if the query itself changes.
+    const memoizedQuery = useMemo(() => q, [
+        JSON.stringify(q?.where),
+        JSON.stringify(q?.orderBy),
+        q?.limit,
+    ]);
+
     const refetch = useCallback(() => {
         // This is a dummy implementation for now.
         // A more robust solution might involve a state change that triggers the useEffect.
@@ -83,9 +90,13 @@ export const useCollection = <T,>(path: string, q?: CollectionQuery) => {
             // Handle 'where' clauses
             if (memoizedQuery.where) {
                 if (Array.isArray(memoizedQuery.where[0])) { // Check if it's an array of arrays
-                    (memoizedQuery.where as WhereClause[]).forEach(w => constraints.push(where(...w)));
+                    (memoizedQuery.where as WhereClause[]).forEach(w => {
+                        // Skip queries with undefined values, which can happen during initial render
+                        if (w[2] !== undefined) constraints.push(where(...w));
+                    });
                 } else {
-                    constraints.push(where(...(memoizedQuery.where as WhereClause)));
+                    const w = memoizedQuery.where as WhereClause;
+                    if (w[2] !== undefined) constraints.push(where(...w));
                 }
             }
             // Handle 'orderBy' clauses
@@ -123,7 +134,7 @@ export const useCollection = <T,>(path: string, q?: CollectionQuery) => {
         });
 
         return () => unsubscribe();
-    }, [firestore, path, memoizedQuery]);
+    }, [firestore, path, memoizedQuery]); // Correct dependencies
 
     return { data, loading, error, refetch, count: data.length };
 };
