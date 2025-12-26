@@ -74,7 +74,7 @@ export const setSuperAdminRole = functions.https.onCall(async (data: any, contex
 });
 
 export const setUserRole = functions.https.onCall(async (data, context) => {
-  if (context.auth?.token.role !== 'superadmin') {
+  if (!context.auth || context.auth.token.role !== 'superadmin') {
     throw new functions.https.HttpsError('permission-denied', 'Only superadmins can set user roles.');
   }
 
@@ -102,7 +102,7 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
 });
 
 export const setUserBlockedStatus = functions.https.onCall(async (data, context) => {
-    if (context.auth?.token.role !== 'superadmin') {
+    if (!context.auth || context.auth.token.role !== 'superadmin') {
         throw new functions.https.HttpsError('permission-denied', 'Only superadmins can block users.');
     }
     const { userId, blocked } = data;
@@ -142,7 +142,7 @@ export const deleteUserAccount = functions.https.onCall(async (_, context) => {
 
 export const applyPenalty = functions.https.onCall(async (data, context) => {
     // 1. Authentication & Authorization Check
-    if (context.auth?.token.role !== 'superadmin') {
+    if (!context.auth || context.auth.token.role !== 'superadmin') {
         throw new functions.https.HttpsError("permission-denied", "Only superadmins can apply penalties.");
     }
     const adminId = context.auth.uid;
@@ -203,7 +203,7 @@ export const applyPenalty = functions.https.onCall(async (data, context) => {
 //  STORAGE MANAGEMENT FUNCTIONS
 // =================================================================
 export const listStorageFiles = functions.https.onCall(async (data, context) => {
-    if (context.auth?.token.role !== 'superadmin') {
+    if (!context.auth || context.auth.token.role !== 'superadmin') {
         throw new functions.https.HttpsError("permission-denied", "You must be a superadmin to list files.");
     }
     const { prefix } = data;
@@ -235,7 +235,7 @@ export const listStorageFiles = functions.https.onCall(async (data, context) => 
 
 export const deleteStorageFile = functions.https.onCall(async (data, context) => {
     // 1. Authentication & Authorization Check
-    if (context.auth?.token.role !== 'superadmin') {
+    if (!context.auth || context.auth.token.role !== 'superadmin') {
         throw new functions.https.HttpsError("permission-denied", "You must be a superadmin to delete files.");
     }
     
@@ -752,7 +752,7 @@ export const cancelMatch = functions.https.onCall(async (data, context) => {
         const matchData = matchDoc.data()!;
 
         // Allow cancellation if match is waiting or if an admin is calling
-        const isAdmin = ['superadmin', 'match_admin'].includes(context.auth?.token.role);
+        const isAdmin = ['superadmin', 'match_admin'].includes(context.auth.token.role);
         if (matchData.status !== 'waiting' && !isAdmin) {
             throw new functions.https.HttpsError("failed-precondition", "This match has already started and cannot be cancelled.");
         }
@@ -1128,7 +1128,7 @@ export const submitResult = functions.https.onCall(async (data, context) => {
 // New Tournament Management Functions
 
 export const cancelTournament = functions.https.onCall(async (data, context) => {
-    if (context.auth?.token.role !== 'superadmin' && context.auth?.token.role !== 'match_admin') {
+    if (!context.auth || (context.auth.token.role !== 'superadmin' && context.auth.token.role !== 'match_admin')) {
         throw new functions.https.HttpsError("permission-denied", "Only admins can cancel tournaments.");
     }
 
@@ -1155,7 +1155,7 @@ export const cancelTournament = functions.https.onCall(async (data, context) => 
         for (const playerDoc of playersSnapshot.docs) {
             const playerId = playerDoc.id;
             const playerRef = db.collection('users').doc(playerId);
-            t.update(playerRef, { 'walletBalance': FieldValue.increment(tournamentData.entryFee) });
+            t.update(playerRef, { walletBalance: FieldValue.increment(tournamentData.entryFee) });
             const refundTxRef = db.collection(`users/${playerId}/transactions`).doc();
             t.set(refundTxRef, {
                 amount: tournamentData.entryFee,
@@ -1174,7 +1174,7 @@ export const cancelTournament = functions.https.onCall(async (data, context) => 
 
 
 export const updateTournament = functions.https.onCall(async (data, context) => {
-    if (context.auth?.token.role !== 'superadmin' && context.auth?.token.role !== 'match_admin') {
+    if (!context.auth || (context.auth.token.role !== 'superadmin' && context.auth.token.role !== 'match_admin')) {
         throw new functions.https.HttpsError("permission-denied", "Only admins can update tournaments.");
     }
     const { tournamentId, name, description } = data;
@@ -1189,7 +1189,7 @@ export const updateTournament = functions.https.onCall(async (data, context) => 
 });
 
 export const removePlayerFromTournament = functions.https.onCall(async (data, context) => {
-     if (context.auth?.token.role !== 'superadmin' && context.auth?.token.role !== 'match_admin') {
+     if (!context.auth || (context.auth.token.role !== 'superadmin' && context.auth.token.role !== 'match_admin')) {
         throw new functions.https.HttpsError("permission-denied", "Only admins can remove players.");
     }
     const { tournamentId, playerId } = data;
@@ -1205,7 +1205,7 @@ export const removePlayerFromTournament = functions.https.onCall(async (data, co
         
         // Refund player
         const playerRef = db.collection('users').doc(playerId);
-        t.update(playerRef, { 'walletBalance': FieldValue.increment(tournamentData.entryFee) });
+        t.update(playerRef, { walletBalance: FieldValue.increment(tournamentData.entryFee) });
         const refundTxRef = db.collection(`users/${playerId}/transactions`).doc();
         t.set(refundTxRef, {
             amount: tournamentData.entryFee,
@@ -1222,4 +1222,3 @@ export const removePlayerFromTournament = functions.https.onCall(async (data, co
     });
 });
 
-    
