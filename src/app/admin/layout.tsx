@@ -34,7 +34,9 @@ import {
   Banknote,
   ShieldCheck,
   CircleUser,
-  ShieldX
+  ShieldX,
+  HardDrive,
+  Power
 } from 'lucide-react';
 
 
@@ -60,7 +62,9 @@ const allNavItems = {
   ],
   platform: [
     { href: '/admin/announcements', icon: Megaphone, label: 'Announcements', roles: ['superadmin'] },
-    { href: '/admin/settings', icon: Settings, label: 'Settings', roles: ['superadmin'] },
+    { href: '/admin/storage', icon: HardDrive, label: 'Storage' },
+    { href: '/admin/status', icon: Power, label: 'App Status' },
+    { href: '/admin/settings', icon: Settings, label: 'App Settings', roles: ['superadmin'] },
   ]
 };
 
