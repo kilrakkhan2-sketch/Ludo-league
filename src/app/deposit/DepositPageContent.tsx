@@ -13,12 +13,12 @@ import { addDoc, collection, Timestamp } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import type { UpiAccount } from '@/types';
-import { ArrowLeft, UploadCloud, Copy, RefreshCw } from 'lucide-react';
+import { ArrowLeft, UploadCloud, Copy, RefreshCw, CheckCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { Card } from '@/components/ui/card';
+import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 
 
 // The page that uses this component should wrap it in <Suspense>
@@ -37,15 +37,16 @@ export default function DepositPageContent() {
   
   const [selectedUpiAccount, setSelectedUpiAccount] = useState<UpiAccount | null>(null);
 
+  // New state to manage the two-step flow
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+
   useEffect(() => {
     if (allUpiAccounts && allUpiAccounts.length > 0) {
-        // Filter for active accounts that are below their daily limit
         const availableAccounts = allUpiAccounts.filter(acc => 
             acc.isActive && (acc.dailyAmountReceived || 0) < acc.dailyLimit
         );
         
         if (availableAccounts.length > 0) {
-            // Logic to pick the best UPI: one that is least utilized
             const bestAccount = availableAccounts.reduce((best, current) => {
                 const bestUtilization = (best.dailyAmountReceived / best.dailyLimit);
                 const currentUtilization = (current.dailyAmountReceived / current.dailyLimit);
@@ -53,7 +54,7 @@ export default function DepositPageContent() {
             });
             setSelectedUpiAccount(bestAccount);
         } else {
-            setSelectedUpiAccount(null); // No accounts available
+            setSelectedUpiAccount(null);
         }
     } else if (!settingsLoading) {
         setSelectedUpiAccount(null);
@@ -127,7 +128,6 @@ export default function DepositPageContent() {
   };
   
     if (amount === null) {
-        // This case handles when searchParams is not yet available.
         return (
              <div className="flex flex-col min-h-screen bg-muted/30">
                 <header className="bg-primary text-primary-foreground p-4 flex items-center gap-4 sticky top-0 z-10 shadow-md">
@@ -172,9 +172,14 @@ export default function DepositPageContent() {
             <h1 className="text-xl font-bold">Complete Deposit</h1>
         </header>
       <main className="flex-grow p-4 space-y-6">
-        <Card className="p-6">
-            <h2 className="text-lg font-semibold mb-2 text-center">1. Scan & Pay</h2>
-             <div className="space-y-4">
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-lg font-semibold text-center">
+                    {paymentConfirmed ? <span className="flex items-center justify-center gap-2 text-green-500"><CheckCircle/> Payment Step Completed</span> : "1. Scan & Pay"}
+                </CardTitle>
+            </CardHeader>
+            <CardContent className={cn(!paymentConfirmed && "p-6")}>
+             <div className={cn("space-y-4", !paymentConfirmed ? "block" : "hidden")}>
                 <div className='text-center pt-2'>
                     <p className="text-muted-foreground">Amount to pay</p>
                     <p className="text-4xl font-bold">₹{amount}</p>
@@ -205,40 +210,50 @@ export default function DepositPageContent() {
                     </Alert>
                 )}
               </div>
+          </CardContent>
           </Card>
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold mb-4">2. Submit Payment Details</h2>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="transactionId">Transaction ID / UPI Reference No.</Label>
-                <Input
-                  id="transactionId"
-                  value={transactionId}
-                  onChange={(e) => setTransactionId(e.target.value)}
-                  placeholder="Enter the 12-digit reference number"
-                />
-              </div>
-              <div>
-                <Label htmlFor="screenshot">Upload Screenshot</Label>
-                <label htmlFor="screenshot" className="mt-2 flex flex-col items-center justify-center w-full h-32 border-2 border-border border-dashed rounded-lg cursor-pointer bg-muted hover:bg-muted/50 transition-colors">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <UploadCloud className="w-8 h-8 mb-3 text-muted-foreground" />
-                         {screenshot ? (
-                           <p className="text-sm font-semibold text-primary">{screenshot.name}</p>
-                        ) : (
-                          <p className="text-sm text-muted-foreground text-center"><span className="font-semibold">Click to upload</span></p>
-                        )}
-                    </div>
-                    <Input id="screenshot" type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
-                </label>
-              </div>
-            </div>
-          </Card>
+
+          {paymentConfirmed && (
+             <Card className="p-6">
+                <h2 className="text-lg font-semibold mb-4 text-center">2. Submit Payment Details</h2>
+                <div className="space-y-4">
+                <div>
+                    <Label htmlFor="transactionId">Transaction ID / UPI Reference No.</Label>
+                    <Input
+                    id="transactionId"
+                    value={transactionId}
+                    onChange={(e) => setTransactionId(e.target.value)}
+                    placeholder="Enter the 12-digit reference number"
+                    />
+                </div>
+                <div>
+                    <Label htmlFor="screenshot">Upload Screenshot</Label>
+                    <label htmlFor="screenshot" className="mt-2 flex flex-col items-center justify-center w-full h-32 border-2 border-border border-dashed rounded-lg cursor-pointer bg-muted hover:bg-muted/50 transition-colors">
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <UploadCloud className="w-8 h-8 mb-3 text-muted-foreground" />
+                            {screenshot ? (
+                            <p className="text-sm font-semibold text-primary">{screenshot.name}</p>
+                            ) : (
+                            <p className="text-sm text-muted-foreground text-center"><span className="font-semibold">Click to upload</span></p>
+                            )}
+                        </div>
+                        <Input id="screenshot" type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
+                    </label>
+                </div>
+                </div>
+            </Card>
+          )}
       </main>
       <footer className="p-4 sticky bottom-0 bg-background border-t">
-        <Button onClick={handleSubmit} className="w-full text-lg py-6" disabled={isSubmitting || !screenshot || !transactionId || !selectedUpiAccount}>
-            {isSubmitting ? 'Submitting...' : 'Submit Deposit Request'}
-        </Button>
+        {!paymentConfirmed ? (
+             <Button onClick={() => setPaymentConfirmed(true)} className="w-full text-lg py-6" disabled={!selectedUpiAccount}>
+                I have completed the payment
+            </Button>
+        ) : (
+            <Button onClick={handleSubmit} className="w-full text-lg py-6" disabled={isSubmitting || !screenshot || !transactionId || !selectedUpiAccount}>
+                {isSubmitting ? 'Submitting...' : 'Submit Deposit Request'}
+            </Button>
+        )}
       </footer>
     </div>
   );
