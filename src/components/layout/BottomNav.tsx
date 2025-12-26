@@ -24,7 +24,7 @@ export function BottomNav({ items }: BottomNavProps) {
     if (hideNav) return null;
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 h-16 bg-card border-t border-border/50 shadow-[0_-4px_12px_rgba(0,0,0,0.1)] z-20 sm:hidden max-w-md mx-auto">
+        <div className="fixed bottom-0 left-0 right-0 h-16 bg-card border-t border-border/50 shadow-[0_-4px_12px_rgba(0,0,0,0.1)] z-20 sm:hidden w-full max-w-lg mx-auto">
             <div className="flex justify-around items-center h-full">
                 {items.map((item) => {
                     const isActive = pathname === item.href;

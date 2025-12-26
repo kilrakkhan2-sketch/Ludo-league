@@ -8,13 +8,30 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast'; // Corrected import path
-import { LoaderCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { LoaderCircle, LifeBuoy, ChevronDown } from 'lucide-react';
+import { AppShell } from '@/components/layout/AppShell';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const initialState: ContactFormState = {
   success: false,
   message: '',
 };
+
+const faqs = [
+  {
+    question: "My deposit is not reflecting in my wallet.",
+    answer: "Deposits usually reflect instantly, but can sometimes take up to 15 minutes due to UPI network delays. If it's been longer, please fill out the contact form below with your Transaction ID."
+  },
+  {
+    question: "How long do withdrawals take?",
+    answer: "Withdrawal requests are processed by our team within 24 hours. Once approved, the amount should reflect in your bank account within 3-5 business days."
+  },
+  {
+    question: "What happens if there is a result dispute?",
+    answer: "If players submit conflicting results, the match is automatically flagged for review. Our support team will check the submitted proof and declare the correct winner. Deliberately submitting wrong results will lead to a penalty."
+  }
+];
 
 function SubmitButton() {
     const [isPending, startTransition] = useTransition();
@@ -52,12 +69,30 @@ export default function ContactPage() {
   }, [state, toast]);
 
   return (
-    <div className="container py-12 md:py-20">
-        <div className="max-w-xl mx-auto">
+    <AppShell pageTitle="Help & Support">
+        <div className="p-4 sm:p-6 space-y-6">
             <Card>
-                <CardHeader className="text-center">
-                    <CardTitle className="text-3xl font-headline">Contact Us</CardTitle>
-                    <CardDescription>Have a question or need to report an issue? Fill out the form below.</CardDescription>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><LifeBuoy className="text-primary"/> Frequently Asked Questions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Accordion type="single" collapsible className="w-full">
+                        {faqs.map((faq, i) => (
+                           <AccordionItem value={`item-${i}`} key={i}>
+                               <AccordionTrigger>{faq.question}</AccordionTrigger>
+                               <AccordionContent>
+                                   {faq.answer}
+                               </AccordionContent>
+                           </AccordionItem>
+                        ))}
+                    </Accordion>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Still Need Help?</CardTitle>
+                    <CardDescription>Fill out the form below and our support team will get back to you.</CardDescription>
                 </CardHeader>
                 <form onSubmit={handleSubmit}>
                     <CardContent className="space-y-6">
@@ -74,12 +109,12 @@ export default function ContactPage() {
                             <Textarea id="message" name="message" placeholder="Please describe your issue or question..." required minLength={10}/>
                         </div>
                     </CardContent>
-                    <CardFooter className="flex flex-col items-center">
+                    <CardFooter>
                         <SubmitButton />
                     </CardFooter>
                 </form>
             </Card>
         </div>
-    </div>
+    </AppShell>
   );
 }

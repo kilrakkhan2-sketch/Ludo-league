@@ -1,8 +1,7 @@
 
-"use client";
+'use client';
 
 import { useState, useEffect } from 'react';
-import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,7 +20,7 @@ import { useFirebase } from '@/firebase/provider';
 import { doc, updateDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
-import { updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { updateProfile, updatePassword } from 'firebase/auth';
 import type { UserProfile } from '@/types';
 import { httpsCallable } from 'firebase/functions';
 
@@ -53,7 +52,7 @@ const NotificationRow = ({ id, label, description, checked, onCheckedChange }: {
 );
 
 
-export default function SettingsPage() {
+export function SettingsPageContent() {
     const { user, auth } = useUser();
     const { data: profile, setData: setProfile } = useDoc<UserProfile>(user ? `users/${user.uid}`: undefined);
     const { firestore, storage, functions } = useFirebase();
@@ -148,7 +147,6 @@ export default function SettingsPage() {
             const deleteUserAccount = httpsCallable(functions, 'deleteUserAccount');
             await deleteUserAccount();
             toast({ title: "Account Deletion Initiated", description: "Your account is being deleted. You will be logged out shortly." });
-            // The user will be automatically logged out by the backend/rules
         } catch (error: any) { 
             console.error(error);
             toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message });
@@ -158,84 +156,73 @@ export default function SettingsPage() {
     }
 
   return (
-    <AppShell pageTitle="Profile & Settings" showBackButton>
-      <div className="grid gap-6 p-4 sm:p-6 lg:grid-cols-3">
-        
-        {/* Main Settings Column */}
-        <div className="lg:col-span-2 flex flex-col gap-6">
-           <SettingsSection title="Public Profile" description="This information will be visible to other players.">
-                <div className="flex flex-col sm:flex-row items-center gap-6">
-                    <div className="relative">
-                        <Avatar className="w-24 h-24">
-                            <AvatarImage src={profile?.photoURL} />
-                            <AvatarFallback>{displayName?.[0]?.toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        {isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full"><div className="w-6 h-6 border-4 border-t-transparent border-white rounded-full animate-spin"></div></div>}
-                    </div>
-                    <div className="flex-grow w-full">
-                        <Label htmlFor="avatar-upload" className="mb-2 block">Profile Picture</Label>
-                        <Input id="avatar-upload" type="file" accept="image/png, image/jpeg" onChange={handleAvatarUpload} disabled={isUploading}/>
-                        <p className="text-xs text-muted-foreground mt-1.5">Recommended: Square, 200x200px. Max 2MB.</p>
-                    </div>
+    <div className="space-y-6">
+        <SettingsSection title="Public Profile" description="This information will be visible to other players.">
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+                <div className="relative">
+                    <Avatar className="w-24 h-24">
+                        <AvatarImage src={profile?.photoURL} />
+                        <AvatarFallback>{displayName?.[0]?.toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    {isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full"><div className="w-6 h-6 border-4 border-t-transparent border-white rounded-full animate-spin"></div></div>}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="username">Display Name</Label>
-                  <Input id="username" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your public name" />
+                <div className="flex-grow w-full">
+                    <Label htmlFor="avatar-upload" className="mb-2 block">Profile Picture</Label>
+                    <Input id="avatar-upload" type="file" accept="image/png, image/jpeg" onChange={handleAvatarUpload} disabled={isUploading}/>
+                    <p className="text-xs text-muted-foreground mt-1.5">Recommended: Square, 200x200px. Max 2MB.</p>
                 </div>
-            </SettingsSection>
-
-             <SettingsSection title="Notifications" description="Control how you receive game and platform updates.">
-                <NotificationRow 
-                    id="matchUpdates" 
-                    label="Match Updates" 
-                    description="When a match starts, result is submitted, etc."
-                    checked={notifications.matchUpdates}
-                    onCheckedChange={(c) => setNotifications(p => ({...p, matchUpdates: c}))}
-                />
-                 <NotificationRow 
-                    id="friendRequests" 
-                    label="Social Alerts" 
-                    description="When you receive a friend request or message."
-                    checked={notifications.friendRequests}
-                    onCheckedChange={(c) => setNotifications(p => ({...p, friendRequests: c}))}
-                />
-                 <NotificationRow 
-                    id="newsletter" 
-                    label="Promotions & News"
-                    description="Receive our newsletter with new features and offers."
-                    checked={notifications.newsletter}
-                    onCheckedChange={(c) => setNotifications(p => ({...p, newsletter: c}))}
-                />
-            </SettingsSection>
-
-            <div className="flex justify-end">
-                 <Button onClick={handleProfileSave} disabled={isSaving || isUploading} size="lg">
-                    {isSaving ? 'Saving...' : 'Save All Changes'}
-                </Button>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="username">Display Name</Label>
+              <Input id="username" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your public name" />
+            </div>
+        </SettingsSection>
 
+         <SettingsSection title="Notifications" description="Control how you receive game and platform updates.">
+            <NotificationRow 
+                id="matchUpdates" 
+                label="Match Updates" 
+                description="When a match starts, result is submitted, etc."
+                checked={notifications.matchUpdates}
+                onCheckedChange={(c) => setNotifications(p => ({...p, matchUpdates: c}))}
+            />
+             <NotificationRow 
+                id="friendRequests" 
+                label="Social Alerts" 
+                description="When you receive a friend request or message."
+                checked={notifications.friendRequests}
+                onCheckedChange={(c) => setNotifications(p => ({...p, friendRequests: c}))}
+            />
+             <NotificationRow 
+                id="newsletter" 
+                label="Promotions & News"
+                description="Receive our newsletter with new features and offers."
+                checked={notifications.newsletter}
+                onCheckedChange={(c) => setNotifications(p => ({...p, newsletter: c}))}
+            />
+        </SettingsSection>
+
+        <SettingsSection title="Account Security" description="Manage your login credentials.">
+             <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" value={user?.email || ''} disabled />
+            </div>
+             <div className="space-y-2">
+                <Label htmlFor="password">New Password</Label>
+                <Input id="password" type="password" placeholder="••••••••" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+            </div>
+            <Button onClick={handlePasswordUpdate} disabled={isSaving} className="w-full">Update Password</Button>
+        </SettingsSection>
+        
+        <SettingsSection title="Danger Zone" description="These actions are permanent and cannot be undone.">
+             <Button variant="destructive" className="w-full" onClick={handleDeleteAccount} disabled={isSaving}>Delete My Account</Button>
+        </SettingsSection>
+
+        <div className="flex justify-end">
+             <Button onClick={handleProfileSave} disabled={isSaving || isUploading} size="lg">
+                {isSaving ? 'Saving...' : 'Save All Changes'}
+            </Button>
         </div>
-
-        {/* Right Sidebar Column */}
-        <div className="lg:col-span-1 flex flex-col gap-6">
-            <SettingsSection title="Account Security" description="Manage your login credentials.">
-                 <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" value={user?.email || ''} disabled />
-                </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="password">New Password</Label>
-                    <Input id="password" type="password" placeholder="••••••••" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-                </div>
-                <Button onClick={handlePasswordUpdate} disabled={isSaving} className="w-full">Update Password</Button>
-            </SettingsSection>
-            
-            <SettingsSection title="Danger Zone" description="These actions are permanent and cannot be undone.">
-                 <Button variant="destructive" className="w-full" onClick={handleDeleteAccount} disabled={isSaving}>Delete My Account</Button>
-            </SettingsSection>
-        </div>
-
-      </div>
-    </AppShell>
+    </div>
   );
 }

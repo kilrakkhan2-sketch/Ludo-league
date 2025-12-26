@@ -1,7 +1,8 @@
+
 // @ts-nocheck
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/firebase';
 import { getAuth, signOut } from 'firebase/auth';
@@ -38,6 +39,7 @@ import {
   HardDrive,
   Power
 } from 'lucide-react';
+import Image from 'next/image';
 
 
 const allNavItems = {
@@ -98,7 +100,7 @@ const AdminSidebar = ({ userRole, className }: { userRole: string, className?: s
     <div className={cn("h-full max-h-screen flex-col", className)}>
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
           <Link href="/admin/dashboard" className="flex items-center gap-2 font-semibold">
-            <Package2 className="h-6 w-6" />
+            <Image src="/logo.svg" alt="LudoLeague Logo" width={32} height={32}/>
             <span>Ludo Admin</span>
           </Link>
         </div>
@@ -117,12 +119,14 @@ const AdminSidebar = ({ userRole, className }: { userRole: string, className?: s
 
 const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, userData, loading } = useUser();
+  const router = useRouter();
   const auth = getAuth();
   const pathname = usePathname();
   
   const handleSignOut = async () => {
     if (auth) {
       await signOut(auth);
+      router.push('/login');
     }
   };
 
@@ -180,19 +184,19 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel className='flex flex-col'>
-                <span>{user.displayName || 'Admin'}</span>
+                <span>{userData?.displayName || 'Admin'}</span>
                 {userRole && <Badge variant='outline' className='w-fit mt-1'>{userRole}</Badge>}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild><Link href="/profile">Profile</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link href="/">Go to App</Link></DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut}>Logout</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSignOut} className="text-destructive">Logout</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
 
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background overflow-x-auto">
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background overflow-y-auto">
           {children}
         </main>
       </div>
