@@ -6,7 +6,7 @@ import { onSnapshot, collection, doc, query, where, orderBy, limit, QueryConstra
 import { errorEmitter } from './error-emitter';
 import { FirestorePermissionError } from './errors';
 
-export const useDoc = <T,>(path: string | null) => {
+export const useDoc = <T,>(path: string | null | undefined) => {
     const { firestore } = useFirebase();
     const [data, setData] = useState<T | null>(null);
     const [loading, setLoading] = useState(true);
