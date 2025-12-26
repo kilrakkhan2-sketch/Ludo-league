@@ -123,7 +123,7 @@ exports.applyPenalty = functions.https.onCall(async (data, context) => {
             throw new functions.https.HttpsError("not-found", `User with ID ${userId} not found.`);
         }
         // A. Deduct amount from user's wallet
-        t.update(userRef, { 'wallet.balance': firestore_1.FieldValue.increment(-amount) });
+        t.update(userRef, { 'walletBalance': firestore_1.FieldValue.increment(-amount) });
         // B. Create a transaction log for the user
         const userTxRef = db.collection(`users/${userId}/transactions`).doc();
         t.set(userTxRef, {
@@ -236,17 +236,16 @@ exports.createWithdrawalRequest = functions.https.onCall(async (data, context) =
     const withdrawalRef = db.collection("withdrawal-requests").doc();
     try {
         await db.runTransaction(async (t) => {
-            var _a;
             const userDoc = await t.get(userRef);
             if (!userDoc.exists)
                 throw new functions.https.HttpsError("not-found", "User profile not found.");
             const userData = userDoc.data();
-            const currentBalance = ((_a = userData.wallet) === null || _a === void 0 ? void 0 : _a.balance) || 0;
+            const currentBalance = userData.walletBalance || 0;
             if (currentBalance < amount) {
                 throw new functions.https.HttpsError("failed-precondition", "Insufficient funds.");
             }
             // 1. Deduct from user's balance
-            t.update(userRef, { 'wallet.balance': firestore_1.FieldValue.increment(-amount) });
+            t.update(userRef, { 'walletBalance': firestore_1.FieldValue.increment(-amount) });
             // 2. Create the withdrawal request document
             t.set(withdrawalRef, {
                 userId,
@@ -367,7 +366,7 @@ exports.rejectWithdrawal = functions.https.onCall(async (data, context) => {
             rejectionReason: reason || "Rejected by admin",
         });
         // B. Refund the user
-        t.update(userRef, { 'wallet.balance': firestore_1.FieldValue.increment(amount) });
+        t.update(userRef, { 'walletBalance': firestore_1.FieldValue.increment(amount) });
         // C. Mark user's transaction as failed and update description
         if (userTxRef) {
             t.update(userTxRef, {
@@ -423,7 +422,7 @@ exports.onDepositStatusChange = functions.firestore
             const commissionSettingsDoc = await t.get(commissionSettingsRef);
             const commissionSettings = commissionSettingsDoc.data();
             // 1. Credit the user's wallet.
-            t.update(userRef, { 'wallet.balance': firestore_1.FieldValue.increment(amount) });
+            t.update(userRef, { 'walletBalance': firestore_1.FieldValue.increment(amount) });
             // 2. Update the UPI account's daily stats on the main document
             t.update(upiAccountRef, {
                 dailyAmountReceived: firestore_1.FieldValue.increment(amount),
@@ -459,7 +458,7 @@ exports.onDepositStatusChange = functions.firestore
                     const referrerRef = referrerDoc.ref;
                     const commissionAmount = amount * commissionSettings.rate; // Dynamic commission rate
                     t.update(referrerRef, {
-                        'wallet.balance': firestore_1.FieldValue.increment(commissionAmount),
+                        'walletBalance': firestore_1.FieldValue.increment(commissionAmount),
                         referralEarnings: firestore_1.FieldValue.increment(commissionAmount)
                     });
                     const commissionTxRef = db.collection(`users/${referrerDoc.id}/transactions`).doc();
@@ -579,12 +578,12 @@ exports.onMatchResultUpdate = functions.firestore
                 }
                 // 1. Update winner's balance, total winnings, and other stats
                 t.update(winnerRef, {
-                    'wallet.balance': firestore_1.FieldValue.increment(prizePool),
-                    'stats.totalWinnings': firestore_1.FieldValue.increment(prizePool),
-                    'stats.rating': firestore_1.FieldValue.increment(10),
-                    'stats.xp': firestore_1.FieldValue.increment(25),
-                    'stats.matchesPlayed': firestore_1.FieldValue.increment(1),
-                    'stats.matchesWon': firestore_1.FieldValue.increment(1)
+                    walletBalance: firestore_1.FieldValue.increment(prizePool),
+                    totalWinnings: firestore_1.FieldValue.increment(prizePool),
+                    rating: firestore_1.FieldValue.increment(10),
+                    xp: firestore_1.FieldValue.increment(25),
+                    matchesPlayed: firestore_1.FieldValue.increment(1),
+                    matchesWon: firestore_1.FieldValue.increment(1)
                 });
                 // 2. Create prize transaction for winner
                 const transactionRef = db.collection(`users/${winnerId}/transactions`).doc();
@@ -601,8 +600,8 @@ exports.onMatchResultUpdate = functions.firestore
                 for (const loserId of loserIds) {
                     const loserRef = db.collection("users").doc(loserId);
                     t.update(loserRef, {
-                        'stats.rating': firestore_1.FieldValue.increment(-5),
-                        'stats.matchesPlayed': firestore_1.FieldValue.increment(1)
+                        rating: firestore_1.FieldValue.increment(-5),
+                        matchesPlayed: firestore_1.FieldValue.increment(1)
                     });
                 }
                 // 4. Finalize the match status to PAID
@@ -652,7 +651,7 @@ exports.cancelMatch = functions.https.onCall(async (data, context) => {
         // Refund entry fee to all players involved
         for (const playerId of matchData.players) {
             const playerRef = db.collection("users").doc(playerId);
-            t.update(playerRef, { 'wallet.balance': firestore_1.FieldValue.increment(matchData.entryFee) });
+            t.update(playerRef, { 'walletBalance': firestore_1.FieldValue.increment(matchData.entryFee) });
             const refundTxRef = db.collection(`users/${playerId}/transactions`).doc();
             t.set(refundTxRef, {
                 amount: matchData.entryFee,
@@ -744,18 +743,17 @@ exports.createMatch = functions.https.onCall(async (data, context) => {
     const matchRef = db.collection("matches").doc();
     try {
         const newMatchId = await db.runTransaction(async (t) => {
-            var _a;
             const userDoc = await t.get(userRef);
             if (!userDoc.exists) {
                 throw new functions.https.HttpsError("not-found", "Your user profile does not exist.");
             }
             const userData = userDoc.data();
-            const currentBalance = ((_a = userData.wallet) === null || _a === void 0 ? void 0 : _a.balance) || 0;
+            const currentBalance = userData.walletBalance || 0;
             if (currentBalance < entryFee) {
                 throw new functions.https.HttpsError("failed-precondition", "Insufficient funds to create this match.");
             }
             if (entryFee > 0) {
-                t.update(userRef, { 'wallet.balance': firestore_1.FieldValue.increment(-entryFee) });
+                t.update(userRef, { 'walletBalance': firestore_1.FieldValue.increment(-entryFee) });
                 const transactionRef = db.collection(`users/${userId}/transactions`).doc();
                 t.set(transactionRef, {
                     amount: -entryFee,
@@ -864,7 +862,6 @@ exports.joinMatch = functions.https.onCall(async (data, context) => {
     const userRef = db.collection("users").doc(userId);
     try {
         await db.runTransaction(async (t) => {
-            var _a;
             const matchDoc = await t.get(matchRef);
             if (!matchDoc.exists)
                 throw new functions.https.HttpsError("not-found", "Match not found.");
@@ -879,11 +876,11 @@ exports.joinMatch = functions.https.onCall(async (data, context) => {
             if (!userDoc.exists)
                 throw new functions.https.HttpsError("not-found", "Your user profile does not exist.");
             const userData = userDoc.data();
-            if ((((_a = userData.wallet) === null || _a === void 0 ? void 0 : _a.balance) || 0) < matchData.entryFee)
+            if ((userData.walletBalance || 0) < matchData.entryFee)
                 throw new functions.https.HttpsError("failed-precondition", "Insufficient funds to join this match.");
             // Deduct entry fee
             if (matchData.entryFee > 0) {
-                t.update(userRef, { 'wallet.balance': firestore_1.FieldValue.increment(-matchData.entryFee) });
+                t.update(userRef, { walletBalance: firestore_1.FieldValue.increment(-matchData.entryFee) });
                 const transactionRef = db.collection(`users/${userId}/transactions`).doc();
                 t.set(transactionRef, {
                     amount: -matchData.entryFee,
@@ -899,7 +896,6 @@ exports.joinMatch = functions.https.onCall(async (data, context) => {
             const isNowFull = newPlayers.length === matchData.maxPlayers;
             t.update(matchRef, {
                 players: newPlayers,
-                joinerId: userId,
                 status: isNowFull ? 'room_code_pending' : 'waiting',
             });
             await sendNotification(matchData.creatorId, 'Player Joined!', `${userData.displayName || 'A new player'} has joined your match. Get ready!`, `/match/${matchId}`);
@@ -997,7 +993,7 @@ exports.cancelTournament = functions.https.onCall(async (data, context) => {
         for (const playerDoc of playersSnapshot.docs) {
             const playerId = playerDoc.id;
             const playerRef = db.collection('users').doc(playerId);
-            t.update(playerRef, { 'wallet.balance': firestore_1.FieldValue.increment(tournamentData.entryFee) });
+            t.update(playerRef, { 'walletBalance': firestore_1.FieldValue.increment(tournamentData.entryFee) });
             const refundTxRef = db.collection(`users/${playerId}/transactions`).doc();
             t.set(refundTxRef, {
                 amount: tournamentData.entryFee,
@@ -1041,7 +1037,7 @@ exports.removePlayerFromTournament = functions.https.onCall(async (data, context
         const tournamentData = tournamentDoc.data();
         // Refund player
         const playerRef = db.collection('users').doc(playerId);
-        t.update(playerRef, { 'wallet.balance': firestore_1.FieldValue.increment(tournamentData.entryFee) });
+        t.update(playerRef, { 'walletBalance': firestore_1.FieldValue.increment(tournamentData.entryFee) });
         const refundTxRef = db.collection(`users/${playerId}/transactions`).doc();
         t.set(refundTxRef, {
             amount: tournamentData.entryFee,
