@@ -48,7 +48,15 @@ const testimonials = [
     }
 ]
 
+const defaultHeroImage = {
+    imageUrl: 'https://images.unsplash.com/photo-1579279263243-44345e5cfa62?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wzODQ2M3wwfDF8cmFuZG9tfHx8fHx8fHx8MTc2NjI5NDk4N3w&ixlib=rb-4.1.0&q=80&w=1080',
+    description: 'A Ludo board with dice and pieces, representing the game.',
+    imageHint: 'A vibrant Ludo game in progress, with colorful pieces and dice rolling on the board. The image has a professional and exciting feel, conveying the thrill of the game.'
+};
+
+
 export default function LandingPage() {
+  const hero = heroImage || defaultHeroImage;
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       {/* Header */}
@@ -57,7 +65,7 @@ export default function LandingPage() {
           <div className="mr-4 flex items-center">
             <Link href="/" className="flex items-center gap-2 font-bold">
                <div className="p-1 rounded-md">
-                <Image src="https://firebasestorage.googleapis.com/v0/b/studio-4431476254-c1156.appspot.com/o/appImages%2F26323-removebg-preview.png?alt=media&token=6ffa1383-0a70-44ca-acce-98d738ef99ed" alt="LudoLeague Logo" width={32} height={32} />
+                <Image src="/logo.svg" alt="LudoLeague Logo" width={32} height={32} />
               </div>
               <span className="font-headline text-lg text-primary">LudoLeague</span>
             </Link>
@@ -77,16 +85,15 @@ export default function LandingPage() {
       <main className="flex-1">
         {/* Hero Section */}
         <section className="relative h-[80vh] min-h-[500px] flex items-center justify-center text-center text-foreground">
-          {heroImage && (
-             <Image
-                src={heroImage.imageUrl}
-                alt={heroImage.description}
-                data-ai-hint={heroImage.imageHint}
-                fill
-                className="object-cover -z-10"
-                priority
-             />
-          )}
+          <Image
+             src={hero.imageUrl}
+             alt={hero.description}
+             data-ai-hint={hero.imageHint}
+             fill
+             sizes="100vw"
+             className="object-cover -z-10"
+             priority
+          />
           <div className="absolute inset-0 bg-background/80 -z-10" />
           <div className="container px-4 md:px-6">
             <div className="max-w-3xl mx-auto space-y-6">

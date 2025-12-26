@@ -33,7 +33,7 @@ export const useDoc = <T,>(path: string | null) => {
             
             const permissionError = new FirestorePermissionError({
                 path,
-                operation: 'get', // Changed from 'read' to 'get' for doc
+                operation: 'get',
             });
             errorEmitter.emit('permission-error', permissionError);
 
@@ -43,8 +43,13 @@ export const useDoc = <T,>(path: string | null) => {
 
         return () => unsubscribe();
     }, [firestore, path]);
+    
+    const refetch = useCallback(() => {
+      // The onSnapshot listener handles real-time updates.
+      // This is a placeholder for manual refetching if ever needed.
+    }, []);
 
-    return { data, setData, loading, error };
+    return { data, setData, loading, error, refetch };
 };
 
 
@@ -58,14 +63,12 @@ interface CollectionQuery {
 }
 
 
-export const useCollection = <T,>(path: string, q?: CollectionQuery) => {
+export const useCollection = <T,>(path: string | null | undefined, q?: CollectionQuery) => {
     const { firestore } = useFirebase();
     const [data, setData] = useState<T[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
     
-    // The query object `q` is memoized to prevent re-running the effect on every render.
-    // The effect should only re-run if the query itself changes.
     const memoizedQuery = useMemo(() => q, [
         JSON.stringify(q?.where),
         JSON.stringify(q?.orderBy),
@@ -74,13 +77,13 @@ export const useCollection = <T,>(path: string, q?: CollectionQuery) => {
 
     const refetch = useCallback(() => {
         // This is a dummy implementation for now.
-        // A more robust solution might involve a state change that triggers the useEffect.
     }, []);
 
 
     useEffect(() => {
         if (!firestore || !path) {
             setLoading(false);
+            setData([]); // Ensure data is cleared when path is invalid
             return () => {};
         };
         setLoading(true);
@@ -89,9 +92,8 @@ export const useCollection = <T,>(path: string, q?: CollectionQuery) => {
         if (memoizedQuery) {
             // Handle 'where' clauses
             if (memoizedQuery.where) {
-                if (Array.isArray(memoizedQuery.where[0])) { // Check if it's an array of arrays
+                if (Array.isArray(memoizedQuery.where[0])) { 
                     (memoizedQuery.where as WhereClause[]).forEach(w => {
-                        // Skip queries with undefined values, which can happen during initial render
                         if (w[2] !== undefined) constraints.push(where(...w));
                     });
                 } else {
@@ -101,7 +103,7 @@ export const useCollection = <T,>(path: string, q?: CollectionQuery) => {
             }
             // Handle 'orderBy' clauses
             if (memoizedQuery.orderBy) {
-                if (Array.isArray(memoizedQuery.orderBy[0])) { // Check if it's an array of arrays
+                if (Array.isArray(memoizedQuery.orderBy[0])) {
                     (memoizedQuery.orderBy as OrderByClause[]).forEach(o => constraints.push(orderBy(o[0], o[1])));
                 } else {
                      constraints.push(orderBy(...(memoizedQuery.orderBy as OrderByClause)));
@@ -126,7 +128,7 @@ export const useCollection = <T,>(path: string, q?: CollectionQuery) => {
             console.error(`Error fetching collection at ${path}:`, err);
             const permissionError = new FirestorePermissionError({
                 path,
-                operation: 'list', // Changed from 'read' to 'list' for collection
+                operation: 'list',
             });
             errorEmitter.emit('permission-error', permissionError);
             setError(err);
@@ -134,7 +136,7 @@ export const useCollection = <T,>(path: string, q?: CollectionQuery) => {
         });
 
         return () => unsubscribe();
-    }, [firestore, path, memoizedQuery]); // Correct dependencies
+    }, [firestore, path, memoizedQuery]);
 
     return { data, loading, error, refetch, count: data.length };
 };

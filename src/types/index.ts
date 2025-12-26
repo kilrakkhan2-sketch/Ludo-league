@@ -8,6 +8,7 @@ export interface UserProfile {
   email: string;
   photoURL: string;
   role: 'superadmin' | 'deposit_admin' | 'withdrawal_admin' | 'match_admin' | 'user';
+  status?: 'online' | 'offline';
   isBlocked?: boolean;
   isVerified?: boolean;
   matchesPlayed: number;
@@ -128,7 +129,7 @@ export interface Tournament {
     maxPlayers: number;
     registeredPlayers: number;
     status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'live';
-    startTime: any;
+    startDate: any; // Changed from startTime
     endTime?: any;
     rounds?: any[];
     bannerUrl?: string;

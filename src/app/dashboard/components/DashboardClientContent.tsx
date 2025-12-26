@@ -26,7 +26,7 @@ const MatchCard = ({ match }: { match: Match }) => {
             case 'room_code_shared': return 'default';
             case 'game_started': return 'default';
             case 'result_submitted': return 'secondary';
-            case 'completed': return 'secondary';
+            case 'COMPLETED': return 'secondary';
             case 'disputed': return 'destructive';
             default: return 'default';
         }

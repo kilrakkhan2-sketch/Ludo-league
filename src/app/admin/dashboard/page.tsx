@@ -100,7 +100,7 @@ export default function AdminDashboardPage() {
 
   const weeklyRegistrationsData = useMemo(() => {
       if (!users) return [];
-       const recentUsers = users.filter(u => u.createdAt?.seconds > sevenDaysAgo.getTime() / 1000);
+       const recentUsers = users.filter(u => u.createdAt && (u.createdAt as any).seconds > sevenDaysAgo.getTime() / 1000);
       return processWeeklyData(recentUsers, 'users');
   }, [users]);
   

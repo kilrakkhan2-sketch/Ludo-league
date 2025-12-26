@@ -19,9 +19,10 @@ import { CircleArrowDown, CircleArrowUp, Ticket, Trophy } from "lucide-react";
 const TypeIcon = ({ type }: { type: Transaction['type'] }) => {
     const className = "h-5 w-5";
     switch (type) {
-        case 'prize-money':
+        case 'prize':
+        case 'prize_win':
             return <Trophy className={`${className} text-yellow-500`} />;
-        case 'entry-fee':
+        case 'entry_fee':
             return <Ticket className={`${className} text-gray-500`} />;
         case 'withdrawal':
             return <CircleArrowUp className={`${className} text-red-500`} />;

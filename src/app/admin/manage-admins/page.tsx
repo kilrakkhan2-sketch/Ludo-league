@@ -54,7 +54,7 @@ export default function ManageAdminsPage() {
     
     const admins = useMemo(() => {
         if (!users) return [];
-        return users.filter(u => u.roles && !u.roles.includes('user'));
+        return users.filter(u => u.role && u.role !== 'user');
     }, [users]);
 
 
@@ -62,8 +62,8 @@ export default function ManageAdminsPage() {
     const sortedAdmins = useMemo(() => {
         if (!admins) return [];
         return [...admins].sort((a, b) => {
-            if (a.roles.includes('superadmin')) return -1;
-            if (b.roles.includes('superadmin')) return 1;
+            if (a.role === 'superadmin') return -1;
+            if (b.role === 'superadmin') return 1;
             return 0;
         });
     }, [admins]);
@@ -103,7 +103,7 @@ export default function ManageAdminsPage() {
         handleRoleChange(targetUid, newRole);
     };
 
-    if (userData?.roles && !userData.roles.includes('superadmin')) {
+    if (userData?.role && userData.role !=='superadmin') {
         return <p>You do not have permission to view this page.</p>;
     }
 
@@ -181,11 +181,11 @@ export default function ManageAdminsPage() {
                                             </div>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="capitalize font-medium">{admin.roles.join(', ').replace(/_/g, ' ')}</TableCell>
+                                    <TableCell className="capitalize font-medium">{admin.role.replace(/_/g, ' ')}</TableCell>
                                     <TableCell className="text-right">
-                                        {!admin.roles.includes('superadmin') ? (
+                                        {admin.role !== 'superadmin' ? (
                                             <Select
-                                                defaultValue={admin.roles.find(r => ASSIGNABLE_ROLES.includes(r))}
+                                                defaultValue={admin.role}
                                                 onValueChange={(newRole) => handleRoleChange(admin.uid, newRole)}
                                                 disabled={isSubmitting}
                                             >

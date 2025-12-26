@@ -74,7 +74,7 @@ export default function TournamentsPage() {
                   <TableCell>
                     <Badge variant={getBadgeVariant(t.status)} className="capitalize">{t.status}</Badge>
                   </TableCell>
-                  <TableCell>{t.startTime ? new Date(t.startTime.seconds * 1000).toLocaleString() : 'Not set'}</TableCell>
+                  <TableCell>{t.startDate ? new Date(t.startDate.seconds * 1000).toLocaleString() : 'Not set'}</TableCell>
                   <TableCell className="text-right">
                       <Button variant="outline" size="sm" asChild>
                           <Link href={`/admin/tournaments/${t.id}`}>Manage <ArrowRight className="ml-2 h-4 w-4" /></Link>
