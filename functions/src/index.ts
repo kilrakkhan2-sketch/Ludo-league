@@ -1040,7 +1040,6 @@ export const joinMatch = functions.https.onCall(async (data, context) => {
             
             t.update(matchRef, {
                 players: newPlayers,
-                joinerId: userId,
                 status: isNowFull ? 'room_code_pending' : 'waiting',
             });
              await sendNotification(matchData.creatorId, 'Player Joined!', `${userData.displayName || 'A new player'} has joined your match. Get ready!`, `/match/${matchId}`);
@@ -1222,3 +1221,5 @@ export const removePlayerFromTournament = functions.https.onCall(async (data, co
         t.update(tournamentRef, { players: FieldValue.arrayRemove(playerId) });
     });
 });
+
+    
