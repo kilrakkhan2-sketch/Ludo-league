@@ -117,8 +117,18 @@ export default function WithdrawPage() {
                         <FormItem>
                             <FormControl>
                                 <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="grid grid-cols-2 gap-4">
-                                     <FormItem><FormControl><RadioGroupItem value="upi" id="upi" className="sr-only" /><FormLabel htmlFor="upi" className="flex flex-col items-center justify-center gap-2 cursor-pointer border rounded-lg p-4 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary">UPI</FormLabel></FormItem>
-                                     <FormItem><FormControl><RadioGroupItem value="bank" id="bank" className="sr-only" /><FormLabel htmlFor="bank" className="flex flex-col items-center justify-center gap-2 cursor-pointer border rounded-lg p-4 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary">Bank Transfer</FormLabel></FormItem>
+                                     <FormItem>
+                                        <FormControl>
+                                            <RadioGroupItem value="upi" id="upi" className="sr-only" />
+                                        </FormControl>
+                                        <FormLabel htmlFor="upi" className="flex flex-col items-center justify-center gap-2 cursor-pointer border rounded-lg p-4 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary">UPI</FormLabel>
+                                     </FormItem>
+                                     <FormItem>
+                                        <FormControl>
+                                            <RadioGroupItem value="bank" id="bank" className="sr-only" />
+                                        </FormControl>
+                                        <FormLabel htmlFor="bank" className="flex flex-col items-center justify-center gap-2 cursor-pointer border rounded-lg p-4 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary">Bank Transfer</FormLabel>
+                                     </FormItem>
                                 </RadioGroup>
                             </FormControl>
                             <FormMessage className="pt-2"/>
@@ -150,5 +160,3 @@ export default function WithdrawPage() {
     </AppShell>
   );
 }
-
-    
