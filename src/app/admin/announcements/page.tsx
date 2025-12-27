@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { AnnouncementForm } from './AnnouncementForm';
 
 type Announcement = {
     id: string;
@@ -37,62 +38,6 @@ const getTypeVariant = (type: Announcement['type']) => {
         default: return 'outline';
     }
 };
-
-const AnnouncementForm = ({ announcement, onSave, onOpenChange }: { announcement?: Announcement | null, onSave: () => void, onOpenChange: (open: boolean) => void }) => {
-    const { firestore } = useFirebase();
-    const { toast } = useToast();
-    const [title, setTitle] = useState(announcement?.title || '');
-    const [content, setContent] = useState(announcement?.content || '');
-    const [type, setType] = useState<Announcement['type']>(announcement?.type || 'News');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
-    const handleSubmit = async () => {
-        if (!firestore || !title.trim() || !content.trim()) {
-            toast({ variant: 'destructive', title: 'Missing Fields', description: 'Please fill in both title and content.' });
-            return;
-        }
-        setIsSubmitting(true);
-        try {
-            if (announcement) {
-                const docRef = doc(firestore, 'announcements', announcement.id);
-                await updateDoc(docRef, { title, content, type });
-                toast({ title: 'Announcement Updated' });
-            } else {
-                await addDoc(collection(firestore, 'announcements'), { title, content, type, createdAt: serverTimestamp() });
-                toast({ title: 'Announcement Created' });
-            }
-            onSave();
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    return (
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>{announcement ? 'Edit' : 'Create'} Announcement</DialogTitle>
-                <DialogDescription>Craft a message to be displayed to all users on their dashboard.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-                <div className="grid gap-2"><Label htmlFor="title">Title</Label><Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New Tournament Alert!" /></div>
-                <div className="grid gap-2"><Label htmlFor="content">Content</Label><Textarea id="content" value={content} onChange={(e) => setContent(e.target.value)} placeholder="Describe the announcement..." /></div>
-                <div className="grid gap-2"><Label htmlFor="type">Type</Label>
-                    <Select value={type} onValueChange={(v: any) => setType(v)}><SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            {['News', 'Update', 'Promo', 'Warning'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                <Button onClick={handleSubmit} disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save'}</Button>
-            </DialogFooter>
-        </DialogContent>
-    );
-}
 
 export default function AdminAnnouncementsPage() {
     const { data: announcements, loading } = useCollection<Announcement>('announcements', { orderBy: ['createdAt', 'desc'] });

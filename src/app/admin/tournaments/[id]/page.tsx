@@ -19,10 +19,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { httpsCallable } from 'firebase/functions';
+import { EditTournamentDialog } from './EditTournamentDialog';
 
 const StatCard = ({ icon: Icon, title, value, isLoading }: { icon: React.ElementType, title: string, value: string | number, isLoading: boolean }) => (
     <div className="flex items-center p-4 bg-muted rounded-lg">
@@ -48,7 +46,6 @@ export default function ManageTournamentPage() {
 
     const { data: tournament, loading: tournamentLoading, refetch } = useDoc<Tournament>(`tournaments/${tournamentId}`);
     
-    // In a real large-scale app, players would be paginated. For now, we fetch all.
     const { data: players, loading: playersLoading } = useCollection<UserProfile>(
         tournament ? `tournaments/${tournamentId}/players` : undefined,
         { orderBy: ['joinedAt', 'desc'] }
@@ -90,7 +87,6 @@ export default function ManageTournamentPage() {
                 const removePlayerFn = httpsCallable(functions, 'removePlayerFromTournament');
                 await removePlayerFn({ tournamentId, playerId: actionToConfirm.playerId });
                 toast.success('Player Removed', { description: 'The player has been removed and refunded.' });
-                // We refetch data after removal
             }
         } catch (error: any) {
             toast.error(`Action Failed: ${error.message}`);
@@ -100,43 +96,6 @@ export default function ManageTournamentPage() {
         }
     };
 
-    const EditTournamentDialog = () => {
-        const [name, setName] = useState(tournament?.name || '');
-        const [description, setDescription] = useState(tournament?.description || '');
-        
-        const handleSaveChanges = async () => {
-            if (!functions || !tournament) return;
-            setIsSubmitting(true);
-            try {
-                const updateTournamentFn = httpsCallable(functions, 'updateTournament');
-                await updateTournamentFn({ tournamentId, name, description });
-                toast.success("Tournament details updated.");
-                setIsEditOpen(false);
-                refetch();
-            } catch(error: any) {
-                 toast.error(`Update failed: ${error.message}`);
-            } finally {
-                setIsSubmitting(false);
-            }
-        }
-
-        return (
-            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-                <DialogContent>
-                    <DialogHeader><DialogTitle>Edit Tournament</DialogTitle><DialogDescription>Update the core details of the tournament.</DialogDescription></DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2"><Label htmlFor="name">Name</Label><Input id="name" value={name} onChange={e => setName(e.target.value)} /></div>
-                        <div className="space-y-2"><Label htmlFor="description">Description</Label><Textarea id="description" value={description} onChange={e => setDescription(e.target.value)} /></div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
-                        <Button onClick={handleSaveChanges} disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save Changes'}</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        );
-    }
-    
     if (isLoading) {
         return <div className="space-y-6">
             <Skeleton className="h-8 w-1/2" />
@@ -151,7 +110,7 @@ export default function ManageTournamentPage() {
 
     return (
         <div className="space-y-6">
-            <EditTournamentDialog />
+            <EditTournamentDialog tournament={tournament} open={isEditOpen} onOpenChange={setIsEditOpen} onSave={refetch} />
             <div>
                 <h1 className="text-2xl font-bold">{tournament.name}</h1>
                 <p className="text-muted-foreground">Manage tournament details, players, and status.</p>
@@ -231,5 +190,3 @@ export default function ManageTournamentPage() {
         </div>
     );
 }
-
-    
