@@ -47,6 +47,24 @@
       "description": "User profile banner image",
       "imageUrl": "https://images.unsplash.com/photo-1649783467317-810564b3df8a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8YWJzdHJhY3QlMjBiYW5uZXJ8ZW58MHx8fHwxNzY2MzY3Njk3fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "abstract banner"
+    },
+    {
+      "id": "banner1",
+      "description": "A promotional banner for a big tournament with confetti and trophies.",
+      "imageUrl": "https://images.unsplash.com/photo-1759936802396-0177ea95a088?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHx0b3VybmFtZW50JTIwcHJpemV8ZW58MHx8fHwxNzY2ODE0NTUxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "tournament prize"
+    },
+    {
+      "id": "banner2",
+      "description": "A promotional banner announcing a new refer and earn program.",
+      "imageUrl": "https://images.unsplash.com/photo-1647221598272-9aa015392c81?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxnaWZ0JTIwcmV3YXJkfGVufDB8fHx8MTc2NjgxNDU1MXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "gift reward"
+    },
+    {
+      "id": "banner3",
+      "description": "A banner showing a secure wallet with money, indicating safe deposits.",
+      "imageUrl": "https://images.unsplash.com/photo-1634024520691-251d965aef54?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxzZWN1cmUlMjB3YWxsZXR8ZW58MHx8fHwxNzY2ODE0NTUxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "secure wallet"
     }
   ]
 }

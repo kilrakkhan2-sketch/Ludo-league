@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import DashboardClientContent from "./dashboard/components/DashboardClientContent";
 import NewsCarousel from "./dashboard/components/NewsCarousel";
 import { AppShellSkeleton } from '@/components/app-shell-skeleton';
+import BannerCarousel from './dashboard/components/BannerCarousel';
 
 
 export default function DashboardPage() {
@@ -30,6 +31,7 @@ export default function DashboardPage() {
         <AppShell>
             <div className="space-y-8">
                 <NewsCarousel />
+                <BannerCarousel />
                 <DashboardClientContent />
             </div>
         </AppShell>
