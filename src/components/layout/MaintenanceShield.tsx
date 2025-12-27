@@ -1,11 +1,12 @@
-
 'use client';
 
-import { useDoc } from "@/firebase";
+import { useDoc, useUser } from "@/firebase";
 import { MaintenanceSettings } from "@/types";
 import { Skeleton } from "../ui/skeleton";
 import { PowerOff } from "lucide-react";
 import Image from "next/image";
+
+const ADMIN_ROLES = ['superadmin', 'deposit_admin', 'withdrawal_admin', 'match_admin'];
 
 const FullScreenLoader = () => (
     <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
@@ -54,15 +55,20 @@ export const isTimeInDisabledRange = (startTimeStr?: string, endTimeStr?: string
 
 
 export function MaintenanceShield({ children }: { children: React.ReactNode }) {
-    const { data: settings } = useDoc<MaintenanceSettings>('settings/maintenance');
+    const { data: settings, loading: settingsLoading } = useDoc<MaintenanceSettings>('settings/maintenance');
+    const { userData, loading: userLoading } = useUser();
 
-    if (settings?.isAppDisabled) {
-        return <MaintenanceScreen message={settings.appDisabledMessage} />;
+    const isLoading = settingsLoading || userLoading;
+    const isMaintenanceMode = settings?.isAppDisabled;
+    const isAdmin = userData?.role && ADMIN_ROLES.includes(userData.role);
+
+    if (isLoading) {
+        return <FullScreenLoader />;
     }
 
-    // We can pass the settings down via context if multiple child components need them,
-    // but for now, the check happens here and at the feature-specific pages.
+    if (isMaintenanceMode && !isAdmin) {
+        return <MaintenanceScreen message={settings?.appDisabledMessage} />;
+    }
+
     return <>{children}</>;
 }
-
-    
