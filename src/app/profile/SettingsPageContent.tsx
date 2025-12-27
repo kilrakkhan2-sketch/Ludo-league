@@ -54,7 +54,7 @@ const NotificationRow = ({ id, label, description, checked, onCheckedChange }: {
 
 export function SettingsPageContent() {
     const { user } = useUser();
-    const { data: profile, setData: setProfile } = useDoc<UserProfile>(user ? `users/${user.uid}`: undefined);
+    const { data: profile } = useDoc<UserProfile>(user ? `users/${user.uid}`: undefined);
     const { firestore, storage, functions, auth } = useFirebase();
     const { toast } = useToast();
     
@@ -85,9 +85,10 @@ export function SettingsPageContent() {
         const storageRef = ref(storage, filePath);
         const snapshot = await uploadBytes(storageRef, file);
         const photoURL = await getDownloadURL(snapshot.ref);
-        
+        const userDocRef = doc(firestore, 'users', user.uid);
+
         await updateProfile(auth.currentUser, { photoURL });
-        await setProfile(p => p ? { ...p, photoURL } : null);
+        await updateDoc(userDocRef, { photoURL });
 
         toast({ title: 'Avatar Updated!', description: 'Your new profile picture looks great.' });
       } catch (error) {
@@ -99,7 +100,7 @@ export function SettingsPageContent() {
     };
 
     const handleProfileSave = async () => {
-      if(!user || !displayName || !auth?.currentUser) return;
+      if(!user || !displayName || !auth?.currentUser || !firestore) return;
       if(displayName === profile?.displayName && JSON.stringify(notifications) === JSON.stringify(profile?.notifications)) {
           toast({ title: 'No changes to save.' });
           return;
@@ -107,8 +108,9 @@ export function SettingsPageContent() {
 
       setIsSaving(true);
       try {
+        const userDocRef = doc(firestore, 'users', user.uid);
         await updateProfile(auth.currentUser, { displayName });
-        await setProfile(p => p ? { ...p, displayName, notifications } : null);
+        await updateDoc(userDocRef, { displayName, notifications });
         toast({ title: 'Settings Saved!', description: 'Your changes have been updated.' });
       } catch(error) {
         console.error(error);

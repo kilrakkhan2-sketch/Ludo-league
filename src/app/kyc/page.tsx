@@ -84,7 +84,7 @@ export default function KycPage() {
             fullName,
             documentType: docType,
             documentNumber: docNumber,
-            documentUrl,
+            documentFrontImage: documentUrl,
             status: 'pending',
             createdAt: Timestamp.now(),
         } as Omit<KycRequest, 'id'>);

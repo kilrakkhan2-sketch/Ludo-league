@@ -14,6 +14,7 @@ import { SettingsPageContent } from "./SettingsPageContent";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import type { UserProfile } from "@/types";
+import { AppShellSkeleton } from "@/components/app-shell-skeleton";
 
 
 const StatCard = ({ icon, title, value, loading }: { icon: React.ReactNode, title: string, value: string | number, loading?: boolean }) => (
