@@ -13,28 +13,34 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
     
-    function getRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    function hasRole(role) {
+      return request.auth.token.role == role;
+    }
+
+    function hasAnyRole(roles) {
+      return request.auth.token.role in roles;
     }
     
     function isSuperAdmin() {
-      return getRole() == 'superadmin';
+      return hasRole('superadmin');
     }
     
     function isMatchAdmin() {
-      return getRole() in ['superadmin', 'match_admin'];
+      return hasAnyRole(['superadmin', 'match_admin']);
     }
     
     function isWithdrawalAdmin() {
-      return getRole() in ['superadmin', 'withdrawal_admin'];
+      return hasAnyRole(['superadmin', 'withdrawal_admin']);
     }
     
     function isDepositAdmin() {
-      return getRole() in ['superadmin', 'deposit_admin'];
+      return hasAnyRole(['superadmin', 'deposit_admin']);
     }
 
     function isKycAdmin() {
-      return getRole() in ['superadmin', 'kyc_admin'];
+      // In a real scenario, you might have a dedicated 'kyc_admin' role.
+      // For now, only superadmins can manage KYC.
+      return isSuperAdmin();
     }
 
     // User profiles
@@ -70,10 +76,10 @@ service cloud.firestore {
 
     match /upi-accounts/{accountId} {
        allow read: if isSignedIn();
-       allow list, create, update, delete: if isSuperAdmin() || isDepositAdmin();
+       allow list, create, update, delete: if isDepositAdmin() || isSuperAdmin();
        
        match /daily_stats/{date} {
-         allow read, write: if isSuperAdmin() || isDepositAdmin();
+         allow read, write: if isDepositAdmin() || isSuperAdmin();
        }
     }
 
@@ -85,11 +91,10 @@ service cloud.firestore {
     }
     
     match /withdrawal-requests/{requestId} {
-      // Admin can list all requests, user can only read their own.
-      allow list: if isWithdrawalAdmin();
-      allow read: if isSignedIn() && (isWithdrawalAdmin() || isOwner(get(/databases/$(database)/documents/withdrawal-requests/$(requestId)).data.userId));
+      allow list: if isWithdrawalAdmin() || isSuperAdmin();
+      allow read: if isWithdrawalAdmin() || isSuperAdmin() || isOwner(resource.data.userId);
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && isWithdrawalAdmin();
+      allow update: if isWithdrawalAdmin() || isSuperAdmin();
     }
 
     // Matches
@@ -155,10 +160,10 @@ service cloud.firestore {
     }
     
     match /kyc-requests/{kycId} {
-      allow list: if isKycAdmin();
-      allow read: if isKycAdmin() || isOwner(resource.data.userId);
+      allow list: if isSuperAdmin();
+      allow read: if isSuperAdmin() || isOwner(resource.data.userId);
       allow create: if isSignedIn();
-      allow update: if isKycAdmin();
+      allow update: if isSuperAdmin();
     }
     
     match /announcements/{announcementId} {
