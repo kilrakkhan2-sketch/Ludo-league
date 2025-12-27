@@ -52,9 +52,9 @@ const MyMatchCard = ({ match }: { match: Match }) => {
         <Image
             src="/logo.png"
             alt="LudoLeague Watermark"
-            width={120}
-            height={120}
-            className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 opacity-5 pointer-events-none"
+            width={100}
+            height={100}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-10 pointer-events-none"
         />
       <CardHeader className="p-3 sm:p-4">
         <div className="flex justify-between items-start gap-2">
