@@ -12,68 +12,114 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
-    // You can expand this with roles (e.g., in custom claims)
+    // This admin check is a placeholder. In a real app, use Firebase Auth custom claims.
     function isAdmin() {
-      // In a real app, you'd check for an admin custom claim.
-      // e.g., return request.auth.token.admin == true;
-      return isSignedIn(); // Placeholder: for now, any signed-in user is an "admin" for testing
+      // return request.auth.token.admin == true;
+      return isSignedIn(); // Placeholder: any signed-in user is an "admin" for now.
     }
 
     //----------------------------------------------------------------------
-    // USER PROFILES
+    // USER DATA
     //----------------------------------------------------------------------
     match /users/{userId} {
-      // Admins can read and list all users.
-      allow read: if isAdmin();
-      
-      // Users can only read their own profile, but not list others.
-      allow get: if isOwner(userId);
+      // Admins can list all users. Users can only get their own profile.
+      allow list: if isAdmin();
+      allow get: if isOwner(userId) || isAdmin();
 
-      // Anyone can create their own user profile upon signup
+      // Anyone can create their own user profile upon signup.
       allow create: if isSignedIn();
 
-      // Users can only update their own profile. Admins can update any (e.g., for blocking).
+      // Users can update their own profile. Admins can update any.
       allow update: if isOwner(userId) || isAdmin();
 
       // Users should not be able to delete their own accounts directly.
       allow delete: if false;
+
+      //-- Sub-collections for Users --//
+
+      // Transactions sub-collection for each user
+      match /transactions/{transactionId} {
+        // A user can only read their own transaction history.
+        allow read: if isOwner(userId);
+        // Transactions are immutable and created by the backend.
+        allow write: if false;
+      }
+
+      // Referrals sub-collection for each user
+      match /referrals/{referralId} {
+         // A user can read their own referral list.
+        allow read: if isOwner(userId);
+        // Referrals are created by the backend.
+        allow write: if false;
+      }
     }
 
     //----------------------------------------------------------------------
-    // DEPOSIT REQUESTS
+    // MATCHES
+    //----------------------------------------------------------------------
+    match /matches/{matchId} {
+        // Any signed-in user can view matches.
+        allow read: if isSignedIn();
+        // Users can create matches.
+        allow create: if isSignedIn();
+        // Users can update matches (e.g., join, submit results).
+        // More specific rules can be added here for security.
+        allow update: if isSignedIn();
+        // Matches should be archived, not deleted.
+        allow delete: if false;
+    }
+
+    //----------------------------------------------------------------------
+    // KYC REQUESTS
+    //----------------------------------------------------------------------
+    match /kyc_requests/{requestId} {
+        // Users can read their own requests. Admins can read all.
+        allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+        // A user can create a KYC request for themselves.
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        // Only admins can update (approve/reject) a request.
+        allow update: if isAdmin();
+        // Maintain audit history.
+        allow delete: if false;
+    }
+
+    //----------------------------------------------------------------------
+    // DEPOSIT & WITHDRAWAL REQUESTS
     //----------------------------------------------------------------------
     match /deposit_requests/{requestId} {
-      // A user can only read their own deposit requests. Admins can read all.
-      allow read, list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-
-      // Any signed-in user can create a deposit request for themselves.
-      // We ensure the userId in the document matches the authenticated user.
+      // A user can only read their own requests. Admins can read all.
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      // A user can create a deposit request for themselves.
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-
       // Only admins can update a request (to approve/reject it).
       allow update: if isAdmin();
-      
-      // Nobody can delete deposit requests to maintain audit history.
+      // Maintain audit history.
       allow delete: if false;
     }
 
-    //----------------------------------------------------------------------
-    // WALLET TRANSACTIONS (AUDIT TRAIL)
-    //----------------------------------------------------------------------
-    match /wallet_transactions/{txnId} {
-      // A user can only read their own transaction history. Admins can read all.
-      allow read, list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-
-      // Transactions should only be created by the backend (Cloud Functions).
-      // Client-side creation is disallowed to prevent tampering.
-      allow create: if false;
-
-      // Transactions are immutable and cannot be changed or deleted.
-      allow update, delete: if false;
+    match /withdrawal_requests/{requestId} {
+      // A user can only read their own requests. Admins can read all.
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      // A user can create a withdrawal request for themselves.
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      // Only admins can update a request.
+      allow update: if isAdmin();
+      // Maintain audit history.
+      allow delete: if false;
     }
     
     //----------------------------------------------------------------------
-    // SETTINGS
+    // TRANSACTIONS (Root Collection for Admin)
+    //----------------------------------------------------------------------
+    match /transactions/{transactionId} {
+        // Only admins can read the global transaction list.
+        allow read: if isAdmin();
+        // Transactions are immutable and created by the backend.
+        allow write: if false;
+    }
+
+    //----------------------------------------------------------------------
+    // GLOBAL SETTINGS
     //----------------------------------------------------------------------
     match /settings/{settingId} {
       // Only admins can read or write settings.

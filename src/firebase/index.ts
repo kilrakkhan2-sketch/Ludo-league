@@ -1,7 +1,7 @@
 
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
-import { getFirestore, collection, doc, getDoc, Firestore, getDocs, query, where } from 'firebase/firestore';
+import { getFirestore, collection, doc, getDoc, Firestore, getDocs, query, where, Query } from 'firebase/firestore';
 import { getFunctions, Functions } from 'firebase/functions';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { useState, useEffect } from 'react';
@@ -91,7 +91,7 @@ function useCollection<T>(path: string | undefined, queryOptions: any = {}) {
         setLoading(true);
         setError(null);
         try {
-            let collectionRef: any = collection(firestore, path);
+            let collectionRef: Query = collection(firestore, path);
             if (queryOptions.where) {
                 const [field, operator, value] = queryOptions.where;
                 collectionRef = query(collectionRef, where(field, operator, value));
