@@ -3,7 +3,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
+    // HELPER FUNCTIONS -------------------------------------------
+
     function isSignedIn() {
       return request.auth != null;
     }
@@ -11,119 +12,179 @@ service cloud.firestore {
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
-
-    // This admin check is a placeholder. In a real app, use Firebase Auth custom claims.
-    function isAdmin() {
-      // return request.auth.token.admin == true;
-      return isSignedIn(); // Placeholder: any signed-in user is an "admin" for now.
+    
+    // Safely get the role from the user's custom claims.
+    function getRole() {
+      return request.auth.token.role;
+    }
+    
+    function isSuperAdmin() {
+      return getRole() == 'superadmin';
+    }
+    
+    function isMatchAdmin() {
+      return getRole() in ['superadmin', 'match_admin'];
+    }
+    
+    function isWithdrawalAdmin() {
+      return getRole() in ['superadmin', 'withdrawal_admin'];
+    }
+    
+    function isDepositAdmin() {
+      return getRole() in ['superadmin', 'deposit_admin'];
     }
 
-    //----------------------------------------------------------------------
-    // USER DATA
-    //----------------------------------------------------------------------
+    // USER DATA --------------------------------------------------
     match /users/{userId} {
-      // Admins can list all users. Users can only get their own profile.
-      allow list: if isAdmin();
-      allow get: if isOwner(userId) || isAdmin();
+      allow read: if isSignedIn();
+      allow create: if isSignedIn(); // Allow creating user doc on signup.
+      
+      // Users can update their own profile, only superadmin can change role/balance.
+      allow update: if (isOwner(userId) && !("role" in request.resource.data) && !("walletBalance" in request.resource.data)) || isSuperAdmin();
+      
+      allow delete: if false; // Users should not be able to delete their own accounts.
 
-      // Anyone can create their own user profile upon signup.
-      allow create: if isSignedIn();
-
-      // Users can update their own profile. Admins can update any.
-      allow update: if isOwner(userId) || isAdmin();
-
-      // Users should not be able to delete their own accounts directly.
-      allow delete: if false;
-
-      //-- Sub-collections for Users --//
-
-      // Transactions sub-collection for each user
+      //-- User Sub-collections --//
       match /transactions/{transactionId} {
-        // A user can only read their own transaction history.
-        allow read: if isOwner(userId);
-        // Transactions are immutable and created by the backend.
-        allow write: if false;
+        allow read: if isOwner(userId) || isSuperAdmin();
+        allow create: if false; // Transactions are created by server only.
+        allow update, delete: if false;
       }
 
-      // Referrals sub-collection for each user
-      match /referrals/{referralId} {
-         // A user can read their own referral list.
-        allow read: if isOwner(userId);
-        // Referrals are created by the backend.
-        allow write: if false;
+      match /personal_notifications/{notificationId} {
+        allow read, write: if isOwner(userId); // Users can manage their own notifications
+      }
+
+      match /penalties/{penaltyId} {
+        allow read: if isOwner(userId) || isSuperAdmin();
+        allow create: if false; // Penalties are created by server only.
       }
     }
 
-    //----------------------------------------------------------------------
-    // MATCHES
-    //----------------------------------------------------------------------
-    match /matches/{matchId} {
-        // Any signed-in user can view matches.
-        allow read: if isSignedIn();
-        // Users can create matches.
-        allow create: if isSignedIn();
-        // Users can update matches (e.g., join, submit results).
-        // More specific rules can be added here for security.
-        allow update: if isSignedIn();
-        // Matches should be archived, not deleted.
-        allow delete: if false;
+    // ADMIN & GLOBAL COLLECTIONS ---------------------------------
+    match /admin-wallet-transactions/{transactionId} {
+      allow read, list: if isSuperAdmin();
+      allow write: if false; // Server-side only
     }
 
-    //----------------------------------------------------------------------
-    // KYC REQUESTS
-    //----------------------------------------------------------------------
-    match /kyc_requests/{requestId} {
-        // Users can read their own requests. Admins can read all.
-        allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-        // A user can create a KYC request for themselves.
-        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-        // Only admins can update (approve/reject) a request.
-        allow update: if isAdmin();
-        // Maintain audit history.
-        allow delete: if false;
+    match /upi-accounts/{accountId} {
+       allow read: if isSignedIn();
+       allow list, create, update, delete: if isDepositAdmin();
+
+       match /daily_stats/{date} {
+         allow read, write: if isDepositAdmin();
+       }
     }
 
-    //----------------------------------------------------------------------
-    // DEPOSIT & WITHDRAWAL REQUESTS
-    //----------------------------------------------------------------------
-    match /deposit_requests/{requestId} {
-      // A user can only read their own requests. Admins can read all.
-      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      // A user can create a deposit request for themselves.
+    // REQUESTS (DEPOSIT, WITHDRAWAL, KYC) -------------------------
+    match /deposit-requests/{requestId} {
+      allow read, list: if isDepositAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      // Only admins can update a request (to approve/reject it).
-      allow update: if isAdmin();
-      // Maintain audit history.
-      allow delete: if false;
-    }
-
-    match /withdrawal_requests/{requestId} {
-      // A user can only read their own requests. Admins can read all.
-      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      // A user can create a withdrawal request for themselves.
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      // Only admins can update a request.
-      allow update: if isAdmin();
-      // Maintain audit history.
+      allow update: if isDepositAdmin(); // Admins change status
       allow delete: if false;
     }
     
-    //----------------------------------------------------------------------
-    // TRANSACTIONS (Root Collection for Admin)
-    //----------------------------------------------------------------------
-    match /transactions/{transactionId} {
-        // Only admins can read the global transaction list.
-        allow read: if isAdmin();
-        // Transactions are immutable and created by the backend.
-        allow write: if false;
+    match /withdrawal-requests/{requestId} {
+      allow read, list: if isWithdrawalAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isWithdrawalAdmin(); // Admins change status
+      allow delete: if false;
     }
 
-    //----------------------------------------------------------------------
-    // GLOBAL SETTINGS
-    //----------------------------------------------------------------------
+    match /kyc-requests/{kycId} {
+      allow read, list: if isSuperAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSuperAdmin();
+      allow delete: if false;
+    }
+
+    // MATCHES & RELATED -------------------------------------------
+    match /matches/{matchId} {
+      allow read, list: if isSignedIn();
+      allow create: if isSignedIn();
+      
+      // Complex update rules to govern the match lifecycle
+      allow update: if isSignedIn() && (
+                      // Case 1: A player joins a 'waiting' match.
+                      (
+                        resource.data.status == 'waiting' &&
+                        request.resource.data.status == 'room_code_pending' &&
+                        request.resource.data.players.hasAll(resource.data.players) &&
+                        request.resource.data.players.hasOnly(resource.data.players + [request.auth.uid])
+                      ) ||
+                      // Case 2: The creator shares the room code.
+                      (
+                        request.auth.uid == resource.data.creatorId &&
+                        resource.data.status == 'room_code_pending' &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['roomCode', 'status']) &&
+                        request.resource.data.status == 'room_code_shared'
+                      ) ||
+                       // Case 3: Any player confirms the game has started.
+                      (
+                        request.auth.uid in resource.data.players &&
+                        resource.data.status == 'room_code_shared' &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'startedAt']) &&
+                        request.resource.data.status == 'game_started'
+                      ) ||
+                      // Case 4: Any player submits a result.
+                      (
+                        request.auth.uid in resource.data.players &&
+                        resource.data.status == 'game_started' &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+                        request.resource.data.status == 'result_submitted'
+                      ) ||
+                      // Case 5: An admin manually resolves the match or cancels it.
+                      (isMatchAdmin())
+                    );
+      
+      allow delete: if false;
+
+      //-- Match Sub-collections --//
+      match /results/{userId} {
+        allow read: if isSignedIn();
+        // Allow write only if user is part of the match and is submitting for themselves.
+        allow create, update: if request.auth.uid == userId && request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
+      }
+      
+      match /messages/{messageId} {
+        allow read: if isSignedIn();
+        // Allow write only if user is part of the match.
+        allow create: if request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
+      }
+      
+       match /admin-chat/{messageId} {
+        allow read, write: if isDepositAdmin() || isWithdrawalAdmin() || isMatchAdmin();
+      }
+    }
+    
+    // TOURNAMENTS & GLOBAL SETTINGS ------------------------------
+    match /tournaments/{tournamentId} {
+        allow read: if true;
+        allow create, update, delete: if isMatchAdmin();
+        
+        match /players/{userId} {
+            allow read: if true;
+            allow create: if isSignedIn();
+            allow delete: if isOwner(userId) || isMatchAdmin();
+        }
+    }
+    
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+    
     match /settings/{settingId} {
-      // Only admins can read or write settings.
-      allow read, write: if isAdmin();
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    match /referrals/{referralId} {
+        allow read, list, write: if false; // Server-side only
+    }
+
+    match /friend-requests/{requestId} {
+        allow read, write: if false; // Not yet implemented fully
     }
   }
 }

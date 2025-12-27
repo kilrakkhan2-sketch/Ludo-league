@@ -1,9 +1,9 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
 
+    // HELPER FUNCTIONS -------------------------------------------
     function isSignedIn() {
       return request.auth != null;
     }
@@ -12,41 +12,55 @@ service firebase.storage {
       return request.auth.uid == userId;
     }
     
-    function isAdmin() {
-      return request.auth.token.role in ['superadmin', 'match_admin', 'deposit_admin', 'withdrawal_admin'];
+    function getRole() {
+      return request.auth.token.role;
+    }
+    
+    function isSuperAdmin() {
+      return getRole() == 'superadmin';
     }
 
+    function isMatchAdmin() {
+      return getRole() in ['superadmin', 'match_admin'];
+    }
+    
+    function isDepositAdmin() {
+      return getRole() in ['superadmin', 'deposit_admin'];
+    }
+
+    // PUBLIC & ADMIN-WRITABLE ------------------------------------
     match /appImages/{allPaths=**} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isSuperAdmin();
     }
 
-    // Changed from profile-pictures to avatars for consistency
+    match /tournament-banners/{fileName} {
+      allow read: if true;
+      allow write: if isMatchAdmin();
+    }
+    
+    // USER-OWNED CONTENT -----------------------------------------
     match /avatars/{userId}/{allPaths=**} {
       allow read: if true;
       allow write: if isOwner(userId);
     }
 
     match /deposit-screenshots/{userId}/{fileName} {
-      allow read: if isOwner(userId) || isAdmin();
+      allow read: if isOwner(userId) || isDepositAdmin();
       allow write: if isOwner(userId);
     }
 
     match /kyc-documents/{userId}/{fileName} {
-      allow read: if isOwner(userId) || isAdmin();
+      allow read: if isOwner(userId) || isSuperAdmin();
       allow write: if isOwner(userId);
     }
 
-    // Corrected and simplified rule for match results
+    // MATCH-SPECIFIC CONTENT -------------------------------------
     match /match-results/{matchId}/{userId}/{fileName} {
+      // Any signed-in user can read (e.g. admins viewing proof)
       allow read: if isSignedIn();
-      // Allow write if the user is authenticated and their UID matches the {userId} wildcard in the path.
-      allow write: if isSignedIn() && request.auth.uid == userId;
-    }
-
-    match /tournament-banners/{fileName} {
-      allow read: if true;
-      allow write: if request.auth.token.role == 'superadmin' || request.auth.token.role == 'match_admin';
+      // Only the user who is submitting the result for themselves can write.
+      allow write: if isOwner(userId);
     }
   }
 }
