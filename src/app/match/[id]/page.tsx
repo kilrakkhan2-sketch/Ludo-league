@@ -235,7 +235,7 @@ const ResultSubmissionContent = ({ match, results }: { match: Match; results: Ma
         const submitResultFn = httpsCallable(functions, 'submitResult');
 
         try {
-            const screenshotRef = ref(storage, `match-results/${match.id}/${user.uid}_${Date.now()}`);
+            const screenshotRef = ref(storage, `match-results/${match.id}/${user.uid}_${screenshot.name}`);
             await uploadBytes(screenshotRef, screenshot);
             const screenshotUrl = await getDownloadURL(screenshotRef);
 
@@ -397,3 +397,5 @@ export default function MatchPage({ params }: { params: { id: string } }) {
     </AppShell>
   );
 }
+
+    

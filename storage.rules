@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service firebase.storage {
@@ -37,11 +38,8 @@ service firebase.storage {
     }
 
     match /match-results/{matchId}/{fileName} {
-      // Only signed in users can read screenshots (e.g. admins viewing results)
       allow read: if isSignedIn();
-      // A user can only write a result screenshot if their UID is in the filename.
-      // This is a common pattern to ensure users can only upload files to their "own" path.
-      allow write: if isSignedIn() && request.auth.uid in fileName;
+      allow write: if isSignedIn() && get(/databases/$(database)/documents/matches/$(matchId)).data.players.hasAny([request.auth.uid]);
     }
 
     match /tournament-banners/{fileName} {
@@ -50,3 +48,5 @@ service firebase.storage {
     }
   }
 }
+
+    
