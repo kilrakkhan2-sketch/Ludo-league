@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,10 +10,43 @@ import { Button } from "@/components/ui/button";
 import { useUser } from "@/firebase";
 import { Bell, MessageCircle, Gift, ShieldCheck, Gamepad2 } from "lucide-react";
 import Link from "next/link";
-import { PlayerAvatarList } from "@/components/matches/PlayerAvatarList";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Users, Trophy } from "lucide-react";
 import Image from "next/image";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+// This component is now self-contained within DashboardClientContent
+const PlayerAvatarList = ({ playerIds, maxPlayers }: { playerIds: string[], maxPlayers: number }) => {
+    const playerSlots = Array.from({ length: maxPlayers });
+
+    return (
+        <div className="flex items-center space-x-2">
+            {playerSlots.map((_, index) => {
+                const playerId = playerIds[index];
+                if (playerId) {
+                    return <PlayerAvatar key={playerId} playerId={playerId} />;
+                }
+                return (
+                    <Avatar key={index} className="h-8 w-8 border-2 border-dashed">
+                        <AvatarFallback>?</AvatarFallback>
+                    </Avatar>
+                );
+            })}
+        </div>
+    );
+};
+
+const PlayerAvatar = ({ playerId }: { playerId: string }) => {
+    const { data: user, loading } = useDoc(`users/${playerId}`);
+    if (loading) return <Skeleton className="h-8 w-8 rounded-full" />;
+    return (
+        <Avatar className="h-8 w-8 border-2">
+            <AvatarImage src={user?.photoURL} alt={user?.displayName} />
+            <AvatarFallback>{user?.displayName?.[0]}</AvatarFallback>
+        </Avatar>
+    );
+};
+
 
 // MatchCard is now flexible and will adapt to its container
 const MatchCard = ({ match }: { match: Match }) => {
@@ -104,6 +138,7 @@ const CategoryCard = ({ title, href, icon: Icon, imageId }: { title: string, hre
 
 export default function DashboardClientContent() {
     const { user, userData, loading } = useUser() ?? {};
+    const { useDoc } = useFirebase(); // Make sure useDoc is available
 
     const { data: openMatches, loading: openMatchesLoading } = useCollection<Match>('matches', {
         where: ['status', '==', 'waiting'],

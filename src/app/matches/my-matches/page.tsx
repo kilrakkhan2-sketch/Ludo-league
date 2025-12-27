@@ -11,10 +11,43 @@ import Link from 'next/link';
 import { useCollection, useUser, useDoc } from '@/firebase';
 import type { Match, UserProfile } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PlayerAvatarList } from '@/components/matches/PlayerAvatarList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from 'next/image';
 import type { VariantProps } from 'class-variance-authority';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+
+const PlayerAvatar = ({ playerId }: { playerId: string }) => {
+    const { data: user, loading } = useDoc(`users/${playerId}`);
+    if (loading) return <Skeleton className="h-8 w-8 rounded-full" />;
+    return (
+        <Avatar className="h-8 w-8 border-2">
+            <AvatarImage src={user?.photoURL} alt={user?.displayName} />
+            <AvatarFallback>{user?.displayName?.[0]}</AvatarFallback>
+        </Avatar>
+    );
+};
+
+const PlayerAvatarList = ({ playerIds, maxPlayers }: { playerIds: string[], maxPlayers: number }) => {
+    const playerSlots = Array.from({ length: maxPlayers });
+
+    return (
+        <div className="flex items-center space-x-2">
+            {playerSlots.map((_, index) => {
+                const playerId = playerIds[index];
+                if (playerId) {
+                    return <PlayerAvatar key={playerId} playerId={playerId} />;
+                }
+                return (
+                    <Avatar key={index} className="h-8 w-8 border-2 border-dashed">
+                        <AvatarFallback>?</AvatarFallback>
+                    </Avatar>
+                );
+            })}
+        </div>
+    );
+};
+
 
 const MatchCardSkeleton = () => (
   <Card>
