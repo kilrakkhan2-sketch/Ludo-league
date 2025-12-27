@@ -63,7 +63,7 @@ const MatchInfoCard = ({ match }: { match: Match }) => (
                  <p className="text-sm text-muted-foreground">Prize</p>
                 <div className="flex items-center gap-1.5">
                     <Trophy className="h-5 w-5 text-yellow-500" />
-                    <p className="font-bold text-lg">₹{match.prizePool * 0.9}</p>
+                    <p className="font-bold text-lg">₹{match.prizePool}</p>
                 </div>
             </div>
             <div>
@@ -173,10 +173,10 @@ const RoomCodeContent = ({ match }: { match: Match }) => {
     // UI for Creator to submit code
     if (isCreator && match.status === 'room_code_pending') {
         return (
-            <Card className="bg-neutral-900 border-neutral-700 shadow-lg">
+            <Card>
                 <CardHeader>
-                    <CardTitle className="text-neutral-100">Share Room Code</CardTitle>
-                    <CardDescription className="text-neutral-400">Create a private room in Ludo King and enter the code below.</CardDescription>
+                    <CardTitle>Share Room Code</CardTitle>
+                    <CardDescription>Create a private room in Ludo King and enter the code below.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex gap-2">
                     <Input placeholder="Ludo King Code" value={roomCode} onChange={(e) => setRoomCode(e.target.value)} className="text-center text-lg tracking-widest font-mono"/>
@@ -235,13 +235,16 @@ const ResultSubmissionContent = ({ match, results }: { match: Match; results: Ma
         const submitResultFn = httpsCallable(functions, 'submitResult');
 
         try {
-            const screenshotRef = ref(storage, `match-results/${match.id}/${user.uid}_${screenshot.name}`);
+            const screenshotRef = ref(storage, `match-results/${match.id}/${user.uid}/${screenshot.name}`);
             await uploadBytes(screenshotRef, screenshot);
             const screenshotUrl = await getDownloadURL(screenshotRef);
 
             await submitResultFn({ matchId: match.id, position, screenshotUrl });
             toast({ title: 'Result Submitted!' });
-        } catch (error: any) { toast({ variant: 'destructive', title: 'Submission Failed', description: error.message }); }
+        } catch (error: any) { 
+            console.error("Error submitting result: ", error);
+            toast({ variant: 'destructive', title: 'Submission Failed', description: error.message }); 
+        }
         finally { setIsSubmitting(false); }
     };
 

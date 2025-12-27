@@ -32,16 +32,15 @@ service firebase.storage {
     }
 
     match /kyc-documents/{userId}/{fileName} {
-      allow read: if isOwner(userId) || isAdmin(); // Allow owner and admins to read
+      allow read: if isOwner(userId) || isAdmin();
       allow write: if isOwner(userId);
     }
 
-    // FIX: Corrected path and replaced invalid `get()` call.
-    match /results/{matchId}/{fileName} {
+    // This is the corrected rule
+    match /match-results/{matchId}/{userId}/{fileName} {
       allow read: if isSignedIn();
-      // Allow write if the user is authenticated and the filename (without extension) matches their own UID.
-      // This securely ensures that a player can only submit a result for themselves.
-      allow write: if isSignedIn() && request.auth.uid == fileName.split('.')[0];
+      // Allow write if the user is authenticated and their UID matches the {userId} wildcard in the path.
+      allow write: if isSignedIn() && request.auth.uid == userId;
     }
 
     match /tournament-banners/{fileName} {
