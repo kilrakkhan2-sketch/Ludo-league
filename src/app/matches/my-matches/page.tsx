@@ -50,7 +50,7 @@ const MyMatchCard = ({ match }: { match: Match }) => {
   return (
     <Card className="relative overflow-hidden flex flex-col hover:shadow-lg transition-shadow bg-card border">
         <Image
-            src="/logo.svg"
+            src="/logo.png"
             alt="LudoLeague Watermark"
             width={120}
             height={120}
