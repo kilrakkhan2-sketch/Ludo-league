@@ -25,9 +25,9 @@ const PlayerCard = ({ uid }: { uid: string }) => {
             </CardHeader>
             <CardContent className="space-y-3 text-sm flex-grow">
                 <div className="flex justify-between"><span className="text-muted-foreground">Email</span> <strong>{player.email}</strong></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Wallet Balance</span> <strong>₹{player.wallet?.balance ?? 0}</strong></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Matches Played</span> <strong>{player.stats?.matchesPlayed ?? 0}</strong></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Win Rate</span> <strong>{((player.stats?.matchesWon ?? 0) / (player.stats?.matchesPlayed || 1) * 100).toFixed(2)}%</strong></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Wallet Balance</span> <strong>₹{player.walletBalance ?? 0}</strong></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Matches Played</span> <strong>{player.matchesPlayed ?? 0}</strong></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Win Rate</span> <strong>{((player.matchesWon ?? 0) / (player.matchesPlayed || 1) * 100).toFixed(2)}%</strong></div>
             </CardContent>
         </Card>
     );

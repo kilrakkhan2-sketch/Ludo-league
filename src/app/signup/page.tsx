@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
@@ -66,7 +67,7 @@ function ReferralManager() {
         <Input id="referral" value={referralCode} disabled />
         {isValidating && <p className="text-xs text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin"/> Verifying code...</p>}
         {error && <p className="text-xs text-destructive flex items-center gap-2"><AlertCircle className="h-4 w-4"/> {error}</p>}
-        {referrerName && <p className="text-xs text-green-600 flex items-center gap-2"><CheckCircle className="h-4 w-4"/> Code applied from: <strong>{referrerName}</strong></p>}
+        {referrerName && <p className="text-xs text-green-600 flex items-center gap-2"><CheckCircle className="h-4 w-4"/> Code applied from: strong>{referrerName}</strong></p>}
       </div>
     );
 }
@@ -121,17 +122,13 @@ function SignupPageContent() {
           role: 'user',
           rating: 1200,
           xp: 0,
-          wallet: {
-            balance: 0,
-          },
-          stats: {
-            matchesPlayed: 0,
-            matchesWon: 0,
-            totalWinnings: 0,
-          },
+          walletBalance: 0,
+          matchesPlayed: 0,
+          matchesWon: 0,
+          totalWinnings: 0,
           referralCode: referralCode,
           referralEarnings: 0,
-          referredBy: searchParams ? searchParams.get('ref') || '' : '', // Set referredBy field
+          referredBy: searchParams ? searchParams.get('ref') || undefined : undefined,
           isVerified: false,
           createdAt: Timestamp.now(),
       };

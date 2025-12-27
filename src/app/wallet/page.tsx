@@ -68,7 +68,7 @@ export default function WalletPage() {
                         <CardContent>
                             {loading ? <Skeleton className="h-12 w-48 bg-white/20"/> : 
                                 <p className="text-5xl font-bold font-headline">
-                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(userData?.wallet.balance || 0)}
+                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(userData?.walletBalance || 0)}
                                 </p>
                             }
                         </CardContent>

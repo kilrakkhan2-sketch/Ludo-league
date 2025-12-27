@@ -1,3 +1,4 @@
+
 import { FieldValue } from 'firebase/firestore';
 
 export interface UserProfile {
@@ -119,7 +120,6 @@ export interface KycRequest {
     status: 'pending' | 'approved' | 'rejected';
     createdAt: any;
     processedAt?: any;
-    documentFrontImage?: string;
 }
 
 export interface Tournament {

@@ -90,6 +90,7 @@ const CategoryCard = ({ title, href, icon: Icon, imageId }: { title: string, hre
                     src={image.imageUrl}
                     alt={image.description}
                     fill
+                    sizes="(max-width: 768px) 50vw, (max-width: 1024px) 25vw, 20vw"
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
                  />
             )}
@@ -131,7 +132,7 @@ export default function DashboardClientContent() {
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
                             <div>
                                 <p className="text-xs text-muted-foreground">Wallet Balance</p>
-                                {loading ? <Skeleton className="h-8 w-36 mt-1"/> : <p className="text-2xl font-bold">₹{userData?.wallet?.balance?.toLocaleString('en-IN') ?? '0.00'}</p>}
+                                {loading ? <Skeleton className="h-8 w-36 mt-1"/> : <p className="text-2xl font-bold">₹{userData?.walletBalance?.toLocaleString('en-IN') ?? '0.00'}</p>}
                             </div>
                             <div className="flex items-center gap-2 w-full sm:w-auto">
                                 <Button variant="outline" className="flex-1" asChild><Link href="/add-money">Add Money</Link></Button>

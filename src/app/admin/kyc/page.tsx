@@ -34,7 +34,7 @@ export default function KycManagementPage() {
 
   useEffect(() => {
     if (!firestore) return;
-    const unsubscribe = onSnapshot(collection(firestore, 'kyc_requests'), (snapshot) => {
+    const unsubscribe = onSnapshot(collection(firestore, 'kyc-requests'), (snapshot) => {
       const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as KycRequest));
       setKycRequests(requests);
       setLoading(false);
@@ -47,7 +47,7 @@ export default function KycManagementPage() {
     setIsSubmitting(true);
     try {
       const batch = writeBatch(firestore);
-      const kycRequestRef = doc(firestore, 'kyc_requests', requestId);
+      const kycRequestRef = doc(firestore, 'kyc-requests', requestId);
       const userRef = doc(firestore, 'users', userId);
 
       batch.update(kycRequestRef, { status: newStatus, processedAt: Timestamp.now() });
@@ -103,7 +103,7 @@ export default function KycManagementPage() {
                     <TableCell className="font-mono text-xs">{req.userId}</TableCell>
                     <TableCell>{userMap[req.userId]?.displayName || 'Unknown User'}</TableCell>
                     <TableCell>{req.documentType}</TableCell>
-                    <TableCell><Badge variant={req.status === 'approved' ? 'default' : req.status === 'rejected' ? 'destructive' : 'secondary'}>{req.status}</Badge></TableCell>
+                    <TableCell><Badge variant={req.status === 'approved' ? 'success' : req.status === 'rejected' ? 'destructive' : 'secondary'}>{req.status}</Badge></TableCell>
                     <TableCell>{req.createdAt ? new Date(req.createdAt.seconds * 1000).toLocaleString() : 'N/A'}</TableCell>
                     <TableCell className="text-right">
                         <DropdownMenu>
@@ -114,7 +114,7 @@ export default function KycManagementPage() {
                             </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem asChild><a href={req.documentFrontImage} target="_blank" rel="noopener noreferrer" className="flex items-center"><Download className="mr-2 h-4 w-4" /> View Document</a></DropdownMenuItem>
+                                <DropdownMenuItem asChild><a href={req.documentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center"><Download className="mr-2 h-4 w-4" /> View Document</a></DropdownMenuItem>
                                 {req.status !== 'approved' && <DropdownMenuItem onClick={() => handleStatusChange(req.id, req.userId, 'approved')} disabled={isSubmitting}>Approve</DropdownMenuItem>}
                                 {req.status !== 'rejected' && <DropdownMenuItem onClick={() => handleStatusChange(req.id, req.userId, 'rejected')} disabled={isSubmitting}>Reject</DropdownMenuItem>}
                             </DropdownMenuContent>

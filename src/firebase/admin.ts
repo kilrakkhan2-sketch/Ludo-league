@@ -1,23 +1,21 @@
 import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\n/g, '\n');
-    const serviceAccount = {
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: privateKey
-    };
-
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON_STRING) {
     try {
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
-            storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-        });
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON_STRING);
+      
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+      });
+
     } catch (e: any) {
-        if (e.errorInfo.code !== 'app/duplicate-app') {
-            console.error("Firebase admin initialization error", e.stack);
-        }
+        console.error("Firebase admin initialization error from string parsing", e.stack);
     }
+  } else {
+      console.log("Firebase admin initialization skipped - no service account string");
+  }
 } 
 
 export default admin;

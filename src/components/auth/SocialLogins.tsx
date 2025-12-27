@@ -37,7 +37,6 @@ export function SocialLogins() {
 
             if (!userDoc.exists()) {
                 const displayName = user.user.displayName || 'New Player';
-                // Generate referral code for new social sign-up
                 const sanitizedName = displayName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase();
                 const referralCode = `${sanitizedName}${nanoid(4)}`;
                 
@@ -47,15 +46,13 @@ export function SocialLogins() {
                     email: user.user.email || '',
                     photoURL: user.user.photoURL || '',
                     role: 'user',
-                    wallet: { balance: 0 },
-                    stats: {
-                        matchesPlayed: 0,
-                        matchesWon: 0,
-                        totalWinnings: 0,
-                    },
-                    rating: 1000, // Add rating property
-                    xp: 0,       // Add xp property
-                    referralCode: referralCode, // Save the generated code
+                    walletBalance: 0,
+                    matchesPlayed: 0,
+                    matchesWon: 0,
+                    totalWinnings: 0,
+                    rating: 1000,
+                    xp: 0,
+                    referralCode: referralCode,
                     referralEarnings: 0,
                     isVerified: false,
                     createdAt: Timestamp.now(),
