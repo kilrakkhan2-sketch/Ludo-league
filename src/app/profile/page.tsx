@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SettingsPageContent } from "./SettingsPageContent";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
 
 const StatCard = ({ icon, title, value, loading }: { icon: React.ReactNode, title: string, value: string | number, loading?: boolean }) => (
@@ -95,9 +97,9 @@ const ProfileTabContent = () => {
     );
 };
 
-
-export default function ProfilePage({ searchParams }: { searchParams: { tab: string }}) {
-    const defaultTab = searchParams.tab || "profile";
+const ProfilePageContent = () => {
+    const searchParams = useSearchParams();
+    const defaultTab = searchParams.get("tab") || "profile";
     
     return (
          <AppShell pageTitle="Profile">
@@ -117,4 +119,12 @@ export default function ProfilePage({ searchParams }: { searchParams: { tab: str
             </div>
          </AppShell>
     );
+}
+
+export default function ProfilePage() {
+    return (
+        <Suspense fallback={<AppShellSkeleton />}>
+            <ProfilePageContent />
+        </Suspense>
+    )
 }

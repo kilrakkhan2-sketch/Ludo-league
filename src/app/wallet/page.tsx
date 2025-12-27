@@ -1,6 +1,7 @@
 
 'use client';
 
+import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { History, ArrowUpCircle, ArrowDownCircle, Gamepad2, Award, PlusCircle, MinusCircle } from "lucide-react";
@@ -52,67 +53,57 @@ export default function WalletPage() {
     );
 
     return (
-        <div className="container py-12 md:py-16">
-            <div className="text-center mb-10 md:mb-14">
-                 <h1 className="text-3xl md:text-4xl font-headline font-bold tracking-tighter">Your Wallet</h1>
-                <p className="max-w-xl mx-auto mt-3 text-muted-foreground">Manage your funds, view your transactions, and stay in control.</p>
-            </div>
-           
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-10">
-                
-                <div className="lg:col-span-1 flex flex-col gap-8">
-                    <Card className="bg-gradient-to-br from-green-900 via-gray-900 to-yellow-900 text-primary-foreground border-primary/30 shadow-2xl">
-                        <CardHeader>
-                            <CardTitle className="font-light opacity-80">Current Balance</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {loading ? <Skeleton className="h-12 w-48 bg-white/20"/> : 
-                                <p className="text-5xl font-bold font-headline">
-                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(userData?.walletBalance || 0)}
-                                </p>
-                            }
-                        </CardContent>
-                        <CardFooter className="grid grid-cols-2 gap-4">
-                            <Button size="lg" asChild className="bg-green-500/10 hover:bg-green-500/20 text-green-300 border border-green-500/20 backdrop-blur-sm">
-                                <Link href="/add-money"><PlusCircle className="mr-2 h-5 w-5"/> Add Funds</Link>
-                            </Button>
-                            <Button size="lg" asChild className="bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/20 backdrop-blur-sm">
-                                <Link href="/withdraw"><MinusCircle className="mr-2 h-5 w-5"/> Withdraw</Link>
-                            </Button>
-                        </CardFooter>
-                    </Card>
-                </div>
+        <AppShell pageTitle="My Wallet">
+            <div className="p-4 sm:p-6 space-y-8">
+                <Card className="bg-gradient-to-br from-green-900 via-gray-900 to-yellow-900 text-primary-foreground border-primary/30 shadow-2xl">
+                    <CardHeader>
+                        <CardTitle className="font-light opacity-80">Current Balance</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {loading ? <Skeleton className="h-12 w-48 bg-white/20"/> : 
+                            <p className="text-5xl font-bold font-headline">
+                                {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(userData?.walletBalance || 0)}
+                            </p>
+                        }
+                    </CardContent>
+                    <CardFooter className="grid grid-cols-2 gap-4">
+                        <Button size="lg" asChild className="bg-green-500/10 hover:bg-green-500/20 text-green-300 border border-green-500/20 backdrop-blur-sm">
+                            <Link href="/add-money"><PlusCircle className="mr-2 h-5 w-5"/> Add Funds</Link>
+                        </Button>
+                        <Button size="lg" asChild className="bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/20 backdrop-blur-sm">
+                            <Link href="/withdraw"><MinusCircle className="mr-2 h-5 w-5"/> Withdraw</Link>
+                        </Button>
+                    </CardFooter>
+                </Card>
 
-                <div className="lg:col-span-2">
-                     <Card className="bg-card/50 backdrop-blur-sm border-primary/20">
-                        <CardHeader>
-                             <div className="flex justify-between items-center">
-                                <div className="space-y-1">
-                                    <CardTitle className="font-headline text-2xl">Recent Activity</CardTitle>
-                                    <CardDescription>Here are your latest transactions.</CardDescription>
-                                </div>
-                                <Button asChild variant="outline">
-                                    <Link href="/wallet/history">View All</Link>
-                                </Button>
+                <Card className="bg-card/50 backdrop-blur-sm border-primary/20">
+                    <CardHeader>
+                            <div className="flex justify-between items-center">
+                            <div className="space-y-1">
+                                <CardTitle className="font-headline text-2xl">Recent Activity</CardTitle>
+                                <CardDescription>Here are your latest transactions.</CardDescription>
                             </div>
-                        </CardHeader>
-                        <CardContent>
-                            {(loading || txLoading) && (
-                                <div className="space-y-4 pt-4">
-                                    {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full bg-card" />)}
-                                </div>
-                            )}
-                            {!(loading || txLoading) && transactions && transactions.length > 0 ? (
-                                <div className="divide-y divide-white/10 -mt-2">
-                                    {transactions.map(tx => <TransactionRow key={tx.id} tx={tx} />)}
-                                </div>
-                            ) : (
-                                !(loading || txLoading) && <p className="text-center text-muted-foreground py-8">No recent transactions.</p>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
+                            <Button asChild variant="outline">
+                                <Link href="/wallet/history">View All</Link>
+                            </Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {(loading || txLoading) && (
+                            <div className="space-y-4 pt-4">
+                                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full bg-card" />)}
+                            </div>
+                        )}
+                        {!(loading || txLoading) && transactions && transactions.length > 0 ? (
+                            <div className="divide-y divide-white/10 -mt-2">
+                                {transactions.map(tx => <TransactionRow key={tx.id} tx={tx} />)}
+                            </div>
+                        ) : (
+                            !(loading || txLoading) && <p className="text-center text-muted-foreground py-8">No recent transactions.</p>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
-        </div>
+        </AppShell>
     );
 }

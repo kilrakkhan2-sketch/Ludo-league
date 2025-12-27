@@ -97,6 +97,9 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-background/80 -z-10" />
           <div className="container px-4 md:px-6">
             <div className="max-w-3xl mx-auto space-y-6">
+               <div className="relative inline-block">
+                <Image src="/logo.png" alt="LudoLeague Logo" width={80} height={80} className="mx-auto animate-fade-in" style={{animationDelay: '0.1s'}}/>
+              </div>
               <h1 className="text-4xl md:text-6xl font-extrabold font-headline tracking-tight animate-fade-in text-primary [text-shadow:0_2px_4px_rgba(0,0,0,0.5)]" style={{animationDelay: '0.2s'}}>
                 India's Most Thrilling Ludo Arena
               </h1>

@@ -25,7 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { BottomNav, NavItem } from "./BottomNav";
+import { BottomNav } from "./BottomNav";
 import {
     Home, 
     Swords, 
@@ -42,12 +42,21 @@ import {
     File,
     Mail
 } from 'lucide-react';
+import { cn } from "@/lib/utils";
 
 interface AppShellProps {
   children: ReactNode;
   pageTitle?: string;
   showBackButton?: boolean;
 }
+
+export interface NavItem {
+    href: string;
+    icon: LucideIcon;
+    label: string;
+    isCentral?: boolean;
+}
+
 
 const bottomNavItems: NavItem[] = [
   { href: "/dashboard", icon: Home, label: "Home" },
@@ -141,8 +150,8 @@ export function AppShell({ children, pageTitle, showBackButton = false }: AppShe
   const finalPageTitle = pageTitle || pathname?.split('/').pop()?.replace('-', ' ') || 'LudoLeague';
 
   return (
-    // Max-width container for a more app-like feel on larger screens
-    <div className="w-full max-w-lg mx-auto bg-background shadow-2xl shadow-primary/5">
+    // Centered container for desktop, full-width for mobile
+    <div className="w-full sm:max-w-lg sm:mx-auto sm:shadow-2xl sm:shadow-primary/5">
         <div className="flex flex-col h-screen">
             {/* Main App Bar */}
             <header className="bg-card p-3 sm:p-4 flex items-center justify-between gap-4 z-10 shrink-0 border-b">
@@ -172,7 +181,7 @@ export function AppShell({ children, pageTitle, showBackButton = false }: AppShe
                                       key={item.href}
                                       href={item.href}
                                       onClick={() => setIsSheetOpen(false)}
-                                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${pathname === item.href ? 'bg-muted text-primary' : ''}`}>
+                                      className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary', pathname === item.href ? 'bg-muted text-primary' : '')}>
                                       <item.icon className="h-4 w-4" />
                                       {item.label}
                                   </Link>
@@ -183,7 +192,7 @@ export function AppShell({ children, pageTitle, showBackButton = false }: AppShe
                                       key={item.href}
                                       href={item.href}
                                       onClick={() => setIsSheetOpen(false)}
-                                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${pathname === item.href ? 'bg-muted text-primary' : ''}`}>
+                                      className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary', pathname === item.href ? 'bg-muted text-primary' : '')}>
                                       <item.icon className="h-4 w-4" />
                                       {item.label}
                                   </Link>

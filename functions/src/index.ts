@@ -1,5 +1,4 @@
 
-
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
@@ -752,10 +751,16 @@ export const cancelMatch = functions.https.onCall(async (data, context) => {
         const matchData = matchDoc.data()!;
 
         // Allow cancellation if match is waiting or if an admin is calling
-        const isAdmin = ['superadmin', 'match_admin'].includes(context.auth.token.role);
+        const isAdmin = ['superadmin', 'match_admin'].includes(context.auth!.token.role);
         if (matchData.status !== 'waiting' && !isAdmin) {
             throw new functions.https.HttpsError("failed-precondition", "This match has already started and cannot be cancelled.");
         }
+        
+        // Only the creator can cancel if it's waiting, or an admin anytime
+        if (matchData.status === 'waiting' && userId !== matchData.creatorId && !isAdmin) {
+            throw new functions.https.HttpsError("permission-denied", "Only the creator or an admin can cancel a waiting match.");
+        }
+
 
         // Refund entry fee to all players involved
         for (const playerId of matchData.players) {
@@ -788,7 +793,7 @@ export const cancelMatch = functions.https.onCall(async (data, context) => {
 
 export const resolveMatch = functions.https.onCall(async (data, context) => {
     if (!context.auth || !['superadmin', 'match_admin'].includes(context.auth.token.role)) {
-        throw new functions.https.HttpsError('permission-denied', 'Only match admins can resolve matches.');
+        throw new functions.https.HttpsError('permission-denied', 'Only match admins and superadmins can resolve matches.');
     }
     const adminUid = context.auth.uid;
     const { matchId, winnerId } = data;
@@ -1221,4 +1226,3 @@ export const removePlayerFromTournament = functions.https.onCall(async (data, co
         t.update(tournamentRef, { players: FieldValue.arrayRemove(playerId) });
     });
 });
-
