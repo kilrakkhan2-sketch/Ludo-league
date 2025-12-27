@@ -10,22 +10,14 @@
           "type": "string",
           "description": "The user's unique ID from Firebase Auth."
         },
-        "name": {
+        "displayName": {
           "type": "string",
-          "description": "The user's full name."
+          "description": "The user's display name."
         },
         "email": {
           "type": "string",
           "format": "email",
           "description": "The user's email address."
-        },
-        "phone": {
-          "type": "string",
-          "description": "The user's phone number."
-        },
-        "username": {
-          "type": "string",
-          "description": "The user's unique username."
         },
         "photoURL": {
           "type": "string",
@@ -63,13 +55,6 @@
           "type": "number",
           "description": "Total earnings from referrals."
         },
-        "friends": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Array of user IDs who are friends."
-        },
         "matchesPlayed": {
           "type": "number",
           "description": "Total number of matches played by the user."
@@ -77,11 +62,23 @@
         "matchesWon": {
           "type": "number",
           "description": "Total number of matches won by the user."
+        },
+        "totalWinnings": {
+            "type": "number",
+            "description": "Total winnings of the user."
+        },
+        "rating": {
+            "type": "number",
+            "description": "Rating of the user."
+        },
+        "xp": {
+            "type": "number",
+            "description": "XP of the user."
         }
       },
       "required": [
         "uid",
-        "name",
+        "displayName",
         "email",
         "role"
       ]
@@ -119,12 +116,36 @@
         "status": {
           "type": "string",
           "enum": [
-            "open",
-            "ongoing",
+            "waiting",
+            "cancelled",
+            "room_code_pending",
+            "room_code_shared",
+            "game_started",
+            "result_submitted",
+            "AUTO_VERIFIED",
+            "FLAGGED",
+            "COMPLETED",
+            "PAID",
             "verification",
-            "completed",
             "disputed"
           ]
+        },
+         "creatorPosition": {
+            "type": "number"
+        },
+        "joinerPosition": {
+            "type": "number"
+        },
+        "winnerId": {
+            "type": "string"
+        },
+        "proofImage": {
+            "type": "string",
+            "format": "uri"
+        },
+        "fraudReasons": {
+            "type": "array",
+            "items": { "type": "string" }
         },
         "createdAt": {
           "type": "string",
@@ -158,8 +179,11 @@
         "userId": {
           "type": "string"
         },
-        "confirmedPosition": {
-          "type": "number"
+        "creatorPosition": {
+            "type": "number"
+        },
+        "joinerPosition": {
+            "type": "number"
         },
         "confirmedWinStatus": {
           "type": "string",
@@ -246,7 +270,8 @@
             "withdrawal",
             "entry_fee",
             "prize",
-            "referral_bonus"
+            "referral_bonus",
+            "penalty"
           ]
         },
         "amount": {
@@ -272,6 +297,21 @@
         "status",
         "createdAt"
       ]
+    },
+    "AdminWalletTransaction": {
+      "title": "Admin Wallet Transaction",
+      "description": "Represents a transaction in an admin's wallet for accounting.",
+      "type": "object",
+      "properties": {
+        "adminId": { "type": "string" },
+        "type": { "type": "string", "enum": ["credit", "debit"] },
+        "amount": { "type": "number" },
+        "reason": { "type": "string", "description": "e.g., withdraw_approval, fund_addition" },
+        "relatedUserId": { "type": "string", "description": "The user involved in the transaction, if any." },
+        "relatedRequestId": { "type": "string", "description": "The ID of the withdrawal or deposit request." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["adminId", "type", "amount", "reason", "createdAt"]
     },
     "DepositRequest": {
       "title": "Deposit Request",
@@ -748,6 +788,21 @@
         "isRead",
         "createdAt"
       ]
+    },
+    "PenaltyTransaction": {
+      "title": "Penalty Transaction",
+      "description": "A record of a penalty applied to a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "adminId": { "type": "string" },
+        "amount": { "type": "number" },
+        "reason": { "type": "string", "enum": ["wrong_result", "abusive_language", "other"] },
+        "description": { "type": "string" },
+        "relatedMatchId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "adminId", "amount", "reason", "createdAt"]
     }
   },
   "auth": {
@@ -763,6 +818,12 @@
         "$ref": "#/entities/UserProfile"
       },
       "description": "Stores user profile information."
+    },
+    "/admin-wallet-transactions/{transactionId}": {
+        "schema": {
+            "$ref": "#/entities/AdminWalletTransaction"
+        },
+        "description": "Stores all admin wallet transactions for accounting."
     },
     "/matches/{matchId}": {
       "schema": {
@@ -799,6 +860,12 @@
         "$ref": "#/entities/Transaction"
       },
       "description": "Stores a user's wallet transactions."
+    },
+     "/users/{userId}/penalties/{penaltyId}": {
+      "schema": {
+        "$ref": "#/entities/PenaltyTransaction"
+      },
+      "description": "Stores all penalties applied to a user."
     },
     "/deposit-requests/{depositId}": {
       "schema": {

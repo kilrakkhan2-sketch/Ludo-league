@@ -1,57 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useFirebase } from './provider';
-import { onSnapshot, collection, doc, query, where, orderBy, limit, QueryConstraint } from 'firebase/firestore';
-import { errorEmitter } from './error-emitter';
-import { FirestorePermissionError } from './errors';
-
-export const useDoc = <T,>(path: string | null | undefined) => {
-    const { firestore } = useFirebase();
-    const [data, setData] = useState<T | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
-
-    useEffect(() => {
-        if (!firestore || !path) {
-            setLoading(false);
-            return;
-        };
-
-        setLoading(true);
-
-        const docRef = doc(firestore, path);
-        const unsubscribe = onSnapshot(docRef, (docSnap) => {
-            if (docSnap.exists()) {
-                setData({ id: docSnap.id, ...docSnap.data() } as T);
-            } else {
-                setData(null);
-            }
-            setLoading(false);
-        }, (err) => {
-            console.error(`Error fetching document at ${path}:`, err);
-            
-            const permissionError = new FirestorePermissionError({
-                path,
-                operation: 'get',
-            });
-            errorEmitter.emit('permission-error', permissionError);
-
-            setError(err);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [firestore, path]);
-    
-    const refetch = useCallback(() => {
-      // The onSnapshot listener handles real-time updates.
-      // This is a placeholder for manual refetching if ever needed.
-    }, []);
-
-    return { data, setData, loading, error, refetch };
-};
-
+import { useState, useEffect, useMemo } from 'react';
+import { useFirebase } from '../provider';
+import { collection, query, where, orderBy, limit, onSnapshot, QueryConstraint } from 'firebase/firestore';
+import { errorEmitter } from '../error-emitter';
+import { FirestorePermissionError } from '../errors';
 
 type WhereClause = readonly [string, any, any];
 type OrderByClause = readonly [string, 'asc' | 'desc'];
@@ -62,8 +15,7 @@ interface CollectionQuery {
     limit?: number;
 }
 
-
-export const useCollection = <T,>(path: string | null | undefined, q?: CollectionQuery) => {
+export const useCollection = <T>(path: string | null | undefined, q?: CollectionQuery) => {
     const { firestore } = useFirebase();
     const [data, setData] = useState<T[]>([]);
     const [loading, setLoading] = useState(true);
@@ -75,22 +27,21 @@ export const useCollection = <T,>(path: string | null | undefined, q?: Collectio
         q?.limit,
     ]);
 
-    const refetch = useCallback(() => {
-        // This is a dummy implementation for now.
-    }, []);
-
+    const refetch = () => {
+        // This is a dummy implementation for now as onSnapshot handles real-time.
+    };
 
     useEffect(() => {
         if (!firestore || !path) {
             setLoading(false);
-            setData([]); // Ensure data is cleared when path is invalid
-            return () => {};
+            setData([]);
+            return;
         };
+        
         setLoading(true);
 
         const constraints: QueryConstraint[] = [];
         if (memoizedQuery) {
-            // Handle 'where' clauses
             if (memoizedQuery.where) {
                 if (Array.isArray(memoizedQuery.where[0])) { 
                     (memoizedQuery.where as WhereClause[]).forEach(w => {
@@ -101,7 +52,6 @@ export const useCollection = <T,>(path: string | null | undefined, q?: Collectio
                     if (w[2] !== undefined) constraints.push(where(...w));
                 }
             }
-            // Handle 'orderBy' clauses
             if (memoizedQuery.orderBy) {
                 if (Array.isArray(memoizedQuery.orderBy[0])) {
                     (memoizedQuery.orderBy as OrderByClause[]).forEach(o => constraints.push(orderBy(o[0], o[1])));
@@ -109,7 +59,6 @@ export const useCollection = <T,>(path: string | null | undefined, q?: Collectio
                      constraints.push(orderBy(...(memoizedQuery.orderBy as OrderByClause)));
                 }
             }
-            // Handle 'limit'
             if (memoizedQuery.limit) {
                 constraints.push(limit(memoizedQuery.limit));
             }

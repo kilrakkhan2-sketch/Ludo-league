@@ -1,23 +1,11 @@
-// IMPORTANT: REPLACE WITH YOUR FIREBASE CONFIG
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
+// This file should only contain the Firebase configuration object.
+// The initialization of the app is handled in `firebase/index.ts` and `firebase/client-provider.tsx`.
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyAHRqi6FiM0jjMIqX0j7Jwj91s0JLyAKak",
-  authDomain: "studio-4431476254-c1156.firebaseapp.com",
-  projectId: "studio-4431476254-c1156",
-  storageBucket: "studio-4431476254-c1156.firebasestorage.app",
-  messagingSenderId: "23513776021",
-  appId: "1:23513776021:web:3e5b6870112641c0fac09c"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
-
-const app = initializeApp(firebaseConfig);
-
-// Initialize App Check
-const appCheck = initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider('YOUR_RECAPTCHA_SITE_KEY'),
-  isTokenAutoRefreshEnabled: true
-});
-
-export const db = getFirestore(app);
