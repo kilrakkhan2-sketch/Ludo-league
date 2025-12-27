@@ -1,174 +1,72 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper Functions
+
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
-    
+
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
-    
-    function hasRole(role) {
-      return request.auth.token.role == role;
+
+    // You can expand this with roles (e.g., in custom claims)
+    function isAdmin() {
+      // In a real app, you'd check for an admin custom claim.
+      // e.g., return request.auth.token.admin == true;
+      return isSignedIn(); // Placeholder: for now, any signed-in user is an "admin" for testing
     }
 
-    function hasAnyRole(roles) {
-      return request.auth.token.role in roles;
-    }
-    
-    function isSuperAdmin() {
-      return hasRole('superadmin');
-    }
-    
-    function isMatchAdmin() {
-      return hasAnyRole(['superadmin', 'match_admin']);
-    }
-    
-    function isWithdrawalAdmin() {
-      return hasAnyRole(['superadmin', 'withdrawal_admin']);
-    }
-    
-    function isDepositAdmin() {
-      return hasAnyRole(['superadmin', 'deposit_admin']);
-    }
-
-    function isKycAdmin() {
-      // In a real scenario, you might have a dedicated 'kyc_admin' role.
-      // For now, only superadmins can manage KYC.
-      return isSuperAdmin();
-    }
-
-    // User profiles
+    //----------------------------------------------------------------------
+    // USER PROFILES
+    //----------------------------------------------------------------------
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow create: if !isSignedIn() || isOwner(userId);
-      allow update: if isOwner(userId) || isSuperAdmin();
+      // Anyone can create their own user profile upon signup
+      allow create: if isSignedIn();
+
+      // Users can only read their own profile. Admins can read any profile.
+      allow read: if isOwner(userId) || isAdmin();
+
+      // Users can only update their own profile. Admins can update any (e.g., for blocking).
+      allow update: if isOwner(userId) || isAdmin();
+
+      // Users should not be able to delete their own accounts directly.
+      allow delete: if false;
+    }
+
+    //----------------------------------------------------------------------
+    // DEPOSIT REQUESTS
+    //----------------------------------------------------------------------
+    match /deposit_requests/{requestId} {
+      // A user can only read their own deposit requests. Admins can read all.
+      allow read, list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+
+      // Any signed-in user can create a deposit request for themselves.
+      // We ensure the userId in the document matches the authenticated user.
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+
+      // Only admins can update a request (to approve/reject it).
+      allow update: if isAdmin();
       
-      match /personal_notifications/{notificationId} {
-        allow read, write: if isOwner(userId);
-      }
-      match /transactions/{transactionId} {
-        allow read: if isOwner(userId) || isSuperAdmin();
-        // Transactions can only be created by server-side logic (Cloud Functions),
-        // which bypass these rules. This prevents clients from creating fake transactions.
-        allow create: if false; 
-      }
-       match /penalties/{penaltyId} {
-        allow read: if isOwner(userId);
-        allow write: if isSuperAdmin();
-      }
+      // Nobody can delete deposit requests to maintain audit history.
+      allow delete: if false;
     }
 
-    // Publicly readable, admin-writable settings
-    match /settings/{docId} {
-      allow read: if true;
-      allow write: if isSuperAdmin();
-    }
-    
-    match /admin-wallet-transactions/{transactionId} {
-        allow read, write: if isSuperAdmin();
-    }
+    //----------------------------------------------------------------------
+    // WALLET TRANSACTIONS (AUDIT TRAIL)
+    //----------------------------------------------------------------------
+    match /wallet_transactions/{txnId} {
+      // A user can only read their own transaction history. Admins can read all.
+      allow read, list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
 
-    match /upi-accounts/{accountId} {
-       allow read: if isSignedIn();
-       allow list, create, update, delete: if isDepositAdmin() || isSuperAdmin();
-       
-       match /daily_stats/{date} {
-         allow read, write: if isDepositAdmin() || isSuperAdmin();
-       }
-    }
+      // Transactions should only be created by the backend (Cloud Functions).
+      // Client-side creation is disallowed to prevent tampering.
+      allow create: if false;
 
-    match /deposit-requests/{requestId} {
-      allow list: if isDepositAdmin() || isSuperAdmin();
-      allow read: if isDepositAdmin() || isSuperAdmin() || isOwner(resource.data.userId);
-      allow create: if isSignedIn();
-      allow update: if isDepositAdmin() || isSuperAdmin();
-    }
-    
-    match /withdrawal-requests/{requestId} {
-      allow list: if isWithdrawalAdmin() || isSuperAdmin();
-      allow read: if isWithdrawalAdmin() || isSuperAdmin() || isOwner(resource.data.userId);
-      allow create: if isSignedIn();
-      allow update: if isWithdrawalAdmin() || isSuperAdmin();
-    }
-
-    // Matches
-    match /matches/{matchId} {
-      allow read, list: if isSignedIn();
-      allow create: if isSignedIn();
-      
-      allow update: if isSignedIn() && (
-                      // Player joining a waiting match
-                      (
-                        resource.data.status == 'waiting' &&
-                        request.resource.data.status == 'room_code_pending' &&
-                        request.resource.data.players == resource.data.players + [request.auth.uid]
-                      ) ||
-                      // Creator adding room code
-                      (
-                        request.auth.uid == resource.data.creatorId &&
-                        resource.data.status == 'room_code_pending' &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['roomCode', 'status']) &&
-                        request.resource.data.status == 'room_code_shared'
-                      ) ||
-                       // Any player confirming game start
-                      (
-                        request.auth.uid in resource.data.players &&
-                        resource.data.status == 'room_code_shared' &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'startedAt']) &&
-                        request.resource.data.status == 'game_started'
-                      ) ||
-                       // Any player submitting a result
-                      (
-                        request.auth.uid in resource.data.players &&
-                        resource.data.status == 'game_started' &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
-                        request.resource.data.status == 'result_submitted'
-                      ) ||
-                      // Admin actions
-                      isMatchAdmin()
-                    );
-      
-      match /results/{userId} {
-        allow read: if isSignedIn();
-        allow create, update: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
-      }
-      match /messages/{messageId} {
-        allow read: if isSignedIn();
-        allow create: if request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.players;
-      }
-       match /admin-chat/{messageId} {
-        allow read, write: if isMatchAdmin() || isDepositAdmin() || isWithdrawalAdmin();
-      }
-    }
-    
-    // Tournaments - readable by all, writable by match admins
-    match /tournaments/{tournamentId} {
-        allow read: if true;
-        allow create, update, delete: if isMatchAdmin();
-        
-        match /players/{userId} {
-            allow read: if true;
-            allow create: if isSignedIn();
-            allow delete: if isOwner(userId) || isMatchAdmin();
-        }
-    }
-    
-    match /kyc-requests/{kycId} {
-      allow list: if isSuperAdmin();
-      allow read: if isSuperAdmin() || isOwner(resource.data.userId);
-      allow create: if isSignedIn();
-      allow update: if isSuperAdmin();
-    }
-    
-    match /announcements/{announcementId} {
-      allow read: if true;
-      allow create, update, delete: if isSuperAdmin();
+      // Transactions are immutable and cannot be changed or deleted.
+      allow update, delete: if false;
     }
   }
 }

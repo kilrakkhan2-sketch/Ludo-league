@@ -1,87 +1,112 @@
 
 'use client';
 
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useDoc } from '@/firebase';
-import { Match, UserProfile } from '@/types';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useDoc, useCollection } from '@/firebase';
+import { Match, UserProfile, MatchResult } from '@/types';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
+import { MatchStatusBadge } from '@/components/match-status-badge';
+import { UserHoverCard } from '@/components/user-hover-card';
+import Image from 'next/image';
 import MatchActions from './_components/MatchActions';
-import { Skeleton } from '@/components/ui/skeleton';
-import { AdminChatRoom } from '@/components/chat/AdminChatRoom';
 
-const PlayerCard = ({ uid, isCreator }: { uid: string, isCreator: boolean }) => {
-    const { data: player, loading } = useDoc<UserProfile>(`users/${uid}`);
+const PlayerInfo = ({ userId, label }: { userId: string, label: string }) => {
+    const { data: user, loading } = useDoc<UserProfile>(userId ? `users/${userId}` : undefined);
+    const { data: results, loading: resultsLoading } = useCollection<MatchResult>(`matches/${useParams()?.matchId}/results`, { where: ['userId', '==', userId] });
 
-    if (loading) return <Card className="flex-1"><CardHeader><Skeleton className="h-12 w-48"/></CardHeader><CardContent><Skeleton className="h-24 w-full"/></CardContent></Card>
-    if (!player) return <Card className="flex-1"><CardHeader><CardTitle>Player Not Found</CardTitle></CardHeader></Card>
-    
-    const winRate = (player.matchesPlayed || 0) > 0 ? ((player.matchesWon || 0) / player.matchesPlayed * 100).toFixed(1) : 0;
+    if (loading) return <p>Loading player...</p>;
+    if (!user) return <p>Player not found.</p>;
+
+    const result = results[0];
 
     return (
-        <Card className="flex flex-col">
-            <CardHeader className="flex-row items-center gap-4">
-                <Avatar><AvatarImage src={player.photoURL} /><AvatarFallback>{player.displayName?.charAt(0) ?? 'U'}</AvatarFallback></Avatar>
-                <div>
-                    <CardTitle>{player.displayName}</CardTitle>
-                    <CardDescription>{isCreator ? 'Creator' : 'Joiner'} (UID: {player.uid})</CardDescription>
+        <div className="flex flex-col items-center space-y-2">
+             <UserHoverCard userId={user.uid}>
+                <Avatar className="h-16 w-16">
+                    <AvatarImage src={user.photoURL} />
+                    <AvatarFallback>{user.displayName[0]}</AvatarFallback>
+                </Avatar>
+            </UserHoverCard>
+            <p className="font-bold text-lg">{user.displayName}</p>
+            <p className="text-sm text-muted-foreground">{label}</p>
+            {resultsLoading && <p>Loading results...</p>}
+            {result && (
+                <div className="pt-2 text-center">
+                    <p className="font-semibold">Result: <span className="font-normal">{result.confirmedWinStatus}</span></p>
+                     <a href={result.screenshotUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">View Screenshot</a>
                 </div>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm flex-grow">
-                <div className="flex justify-between"><span className="text-muted-foreground">Email</span> <strong>{player.email}</strong></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Wallet Balance</span> <strong>₹{player.walletBalance ?? 0}</strong></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Matches Played</span> <strong>{player.matchesPlayed ?? 0}</strong></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Win Rate</span> <strong>{winRate}%</strong></div>
-            </CardContent>
-        </Card>
+            )}
+        </div>
     );
 };
 
-export default function MatchDetailsPage() {
+export default function MatchDetailPage() {
     const params = useParams();
-    const matchId = params?.matchId as string | null;
-    const { data: match, loading: matchLoading, error } = useDoc<Match>(matchId ? `matches/${matchId}`: null);
+    const matchId = params?.matchId as string | undefined;
+    const { data: match, loading: matchLoading, error } = useDoc<Match>(matchId ? `matches/${matchId}` : undefined);
 
     if (matchLoading) return <div className="text-center">Loading match details...</div>;
     if (error) return <div className="text-center text-red-500">Error: {error.message}</div>;
     if (!match) return <div className="text-center">Match not found.</div>;
 
     return (
-        <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-                <div className="flex items-start justify-between">
+        <div className="max-w-4xl mx-auto space-y-6">
+             <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold">Match Details</h1>
-                        <p className="text-muted-foreground font-mono text-xs">ID: {match.id}</p>
+                        <CardTitle className="text-2xl">{match.title || `Match #${match.id}`}</CardTitle>
+                        <CardDescription>Match ID: {match.id}</CardDescription>
                     </div>
-                    <MatchActions match={match} />
-                </div>
+                    <MatchStatusBadge status={match.status} />
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                    <div className="space-y-1">
+                        <p className="text-muted-foreground">Prize Pool</p>
+                        <p className="text-2xl font-bold">₹{match.prizePool}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-muted-foreground">Entry Fee</p>
+                        <p className="text-2xl font-bold">₹{match.entryFee}</p>
+                    </div>
+                     <div className="space-y-1">
+                        <p className="text-muted-foreground">Created At</p>
+                        <p className="font-mono">{format(match.createdAt.toDate(), 'PPpp')}</p>
+                    </div>
+                </CardContent>
+             </Card>
 
-                <Card>
-                    <CardHeader>
-                        <div className="flex justify-between items-center">
-                             <CardTitle className="flex items-center gap-3">Game Info <Badge className="capitalize">{match.status.replace(/_/g, ' ')}</Badge></CardTitle>
-                             <div className="text-sm text-muted-foreground">Created At: {new Date(match.createdAt.seconds * 1000).toLocaleString()}</div>
-                        </div>
-                    </CardHeader>
+             <Card>
+                <CardHeader><CardTitle>Players</CardTitle></CardHeader>
+                <CardContent className="grid grid-cols-2 gap-4 divide-x">
+                   {match.creatorId && <PlayerInfo userId={match.creatorId} label="Creator" />}
+                   {match.joinerId ? <PlayerInfo userId={match.joinerId} label="Joiner" /> : <div className="flex items-center justify-center"><p>Waiting for player...</p></div>}
+                </CardContent>
+             </Card>
+
+            {match.status === 'verification' && (
+                 <Card>
+                    <CardHeader><CardTitle>Admin Actions</CardTitle></CardHeader>
                     <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                            <div className="p-4 bg-muted rounded-lg"><div className="text-sm text-muted-foreground">Entry Fee</div><div className="text-2xl font-bold">₹{match.entryFee}</div></div>
-                            <div className="p-4 bg-muted rounded-lg"><div className="text-sm text-muted-foreground">Prize Pool</div><div className="text-2xl font-bold">₹{match.prizePool}</div></div>
-                            <div className="p-4 bg-muted rounded-lg"><div className="text-sm text-muted-foreground">Room Code</div><div className="text-2xl font-bold font-mono">{match.roomCode || 'N/A'}</div></div>
-                            <div className="p-4 bg-muted rounded-lg"><div className="text-sm text-muted-foreground">Winner</div><div className="text-2xl font-bold truncate">{match.winnerId ? match.winnerId.substring(0, 6) + '..' : 'TBD'}</div></div>
-                        </div>
+                        <MatchActions match={match} />
                     </CardContent>
                 </Card>
-                
-                <div className="grid md:grid-cols-2 gap-6">
-                    {match.players.map(uid => <PlayerCard key={uid} uid={uid} isCreator={uid === match.creatorId} />)}
-                </div>
-            </div>
-            <div className="lg:col-span-1 space-y-6">
-                 <AdminChatRoom contextPath={`matches/${matchId}`} />
-            </div>
+            )}
+
+            {match.fraudReasons && match.fraudReasons.length > 0 && (
+                <Card className="border-red-500">
+                    <CardHeader><CardTitle className="text-red-600">Fraud Flags</CardTitle></CardHeader>
+                    <CardContent>
+                        <ul className="list-disc list-inside space-y-1">
+                            {match.fraudReasons.map((reason, i) => <li key={i}>{reason}</li>)}
+                        </ul>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }
