@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Swords, Trophy, Percent, User, Mail, ShieldCheck, Edit } from "lucide-react";
 import Link from "next/link";
-import { useUser } from "@/firebase";
+import { useUser, useDoc } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SettingsPageContent } from "./SettingsPageContent";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import type { UserProfile } from "@/types";
 
 
 const StatCard = ({ icon, title, value, loading }: { icon: React.ReactNode, title: string, value: string | number, loading?: boolean }) => (
@@ -28,7 +29,9 @@ const StatCard = ({ icon, title, value, loading }: { icon: React.ReactNode, titl
 );
 
 const ProfileTabContent = () => {
-    const { userData, loading } = useUser();
+    const { user } = useUser();
+    const { data: userData, loading } = useDoc<UserProfile>(user ? `users/${user.uid}`: undefined);
+
 
     const matchesPlayed = userData?.matchesPlayed || 0;
     const matchesWon = userData?.matchesWon || 0;
@@ -128,3 +131,5 @@ export default function ProfilePage() {
         </Suspense>
     )
 }
+
+    

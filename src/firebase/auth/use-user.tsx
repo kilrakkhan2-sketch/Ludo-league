@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -70,3 +71,5 @@ export function useUser(): AuthState {
 
   return { user, userData, loading };
 }
+
+    

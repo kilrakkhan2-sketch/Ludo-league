@@ -79,7 +79,7 @@ export default function ManageAdminsPage() {
 
         setIsSubmitting(true);
         try {
-            const setUserRole = httpsCallable(functions, 'setAdminRole'); // Changed to the correct Cloud Function name
+            const setUserRole = httpsCallable(functions, 'setUserRole');
             await setUserRole({ userId: uid, role: role });
             toast({ title: "Role Updated", description: `The user's role has been changed to ${role}.` });
             if(isFormOpen) {
@@ -246,3 +246,5 @@ export default function ManageAdminsPage() {
         </div>
     );
 }
+
+    
