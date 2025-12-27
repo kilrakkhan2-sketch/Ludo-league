@@ -21,7 +21,8 @@ service firebase.storage {
       allow write: if isAdmin();
     }
 
-    match /profile-pictures/{userId}/{allPaths=**} {
+    // Changed from profile-pictures to avatars for consistency
+    match /avatars/{userId}/{allPaths=**} {
       allow read: if true;
       allow write: if isOwner(userId);
     }
@@ -36,7 +37,7 @@ service firebase.storage {
       allow write: if isOwner(userId);
     }
 
-    // This is the corrected rule
+    // Corrected and simplified rule for match results
     match /match-results/{matchId}/{userId}/{fileName} {
       allow read: if isSignedIn();
       // Allow write if the user is authenticated and their UID matches the {userId} wildcard in the path.
