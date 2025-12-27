@@ -100,16 +100,6 @@ export const manageDeposit = functions.https.onCall(async (data, context) => {
       }
     });
 
-    // Send notification outside the transaction
-    const depositData = (await depositRef.get()).data();
-    if (depositData) {
-        const message = action === 'approve' 
-            ? `Your deposit of ₹${depositData.amount} has been approved.`
-            : `Your deposit of ₹${depositData.amount} was rejected. Reason: ${rejectionReason || 'N/A'}`;
-        // Implement your sendNotification logic here if you have one
-    }
-
-
     return { success: true, message: `Deposit successfully ${action}ed.` };
 
   } catch (error) {
