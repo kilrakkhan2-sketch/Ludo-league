@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Skeleton } from "@/components/ui/skeleton";
@@ -104,7 +103,7 @@ const CategoryCard = ({ title, href, icon: Icon, imageId }: { title: string, hre
 }
 
 export default function DashboardClientContent() {
-    const { user, userData, loading } = useUser();
+    const { user, userData, loading } = useUser() ?? {};
 
     const { data: openMatches, loading: openMatchesLoading } = useCollection<Match>('matches', {
         where: ['status', '==', 'waiting'],
@@ -185,5 +184,3 @@ export default function DashboardClientContent() {
         </div>
     );
 }
-
-    

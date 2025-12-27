@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AppShell } from "@/components/layout/AppShell";
@@ -35,7 +34,7 @@ const ProfileTabContent = () => {
 
 
     const matchesPlayed = userData?.matchesPlayed || 0;
-    const matchesWon = userData?.matchesWon || 0;
+    const matchesWon = userData?.matchesWon ?? 0;
     const winRate = matchesPlayed > 0 ? ((matchesWon / matchesPlayed) * 100).toFixed(0) : '0';
 
     return (
@@ -103,7 +102,7 @@ const ProfileTabContent = () => {
 
 const ProfilePageContent = () => {
     const searchParams = useSearchParams();
-    const defaultTab = searchParams?.get("tab") || "profile";
+    const defaultTab = searchParams.get("tab") || "profile";
     
     return (
          <AppShell pageTitle="Profile">
@@ -132,5 +131,3 @@ export default function ProfilePage() {
         </Suspense>
     )
 }
-
-    

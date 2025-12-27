@@ -1,138 +1,136 @@
-
 'use client';
 
 import { AppShell } from "@/components/layout/AppShell";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useUser, useDoc, useCollection } from "@/firebase";
-import { UserProfile, CommissionSettings } from "@/types";
-import { Copy, Gift, Users, Share2, CheckCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Copy, Gift, Users } from "lucide-react";
+import Link from "next/link";
+import { useUser, useCollection, useDoc } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
+import type { UserProfile } from "@/types";
+
+const StatCard = ({ icon, title, value, loading }: { icon: React.ReactNode, title: string, value: string | number, loading?: boolean }) => (
+    <Card className="bg-muted/50">
+        <CardHeader className="flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">{title}</CardTitle>
+            {icon}
+        </CardHeader>
+        <CardContent>
+            {loading ? <Skeleton className="h-8 w-16" /> : <p className="text-2xl font-bold">{value}</p>}
+        </CardContent>
+    </Card>
+);
 
 export default function ReferPage() {
-  const { user, loading: userLoading } = useUser();
-  const { data: profile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : "");
-  const { data: commissionSettings, loading: settingsLoading } = useDoc<CommissionSettings>('settings/commission');
+    const { user, loading: userLoading } = useUser();
+    const { data: userData, loading: userDataLoading } = useDoc<UserProfile>(user ? `users/${user.uid}`: undefined);
 
-  const { data: referredUsers, loading: referralsLoading } = useCollection<UserProfile>(
-      profile?.referralCode ? `users` : undefined, 
-      { where: ['referredBy', '==', profile?.referralCode] }
-  );
+    const { data: referrals, loading: referralsLoading } = useCollection<UserProfile>(
+        user ? `users/${user.uid}/referrals` : undefined
+    );
 
-  const { toast } = useToast();
+    const referralLink = userData ? `${window.location.origin}/join?ref=${userData.referralCode}` : '';
+    const { toast } = useToast();
 
-  const loading = userLoading || profileLoading || settingsLoading || referralsLoading;
+    const copyToClipboard = () => {
+        if (!referralLink) return;
+        navigator.clipboard.writeText(referralLink).then(() => {
+            toast({ title: "Copied!", description: "Referral link copied to clipboard." });
+        }).catch(err => {
+            toast({ title: "Error", description: "Could not copy link.", variant: "destructive" });
+        });
+    };
 
-  const referralCode = profile?.referralCode || '...';
-  const referralEarnings = profile?.referralEarnings || 0;
-  const totalReferrals = referredUsers?.length || 0;
-  const commissionRate = commissionSettings?.isEnabled ? (commissionSettings.rate || 0) * 100 : 0;
+    const loading = userLoading || referralsLoading || userDataLoading;
 
-  const copyCode = () => {
-    const referralLink = `${window.location.origin}/signup?ref=${referralCode}`;
-    navigator.clipboard.writeText(referralLink);
-    toast({ title: "Referral Link Copied!" });
-  };
-  
-  const shareCode = () => {
-    const referralLink = `${window.location.origin}/signup?ref=${referralCode}`;
-    if (navigator.share) {
-      navigator.share({
-        title: 'Join me on LudoLeague!',
-        text: `Join me on LudoLeague and get a bonus! Use my referral code: ${referralCode}`,
-        url: referralLink,
-      }).catch((error) => console.log('Error sharing', error));
-    } else {
-        copyCode();
-        toast({title: "Link Copied!", description: "Sharing not supported on this browser. Link copied to clipboard instead."})
-    }
-  };
+    const totalReferrals = referrals?.length || 0;
+    const referralEarnings = userData?.referralEarnings || 0;
 
-  return (
-    <AppShell pageTitle="Refer & Earn" showBackButton>
-      <div className="p-4 sm:p-6 space-y-6">
-        <Card className="bg-primary text-primary-foreground text-center overflow-hidden">
-          <CardContent className="p-6 space-y-2">
-            <Gift className="mx-auto h-12 w-12 opacity-80" />
-            <h2 className="text-2xl font-bold">Invite Friends, Earn Rewards!</h2>
-            {loading ? <Skeleton className="h-5 w-3/4 mx-auto bg-white/20" /> : (
-                 <p className="text-sm opacity-90 max-w-xs mx-auto">
-                    Get {commissionRate > 0 ? `${commissionRate}% commission` : 'a bonus'} on every deposit your friend makes. They get a bonus too!
-                </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6 text-center space-y-4">
-            <p className="text-muted-foreground text-sm">Your Unique Referral Link</p>
-            {loading ? (
-                <Skeleton className="h-10 w-40 mx-auto" />
-            ) : (
-                <div 
-                    className="flex items-center justify-center gap-2 border-2 border-dashed border-primary/50 bg-primary/10 p-3 rounded-lg cursor-pointer"
-                    onClick={copyCode}
-                >
-                  <p className="text-xl font-bold font-mono tracking-widest text-primary">{referralCode}</p>
-                  <Copy className="h-5 w-5 text-primary" />
-                </div>
-            )}
-            <Button className="w-full sm:w-auto" onClick={shareCode}>
-                <Share2 className="mr-2 h-4 w-4" /> Share Your Link
-            </Button>
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Referrals</CardTitle>
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    {loading ? <Skeleton className="h-6 w-8"/> : <div className="text-2xl font-bold">{totalReferrals}</div>}
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
-                    <Gift className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                     {loading ? <Skeleton className="h-6 w-12"/> : <div className="text-2xl font-bold">₹{referralEarnings.toLocaleString()}</div>}
-                </CardContent>
-            </Card>
-        </div>
-
-        <div>
-            <h3 className="text-lg font-semibold mb-2">Your Referred Friends</h3>
-            <div className="space-y-2">
-                {loading && [...Array(2)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
-                {!loading && referredUsers && referredUsers.map((friend) => (
-                    <div key={friend.id} className="flex items-center justify-between p-3 rounded-lg bg-card border">
-                        <div className="flex items-center gap-3">
-                             <Avatar className="h-10 w-10">
-                                <AvatarImage src={friend.photoURL} />
-                                <AvatarFallback>{friend.displayName?.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <p className="font-semibold">{friend.displayName}</p>
-                                <p className={`text-xs ${(friend.stats?.matchesPlayed || 0) > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>
-                                    {(friend.stats?.matchesPlayed || 0) > 0 ? 'First Game Played!' : 'Joined'}
-                                </p>
-                            </div>
+    return (
+        <AppShell pageTitle="Refer & Earn">
+            <div className="p-4 sm:p-6 space-y-6">
+                <Card className="bg-gradient-to-r from-primary/80 to-primary text-primary-foreground overflow-hidden">
+                     <CardHeader className="relative">
+                        <Gift className="absolute right-4 top-4 w-16 h-16 text-primary-foreground/20"/>
+                        <CardTitle className="text-3xl font-bold">Invite Friends, Earn Rewards!</CardTitle>
+                        <CardDescription className="text-primary-foreground/80">Share your referral link with friends. You'll get a bonus for every friend that joins and plays!</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm font-semibold mb-2">Your Unique Referral Link</p>
+                        <div className="flex items-center space-x-2 bg-background/20 p-2 rounded-md">
+                            <input 
+                                type="text" 
+                                value={referralLink} 
+                                readOnly 
+                                className="flex-1 bg-transparent outline-none text-sm text-primary-foreground placeholder-primary-foreground/70"
+                                placeholder={loading ? "Generating link..." : ""}
+                            />
+                            <Button onClick={copyToClipboard} size="icon" variant="ghost" className="shrink-0 hover:bg-background/30" disabled={loading}>
+                                <Copy className="h-4 w-4" />
+                            </Button>
                         </div>
-                        {(friend.stats?.matchesPlayed || 0) > 0 && <CheckCircle className="h-5 w-5 text-green-500" />}
-                    </div>
-                ))}
-                 {!loading && totalReferrals === 0 && (
-                    <p className="text-center text-muted-foreground py-8">You haven't referred anyone yet.</p>
-                )}
+                    </CardContent>
+                </Card>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <StatCard 
+                        icon={<Users className="w-4 h-4 text-muted-foreground"/>}
+                        title="Friends Joined"
+                        value={totalReferrals}
+                        loading={loading}
+                    />
+                    <StatCard 
+                        icon={<Gift className="w-4 h-4 text-muted-foreground"/>}
+                        title="Referral Earnings"
+                        value={`₹${referralEarnings.toFixed(2)}`}
+                        loading={loading}
+                    />
+                </div>
+                
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Your Referred Friends</CardTitle>
+                        <CardDescription>Track the status of your referrals and earnings.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {loading ? (
+                           <div className="space-y-4">
+                                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+                           </div>
+                        ) : referrals && referrals.length > 0 ? (
+                             <div className="space-y-4">
+                                {referrals.map(friend => (
+                                    <div key={friend.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-10 w-10">
+                                                <AvatarImage src={friend.photoURL} />
+                                                <AvatarFallback>{friend.displayName[0]}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-semibold">{friend.displayName}</p>
+                                                <p className={`text-xs ${(friend.matchesPlayed || 0) > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>
+                                                    {(friend.matchesPlayed || 0) > 0 ? 'First Game Played!' : 'Joined'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-semibold text-green-500">+₹{10}</p>
+                                            <p className="text-xs text-muted-foreground">Bonus</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 bg-muted rounded-lg">
+                                <p className="font-semibold">No friends have joined yet.</p>
+                                <p className="text-sm text-muted-foreground mt-1">Share your link to get started!</p>
+                           </div>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
-        </div>
-      </div>
-    </AppShell>
-  );
+        </AppShell>
+    );
 }

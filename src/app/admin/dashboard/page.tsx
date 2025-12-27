@@ -1,8 +1,7 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useCollection, useUser } from "@/firebase";
+import { useCollection, useUser, useDoc } from "@/firebase";
 import type { DepositRequest, Transaction, UserProfile, WithdrawalRequest, Match, KycRequest } from "@/types";
 import { Users, Sword, CircleArrowUp, Landmark, FileKey, BadgeCheck, ShieldAlert, Gamepad2, Ticket, Wallet, Award, Banknote } from 'lucide-react';
 import { useMemo } from "react";
@@ -32,28 +31,24 @@ const StatCard = ({ title, value, icon: Icon, href, description, isLoading }: { 
   </Card>
 );
 
-const processWeeklyData = (data: any[], key: string, dateKey = 'createdAt') => {
-  const weeklySummary: { [key: string]: number } = {};
-  for (let i = 6; i >= 0; i--) {
-    const d = subDays(new Date(), i);
-    weeklySummary[format(d, 'MMM d')] = 0;
-  }
-
-  data.forEach(item => {
-    if (item[dateKey]?.seconds) {
-      const itemDate = new Date(item[dateKey].seconds * 1000);
-      const day = format(itemDate, 'MMM d');
-      if (day in weeklySummary) {
-        if (key === 'revenue') {
-             weeklySummary[day] += item.amount;
-        } else {
-            weeklySummary[day]++;
-        }
-      }
+const processWeeklyData = (data: any[] = [], key: string, dateKey = 'createdAt') => {
+    const weeklySummary: { [key: string]: number } = {};
+    for (let i = 6; i >= 0; i--) {
+        const d = subDays(new Date(), i);
+        weeklySummary[format(d, 'MMM d')] = 0;
     }
-  });
 
-  return Object.entries(weeklySummary).map(([date, value]) => ({ date, [key]: value }));
+    data.forEach(item => {
+        if (item[dateKey]?.seconds) {
+            const itemDate = new Date(item[dateKey].seconds * 1000);
+            const day = format(itemDate, 'MMM d');
+            if (day in weeklySummary) {
+                weeklySummary[day] += (key === 'revenue' ? item.amount : 1);
+            }
+        }
+    });
+
+    return Object.entries(weeklySummary).map(([date, value]) => ({ date, [key]: value }));
 };
 
 
@@ -78,31 +73,22 @@ export default function AdminDashboardPage() {
 
   const isLoading = userLoading || l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8;
 
-  const totalUsers = users?.length || 0;
+  const totalUsers = users?.length ?? 0;
   
-  const platformRevenue = useMemo(() => {
-    if (!recentTransactions) return 0;
-    return recentTransactions.reduce((acc, tx) => {
-        if (tx.type === 'entry_fee' && tx.amount < 0) {
-            // Assume 5% commission on entry fees
-            return acc + (Math.abs(tx.amount) * 0.05); 
-        }
-        return acc;
-    }, 0);
-  }, [recentTransactions]);
+    const platformRevenue = useMemo(() => {
+        return recentTransactions?.reduce((acc, tx) => 
+            tx.type === 'platform-fee' ? acc + tx.amount : acc, 0) ?? 0;
+    }, [recentTransactions]);
 
-  const weeklyRevenueData = useMemo(() => {
-      if (!recentTransactions) return [];
-      const revenueTx = recentTransactions.filter(tx => tx.type === 'prize' || tx.type === 'entry_fee');
-      const processed = processWeeklyData(revenueTx, 'revenue');
-      return processed;
-  }, [recentTransactions]);
+    const weeklyRevenueData = useMemo(() => {
+        const revenueTx = recentTransactions?.filter(tx => tx.type === 'platform-fee');
+        return processWeeklyData(revenueTx, 'revenue');
+    }, [recentTransactions]);
 
-  const weeklyRegistrationsData = useMemo(() => {
-      if (!users) return [];
-       const recentUsers = users.filter(u => u.createdAt && (u.createdAt as any).seconds > sevenDaysAgo.getTime() / 1000);
-      return processWeeklyData(recentUsers, 'users');
-  }, [users]);
+    const weeklyRegistrationsData = useMemo(() => {
+        const recentUsers = users?.filter(u => u.createdAt && (u.createdAt as any).seconds > sevenDaysAgo.getTime() / 1000);
+        return processWeeklyData(recentUsers, 'users');
+    }, [users]);
   
   const revenueChartConfig = { revenue: { label: "Revenue", color: "hsl(var(--primary))" } };
   const registrationChartConfig = { users: { label: "Users", color: "hsl(var(--primary))" } };
