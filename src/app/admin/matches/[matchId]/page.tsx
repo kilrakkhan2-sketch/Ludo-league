@@ -11,23 +11,28 @@ import MatchActions from './_components/MatchActions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AdminChatRoom } from '@/components/chat/AdminChatRoom';
 
-const PlayerCard = ({ uid }: { uid: string }) => {
+const PlayerCard = ({ uid, isCreator }: { uid: string, isCreator: boolean }) => {
     const { data: player, loading } = useDoc<UserProfile>(`users/${uid}`);
 
     if (loading) return <Card className="flex-1"><CardHeader><Skeleton className="h-12 w-48"/></CardHeader><CardContent><Skeleton className="h-24 w-full"/></CardContent></Card>
     if (!player) return <Card className="flex-1"><CardHeader><CardTitle>Player Not Found</CardTitle></CardHeader></Card>
+    
+    const winRate = (player.matchesPlayed || 0) > 0 ? ((player.matchesWon || 0) / player.matchesPlayed * 100).toFixed(1) : 0;
 
     return (
         <Card className="flex flex-col">
             <CardHeader className="flex-row items-center gap-4">
                 <Avatar><AvatarImage src={player.photoURL} /><AvatarFallback>{player.displayName?.charAt(0) ?? 'U'}</AvatarFallback></Avatar>
-                <div><CardTitle>{player.displayName}</CardTitle><CardDescription>UID: {player.uid}</CardDescription></div>
+                <div>
+                    <CardTitle>{player.displayName}</CardTitle>
+                    <CardDescription>{isCreator ? 'Creator' : 'Joiner'} (UID: {player.uid})</CardDescription>
+                </div>
             </CardHeader>
             <CardContent className="space-y-3 text-sm flex-grow">
                 <div className="flex justify-between"><span className="text-muted-foreground">Email</span> <strong>{player.email}</strong></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Wallet Balance</span> <strong>₹{player.wallet?.balance ?? 0}</strong></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Matches Played</span> <strong>{player.stats?.matchesPlayed ?? 0}</strong></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Win Rate</span> <strong>{((player.stats?.matchesWon ?? 0) / (player.stats?.matchesPlayed || 1) * 100).toFixed(2)}%</strong></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Wallet Balance</span> <strong>₹{player.walletBalance ?? 0}</strong></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Matches Played</span> <strong>{player.matchesPlayed ?? 0}</strong></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Win Rate</span> <strong>{winRate}%</strong></div>
             </CardContent>
         </Card>
     );
@@ -71,7 +76,7 @@ export default function MatchDetailsPage() {
                 </Card>
                 
                 <div className="grid md:grid-cols-2 gap-6">
-                    {match.players.map(uid => <PlayerCard key={uid} uid={uid} />)}
+                    {match.players.map(uid => <PlayerCard key={uid} uid={uid} isCreator={uid === match.creatorId} />)}
                 </div>
             </div>
             <div className="lg:col-span-1 space-y-6">
