@@ -9,12 +9,21 @@ if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
 let serviceAccount: ServiceAccount;
 
 try {
-  const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY.replace(/\\n/g, '\n');
+  let key = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
+  // It looks like the string is wrapped in single quotes, let's remove them
+  if (key.startsWith("'") && key.endsWith("'")) {
+    key = key.substring(1, key.length - 1);
+  }
+
+  const serviceAccountString = key.replace(/\\n/g, '\n');
   serviceAccount = JSON.parse(serviceAccountString);
 } catch (e) {
+  console.error(e);
   throw new Error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY');
 }
 
+// Initialize the Firebase Admin SDK
 const app = !getApps().length
   ? initializeApp({
       credential: cert(serviceAccount),
