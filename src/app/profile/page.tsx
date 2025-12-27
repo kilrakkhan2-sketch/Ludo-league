@@ -103,7 +103,7 @@ const ProfileTabContent = () => {
 
 const ProfilePageContent = () => {
     const searchParams = useSearchParams();
-    const defaultTab = searchParams.get("tab") || "profile";
+    const defaultTab = searchParams?.get("tab") || "profile";
     
     return (
          <AppShell pageTitle="Profile">
