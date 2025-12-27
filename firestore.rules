@@ -33,6 +33,10 @@ service cloud.firestore {
       return getRole() in ['superadmin', 'deposit_admin'];
     }
 
+    function isKycAdmin() {
+      return getRole() in ['superadmin', 'kyc_admin'];
+    }
+
     // User profiles
     match /users/{userId} {
       allow read: if isSignedIn();
@@ -151,9 +155,10 @@ service cloud.firestore {
     }
     
     match /kyc-requests/{kycId} {
-      allow list, read: if isSignedIn() && (isSuperAdmin() || isOwner(get(/databases/$(database)/documents/kyc-requests/$(kycId)).data.userId));
+      allow list: if isKycAdmin();
+      allow read: if isKycAdmin() || isOwner(resource.data.userId);
       allow create: if isSignedIn();
-      allow update: if isSuperAdmin();
+      allow update: if isKycAdmin();
     }
     
     match /announcements/{announcementId} {

@@ -162,7 +162,7 @@ export function AppShell({ children, pageTitle, showBackButton = false }: AppShe
                         <SheetContent side="left" className="w-64">
                           <div className="flex items-center mb-6">
                               <Link href="/dashboard" className="flex items-center gap-2 font-semibold" onClick={() => setIsSheetOpen(false)}>
-                                  <Image src="/logo.svg" width={24} height={24} alt="LudoLeague" />
+                                  <Image src="/logo.png" width={24} height={24} alt="LudoLeague" />
                                   <span>LudoLeague</span>
                               </Link>
                           </div>

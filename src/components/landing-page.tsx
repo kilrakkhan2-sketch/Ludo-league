@@ -65,7 +65,7 @@ export default function LandingPage() {
           <div className="mr-4 flex items-center">
             <Link href="/" className="flex items-center gap-2 font-bold">
                <div className="p-1 rounded-md">
-                <Image src="/logo.svg" alt="LudoLeague Logo" width={32} height={32} />
+                <Image src="/logo.png" alt="LudoLeague Logo" width={32} height={32} />
               </div>
               <span className="font-headline text-lg text-primary">LudoLeague</span>
             </Link>

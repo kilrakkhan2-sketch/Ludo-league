@@ -67,7 +67,7 @@ function ReferralManager() {
         <Input id="referral" value={referralCode} disabled />
         {isValidating && <p className="text-xs text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin"/> Verifying code...</p>}
         {error && <p className="text-xs text-destructive flex items-center gap-2"><AlertCircle className="h-4 w-4"/> {error}</p>}
-        {referrerName && <p className="text-xs text-green-600 flex items-center gap-2"><CheckCircle className="h-4 w-4"/> Code applied from: strong>{referrerName}</strong></p>}
+        {referrerName && <p className="text-xs text-green-600 flex items-center gap-2"><CheckCircle className="h-4 w-4"/> Code applied from: <strong>{referrerName}</strong></p>}
       </div>
     );
 }

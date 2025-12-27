@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, UserCog } from 'lucide-react';
+import { PlusCircle, UserCog, ShieldAlert } from 'lucide-react';
 
 // Roles that can be assigned via the UI. Superadmin is excluded for security.
 const ASSIGNABLE_ROLES = ['deposit_admin', 'withdrawal_admin', 'match_admin', 'user'];
@@ -43,7 +43,7 @@ const ASSIGNABLE_ROLES = ['deposit_admin', 'withdrawal_admin', 'match_admin', 'u
 export default function ManageAdminsPage() {
     const functions = useFunctions();
     const { toast } = useToast();
-    const { user: currentUser, userData } = useUser(); // The currently logged-in superadmin
+    const { user: currentUser, userData } = useUser(); // The currently logged-in user
     
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -56,7 +56,8 @@ export default function ManageAdminsPage() {
         if (!users) return [];
         return users.filter(u => u.role && u.role !== 'user');
     }, [users]);
-
+    
+    const hasSuperAdmin = useMemo(() => admins.some(a => a.role === 'superadmin'), [admins]);
 
     // Sort so that superadmins are always at the top
     const sortedAdmins = useMemo(() => {
@@ -71,18 +72,16 @@ export default function ManageAdminsPage() {
     const handleRoleChange = async (uid: string, role: string) => {
         if (!functions || !currentUser) return;
 
-        // Security Check: Prevent a superadmin from demoting themselves
-        if (currentUser.uid === uid && role !== 'superadmin') {
-            toast({ variant: "destructive", title: "Action Not Allowed", description: "Superadmins cannot change their own role." });
+        if (currentUser.uid === uid && role !== 'superadmin' && userData?.role === 'superadmin') {
+            toast({ variant: "destructive", title: "Action Not Allowed", description: "Superadmins cannot demote their own role." });
             return;
         }
 
         setIsSubmitting(true);
         try {
-            const setUserRole = httpsCallable(functions, 'setUserRole');
+            const setUserRole = httpsCallable(functions, 'setAdminRole'); // Changed to the correct Cloud Function name
             await setUserRole({ userId: uid, role: role });
             toast({ title: "Role Updated", description: `The user's role has been changed to ${role}.` });
-            // Close the form if it was used for adding a new admin
             if(isFormOpen) {
                 setIsFormOpen(false);
                 setTargetUid('');
@@ -102,9 +101,39 @@ export default function ManageAdminsPage() {
         }
         handleRoleChange(targetUid, newRole);
     };
+    
+    const handleMakeSuperAdmin = () => {
+        if(currentUser) {
+            handleRoleChange(currentUser.uid, 'superadmin');
+        }
+    };
+
+    // Render a special bootstrapping UI if no superadmin exists yet
+    if (!loading && !hasSuperAdmin) {
+        return (
+             <div className="flex flex-col items-center justify-center h-full p-8 text-center border rounded-lg">
+                <ShieldAlert className="h-16 w-16 text-destructive" />
+                <h2 className="mt-6 text-2xl font-bold">No Super Admin Found!</h2>
+                <p className="mt-2 text-muted-foreground">
+                    The system requires at least one Super Admin for full functionality. <br />
+                    As the first logged-in user, you can assign this role to yourself.
+                </p>
+                <Button 
+                    className="mt-6"
+                    onClick={handleMakeSuperAdmin}
+                    disabled={isSubmitting || !currentUser}
+                >
+                    {isSubmitting ? 'Assigning...' : 'Make Me Super Admin'}
+                </Button>
+                <p className="mt-4 text-xs text-muted-foreground">
+                    Logged in as: {currentUser?.email || 'Loading...'}
+                </p>
+            </div>
+        )
+    }
 
     if (userData?.role && userData.role !=='superadmin') {
-        return <p>You do not have permission to view this page.</p>;
+        return <p>You do not have permission to view this page. This page is for Super Admins only.</p>;
     }
 
     return (
@@ -206,10 +235,8 @@ export default function ManageAdminsPage() {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={3} className="h-24 text-center">
-                                    <UserCog className="mx-auto h-12 w-12 text-muted-foreground" />
-                                    <h3 className="mt-4 text-lg font-semibold">No Admins Configured</h3>
-                                    <p className="text-muted-foreground mt-1">Use the button above to assign the first admin role.</p>
+                                 <TableCell colSpan={3} className="h-24 text-center">
+                                    <p>No admins found.</p>
                                 </TableCell>
                             </TableRow>
                         )}
