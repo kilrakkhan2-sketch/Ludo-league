@@ -29,8 +29,8 @@ export default function DashboardPage() {
     return (
         <AppShell>
             <div className="space-y-8">
-                <DashboardClientContent />
                 <NewsCarousel />
+                <DashboardClientContent />
             </div>
         </AppShell>
     );
