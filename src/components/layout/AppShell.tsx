@@ -2,7 +2,7 @@
 'use client';
 
 import type { ReactNode } from "react";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -12,6 +12,7 @@ import type { LucideIcon } from "lucide-react";
 
 import { useUser } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 import { AppShellSkeleton } from "../app-shell-skeleton";
 import { Button } from "../ui/button";
@@ -31,6 +32,15 @@ import {
     User,
     Trophy,
     PlusCircle,
+    Wallet,
+    Users,
+    BarChart,
+    ShieldCheck,
+    Info,
+    FileText,
+    Lock,
+    File,
+    Mail
 } from 'lucide-react';
 
 interface AppShellProps {
@@ -47,12 +57,25 @@ const bottomNavItems: NavItem[] = [
   { href: "/profile", icon: User, label: "Profile" },
 ];
 
+const sidebarNavItems: NavItem[] = [
+    { href: "/wallet", icon: Wallet, label: "Wallet" },
+    { href: "/refer", icon: Users, label: "Refer & Earn" },
+    { href: "/leaderboard", icon: BarChart, label: "Leaderboard" },
+    { href: "/kyc", icon: ShieldCheck, label: "KYC" },
+    { href: "/about", icon: Info, label: "About Us" },
+    { href: "/terms", icon: FileText, label: "Terms of Service" },
+    { href: "/privacy", icon: Lock, label: "Privacy Policy" },
+    { href: "/gst-policy", icon: File, label: "GST Policy" },
+    { href: "/contact", icon: Mail, label: "Contact Us" },
+];
+
 
 export function AppShell({ children, pageTitle, showBackButton = false }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
   const { user, loading, userData } = useUser();
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const isAdmin = useMemo(() => 
     userData?.role && ['superadmin', 'deposit_admin', 'withdrawal_admin', 'match_admin'].includes(userData.role)
@@ -124,10 +147,51 @@ export function AppShell({ children, pageTitle, showBackButton = false }: AppShe
             {/* Main App Bar */}
             <header className="bg-card p-3 sm:p-4 flex items-center justify-between gap-4 z-10 shrink-0 border-b">
                 <div className="flex items-center gap-1">
-                  {showBackButton && (
+                  {showBackButton ? (
                       <Button variant="ghost" size="icon" onClick={() => router.back()}>
                           <ArrowLeft />
                       </Button>
+                  ) : (
+                    <div className="sm:hidden">
+                      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                        <SheetTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <Menu />
+                          </Button>
+                        </SheetTrigger>
+                        <SheetContent side="left" className="w-64">
+                          <div className="flex items-center mb-6">
+                              <Link href="/dashboard" className="flex items-center gap-2 font-semibold" onClick={() => setIsSheetOpen(false)}>
+                                  <Image src="/logo.svg" width={24} height={24} alt="LudoLeague" />
+                                  <span>LudoLeague</span>
+                              </Link>
+                          </div>
+                          <nav className="flex flex-col gap-1">
+                              {bottomNavItems.filter(i => !i.isCentral).map((item) => (
+                                  <Link
+                                      key={item.href}
+                                      href={item.href}
+                                      onClick={() => setIsSheetOpen(false)}
+                                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${pathname === item.href ? 'bg-muted text-primary' : ''}`}>
+                                      <item.icon className="h-4 w-4" />
+                                      {item.label}
+                                  </Link>
+                              ))}
+                              <div className="my-2 border-t border-border" />
+                              {sidebarNavItems.map((item) => (
+                                  <Link
+                                      key={item.href}
+                                      href={item.href}
+                                      onClick={() => setIsSheetOpen(false)}
+                                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${pathname === item.href ? 'bg-muted text-primary' : ''}`}>
+                                      <item.icon className="h-4 w-4" />
+                                      {item.label}
+                                  </Link>
+                              ))}
+                          </nav>
+                        </SheetContent>
+                      </Sheet>
+                    </div>
                   )}
                    <h1 className="text-lg sm:text-xl font-bold text-foreground capitalize">{finalPageTitle}</h1>
                 </div>

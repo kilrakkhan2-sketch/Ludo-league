@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Users, Trophy, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useCollection, useUser } from '@/firebase';
-import type { Match } from '@/types';
+import type { Match, MatchStatus } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WalletBalance } from '@/components/wallet-balance';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -44,18 +44,20 @@ const MatchCardSkeleton = () => (
 const MatchCard = ({ match }: { match: Match }) => {
   const isFull = match.players.length >= match.maxPlayers;
 
-  const getStatusVariant = (status: Match['status']) => {
+  const getStatusVariant = (status: MatchStatus) => {
     switch (status) {
       case 'waiting':
         return isFull ? 'destructive' : 'secondary';
-      case 'ongoing':
-      case 'processing':
+      case 'room_code_pending':
+      case 'room_code_shared':
+      case 'game_started':
         return 'default';
-      case 'completed':
-        return 'outline';
-      case 'disputed':
+      case 'result_submitted':
       case 'verification':
-        return 'destructive';
+        return 'secondary';
+      case 'PAID':
+        return 'success';
+      case 'FLAGGED':
       case 'cancelled':
         return 'destructive';
       default:
@@ -157,13 +159,20 @@ export default function MatchesPage() {
   const filteredMatches = useMemo(() => {
     if (!allMatches) return [];
     
-    const activeMatches = allMatches.filter(m => !['completed', 'cancelled'].includes(m.status));
+    const activeMatches = allMatches.filter(m => !['PAID', 'cancelled'].includes(m.status));
 
     if (filter === 'waiting') {
         return activeMatches.filter(m => m.status === 'waiting' && m.players.length < m.maxPlayers);
     }
      if (filter === 'ongoing') {
-        return activeMatches.filter(m => ['ongoing', 'processing', 'verification', 'disputed'].includes(m.status) || (m.status === 'waiting' && m.players.length >= m.maxPlayers));
+        return activeMatches.filter(m => [
+          'room_code_pending',
+          'room_code_shared',
+          'game_started',
+          'result_submitted',
+          'verification',
+          'FLAGGED',
+        ].includes(m.status) || (m.status === 'waiting' && m.players.length >= m.maxPlayers));
     }
     // 'all' filter
     return activeMatches;

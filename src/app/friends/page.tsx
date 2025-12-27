@@ -43,12 +43,12 @@ const ReferralRow = ({ referral }: { referral: UserProfile}) => (
             </Avatar>
             <div>
                 <p className="font-semibold">{referral.displayName}</p>
-                <p className={`text-xs ${referral.matchesPlayed > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>
-                    {referral.matchesPlayed > 0 ? 'First Game Played!' : 'Joined'}
+                <p className={`text-xs ${referral.stats.matchesPlayed > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>
+                    {referral.stats.matchesPlayed > 0 ? 'First Game Played!' : 'Joined'}
                 </p>
             </div>
         </div>
-        {referral.matchesPlayed > 0 && <CheckCircle className="h-5 w-5 text-green-500" />}
+        {referral.stats.matchesPlayed > 0 && <CheckCircle className="h-5 w-5 text-green-500" />}
     </div>
 )
 

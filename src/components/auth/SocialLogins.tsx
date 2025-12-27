@@ -53,6 +53,8 @@ export function SocialLogins() {
                         matchesWon: 0,
                         totalWinnings: 0,
                     },
+                    rating: 1000, // Add rating property
+                    xp: 0,       // Add xp property
                     referralCode: referralCode, // Save the generated code
                     referralEarnings: 0,
                     isVerified: false,

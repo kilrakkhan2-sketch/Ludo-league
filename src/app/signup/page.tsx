@@ -26,6 +26,7 @@ function ReferralManager() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        if (!searchParams) return;
         const refCode = searchParams.get('ref');
         if (refCode) {
             setReferralCode(refCode);
@@ -118,6 +119,8 @@ function SignupPageContent() {
           email: user.email || '',
           photoURL: user.photoURL || '',
           role: 'user',
+          rating: 1200,
+          xp: 0,
           wallet: {
             balance: 0,
           },
@@ -128,7 +131,7 @@ function SignupPageContent() {
           },
           referralCode: referralCode,
           referralEarnings: 0,
-          referredBy: searchParams.get('ref') || '', // Set referredBy field
+          referredBy: searchParams ? searchParams.get('ref') || '' : '', // Set referredBy field
           isVerified: false,
           createdAt: Timestamp.now(),
       };

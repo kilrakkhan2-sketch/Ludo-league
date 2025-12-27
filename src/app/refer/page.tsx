@@ -119,12 +119,12 @@ export default function ReferPage() {
                             </Avatar>
                             <div>
                                 <p className="font-semibold">{friend.displayName}</p>
-                                <p className={`text-xs ${(friend.matchesPlayed || 0) > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>
-                                    {(friend.matchesPlayed || 0) > 0 ? 'First Game Played!' : 'Joined'}
+                                <p className={`text-xs ${(friend.stats?.matchesPlayed || 0) > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>
+                                    {(friend.stats?.matchesPlayed || 0) > 0 ? 'First Game Played!' : 'Joined'}
                                 </p>
                             </div>
                         </div>
-                        {(friend.matchesPlayed || 0) > 0 && <CheckCircle className="h-5 w-5 text-green-500" />}
+                        {(friend.stats?.matchesPlayed || 0) > 0 && <CheckCircle className="h-5 w-5 text-green-500" />}
                     </div>
                 ))}
                  {!loading && totalReferrals === 0 && (
@@ -136,5 +136,3 @@ export default function ReferPage() {
     </AppShell>
   );
 }
-
-    

@@ -10,12 +10,16 @@ export interface UserProfile {
   status?: 'online' | 'offline';
   isBlocked?: boolean;
   isVerified?: boolean;
-  matchesPlayed: number;
-  matchesWon: number;
-  totalWinnings: number;
+  stats: {
+    matchesPlayed: number;
+    matchesWon: number;
+    totalWinnings: number;
+  };
   rating: number;
   xp: number;
-  walletBalance: number;
+  wallet: {
+    balance: number;
+  };
   referralCode: string;
   referralEarnings: number;
   referredBy?: string;

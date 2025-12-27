@@ -53,9 +53,9 @@ const NotificationRow = ({ id, label, description, checked, onCheckedChange }: {
 
 
 export function SettingsPageContent() {
-    const { user, auth } = useUser();
+    const { user } = useUser();
     const { data: profile, setData: setProfile } = useDoc<UserProfile>(user ? `users/${user.uid}`: undefined);
-    const { firestore, storage, functions } = useFirebase();
+    const { firestore, storage, functions, auth } = useFirebase();
     const { toast } = useToast();
     
     const [displayName, setDisplayName] = useState('');
@@ -87,7 +87,7 @@ export function SettingsPageContent() {
         const photoURL = await getDownloadURL(snapshot.ref);
         
         await updateProfile(auth.currentUser, { photoURL });
-        await setProfile({ photoURL });
+        await setProfile(p => p ? { ...p, photoURL } : null);
 
         toast({ title: 'Avatar Updated!', description: 'Your new profile picture looks great.' });
       } catch (error) {
@@ -108,7 +108,7 @@ export function SettingsPageContent() {
       setIsSaving(true);
       try {
         await updateProfile(auth.currentUser, { displayName });
-        await setProfile({ displayName, notifications });
+        await setProfile(p => p ? { ...p, displayName, notifications } : null);
         toast({ title: 'Settings Saved!', description: 'Your changes have been updated.' });
       } catch(error) {
         console.error(error);

@@ -28,8 +28,8 @@ const StatCard = ({ icon, title, value, loading }: { icon: React.ReactNode, titl
 const ProfileTabContent = () => {
     const { userData, loading } = useUser();
 
-    const matchesPlayed = userData?.matchesPlayed || 0;
-    const matchesWon = userData?.matchesWon || 0;
+    const matchesPlayed = userData?.stats?.matchesPlayed || 0;
+    const matchesWon = userData?.stats?.matchesWon || 0;
     const winRate = matchesPlayed > 0 ? ((matchesWon / matchesPlayed) * 100).toFixed(0) : '0';
 
     return (
@@ -118,4 +118,3 @@ export default function ProfilePage({ searchParams }: { searchParams: { tab: str
          </AppShell>
     );
 }
-

@@ -1,6 +1,6 @@
 
 import { doc, updateDoc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-// import { db } from "@/firebase/config"; 
+import { db } from "@/firebase/config"; 
 import { Match, MatchStatus } from "@/types";
 
 
@@ -76,9 +76,9 @@ export const getMatchStatus = (match: Match): { status: string; color: string } 
   switch (match.status) {
     case 'waiting':
       return { status: 'Waiting for Player', color: '#f1c40f' };
-    case 'in-progress':
+    case 'game_started':
       return { status: 'In Progress', color: '#3498db' };
-    case 'completed':
+    case 'COMPLETED':
       return { status: 'Completed', color: '#2ecc71' };
     case 'cancelled':
       return { status: 'Cancelled', color: '#e74c3c' };

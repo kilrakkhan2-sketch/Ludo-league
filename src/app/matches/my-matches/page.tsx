@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PlayerAvatarList } from '@/components/matches/PlayerAvatarList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from 'next/image';
+import type { VariantProps } from 'class-variance-authority';
 
 const MatchCardSkeleton = () => (
   <Card>
@@ -120,7 +121,7 @@ export default function MyMatchesPage() {
   const { user } = useUser();
   
   const queryOptions = useMemo(() => ({
-    where: user ? ['players', 'array-contains', user.uid] : undefined,
+    where: user ? ['players', 'array-contains', user.uid] as const : undefined,
     orderBy: [['createdAt', 'desc'] as const],
     limit: 50,
   }), [user]);

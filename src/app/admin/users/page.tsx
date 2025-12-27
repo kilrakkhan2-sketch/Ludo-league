@@ -75,7 +75,7 @@ export default function AdminUsersPage() {
         await setUserBlockedStatus({ userId: selectedUser.uid, blocked: !selectedUser.isBlocked });
         
         toast({ 
-            title: `User ${selectedUser.isBlocked ? 'Unblocked' : 'Blocked'}!`, 
+            title: `User ${selectedUser.isBlocked ? 'Unblocked' : 'Blocked'}!`,
             description: `${selectedUser.displayName} has been ${selectedUser.isBlocked ? 'unblocked' : 'blocked'}.`
         });
         refetch(); // Re-fetch the user data to show the updated status
@@ -144,11 +144,11 @@ export default function AdminUsersPage() {
                             </div>
                         </TableCell>
                         <TableCell className='hidden md:table-cell font-mono font-medium'>
-                            ₹{user.walletBalance?.toLocaleString() || 0}
+                            ₹{user.wallet?.balance?.toLocaleString() || 0}
                         </TableCell>
                         <TableCell className='hidden lg:table-cell text-xs'>
-                           <div>Won: {user.matchesWon || 0}</div>
-                           <div>Played: {user.matchesPlayed || 0}</div>
+                           <div>Won: {user.stats?.matchesWon || 0}</div>
+                           <div>Played: {user.stats?.matchesPlayed || 0}</div>
                         </TableCell>
                         <TableCell className='hidden sm:table-cell'>
                             <Badge variant="outline" className="capitalize">{user.role?.replace('_', ' ') || 'Player'}</Badge>
@@ -208,5 +208,3 @@ export default function AdminUsersPage() {
     </div>
   );
 }
-
-    

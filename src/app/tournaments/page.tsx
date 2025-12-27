@@ -26,7 +26,7 @@ const TournamentCard = ({ tournament }: { tournament: Tournament }) => {
     const isUpcoming = tournament.status === 'upcoming';
     const isCompleted = tournament.status === 'completed';
     const isFull = tournament.players?.length >= tournament.maxPlayers;
-    const startsIn = tournament.startTime ? formatDistanceToNowStrict(new Date(tournament.startTime.seconds * 1000)) : 'N/A';
+    const startsIn = tournament.startDate ? formatDistanceToNowStrict(new Date(tournament.startDate.seconds * 1000)) : 'N/A';
 
     return (
         <Card className="bg-card/50 backdrop-blur-sm border-primary/20 hover:border-primary/40 transition-all duration-300 flex flex-col">

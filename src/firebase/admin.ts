@@ -1,41 +1,31 @@
-
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { initializeApp, getApps, cert, ServiceAccount } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// Check if the service account key is provided in environment variables
 if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-  throw new Error("The FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set. This is required for Firebase Admin SDK initialization.");
+  throw new Error('Missing required Firebase environment variable: FIREBASE_SERVICE_ACCOUNT_KEY');
 }
 
-// Parse the service account key from the environment variable
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+let serviceAccount: ServiceAccount;
 
-// Initialize the Firebase Admin SDK, but only if it hasn't been initialized already.
+try {
+  const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY.replace(/\\n/g, '\n');
+  serviceAccount = JSON.parse(serviceAccountString);
+} catch (e) {
+  throw new Error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY');
+}
+
 const app = !getApps().length
   ? initializeApp({
       credential: cert(serviceAccount),
-      // Add your databaseURL here if you use Realtime Database
-      // databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
     })
   : getApps()[0];
 
-// Export the initialized services
 const adminAuth = getAuth(app);
 const adminDb = getFirestore(app);
 
 export { app as adminApp, adminAuth, adminDb };
 
-/**
- * A utility function to initialize the Firebase Admin SDK.
- * This ensures that the SDK is initialized only once.
- * @returns The initialized Firebase Admin app.
- */
 export const initializeFirebaseAdmin = () => {
-  if (!getApps().length) {
-    initializeApp({
-      credential: cert(serviceAccount),
-    });
-  }
-  return getApps()[0];
+  return app;
 };
