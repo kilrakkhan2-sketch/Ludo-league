@@ -1,40 +1,23 @@
-import { initializeApp, getApps, cert, ServiceAccount } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import admin from 'firebase-admin';
 
-if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-  throw new Error('Missing required Firebase environment variable: FIREBASE_SERVICE_ACCOUNT_KEY');
-}
+if (!admin.apps.length) {
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\n/g, '\n');
+    const serviceAccount = {
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey
+    };
 
-let serviceAccount: ServiceAccount;
+    try {
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+            storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        });
+    } catch (e: any) {
+        if (e.errorInfo.code !== 'app/duplicate-app') {
+            console.error("Firebase admin initialization error", e.stack);
+        }
+    }
+} 
 
-try {
-  let key = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-
-  // It looks like the string is wrapped in single quotes, let's remove them
-  if (key.startsWith("'") && key.endsWith("'")) {
-    key = key.substring(1, key.length - 1);
-  }
-
-  const serviceAccountString = key.replace(/\\n/g, '\n');
-  serviceAccount = JSON.parse(serviceAccountString);
-} catch (e) {
-  console.error(e);
-  throw new Error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY');
-}
-
-// Initialize the Firebase Admin SDK
-const app = !getApps().length
-  ? initializeApp({
-      credential: cert(serviceAccount),
-    })
-  : getApps()[0];
-
-const adminAuth = getAuth(app);
-const adminDb = getFirestore(app);
-
-export { app as adminApp, adminAuth, adminDb };
-
-export const initializeFirebaseAdmin = () => {
-  return app;
-};
+export default admin;
