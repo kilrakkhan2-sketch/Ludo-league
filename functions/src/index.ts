@@ -1,9 +1,3 @@
-/**
- * This file contains the core backend logic for the semi-automatic UPI deposit system.
- * It uses a single, callable Cloud Function that can either approve or reject a deposit.
- * This approach is secure because it's controlled by backend logic and protected by Firestore rules.
- */
-
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
@@ -29,13 +23,13 @@ export const manageDeposit = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('unauthenticated', 'You must be logged in to manage deposits.');
   }
 
-  // In a real app, you would check for an admin custom claim.
-  // const isAdmin = context.auth.token.admin === true;
-  // if (!isAdmin) {
-  //   throw new functions.https.HttpsError('permission-denied', 'You do not have permission to perform this action.');
-  // }
+  const adminRole = context.auth.token.role;
+  if (!['superadmin', 'deposit_admin'].includes(adminRole)) {
+     throw new functions.https.HttpsError('permission-denied', 'You do not have permission to perform this action.');
+  }
 
   const { requestId, action, rejectionReason } = data;
+  const adminId = context.auth.uid;
 
   if (!requestId || !action) {
     throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a "requestId" and "action".');
@@ -68,6 +62,7 @@ export const manageDeposit = functions.https.onCall(async (data, context) => {
         transaction.update(depositRef, {
           status: 'approved',
           approvedAt: now,
+          processedBy: adminId,
         });
 
         // Increment the user's wallet balance
@@ -76,24 +71,28 @@ export const manageDeposit = functions.https.onCall(async (data, context) => {
         });
 
         // Create a record in the wallet transactions for auditing
-        const walletTxRef = db.collection('wallet_transactions').doc();
+        const walletTxRef = db.collection(`users/${depositData.userId}/transactions`).doc();
         transaction.set(walletTxRef, {
           userId: depositData.userId,
           type: 'deposit',
           amount: depositData.amount,
-          source: 'Paytm UPI',
+          description: 'Deposit approved',
+          status: 'completed',
           referenceId: requestId,
           createdAt: now,
         });
 
       } else if (action === 'reject') {
         if (!rejectionReason) {
-          throw new functions.https.HttpsError('invalid-argument', 'A rejection reason is required.');
+          // You can make this optional if you want
+          // throw new functions.https.HttpsError('invalid-argument', 'A rejection reason is required.');
         }
         // Update the deposit request with the rejection reason
         transaction.update(depositRef, {
           status: 'rejected',
-          adminNote: rejectionReason,
+          adminNote: rejectionReason || 'Rejected by admin',
+          processedBy: adminId,
+          rejectedAt: now,
         });
         
       } else {
@@ -101,11 +100,20 @@ export const manageDeposit = functions.https.onCall(async (data, context) => {
       }
     });
 
+    // Send notification outside the transaction
+    const depositData = (await depositRef.get()).data();
+    if (depositData) {
+        const message = action === 'approve' 
+            ? `Your deposit of ₹${depositData.amount} has been approved.`
+            : `Your deposit of ₹${depositData.amount} was rejected. Reason: ${rejectionReason || 'N/A'}`;
+        // Implement your sendNotification logic here if you have one
+    }
+
+
     return { success: true, message: `Deposit successfully ${action}ed.` };
 
   } catch (error) {
     console.error("Transaction failed: ", error);
-    // To the client, we re-throw the error which will be caught by the client-side code.
     if (error instanceof functions.https.HttpsError) {
       throw error;
     }

@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 'use client';
 
@@ -100,7 +99,7 @@ const AdminSidebar = ({ userRole, className }: { userRole: string, className?: s
     <div className={cn("h-full max-h-screen flex-col", className)}>
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
           <Link href="/admin/dashboard" className="flex items-center gap-2 font-semibold">
-            <Image src="/logo.svg" alt="LudoLeague Logo" width={32} height={32}/>
+            <Image src="/logo.png" alt="LudoLeague Logo" width={32} height={32}/>
             <span>Ludo Admin</span>
           </Link>
         </div>

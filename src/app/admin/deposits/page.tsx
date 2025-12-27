@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useCollection, useUser } from '@/firebase';
-import { updateDoc, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { DepositRequest, UserProfile } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -16,16 +15,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
+import { httpsCallable } from 'firebase/functions';
+import { useFunctions } from '@/firebase/provider';
 
 const getStatusVariant = (status: DepositRequest['status']) => {
   switch (status) {
     case 'pending':
       return 'secondary';
     case 'approved':
-    case 'completed':
       return 'success';
     case 'rejected':
-    case 'failed':
       return 'destructive';
     default:
       return 'default';
@@ -34,7 +33,7 @@ const getStatusVariant = (status: DepositRequest['status']) => {
 
 export default function AdminDepositsPage() {
   const { userData: adminUser, loading: adminLoading } = useUser();
-  const { firestore } = useFirebase();
+  const functions = useFunctions();
   const [status, setStatus] = useState<DepositRequest['status']>('pending');
   
   const { data: requests, loading } = useCollection<DepositRequest>('deposit-requests', {
@@ -53,26 +52,19 @@ export default function AdminDepositsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAction = async () => {
-    if (!action || !firestore || !adminUser) return;
+    if (!action || !functions || !adminUser) return;
 
     setIsSubmitting(true);
     const { type, request } = action;
-    const newStatus = type === 'approve' ? 'approved' : 'rejected';
 
     try {
-      const requestRef = doc(firestore, 'deposit-requests', request.id);
-
-      // 'onDepositStatusChange' cloud function handles the wallet update if status is set to 'approved'.
-      await updateDoc(requestRef, {
-        status: newStatus,
-        processedAt: serverTimestamp(),
-        processedBy: adminUser.uid
-      });
+      const manageDepositFn = httpsCallable(functions, 'manageDeposit');
+      await manageDepositFn({ requestId: request.id, action: type });
       
-      toast.success(`Request has been ${newStatus}.`);
-    } catch (error) {
+      toast.success(`Request has been ${type}d.`);
+    } catch (error: any) {
       console.error(`Failed to ${type} request:`, error);
-      toast.error('An unexpected error occurred.');
+      toast.error(error.message || 'An unexpected error occurred.');
     } finally {
       setIsSubmitting(false);
       setAction(null);
@@ -124,7 +116,7 @@ export default function AdminDepositsPage() {
                         ) : requests && requests.length > 0 ? (
                         requests.map((request) => (
                             <TableRow key={request.id}>
-                            <TableCell>{userMap[request.userId]?.displayName || request.userName || 'Unknown User'}</TableCell>
+                            <TableCell>{userMap[request.userId]?.displayName || request.userId.substring(0,10) || 'Unknown User'}</TableCell>
                             <TableCell>₹{request.amount.toLocaleString()}</TableCell>
                             <TableCell className="font-mono text-xs">{request.transactionId}</TableCell>
                             <TableCell>{request.createdAt?.seconds ? new Date(request.createdAt.seconds * 1000).toLocaleString() : 'N/A'}</TableCell>

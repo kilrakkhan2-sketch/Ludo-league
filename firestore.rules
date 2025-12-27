@@ -12,11 +12,17 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
-    // You can expand this with roles (e.g., in custom claims)
+    // This is less secure as it requires an extra read. Use token claims in production.
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
     function isAdmin() {
-      // In a real app, you'd check for an admin custom claim.
-      // e.g., return request.auth.token.admin == true;
-      return isSignedIn(); // Placeholder: for now, any signed-in user is an "admin" for testing
+      return getRole() in ['superadmin', 'deposit_admin', 'withdrawal_admin', 'match_admin'];
+    }
+
+    function isSuperAdmin() {
+      return getRole() == 'superadmin';
     }
 
     //----------------------------------------------------------------------
@@ -34,39 +40,34 @@ service cloud.firestore {
 
       // Users should not be able to delete their own accounts directly.
       allow delete: if false;
+
+        // Sub-collections for user-specific data
+        match /transactions/{transactionId} {
+            // A user can only read their own transaction history. Admins can read all.
+            allow read, list: if isOwner(userId) || isAdmin();
+            // Transactions should only be created by the backend (Cloud Functions).
+            allow create: if false;
+            // Transactions are immutable.
+            allow update, delete: if false;
+        }
     }
 
     //----------------------------------------------------------------------
     // DEPOSIT REQUESTS
     //----------------------------------------------------------------------
     match /deposit_requests/{requestId} {
-      // A user can only read their own deposit requests. Admins can read all.
+      // A user can read their own deposit requests. Deposit admins and superadmins can read all.
       allow read, list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
 
       // Any signed-in user can create a deposit request for themselves.
       // We ensure the userId in the document matches the authenticated user.
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
 
-      // Only admins can update a request (to approve/reject it).
+      // Only admins with appropriate roles can update (approve/reject). Cloud function handles the logic.
       allow update: if isAdmin();
       
       // Nobody can delete deposit requests to maintain audit history.
       allow delete: if false;
-    }
-
-    //----------------------------------------------------------------------
-    // WALLET TRANSACTIONS (AUDIT TRAIL)
-    //----------------------------------------------------------------------
-    match /wallet_transactions/{txnId} {
-      // A user can only read their own transaction history. Admins can read all.
-      allow read, list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-
-      // Transactions should only be created by the backend (Cloud Functions).
-      // Client-side creation is disallowed to prevent tampering.
-      allow create: if false;
-
-      // Transactions are immutable and cannot be changed or deleted.
-      allow update, delete: if false;
     }
   }
 }
