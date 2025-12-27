@@ -5,6 +5,7 @@ import { MaintenanceSettings } from "@/types";
 import { Skeleton } from "../ui/skeleton";
 import { PowerOff } from "lucide-react";
 import Image from "next/image";
+import NewMaintenanceScreen from './NewMaintenanceScreen';
 
 const ADMIN_ROLES = ['superadmin', 'deposit_admin', 'withdrawal_admin', 'match_admin'];
 
@@ -14,18 +15,6 @@ const FullScreenLoader = () => (
             <Image src="https://firebasestorage.googleapis.com/v0/b/studio-4431476254-c1156.appspot.com/o/appImages%2F26323-removebg-preview.png?alt=media&token=6ffa1383-0a70-44ca-acce-98d738ef99ed" alt="LudoLeague Logo" width={40} height={40} />
         </div>
         <p className="text-muted-foreground">Loading application...</p>
-    </div>
-);
-
-const MaintenanceScreen = ({ message }: { message?: string }) => (
-    <div className="flex h-screen w-full flex-col items-center justify-center bg-background p-4 text-center">
-        <div className="p-4 bg-destructive text-destructive-foreground rounded-full mb-6">
-            <PowerOff className="h-10 w-10" />
-        </div>
-        <h1 className="text-3xl font-bold font-headline mb-2">Under Maintenance</h1>
-        <p className="max-w-md text-muted-foreground">
-            {message || "We are currently performing scheduled maintenance. We'll be back online shortly. Thank you for your patience."}
-        </p>
     </div>
 );
 
@@ -67,7 +56,7 @@ export function MaintenanceShield({ children }: { children: React.ReactNode }) {
     }
 
     if (isMaintenanceMode && !isAdmin) {
-        return <MaintenanceScreen message={settings?.appDisabledMessage} />;
+        return <NewMaintenanceScreen />;
     }
 
     return <>{children}</>;
