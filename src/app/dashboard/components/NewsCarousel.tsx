@@ -55,7 +55,7 @@ export default function NewsCarousel() {
                         <CarouselItem key={ann.id} className="pl-4 md:basis-1/2 lg:basis-1/3">
                             <div className="p-1">
                                 <Card className={cn("border-0 shadow-lg", getCardClasses(ann.type))}>
-                                    <CardContent className="p-6">
+                                    <CardContent className="p-4">
                                         <Badge variant="secondary" className="mb-2 bg-white/20 text-white border-0">{ann.type}</Badge>
                                         <h3 className="font-bold text-lg mb-2">{ann.title}</h3>
                                         <p className="text-sm text-white/90">{ann.content}</p>
