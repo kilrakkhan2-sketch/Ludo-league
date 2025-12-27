@@ -11,16 +11,12 @@ export interface UserProfile {
   status?: 'online' | 'offline';
   isBlocked?: boolean;
   isVerified?: boolean;
-  stats: {
-    matchesPlayed: number;
-    matchesWon: number;
-    totalWinnings: number;
-  };
+  matchesPlayed: number;
+  matchesWon: number;
+  totalWinnings: number;
   rating: number;
   xp: number;
-  wallet: {
-    balance: number;
-  };
+  walletBalance: number;
   referralCode: string;
   referralEarnings: number;
   referredBy?: string;
@@ -116,10 +112,12 @@ export interface KycRequest {
     fullName: string;
     documentType: string;
     documentNumber: string;
-    documentUrl: string;
+    documentFrontImage: string;
+    documentBackImage?: string;
     status: 'pending' | 'approved' | 'rejected';
     createdAt: any;
     processedAt?: any;
+    rejectionReason?: string;
 }
 
 export interface Tournament {
