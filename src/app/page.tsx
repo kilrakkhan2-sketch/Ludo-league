@@ -32,8 +32,8 @@ export default function LoginPage() {
                 </div>
                 <Input id="password" type="password" required />
               </div>
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-                Login
+              <Button asChild type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Link href="/dashboard">Login</Link>
               </Button>
               <Button variant="outline" className="w-full">
                 Login with Google
