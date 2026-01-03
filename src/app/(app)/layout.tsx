@@ -127,85 +127,55 @@ export default function AppLayout({
 
   return (
     <SidebarProvider>
-      <div className="flex flex-col min-h-screen bg-muted/20">
-        <div className="md:hidden">
-            <Sheet>
-                <SheetTrigger asChild>
-                    <header className="sticky top-0 z-40 w-full border-b bg-primary text-primary-foreground shadow-md">
-                        <div className="container flex h-16 items-center justify-between space-x-4">
-                            <Link href="/dashboard" className="flex items-center gap-2">
-                                <Swords className="h-6 w-6" />
-                                <span className="font-bold text-lg">Ludo League</span>
-                            </Link>
-                            <div className="flex items-center gap-2">
-                                <UserNav />
-                                <Button size="icon" variant="ghost">
-                                    <PanelLeft className="h-6 w-6" />
-                                    <span className="sr-only">Toggle Menu</span>
-                                </Button>
+      <div className="flex min-h-screen bg-muted/20">
+        <Sidebar>
+            <SidebarHeader>
+                 <Link href="/dashboard" className="flex items-center gap-2 text-sidebar-primary">
+                    <Swords className="h-6 w-6" />
+                    <h1 className="text-xl font-bold tracking-tight">Ludo League</h1>
+                </Link>
+            </SidebarHeader>
+            <SidebarContent>
+                <AppSidebarNav />
+            </SidebarContent>
+        </Sidebar>
+
+        <div className="flex flex-col flex-1 w-full">
+            <header className="sticky top-0 z-40 w-full border-b bg-primary text-primary-foreground shadow-md">
+                <div className="container flex h-16 items-center justify-between md:justify-end">
+                    <Sheet>
+                        <SheetTrigger asChild>
+                            <Button size="icon" variant="ghost" className="md:hidden">
+                                <PanelLeft className="h-6 w-6" />
+                                <span className="sr-only">Toggle Menu</span>
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="left" className="p-0 bg-sidebar text-sidebar-foreground w-3/4">
+                            <SheetHeader className="p-4 border-b border-sidebar-border">
+                                <SheetTitle>
+                                     <SheetClose asChild>
+                                        <Link href="/dashboard" className="flex items-center gap-2 text-sidebar-primary">
+                                            <Swords className="h-6 w-6" />
+                                            <span className="font-bold text-lg">Ludo League</span>
+                                        </Link>
+                                    </SheetClose>
+                                </SheetTitle>
+                            </SheetHeader>
+                            <div className="p-2">
+                              <AppSidebarNav />
                             </div>
-                        </div>
-                    </header>
-                </SheetTrigger>
-                <SheetContent side="left" className="p-0 bg-sidebar text-sidebar-foreground w-3/4">
-                    <SheetHeader className="p-4 border-b border-sidebar-border">
-                        <SheetTitle>
-                             <SheetClose asChild>
-                                <Link href="/dashboard" className="flex items-center gap-2 text-sidebar-primary">
-                                    <Swords className="h-6 w-6" />
-                                    <span className="font-bold text-lg">Ludo League</span>
-                                </Link>
-                            </SheetClose>
-                        </SheetTitle>
-                    </SheetHeader>
-                    <div className="p-2">
-                      <AppSidebarNav />
-                    </div>
-                </SheetContent>
-            </Sheet>
-        </div>
-        
-        <div className="hidden md:flex">
-             <Sidebar>
-                <SidebarHeader>
-                     <Link href="/dashboard" className="flex items-center gap-2 text-sidebar-primary">
+                        </SheetContent>
+                    </Sheet>
+                     <Link href="/dashboard" className="flex items-center gap-2 md:hidden">
                         <Swords className="h-6 w-6" />
-                        <h1 className="text-xl font-bold tracking-tight">Ludo League</h1>
+                        <span className="font-bold text-lg">Ludo League</span>
                     </Link>
-                </SidebarHeader>
-                <SidebarContent>
-                    <AppSidebarNav />
-                </SidebarContent>
-            </Sidebar>
-            <div className="flex flex-col flex-1">
-                {/* Top App Bar for Desktop */}
-                <header className="sticky top-0 z-40 w-full border-b bg-primary text-primary-foreground shadow-md">
-                <div className="container flex h-16 items-center justify-end space-x-4">
-                    <div className="flex flex-1 items-center justify-end space-x-4">
+                    <div className="flex items-center gap-2">
                         <UserNav />
                     </div>
                 </div>
-                </header>
+            </header>
 
-                 {/* Page Banner */}
-                <div className="bg-card shadow-sm">
-                    <div className="container py-4">
-                        <h2 className="text-2xl font-bold tracking-tight text-foreground">
-                            {title}
-                        </h2>
-                    </div>
-                </div>
-                
-                {/* Page Content */}
-                <main className="flex-1 p-4 md:p-8 pt-6 pb-24 md:pb-8">
-                {children}
-                </main>
-            </div>
-        </div>
-
-        {/* Mobile content when sidebar is not open */}
-        <div className="md:hidden">
-            {/* Page Banner */}
             <div className="bg-card shadow-sm">
                 <div className="container py-4">
                     <h2 className="text-2xl font-bold tracking-tight text-foreground">
@@ -214,14 +184,11 @@ export default function AppLayout({
                 </div>
             </div>
             
-            {/* Page Content */}
             <main className="flex-1 p-4 md:p-8 pt-6 pb-24 md:pb-8">
-            {children}
+                {children}
             </main>
         </div>
       </div>
-
-      {/* Bottom navigation for mobile */}
       <BottomNav />
     </SidebarProvider>
   )

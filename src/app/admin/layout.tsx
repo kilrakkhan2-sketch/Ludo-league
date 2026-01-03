@@ -29,6 +29,7 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger, SheetClose } from "@/components/ui/sheet"
+import { UserNav } from "@/components/app/user-nav"
 
 const AdminSidebarNav = () => {
   const pathname = usePathname()
@@ -80,57 +81,49 @@ export default function AdminLayout({
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen md:flex">
-        <div className="hidden md:block">
-            <Sidebar className="border-r bg-background">
-                <SidebarHeader className="p-4">
-                    <Link href="/dashboard" className="flex items-center gap-2">
-                        <Swords className="h-6 w-6 text-primary" />
-                        <span className="font-bold text-lg">Ludo League</span>
-                    </Link>
-                </SidebarHeader>
-                <SidebarContent className="p-2">
-                    <AdminSidebarNav />
-                </SidebarContent>
-            </Sidebar>
-        </div>
+      <div className="min-h-screen md:flex bg-muted/30">
+        <Sidebar className="border-r bg-background hidden md:flex">
+            <SidebarHeader className="p-4">
+                <Link href="/dashboard" className="flex items-center gap-2">
+                    <Swords className="h-6 w-6 text-primary" />
+                    <span className="font-bold text-lg">Ludo League</span>
+                </Link>
+            </SidebarHeader>
+            <SidebarContent className="p-2">
+                <AdminSidebarNav />
+            </SidebarContent>
+        </Sidebar>
 
-        <main className="flex-1">
-            <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 md:hidden">
-                <Sheet open={isSheetOpen} onOpenChange={setSheetOpen}>
+        <div className="flex flex-col flex-1">
+            <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-primary text-primary-foreground px-4 sm:h-16">
+                 <Sheet open={isSheetOpen} onOpenChange={setSheetOpen}>
                     <SheetTrigger asChild>
-                        <Button size="icon" variant="outline" className="sm:hidden">
+                        <Button size="icon" variant="ghost" className="md:hidden hover:bg-primary-foreground/10 hover:text-primary-foreground">
                             <PanelLeft className="h-5 w-5" />
                             <span className="sr-only">Toggle Menu</span>
                         </Button>
                     </SheetTrigger>
-                    <SheetContent side="left" className="sm:max-w-xs bg-background">
-                       <SheetHeader className="text-left">
+                    <SheetContent side="left" className="sm:max-w-xs bg-sidebar text-sidebar-foreground p-0">
+                       <SheetHeader className="p-4 border-b border-sidebar-border">
                           <SheetTitle>
                             <SheetClose asChild>
-                                <Link
-                                    href="/dashboard"
-                                    className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
-                                >
-                                    <Swords className="h-5 w-5 transition-all group-hover:scale-110" />
-                                    <span className="sr-only">Ludo League</span>
+                                <Link href="/dashboard" className="flex items-center gap-2 text-sidebar-primary">
+                                    <Swords className="h-6 w-6" />
+                                    <span className="font-bold text-lg">Ludo League</span>
                                 </Link>
                             </SheetClose>
                           </SheetTitle>
-                          <SheetDescription>
-                            Admin navigation menu
-                          </SheetDescription>
                         </SheetHeader>
-                        <nav className="grid gap-6 text-lg font-medium mt-4">
+                        <nav className="grid gap-1 p-2 text-lg font-medium mt-4">
                             {navItems.map(item => (
                                 <SheetClose asChild key={item.href}>
                                     <Link
                                         href={item.href}
-                                        className={cn("flex items-center gap-4 px-2.5",
-                                            pathname === item.href ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                                        className={cn("flex items-center gap-3 rounded-lg px-3 py-2 transition-all",
+                                            pathname === item.href ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/80 hover:text-sidebar-foreground"
                                         )}
                                     >
-                                        <item.icon className="h-5 w-5" />
+                                        <item.icon className="h-4 w-4" />
                                         {item.label}
                                     </Link>
                                 </SheetClose>
@@ -138,15 +131,17 @@ export default function AdminLayout({
                         </nav>
                     </SheetContent>
                 </Sheet>
-                 <Link href="/dashboard" className="flex items-center gap-2">
-                    <Swords className="h-6 w-6 text-primary" />
-                    <span className="font-bold">Admin Panel</span>
-                </Link>
+                 <div className="flex-1">
+                    <h1 className="font-semibold text-lg">Admin Panel</h1>
+                 </div>
+                 <UserNav />
             </header>
-            <div className="p-4 sm:p-6 md:p-8">
+            <main className="p-4 sm:p-6 md:p-8 flex-1 overflow-x-auto">
+              <div className="min-w-[1024px]">
                 {children}
-            </div>
-        </main>
+              </div>
+            </main>
+        </div>
       </div>
     </SidebarProvider>
   )
