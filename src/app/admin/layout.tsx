@@ -22,6 +22,7 @@ import {
   Home,
   Trophy,
   Users,
+  ShieldCheck,
 } from "lucide-react"
 import { useState } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
@@ -42,7 +43,6 @@ const AdminSidebarNav = () => {
             <SidebarMenuButton
               isActive={pathname === item.href}
               className="justify-start"
-              variant="ghost"
             >
               <item.icon className="h-4 w-4" />
               {item.label}
@@ -60,6 +60,17 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
     const [isSheetOpen, setSheetOpen] = useState(false)
+    const pathname = usePathname()
+    
+    const navItems = [
+        { href: "/dashboard", label: "App Lobby", icon: Swords },
+        { href: "/admin/dashboard", label: "Admin Dashboard", icon: LayoutDashboard },
+        { href: "/admin/deposits", label: "Deposits", icon: WalletCards },
+        { href: "/admin/matches", label: "Matches", icon: Trophy },
+        { href: "/admin/kyc-requests", label: "KYC Requests", icon: ShieldCheck },
+    ]
+
+
   return (
     <SidebarProvider>
       <div className="min-h-screen md:flex">
@@ -103,26 +114,19 @@ export default function AdminLayout({
                           </SheetDescription>
                         </SheetHeader>
                         <nav className="grid gap-6 text-lg font-medium mt-4">
-                            <Link href="/dashboard" className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground" onClick={() => setSheetOpen(false)}>
-                                <Home className="h-5 w-5" />
-                                App Dashboard
-                            </Link>
-                            <Link href="/admin/dashboard" className="flex items-center gap-4 px-2.5 text-foreground" onClick={() => setSheetOpen(false)}>
-                                <LayoutDashboard className="h-5 w-5" />
-                                Admin Dashboard
-                            </Link>
-                             <Link href="/admin/deposits" className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground" onClick={() => setSheetOpen(false)}>
-                                <WalletCards className="h-5 w-5" />
-                                Deposits
-                            </Link>
-                            <Link href="/admin/matches" className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground" onClick={() => setSheetOpen(false)}>
-                                <Trophy className="h-5 w-5" />
-                                Matches
-                            </Link>
-                            <Link href="/admin/kyc-requests" className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground" onClick={() => setSheetOpen(false)}>
-                                <Users className="h-5 w-5" />
-                                KYC Requests
-                            </Link>
+                            {navItems.map(item => (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    className={cn("flex items-center gap-4 px-2.5",
+                                        pathname === item.href ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                    onClick={() => setSheetOpen(false)}
+                                >
+                                    <item.icon className="h-5 w-5" />
+                                    {item.label}
+                                </Link>
+                            ))}
                         </nav>
                     </SheetContent>
                 </Sheet>
