@@ -60,6 +60,9 @@ const featureCards = [
 ];
 
 const bannerImages = PlaceHolderImages.filter(img => img.id.startsWith('banner-'));
+const ludoClassicImage = PlaceHolderImages.find(img => img.id === 'ludo-classic');
+const ludoPopularImage = PlaceHolderImages.find(img => img.id === 'ludo-popular');
+
 
 const FeatureCard = ({ card }: { card: typeof featureCards[0] }) => (
     <Card className="w-full shadow-md hover:shadow-lg transition-shadow flex flex-col">
@@ -77,6 +80,28 @@ const FeatureCard = ({ card }: { card: typeof featureCards[0] }) => (
         </CardContent>
     </Card>
 );
+
+const GameTypeCard = ({ title, image }: { title: string, image?: { imageUrl: string, imageHint: string, description: string } }) => (
+    <Card className="w-full shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+        <CardContent className="p-0">
+            <div className="relative aspect-[4/3] w-full">
+                {image && (
+                    <Image
+                        src={image.imageUrl}
+                        alt={image.description}
+                        fill
+                        className="object-cover"
+                        data-ai-hint={image.imageHint}
+                    />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
+                    <CardTitle className="text-xl text-white">{title}</CardTitle>
+                </div>
+            </div>
+        </CardContent>
+    </Card>
+);
+
 
 export default function DashboardPage() {
   const plugin = useRef(
@@ -116,6 +141,11 @@ export default function DashboardPage() {
         <CarouselPrevious className="absolute left-4" />
         <CarouselNext className="absolute right-4" />
       </Carousel>
+
+      <div className="grid grid-cols-2 gap-4">
+        <GameTypeCard title="Ludo Classic" image={ludoClassicImage} />
+        <GameTypeCard title="Ludo Popular" image={ludoPopularImage} />
+      </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {featureCards.map((card) => (

@@ -95,6 +95,18 @@
       "description": "Banner for the KYC page.",
       "imageUrl": "https://images.unsplash.com/photo-1762330469123-ce98036eff16?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxpZGVudGl0eSUyMHZlcmlmaWNhdGlvbnxlbnwwfHx8fDE3Njc0NDM1MTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "identity verification"
+    },
+    {
+      "id": "ludo-classic",
+      "description": "Image for Ludo Classic game type",
+      "imageUrl": "https://images.unsplash.com/photo-1751380293405-678d73c1de66?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxjbGFzc2ljJTIwYm9hcmR8ZW58MHx8fHwxNzY3NDQ1NTYxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "classic board"
+    },
+    {
+      "id": "ludo-popular",
+      "description": "Image for Ludo Popular game type",
+      "imageUrl": "https://images.unsplash.com/photo-1554497126-8a1188dc43a9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtb2Rlcm4lMjBnYW1lfGVufDB8fHx8MTc2NzQ0NTU2MXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "modern game"
     }
   ]
 }
