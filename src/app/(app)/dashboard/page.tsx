@@ -12,9 +12,9 @@ import { UserNav } from "@/components/app/user-nav";
 
 const MatchCard = ({ match }: { match: (typeof mockMatches)[0] }) => (
     <Card key={match.id} className="flex flex-col">
-        <CardHeader>
+        <CardHeader className="p-4">
             <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
                 <Swords className="h-5 w-5 text-primary" />
                 <span>Prize: ₹{match.prizePool}</span>
             </CardTitle>
@@ -28,7 +28,7 @@ const MatchCard = ({ match }: { match: (typeof mockMatches)[0] }) => (
             </div>
             <CardDescription>Entry: ₹{match.entryFee}</CardDescription>
         </CardHeader>
-        <CardContent className="flex-grow">
+        <CardContent className="flex-grow p-4 pt-0">
             <div className="flex items-center justify-between">
             <div className="flex items-center">
                 {match.players.map((player, index) => (
@@ -44,8 +44,8 @@ const MatchCard = ({ match }: { match: (typeof mockMatches)[0] }) => (
             </div>
             </div>
         </CardContent>
-        <CardFooter>
-            <Button asChild className="w-full" variant={match.status === 'waiting' ? 'accent' : 'default'} disabled={match.status !== 'waiting'}>
+        <CardFooter className="p-2 pt-0">
+            <Button asChild className="w-full h-9" variant={match.status === 'waiting' ? 'accent' : 'default'} disabled={match.status !== 'waiting'}>
             <Link href={`/match/${match.id}`}>
                 {match.status === 'waiting' ? 'Join Match' : 'View Match'}
             </Link>
