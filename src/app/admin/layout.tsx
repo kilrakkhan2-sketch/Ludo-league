@@ -23,7 +23,7 @@ import {
   Home,
 } from "lucide-react"
 import { useState } from "react"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 
 const AdminSidebarNav = () => {
   const pathname = usePathname()
@@ -84,7 +84,8 @@ export default function AdminLayout({
                         </Button>
                     </SheetTrigger>
                     <SheetContent side="left" className="sm:max-w-xs bg-background">
-                        <nav className="grid gap-6 text-lg font-medium">
+                        <SheetHeader>
+                          <SheetTitle>
                             <Link
                                 href="/dashboard"
                                 className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
@@ -93,6 +94,12 @@ export default function AdminLayout({
                                 <Swords className="h-5 w-5 transition-all group-hover:scale-110" />
                                 <span className="sr-only">Ludo League</span>
                             </Link>
+                          </SheetTitle>
+                          <SheetDescription className="sr-only">
+                            Admin navigation menu
+                          </SheetDescription>
+                        </SheetHeader>
+                        <nav className="grid gap-6 text-lg font-medium mt-4">
                             <Link href="/dashboard" className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground" onClick={() => setSheetOpen(false)}>
                                 <Home className="h-5 w-5" />
                                 App Dashboard
