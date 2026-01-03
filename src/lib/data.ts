@@ -13,7 +13,7 @@ export type Match = {
   prizePool: number;
   players: User[];
   maxPlayers: number;
-  status: 'waiting' | 'in-progress' | 'completed';
+  status: 'waiting' | 'in-progress' | 'completed' | 'disputed';
   roomCode?: string;
   results?: MatchResult[];
 };
@@ -75,6 +75,10 @@ export const mockMatches: Match[] = [
     maxPlayers: 4,
     status: 'in-progress',
     roomCode: '12345678',
+    results: [
+        { userId: 'user-1', position: 2, status: 'loss', screenshotUrl: 'https://picsum.photos/seed/ludoA1/600/400'},
+        { userId: 'user-2', position: 1, status: 'win', screenshotUrl: 'https://picsum.photos/seed/ludoA2/600/400'},
+    ]
   },
   {
     id: 'match-3',
@@ -92,10 +96,22 @@ export const mockMatches: Match[] = [
     maxPlayers: 4,
     status: 'completed',
     results: [
-        { userId: 'user-1', position: 1, status: 'win', screenshotUrl: 'https://picsum.photos/seed/ludo1/600/400'},
-        { userId: 'user-2', position: 2, status: 'loss', screenshotUrl: 'https://picsum.photos/seed/ludo2/600/400'},
-        { userId: 'user-3', position: 3, status: 'loss', screenshotUrl: 'https://picsum.photos/seed/ludo3/600/400'},
-        { userId: 'user-4', position: 4, status: 'loss', screenshotUrl: 'https://picsum.photos/seed/ludo4/600/400'},
+        { userId: 'user-1', position: 1, status: 'win', screenshotUrl: 'https://picsum.photos/seed/ludoB1/600/400'},
+        { userId: 'user-2', position: 2, status: 'loss', screenshotUrl: 'https://picsum.photos/seed/ludoB2/600/400'},
+        { userId: 'user-3', position: 3, status: 'loss', screenshotUrl: 'https://picsum.photos/seed/ludoB3/600/400'},
+        { userId: 'user-4', position: 4, status: 'loss', screenshotUrl: 'https://picsum.photos/seed/ludoB4/600/400'},
+    ]
+  },
+  {
+    id: 'match-5',
+    entryFee: 150,
+    prizePool: 570,
+    players: mockUsers.slice(0, 2),
+    maxPlayers: 2,
+    status: 'disputed',
+    results: [
+        { userId: 'user-1', position: 1, status: 'win', screenshotUrl: 'https://picsum.photos/seed/ludoC1/600/400'},
+        { userId: 'user-2', position: 1, status: 'win', screenshotUrl: 'https://picsum.photos/seed/ludoC2/600/400'},
     ]
   },
 ];
