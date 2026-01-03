@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -29,16 +30,39 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { mockMatches, type Match } from "@/lib/data";
+import { mockMatches, type Match, type MatchResult } from "@/lib/data";
 import { cn } from "@/lib/utils";
-import { Crown, Eye, Users, XCircle, Shield, HandCoins } from "lucide-react";
+import { Crown, Eye, Users, XCircle, Shield, HandCoins, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 
-const MatchDetailDialog = ({ match }: { match: Match }) => {
-  const winner = match.results ? match.players.find(p => p.id === match.results?.find(r => r.position === 1)?.userId) : null;
+const MatchDetailDialog = ({ match: initialMatch }: { match: Match }) => {
+  const [match, setMatch] = useState(initialMatch);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const winner = match.results ? match.players.find(p => p.id === match.results?.find(r => r.position === 1 && r.status === 'win')?.userId) : null;
   
+  const handleDeclareWinner = (winnerId: string) => {
+    setIsProcessing(true);
+    // Simulate API call
+    setTimeout(() => {
+        const newResults = match.results?.map(r => {
+            if (r.userId === winnerId) {
+                return { ...r, status: 'win', position: 1 };
+            }
+            return { ...r, status: 'loss', position: r.position > 1 ? r.position : 2 };
+        }) as MatchResult[];
+
+        setMatch({
+            ...match,
+            status: 'completed',
+            results: newResults,
+        });
+        setIsProcessing(false);
+    }, 1000);
+  };
+
   return (
-    <Dialog>
+    <Dialog onOpenChange={(open) => !open && setMatch(initialMatch)}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Eye className="h-4 w-4 mr-2" />
@@ -54,6 +78,7 @@ const MatchDetailDialog = ({ match }: { match: Match }) => {
               className={cn("font-semibold", {
                 "text-green-600": match.status === "completed",
                 "text-blue-600": match.status === "in-progress",
+                "text-yellow-600": match.status === "waiting",
                 "text-red-600": match.status === "disputed",
               })}
             >
@@ -99,7 +124,7 @@ const MatchDetailDialog = ({ match }: { match: Match }) => {
                               : "text-muted-foreground"
                           )}
                         />
-                        Position: {result.position}
+                        Position Claimed: {result.position}
                       </div>
                       <Badge
                         variant={
@@ -111,8 +136,8 @@ const MatchDetailDialog = ({ match }: { match: Match }) => {
                       </Badge>
                     </div>
                   </div>
-                  <div className="flex flex-col items-center justify-center">
-                     <p className="text-sm font-medium mb-2 self-start">Submitted Screenshot</p>
+                  <div className="flex flex-col items-center justify-center gap-2">
+                     <p className="text-sm font-medium self-start">Submitted Screenshot</p>
                     <a href={result.screenshotUrl} target="_blank" rel="noopener noreferrer" className="block w-full">
                         <Image
                             src={result.screenshotUrl}
@@ -122,6 +147,11 @@ const MatchDetailDialog = ({ match }: { match: Match }) => {
                             className="rounded-md object-cover border-2 w-full h-auto"
                         />
                     </a>
+                    {match.status === 'disputed' && (
+                        <Button size="sm" className="w-full text-green-50 bg-green-600 hover:bg-green-700" onClick={() => handleDeclareWinner(result.userId)} disabled={isProcessing}>
+                            <CheckCircle2 className="h-4 w-4 mr-2"/> Declare {player?.name} as Winner
+                        </Button>
+                    )}
                   </div>
                 </div>
               );
@@ -130,9 +160,15 @@ const MatchDetailDialog = ({ match }: { match: Match }) => {
           </div>
         </div>
          <div className="flex justify-end gap-2 pt-4 border-t">
+            {match.status === 'disputed' && (
+                 <Button variant="accent"><Shield className="mr-2 h-4 w-4"/> Resolve Dispute</Button>
+            )}
             <Button variant="outline"><Shield className="mr-2 h-4 w-4"/> View Fraud Report</Button>
             <Button variant="secondary"><HandCoins className="mr-2 h-4 w-4"/> Refund Entry Fees</Button>
             <Button variant="destructive"><XCircle className="mr-2 h-4 w-4"/> Cancel Match</Button>
+            <DialogClose asChild>
+                <Button variant="ghost">Close</Button>
+            </DialogClose>
          </div>
       </DialogContent>
     </Dialog>
@@ -140,8 +176,10 @@ const MatchDetailDialog = ({ match }: { match: Match }) => {
 };
 
 export default function AdminMatchesPage() {
+  const [allMatches, setAllMatches] = useState<Match[]>(mockMatches);
+
   const matchesByStatus = (status: Match["status"]) =>
-    mockMatches.filter((match) => match.status === status);
+    allMatches.filter((match) => match.status === status);
 
   const MatchTable = ({ status }: { status: Match["status"] }) => (
     <Table>
@@ -175,7 +213,8 @@ export default function AdminMatchesPage() {
                     : "secondary"
                 }
                 className={cn({
-                    "text-blue-600 border-blue-600": match.status === 'in-progress'
+                    "text-blue-600 border-blue-600": match.status === 'in-progress',
+                    "text-green-600 border-green-600": match.status === 'completed',
                 })}
               >
                 {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
@@ -205,20 +244,24 @@ export default function AdminMatchesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="in-progress">
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs defaultValue="disputed" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="in-progress">In Progress</TabsTrigger>
-              <TabsTrigger value="completed">Completed</TabsTrigger>
               <TabsTrigger value="disputed">Disputed</TabsTrigger>
+              <TabsTrigger value="completed">Completed</TabsTrigger>
+              <TabsTrigger value="waiting">Waiting</TabsTrigger>
             </TabsList>
             <TabsContent value="in-progress" className="mt-4">
               <MatchTable status="in-progress" />
             </TabsContent>
+             <TabsContent value="disputed" className="mt-4">
+                <MatchTable status="disputed" />
+            </TabsContent>
             <TabsContent value="completed" className="mt-4">
               <MatchTable status="completed" />
             </TabsContent>
-            <TabsContent value="disputed" className="mt-4">
-                <MatchTable status="disputed" />
+            <TabsContent value="waiting" className="mt-4">
+                <MatchTable status="waiting" />
             </TabsContent>
           </Tabs>
         </CardContent>
