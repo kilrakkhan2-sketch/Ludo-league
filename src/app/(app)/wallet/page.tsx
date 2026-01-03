@@ -1,3 +1,4 @@
+
 'use client';
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
@@ -22,7 +23,9 @@ import { useEffect, useState } from "react"
 import type { Transaction } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage"
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
+const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-wallet');
 
 export default function WalletPage() {
   const { user, userProfile } = useUser();
@@ -152,7 +155,17 @@ export default function WalletPage() {
 
 
   return (
-    <>
+    <div className="space-y-6">
+      {bannerImage && (
+            <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden">
+                <Image src={bannerImage.imageUrl} alt="Wallet Banner" fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                    <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
+                        <WalletIcon className="h-8 w-8" /> My Wallet
+                    </h2>
+                </div>
+            </div>
+        )}
       <div className="grid gap-8">
         <Card className="shadow-md">
             <CardHeader className="flex flex-row items-center justify-between">
@@ -288,6 +301,6 @@ export default function WalletPage() {
             </CardContent>
         </Card>
       </div>
-    </>
+    </div>
   )
 }

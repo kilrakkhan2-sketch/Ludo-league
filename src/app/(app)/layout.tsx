@@ -142,8 +142,8 @@ export default function AppLayout({
 
         <div className="flex flex-col flex-1 w-full">
             <header className="sticky top-0 z-40 w-full border-b bg-primary text-primary-foreground shadow-md">
-                <div className="container flex h-16 items-center justify-between md:justify-end">
-                    <Sheet>
+                <div className="container flex h-16 items-center">
+                     <Sheet>
                         <SheetTrigger asChild>
                             <Button size="icon" variant="ghost" className="md:hidden">
                                 <PanelLeft className="h-6 w-6" />
@@ -166,17 +166,22 @@ export default function AppLayout({
                             </div>
                         </SheetContent>
                     </Sheet>
-                     <Link href="/dashboard" className="flex items-center gap-2 md:hidden">
-                        <Swords className="h-6 w-6" />
-                        <span className="font-bold text-lg">Ludo League</span>
-                    </Link>
+                    <div className="flex-1 flex items-center justify-center md:justify-start">
+                         <Link href="/dashboard" className="hidden items-center gap-2 md:flex">
+                            <Swords className="h-6 w-6" />
+                            <span className="font-bold text-lg">Ludo League</span>
+                        </Link>
+                        <h2 className="text-xl font-bold tracking-tight md:hidden">
+                            {title}
+                        </h2>
+                    </div>
                     <div className="flex items-center gap-2">
                         <UserNav />
                     </div>
                 </div>
             </header>
 
-            <div className="bg-card shadow-sm">
+            <div className="bg-card shadow-inner hidden md:block">
                 <div className="container py-4">
                     <h2 className="text-2xl font-bold tracking-tight text-foreground">
                         {title}
@@ -184,7 +189,7 @@ export default function AppLayout({
                 </div>
             </div>
             
-            <main className="flex-1 p-4 md:p-8 pt-6 pb-24 md:pb-8">
+            <main className="flex-1 p-4 md:p-6 pb-24 md:pb-8">
                 {children}
             </main>
         </div>

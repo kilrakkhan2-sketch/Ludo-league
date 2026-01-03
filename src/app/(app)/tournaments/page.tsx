@@ -1,3 +1,4 @@
+
 'use client';
 import Image from "next/image";
 import Link from "next/link";
@@ -11,6 +12,9 @@ import { useFirestore } from "@/firebase";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import type { Tournament } from "@/lib/types";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
+
+const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-tournaments');
 
 const TournamentCard = ({ tournament }: { tournament: Tournament }) => (
     <Card className="flex flex-col overflow-hidden">
@@ -116,10 +120,17 @@ export default function TournamentsPage() {
     }
 
   return (
-    <>
-        <div className="flex items-center justify-between space-y-2 mb-4">
-            <h2 className="text-3xl font-bold tracking-tight">Tournaments</h2>
-        </div>
+    <div className="space-y-6">
+        {bannerImage && (
+             <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden">
+                <Image src={bannerImage.imageUrl} alt="Tournaments Banner" fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                    <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
+                        <Trophy className="h-8 w-8" /> Tournaments
+                    </h2>
+                </div>
+            </div>
+        )}
 
         <Tabs defaultValue="upcoming" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
@@ -143,6 +154,6 @@ export default function TournamentsPage() {
                  <TournamentList list={completedTournaments} emptyMessage="No completed tournaments found." />
             </TabsContent>
         </Tabs>
-    </>
+    </div>
   );
 }

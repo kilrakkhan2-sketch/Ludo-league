@@ -1,9 +1,20 @@
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Swords, Trophy, Wallet, BarChart, ShieldCheck } from "lucide-react";
+'use client';
+import { useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
-
+import Autoplay from "embla-carousel-autoplay";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import { Button } from "@/components/ui/button";
+import { Swords, Trophy, Wallet, BarChart, ShieldCheck } from "lucide-react";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 const featureCards = [
     {
@@ -48,6 +59,8 @@ const featureCards = [
     },
 ];
 
+const bannerImages = PlaceHolderImages.filter(img => img.id.startsWith('banner-'));
+
 const FeatureCard = ({ card }: { card: typeof featureCards[0] }) => (
     <Card className="w-full shadow-md hover:shadow-lg transition-shadow flex flex-col">
         <CardHeader>
@@ -66,15 +79,49 @@ const FeatureCard = ({ card }: { card: typeof featureCards[0] }) => (
 );
 
 export default function DashboardPage() {
+  const plugin = useRef(
+    Autoplay({ delay: 3000, stopOnInteraction: true })
+  );
 
   return (
-    <>
+    <div className="space-y-6">
+      <Carousel
+        plugins={[plugin.current]}
+        className="w-full"
+        onMouseEnter={plugin.current.stop}
+        onMouseLeave={plugin.current.reset}
+        opts={{
+          loop: true,
+        }}
+      >
+        <CarouselContent>
+          {bannerImages.map((image, index) => (
+            <CarouselItem key={index}>
+              <Card className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="relative aspect-[16/9] w-full">
+                    <Image
+                      src={image.imageUrl}
+                      alt={image.description}
+                      fill
+                      className="object-cover"
+                      data-ai-hint={image.imageHint}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+        <CarouselPrevious className="absolute left-4" />
+        <CarouselNext className="absolute right-4" />
+      </Carousel>
+      
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {featureCards.map((card) => (
           <FeatureCard key={card.title} card={card} />
         ))}
       </div>
-    </>
+    </div>
   );
 }
-

@@ -1,6 +1,8 @@
+
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,8 +16,11 @@ import { useToast } from '@/hooks/use-toast';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 type KycStatus = 'not_submitted' | 'pending' | 'approved' | 'rejected';
+
+const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-kyc');
 
 const KycStatusIndicator = ({ status, reason }: { status: KycStatus, reason?: string }) => {
     switch (status) {
@@ -157,13 +162,17 @@ export default function KycPage() {
 
 
   return (
-    <>
-      <div className="flex items-center justify-between space-y-2 mb-4">
-        <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <ShieldCheck className="h-8 w-8 text-primary"/>
-            KYC Verification
-        </h2>
-      </div>
+    <div className="space-y-6">
+        {bannerImage && (
+            <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden">
+                <Image src={bannerImage.imageUrl} alt="KYC Banner" fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                    <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
+                        <ShieldCheck className="h-8 w-8" /> KYC Verification
+                    </h2>
+                </div>
+            </div>
+        )}
 
        <div className="grid gap-6">
         <KycStatusIndicator status={kycStatus} reason={rejectionReason} />
@@ -226,6 +235,6 @@ export default function KycPage() {
            )}
         </Card>
       </div>
-    </>
+    </div>
   );
 }

@@ -1,4 +1,6 @@
+
 'use client';
+import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +13,9 @@ import { useEffect, useState } from "react";
 import { CreateMatchDialog } from "@/components/app/create-match-dialog";
 import { useToast } from "@/hooks/use-toast";
 import type { Match } from "@/lib/types";
+import { PlaceHolderImages } from '@/lib/placeholder-images';
+
+const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-lobby');
 
 const MatchCard = ({ match }: { match: Match }) => {
     const { user } = useUser();
@@ -194,8 +199,18 @@ export default function LobbyPage() {
 
 
   return (
-    <>
-      <div className="flex items-center justify-end space-x-2 mb-4">
+    <div className="space-y-6">
+        {bannerImage && (
+             <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden">
+                <Image src={bannerImage.imageUrl} alt="Lobby Banner" fill className="object-cover" data-ai-hint={bannerImage.imageHint}/>
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                    <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
+                        <Swords className="h-8 w-8" /> Match Lobby
+                    </h2>
+                </div>
+            </div>
+        )}
+      <div className="flex items-center justify-end space-x-2">
           <CreateMatchDialog />
       </div>
       <div className="flex flex-col gap-8">
@@ -234,6 +249,6 @@ export default function LobbyPage() {
             )}
         </section>
       </div>
-    </>
+    </div>
   );
 }

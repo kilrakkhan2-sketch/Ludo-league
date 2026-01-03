@@ -1,4 +1,6 @@
+
 'use client';
+import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,6 +9,7 @@ import { BarChart, Crown, Medal, Trophy } from "lucide-react";
 import { useFirestore } from "@/firebase";
 import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { useEffect, useState } from "react";
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 type UserProfile = {
   uid: string;
@@ -15,6 +18,8 @@ type UserProfile = {
   winRate?: number;
   winnings?: number;
 };
+
+const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-leaderboard');
 
 export default function LeaderboardPage() {
   const firestore = useFirestore();
@@ -48,13 +53,17 @@ export default function LeaderboardPage() {
   }
 
   return (
-    <>
-      <div className="flex items-center justify-between space-y-2 mb-4">
-        <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <BarChart className="h-8 w-8 text-primary"/>
-            Leaderboard
-        </h2>
-      </div>
+    <div className='space-y-6'>
+       {bannerImage && (
+            <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden">
+                <Image src={bannerImage.imageUrl} alt="Leaderboard Banner" fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                    <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
+                        <BarChart className="h-8 w-8" /> Leaderboard
+                    </h2>
+                </div>
+            </div>
+        )}
 
       <Card>
         <CardHeader>
@@ -115,6 +124,6 @@ export default function LeaderboardPage() {
             </Table>
         </CardContent>
       </Card>
-    </>
+    </div>
   );
 }
