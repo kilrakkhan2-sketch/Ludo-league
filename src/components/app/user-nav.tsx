@@ -11,7 +11,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
-import { CreditCard, LogOut, Settings, User } from "lucide-react"
+import { CreditCard, LogOut, Settings, User, ShieldCheck } from "lucide-react"
+import Link from "next/link"
 
 export function UserNav() {
   const userAvatar = PlaceHolderImages.find(img => img.id === 'avatar-1');
@@ -41,6 +42,13 @@ export function UserNav() {
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
             <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/kyc">
+              <ShieldCheck className="mr-2 h-4 w-4" />
+              <span>KYC</span>
+              <DropdownMenuShortcut>⇧⌘K</DropdownMenuShortcut>
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuItem>
             <CreditCard className="mr-2 h-4 w-4" />

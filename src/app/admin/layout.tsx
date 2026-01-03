@@ -10,7 +10,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarInset,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -22,6 +21,7 @@ import {
   PanelLeft,
   Home,
   Trophy,
+  Users,
 } from "lucide-react"
 import { useState } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
@@ -32,6 +32,7 @@ const AdminSidebarNav = () => {
     { href: "/admin/dashboard", label: "Fraud Dashboard", icon: ShieldAlert },
     { href: "/admin/deposits", label: "Deposits", icon: WalletCards },
     { href: "/admin/matches", label: "Matches", icon: Trophy },
+    { href: "/admin/kyc-requests", label: "KYC Requests", icon: Users },
   ]
   return (
     <SidebarMenu>
@@ -86,7 +87,7 @@ export default function AdminLayout({
                         </Button>
                     </SheetTrigger>
                     <SheetContent side="left" className="sm:max-w-xs bg-background">
-                        <SheetHeader className="text-left">
+                       <SheetHeader className="text-left">
                           <SheetTitle>
                             <Link
                                 href="/dashboard"
@@ -117,6 +118,10 @@ export default function AdminLayout({
                             <Link href="/admin/matches" className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground" onClick={() => setSheetOpen(false)}>
                                 <Trophy className="h-5 w-5" />
                                 Matches
+                            </Link>
+                            <Link href="/admin/kyc-requests" className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground" onClick={() => setSheetOpen(false)}>
+                                <Users className="h-5 w-5" />
+                                KYC Requests
                             </Link>
                         </nav>
                     </SheetContent>

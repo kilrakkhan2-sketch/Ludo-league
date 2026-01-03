@@ -22,6 +22,11 @@ export function MainNav({
       active: pathname === "/wallet",
     },
     {
+      href: "/kyc",
+      label: "KYC",
+      active: pathname === "/kyc",
+    },
+    {
       href: "/admin/dashboard",
       label: "Admin",
       active: pathname.startsWith("/admin"),

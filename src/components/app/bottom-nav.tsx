@@ -3,11 +3,12 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Home, Wallet, Shield, User, Swords } from "lucide-react"
+import { Home, Wallet, Shield, User, Swords, ShieldCheck } from "lucide-react"
 
 const navItems = [
   { href: "/dashboard", label: "Lobby", icon: Swords },
   { href: "/wallet", label: "Wallet", icon: Wallet },
+  { href: "/kyc", label: "KYC", icon: ShieldCheck },
   { href: "/admin/dashboard", label: "Admin", icon: Shield },
 ];
 
@@ -16,7 +17,7 @@ export function BottomNav() {
 
   return (
     <div className="fixed bottom-0 left-0 z-50 w-full h-16 bg-card border-t md:hidden">
-      <div className="grid h-full max-w-lg grid-cols-3 mx-auto font-medium">
+      <div className="grid h-full max-w-lg grid-cols-4 mx-auto font-medium">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard');
           return (
