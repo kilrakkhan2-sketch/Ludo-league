@@ -34,7 +34,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
                     </CardHeader>
                     <CardContent className="flex items-center justify-between bg-muted/50 p-4 rounded-lg">
                         <p className="text-2xl font-mono tracking-widest font-bold text-primary">{match.roomCode}</p>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(match.roomCode || '')}>
                             <Copy className="h-5 w-5 text-muted-foreground" />
                         </Button>
                     </CardContent>
