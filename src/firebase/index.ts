@@ -9,12 +9,7 @@ import { FirebaseProvider, useFirebase, useFirebaseApp, useAuth, useFirestore } 
 import { FirebaseClientProvider } from './client-provider';
 
 
-function initializeFirebase(config: FirebaseOptions): { app: FirebaseApp; auth: Auth; firestore: Firestore } | null {
-  // Don't initialize on the server if the config is not complete
-  if (typeof window === 'undefined' && !config.apiKey) {
-    return null;
-  }
-  
+function initializeFirebase(config: FirebaseOptions): { app: FirebaseApp; auth: Auth; firestore: Firestore } {
   const apps = getApps();
   const app = apps.length > 0 ? apps[0] : initializeApp(config);
   const auth = getAuth(app);
