@@ -85,7 +85,7 @@ export const mockMatches: Match[] = [
     id: 'match-2',
     entryFee: 50,
     prizePool: 190,
-    players: mockUsers.slice(0, 4),
+    players: mockUsers.slice(0, 1), // PlayerOne is in this match
     maxPlayers: 4,
     status: 'in-progress',
     roomCode: '12345678',
@@ -127,6 +127,14 @@ export const mockMatches: Match[] = [
         { userId: 'user-1', position: 1, status: 'win', screenshotUrl: 'https://picsum.photos/seed/ludoC1/600/400'},
         { userId: 'user-2', position: 1, status: 'win', screenshotUrl: 'https://picsum.photos/seed/ludoC2/600/400'},
     ]
+  },
+  {
+    id: 'match-6',
+    entryFee: 25,
+    prizePool: 90,
+    players: mockUsers.slice(2, 4),
+    maxPlayers: 4,
+    status: 'in-progress',
   },
 ];
 
