@@ -15,6 +15,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 type UserContextValue = {
   user: User | null;
   userProfile: any | null; // Replace 'any' with your UserProfile type
+  isAdmin: boolean;
   loading: boolean;
 };
 
@@ -25,6 +26,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const firestore = useFirestore();
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<any | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,8 +35,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
         // It will become available on the client.
         return;
     };
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
       setUser(user);
+      if (user) {
+        const tokenResult = await user.getIdTokenResult();
+        setIsAdmin(tokenResult.claims.isAdmin === true);
+      } else {
+        setIsAdmin(false);
+      }
       setLoading(false);
     });
 
@@ -61,7 +69,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, [user, firestore]);
 
   return (
-    <UserContext.Provider value={{ user, userProfile, loading }}>
+    <UserContext.Provider value={{ user, userProfile, isAdmin, loading }}>
       {children}
     </UserContext.Provider>
   );

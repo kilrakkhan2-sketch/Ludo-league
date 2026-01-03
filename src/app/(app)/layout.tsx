@@ -37,6 +37,7 @@ const getTitle = (path: string) => {
 
 const AppSidebarNav = () => {
     const pathname = usePathname();
+    const { isAdmin } = useUser();
     const navItems = [
       { href: "/dashboard", label: "Home", icon: Home, active: pathname === "/dashboard" },
       { href: "/lobby", label: "Lobby", icon: LobbyIcon, active: pathname.startsWith('/lobby') || pathname.startsWith('/match') },
@@ -83,14 +84,16 @@ const AppSidebarNav = () => {
                         </Link>
                         </SidebarMenuItem>
                     ))}
-                    <SidebarMenuItem>
-                        <Link href="/admin/dashboard">
-                            <SidebarMenuButton className="justify-start text-yellow-300 hover:bg-yellow-400/20 hover:text-yellow-200">
-                                <FileText className="h-4 w-4" />
-                                Admin Panel
-                            </SidebarMenuButton>
-                        </Link>
-                    </SidebarMenuItem>
+                    {isAdmin && (
+                        <SidebarMenuItem>
+                            <Link href="/admin/dashboard">
+                                <SidebarMenuButton className="justify-start text-yellow-300 hover:bg-yellow-400/20 hover:text-yellow-200">
+                                    <FileText className="h-4 w-4" />
+                                    Admin Panel
+                                </SidebarMenuButton>
+                            </Link>
+                        </SidebarMenuItem>
+                    )}
                 </SidebarMenu>
             </div>
         </div>

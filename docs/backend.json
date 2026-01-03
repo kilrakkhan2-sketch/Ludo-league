@@ -72,6 +72,11 @@
         }
       }
     },
+    "Admin": {
+        "title": "Admin",
+        "description": "An administrator with elevated privileges",
+        "type": "object-extend"
+    },
     "KycApplication": {
       "title": "KYC Application",
       "description": "Stores a user's KYC submission details.",
@@ -247,7 +252,15 @@
     }
   },
   "auth": {
-    "providers": ["email_password", "google", "phone"]
+    "providers": ["email_password", "google", "phone"],
+    "customClaims": [
+      {
+        "name": "isAdmin",
+        "description": "Determines if a user has admin privileges.",
+        "type": "boolean",
+        "defaultValue": false
+      }
+    ]
   },
   "firestore": {
     "/users/{userId}": {
