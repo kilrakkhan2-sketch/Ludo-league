@@ -7,7 +7,7 @@ import Link from "next/link";
 import { BottomNav } from "@/components/app/bottom-nav";
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Home, Swords as LobbyIcon, Trophy, BarChart, Wallet, ShieldCheck, FileText, Landmark, Shield, Gavel, FileBadge } from "lucide-react";
+import { Home, Swords as LobbyIcon, Trophy, BarChart, Wallet, ShieldCheck, FileText, Landmark, Shield, Gavel, FileBadge, User, Settings } from "lucide-react";
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,8 @@ const pageTitles: { [key: string]: string } = {
   "/leaderboard": "Leaderboard",
   "/wallet": "My Wallet",
   "/kyc": "KYC Verification",
+  "/profile": "My Profile",
+  "/settings": "Settings",
   "/privacy-policy": "Privacy Policy",
   "/terms-and-conditions": "Terms & Conditions",
   "/refund-policy": "Refund Policy",
@@ -40,6 +42,8 @@ const AppSidebarNav = () => {
       { href: "/leaderboard", label: "Leaderboard", icon: BarChart, active: pathname === "/leaderboard" },
       { href: "/wallet", label: "Wallet", icon: Wallet, active: pathname === "/wallet" },
       { href: "/kyc", label: "KYC", icon: ShieldCheck, active: pathname === "/kyc" },
+      { href: "/profile", label: "Profile", icon: User, active: pathname === "/profile" },
+      { href: "/settings", label: "Settings", icon: Settings, active: pathname === "/settings" },
     ];
      const legalItems = [
         { href: "/privacy-policy", label: "Privacy Policy", icon: Shield },
