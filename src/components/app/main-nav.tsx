@@ -45,7 +45,7 @@ export function MainNav({
 
   return (
     <nav
-      className={cn("flex items-center space-x-4 lg:space-x-6", className)}
+      className={cn("hidden md:flex items-center space-x-4 lg:space-x-6", className)}
       {...props}
     >
       {routes.map((route) => (
@@ -53,9 +53,9 @@ export function MainNav({
           key={route.href}
           href={route.href}
           className={cn(
-            "text-sm font-medium transition-colors hover:text-primary",
+            "text-md font-medium transition-colors hover:text-primary",
             route.active
-              ? "text-black dark:text-white font-semibold"
+              ? "text-primary font-semibold"
               : "text-muted-foreground"
           )}
         >

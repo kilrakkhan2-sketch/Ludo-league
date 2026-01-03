@@ -24,11 +24,11 @@ export function BottomNav() {
           const isActive = pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard');
           return (
             <Link key={item.href} href={item.href} className={cn(
-              "inline-flex flex-col items-center justify-center px-5 hover:bg-muted-foreground/10 group",
+              "inline-flex flex-col items-center justify-center px-5 hover:bg-muted group",
               isActive ? "text-primary" : "text-muted-foreground"
             )}>
-              <item.icon className="w-5 h-5 mb-1" />
-              <span className="text-xs">{item.label}</span>
+              <item.icon className={cn("w-6 h-6 mb-1 transition-transform", isActive && "scale-110")} />
+              <span className="text-xs font-medium">{item.label}</span>
             </Link>
           )
         })}
