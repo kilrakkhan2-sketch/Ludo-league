@@ -32,9 +32,11 @@ export type Match = {
   status: 'waiting' | 'in-progress' | 'completed' | 'disputed' | 'cancelled';
   roomCode?: string;
   createdAt: Timestamp;
+  prizeDistributed?: boolean;
 };
 
 export type MatchResult = {
+  id: string;
   userId: string;
   userName: string;
   userAvatar: string;

@@ -18,14 +18,14 @@ import { useToast } from "@/hooks/use-toast";
 import {
   AlertCircle,
   CheckCircle2,
-  Crown,
+  Trophy,
   Loader2,
   UploadCloud,
   XCircle,
 } from "lucide-react";
 import { useUser, useFirestore } from "@/firebase";
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
-import { collection, addDoc, serverTimestamp, doc, updateDoc, runTransaction } from "firebase/firestore";
+import { collection, serverTimestamp, doc, runTransaction, getDocs, setDoc } from "firebase/firestore";
 import { detectDuplicateScreenshots } from "@/ai/flows/detect-duplicate-screenshots";
 
 export function SubmitResultForm({ matchId }: { matchId: string }) {
@@ -92,11 +92,11 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
       await uploadString(storageRef, dataUri, 'data_url');
       const screenshotUrl = await getDownloadURL(storageRef);
 
-      // Step 3: Save result to Firestore subcollection
+      // Step 3: Save result to Firestore subcollection using the user's UID as the doc ID
       const matchRef = doc(firestore, 'matches', matchId);
-      const resultsRef = collection(matchRef, 'results');
+      const resultDocRef = doc(firestore, `matches/${matchId}/results`, user.uid);
       
-      await addDoc(resultsRef, {
+      await setDoc(resultDocRef, {
         userId: user.uid,
         userName: user.displayName,
         userAvatar: user.photoURL,
@@ -112,13 +112,30 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
         const matchDoc = await transaction.get(matchRef);
         if (!matchDoc.exists()) throw new Error("Match not found");
         
-        const otherResultsSnapshot = await getDocs(collection(matchRef, 'results'));
-        const otherWinClaims = otherResultsSnapshot.docs.filter(doc => doc.data().status === 'win' && doc.data().userId !== user.uid);
+        // Check if there are other 'win' claims
+        const resultsRef = collection(firestore, `matches/${matchId}/results`);
+        const otherResultsSnapshot = await getDocs(resultsRef);
+        const otherWinClaims = otherResultsSnapshot.docs.filter(d => d.id !== user.uid && d.data().status === 'win');
         
         if (status === 'win' && otherWinClaims.length > 0) {
+            // If I claim win and someone else already did, it's a dispute.
             transaction.update(matchRef, { status: 'disputed' });
         } else if (matchDoc.data().status === 'waiting') {
+           // If the match is waiting, move it to in-progress on first submission.
            transaction.update(matchRef, { status: 'in-progress' });
+        } else {
+            // Check if all players have submitted and no conflicts
+            const matchData = matchDoc.data();
+            if (otherResultsSnapshot.size === matchData.playerIds.length) {
+                const winClaims = otherResultsSnapshot.docs.filter(d => d.data().status === 'win');
+                if (winClaims.length === 1) {
+                    // All submitted, only one winner, no dispute. Mark as completed.
+                    transaction.update(matchRef, { status: 'completed' });
+                } else if (winClaims.length > 1) {
+                    // All submitted, but multiple winners claimed. Dispute.
+                    transaction.update(matchRef, { status: 'disputed' });
+                }
+            }
         }
       });
       
@@ -128,7 +145,7 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
 
     } catch (error: any) {
         console.error("Error submitting result:", error);
-        setFormState({ message: "An unexpected error occurred. Please try again.", isError: true });
+        setFormState({ message: `Submission failed: ${error.message}`, isError: true });
     } finally {
         setIsSubmitting(false);
     }
@@ -177,7 +194,7 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
                     htmlFor={`pos-${pos}`}
                     className="flex items-center gap-1.5 cursor-pointer"
                   >
-                    {pos === 1 && <Crown className="h-4 w-4 text-yellow-500" />}
+                    {pos === 1 && <Trophy className="h-4 w-4 text-yellow-500" />}
                     {pos}
                     {pos === 1 ? "st" : pos === 2 ? "nd" : pos === 3 ? "rd" : "th"}
                   </Label>
