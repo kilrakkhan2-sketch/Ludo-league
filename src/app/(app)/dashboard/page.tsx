@@ -71,7 +71,7 @@ const FeatureCard = ({ card }: { card: typeof featureCards[0] }) => (
              <CardDescription className="pt-2">{card.description}</CardDescription>
         </CardHeader>
         <CardContent className="flex-grow flex items-end">
-            <Button asChild className="w-full" variant="outline">
+            <Button asChild className="w-full" variant="accent">
                 <Link href={card.href}>{card.cta}</Link>
             </Button>
         </CardContent>

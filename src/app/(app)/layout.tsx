@@ -141,7 +141,7 @@ export default function AppLayout({
         </Sidebar>
 
         <div className="flex flex-col flex-1 w-full">
-            <header className="sticky top-0 z-40 w-full border-b bg-primary text-primary-foreground shadow-md">
+            <header className="sticky top-0 z-40 w-full border-b border-sidebar-border bg-sidebar text-sidebar-foreground shadow-md">
                 <div className="container flex h-16 items-center">
                      <Sheet>
                         <SheetTrigger asChild>
