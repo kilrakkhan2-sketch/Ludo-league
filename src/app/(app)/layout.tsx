@@ -13,6 +13,7 @@ import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/firebase";
 import { Loader2 } from "lucide-react";
+import FirebaseErrorListener from "@/components/app/FirebaseErrorListener";
 
 const pageTitles: { [key: string]: string } = {
   "/dashboard": "Home",
@@ -172,7 +173,7 @@ export default function AppLayout({
                             <span className="font-bold text-lg">Ludo League</span>
                         </Link>
                         <h2 className="text-xl font-bold tracking-tight md:hidden">
-                            {title}
+                            Ludo League
                         </h2>
                     </div>
                     <div className="flex items-center gap-2">
@@ -195,6 +196,7 @@ export default function AppLayout({
         </div>
       </div>
       <BottomNav />
+      <FirebaseErrorListener />
     </SidebarProvider>
   )
 }

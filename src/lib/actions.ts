@@ -1,27 +1,41 @@
-"use server";
+'use server';
+import { initializeFirebase } from '@/firebase/server';
+import { Match, MatchPlayer, MatchStatus } from '@/lib/types';
+import { FieldValue } from 'firebase-admin/firestore';
+import { revalidatePath } from 'next/cache';
 
-import { detectDuplicateScreenshots } from "@/ai/flows/detect-duplicate-screenshots";
-import { z } from "zod";
+const { db } = initializeFirebase();
 
-// This file can be removed or repurposed. The logic has been moved to the client component `submit-result-form.tsx`
-// to have better access to Firebase services and state management hooks.
-
-export type FormState = {
-    message: string;
-    isError: boolean;
-} | undefined;
-
-
-// This server action is no longer in use.
-export async function submitResult(
-    prevState: FormState,
-    formData: FormData
-): Promise<FormState> {
-  
-  console.log("This server action is deprecated.");
-
-  return {
-    message: "This action is no longer in use.",
-    isError: true
-  };
-}
+export const createMatch = async (values: any) => {
+  try {
+    const matchRef = db.collection('matches').doc();
+    const match: Match = {
+      id: matchRef.id,
+      createdAt: FieldValue.serverTimestamp(),
+      createdBy: values.user.id,
+      status: MatchStatus.PENDING,
+      players: {
+        [values.user.id]: {
+          id: values.user.id,
+          name: values.user.name,
+          avatar: values.user.avatar,
+          isCreator: true,
+        },
+      },
+      betAmount: values.betAmount,
+    };
+    await matchRef.set(match);
+    revalidatePath('/lobby');
+    return {
+      success: true,
+      message: 'Match created successfully',
+      matchId: matchRef.id,
+    };
+  } catch (error: any) {
+    console.error('Error creating match:', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to create match. Please try again.',
+    };
+  }
+};

@@ -36,7 +36,7 @@ export function UserNav() {
 
   return (
     <div className="flex items-center gap-4">
-      <div className="hidden md:flex items-center gap-2 bg-black/20 text-white px-3 py-1.5 rounded-full text-sm font-semibold">
+      <div className="flex items-center gap-2 bg-black/20 text-white px-3 py-1.5 rounded-full text-sm font-semibold">
         <Wallet className="h-4 w-4" />
         <span>₹{walletBalance.toFixed(2)}</span>
       </div>
