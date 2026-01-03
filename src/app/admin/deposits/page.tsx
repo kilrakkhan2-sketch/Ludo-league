@@ -1,3 +1,4 @@
+
 import Image from "next/image"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -21,7 +22,7 @@ export default function AdminDepositsPage() {
         <CardHeader>
           <CardTitle>Pending Deposits</CardTitle>
           <CardDescription>
-            Review and approve or reject user deposit requests.
+            Review and approve or reject user deposit requests. Ensure the sender&apos;s name matches the user&apos;s KYC name before approving.
           </CardDescription>
         </CardHeader>
         <CardContent>

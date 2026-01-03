@@ -16,7 +16,8 @@ import {
 import { mockTransactions } from "@/lib/data"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { cn } from "@/lib/utils"
-import { ArrowDownLeft, ArrowUpRight, UploadCloud, DownloadCloud, Landmark, Wallet as WalletIcon } from "lucide-react"
+import { ArrowDownLeft, ArrowUpRight, UploadCloud, DownloadCloud, Landmark, Wallet as WalletIcon, AlertCircle } from "lucide-react"
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 
 export default function WalletPage() {
   const qrCodeImage = PlaceHolderImages.find(img => img.id === 'qr-code');
@@ -52,6 +53,13 @@ export default function WalletPage() {
                 <CardDescription>Add money to your wallet to join matches.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-6">
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Important: Name Match Required</AlertTitle>
+                    <AlertDescription>
+                        Please deposit from a bank account or UPI ID where the name matches your KYC documents. Mismatched names will result in rejection of the deposit.
+                    </AlertDescription>
+                </Alert>
                 <div className="flex flex-col items-center gap-4 p-4 bg-muted/50 rounded-lg">
                     <p className="text-sm text-center text-muted-foreground">Scan the QR code with your payment app and enter the UTR below.</p>
                     {qrCodeImage && <Image src={qrCodeImage.imageUrl} alt="QR Code" width={200} height={200} className="rounded-lg border-2" data-ai-hint={qrCodeImage.imageHint} />}
@@ -73,10 +81,13 @@ export default function WalletPage() {
                 <CardDescription>Request a withdrawal to your bank account.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-6">
-                <p className="text-sm p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg flex items-start gap-2">
-                    <Landmark className="h-4 w-4 mt-0.5 shrink-0"/>
-                    <span>Withdrawals are sent to the bank account verified via KYC. Approval may take up to 24 hours.</span>
-                </p>
+                <Alert variant='default' className="bg-blue-50 border-blue-200 text-blue-800">
+                    <Landmark className="h-4 w-4 !text-blue-600" />
+                    <AlertTitle>Withdrawal Policy</AlertTitle>
+                    <AlertDescription>
+                        Withdrawals are sent to the bank account/UPI ID verified via KYC. Ensure the name matches your KYC details. Approval may take up to 24 hours.
+                    </AlertDescription>
+                </Alert>
                 <div className="grid gap-2">
                     <Label htmlFor="withdraw-amount">Amount (Min. ₹100)</Label>
                     <Input id="withdraw-amount" type="number" placeholder="e.g., 500" />

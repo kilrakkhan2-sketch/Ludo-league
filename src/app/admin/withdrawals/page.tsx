@@ -122,7 +122,7 @@ export default function AdminWithdrawalsPage() {
         <CardHeader>
           <CardTitle>Pending Withdrawals</CardTitle>
           <CardDescription>
-            Review and process user withdrawal requests.
+            Review and process user withdrawal requests. Ensure the recipient&apos;s name matches their KYC details before payment.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -170,7 +170,7 @@ export default function AdminWithdrawalsPage() {
                             Withdrawal for {request.user.name}
                           </DialogTitle>
                           <DialogDescription>
-                            Scan the QR code to complete the payment via UPI.
+                            Scan the QR code to complete the payment via UPI. Verify name match before proceeding.
                           </DialogDescription>
                         </DialogHeader>
                         <div className="py-4 space-y-4">
