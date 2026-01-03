@@ -13,21 +13,10 @@ import {
 } from "@/components/ui/table"
 import { CheckCircle2, Eye, XCircle, Loader2 } from "lucide-react"
 import { useFirestore } from "@/firebase"
-import { collection, onSnapshot, query, where, doc, runTransaction, writeBatch, Timestamp } from "firebase/firestore"
+import { collection, onSnapshot, query, where, doc, runTransaction, writeBatch, Timestamp, serverTimestamp } from "firebase/firestore"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
-
-type DepositRequest = {
-    id: string;
-    userId: string;
-    userName: string;
-    userAvatar: string;
-    amount: number;
-    utr: string;
-    screenshotUrl: string;
-    createdAt: any;
-}
-
+import type { DepositRequest } from "@/lib/types";
 
 export default function AdminDepositsPage() {
   const firestore = useFirestore();
@@ -40,7 +29,7 @@ export default function AdminDepositsPage() {
     if (!firestore) return;
     setLoading(true);
     const reqRef = collection(firestore, 'depositRequests');
-    const q = query(reqRef, where('status', '==', 'pending'));
+    const q = query(reqRef, where('status', '==', 'pending'), orderBy('createdAt', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DepositRequest));
         setRequests(data);
@@ -65,7 +54,7 @@ export default function AdminDepositsPage() {
                 }
                 const newBalance = (userDoc.data().walletBalance || 0) + request.amount;
                 transaction.update(userRef, { walletBalance: newBalance });
-                transaction.update(requestRef, { status: 'approved' });
+                transaction.update(requestRef, { status: 'approved', reviewedAt: serverTimestamp() });
 
                 const transactionRef = doc(collection(firestore, "transactions"));
                 transaction.set(transactionRef, {
@@ -78,9 +67,9 @@ export default function AdminDepositsPage() {
                     description: `Deposit approved: ${request.utr}`
                 });
             });
-            toast({ title: `Request approved for ${request.userName}`});
+            toast({ title: `Request approved for ${request.userName}`, className: 'bg-green-100 text-green-800' });
         } else { // Reject
-            await writeBatch(firestore).update(requestRef, { status: 'rejected' }).commit();
+            await writeBatch(firestore).update(requestRef, { status: 'rejected', reviewedAt: serverTimestamp() }).commit();
             toast({ title: `Request rejected for ${request.userName}`, variant: 'destructive'});
         }
 
@@ -95,7 +84,7 @@ export default function AdminDepositsPage() {
   return (
     <>
       <h2 className="text-3xl font-bold tracking-tight mb-4">Deposit Requests</h2>
-      <Card>
+      <Card className="shadow-md">
         <CardHeader>
           <CardTitle>Pending Deposits</CardTitle>
           <CardDescription>
@@ -115,21 +104,21 @@ export default function AdminDepositsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-                {loading && <TableRow><TableCell colSpan={6} className="text-center py-8">Loading requests...</TableCell></TableRow>}
-                {!loading && requests.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-8">No pending deposit requests.</TableCell></TableRow>}
+                {loading && <TableRow><TableCell colSpan={6} className="text-center py-8"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary"/></TableCell></TableRow>}
+                {!loading && requests.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No pending deposit requests.</TableCell></TableRow>}
               {!loading && requests.map((request) => (
-                <TableRow key={request.id}>
+                <TableRow key={request.id} className="hover:bg-muted/50">
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <Avatar>
+                      <Avatar className="border">
                         <AvatarImage src={request.userAvatar} />
                         <AvatarFallback>{request.userName?.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <span className="font-medium">{request.userName}</span>
                     </div>
                   </TableCell>
-                  <TableCell>₹{request.amount}</TableCell>
-                  <TableCell>{request.utr}</TableCell>
+                  <TableCell className="font-semibold">₹{request.amount.toLocaleString('en-IN')}</TableCell>
+                  <TableCell className="font-mono text-xs">{request.utr}</TableCell>
                   <TableCell>{request.createdAt?.toDate().toLocaleString()}</TableCell>
                   <TableCell>
                     <Button variant="outline" size="sm" asChild>

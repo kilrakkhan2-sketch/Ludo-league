@@ -56,6 +56,7 @@ import {
   runTransaction,
   getDocs,
   updateDoc,
+  orderBy,
 } from 'firebase/firestore';
 import { distributeWinnings } from '@/ai/flows/distribute-winnings';
 import { useSearchParams } from 'next/navigation';
@@ -63,11 +64,13 @@ import { useSearchParams } from 'next/navigation';
 const MatchDetailDialog = ({
   match: initialMatch,
   onUpdate,
-  startOpen = false
+  startOpen = false,
+  onOpenChange
 }: {
   match: Match;
   onUpdate: (updatedMatch: Match) => void;
   startOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) => {
   const [match, setMatch] = useState(initialMatch);
   const [results, setResults] = useState<MatchResult[]>([]);
@@ -89,7 +92,8 @@ const MatchDetailDialog = ({
   useEffect(() => {
     if (!firestore || !isOpen) return;
     const resultsRef = collection(firestore, `matches/${match.id}/results`);
-    const unsubscribe = onSnapshot(resultsRef, (snapshot) => {
+    const q = query(resultsRef, orderBy('position', 'asc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const resultsData = snapshot.docs.map(
         (doc) => ({ id: doc.id, ...doc.data() } as MatchResult)
       );
@@ -97,6 +101,11 @@ const MatchDetailDialog = ({
     });
     return () => unsubscribe();
   }, [firestore, match.id, isOpen]);
+  
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    onOpenChange?.(open);
+  }
 
   const winnerResult = results.find((r) => r.status === 'win');
   const winnerPlayer = winnerResult
@@ -115,22 +124,10 @@ const MatchDetailDialog = ({
     try {
       await runTransaction(firestore, async (transaction) => {
         const matchRef = doc(firestore, 'matches', match.id);
-        // Mark the match as completed.
-        transaction.update(matchRef, { status: 'completed' });
-
-        // Update status for all results in the subcollection
-        const resultsRef = collection(firestore, `matches/${match.id}/results`);
-        const resultsSnapshot = await getDocs(resultsRef);
-        resultsSnapshot.forEach((resultDoc) => {
-          const newStatus =
-            resultDoc.data().userId === winnerId ? 'win' : 'loss';
-          transaction.update(doc(resultsRef, resultDoc.id), {
-            status: newStatus,
-          });
-        });
+        transaction.update(matchRef, { status: 'completed', winnerId: winnerId });
       });
 
-      const updatedMatch = { ...match, status: 'completed' } as Match;
+      const updatedMatch = { ...match, status: 'completed', winnerId: winnerId } as Match;
       setMatch(updatedMatch);
       onUpdate(updatedMatch);
 
@@ -152,18 +149,20 @@ const MatchDetailDialog = ({
   };
 
   const handleDistributeWinnings = async () => {
-    if (!winnerResult || !winnerPlayer) {
-      toast({
+    if (!match.winnerId) {
+       toast({
         title: 'No winner declared for this match.',
         variant: 'destructive',
       });
       return;
     }
+    const winnerPlayerInfo = match.players.find(p => p.id === match.winnerId);
+    
     setIsDistributing(true);
     try {
       const result = await distributeWinnings({
         matchId: match.id,
-        winnerId: winnerPlayer.id,
+        winnerId: match.winnerId,
       });
       if (result.success) {
         toast({
@@ -200,7 +199,7 @@ const MatchDetailDialog = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Eye className="h-4 w-4 mr-2" />
@@ -222,9 +221,8 @@ const MatchDetailDialog = ({
             >
               {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
             </span>
-            {winnerPlayer &&
-              match.status === 'completed' &&
-              ` | Winner: ${winnerPlayer.name}`}
+            {match.winnerId &&
+              ` | Winner: ${match.players.find(p => p.id === match.winnerId)?.name}`}
           </DialogDescription>
         </DialogHeader>
         <div className="mt-4 max-h-[70vh] overflow-y-auto p-1">
@@ -242,7 +240,7 @@ const MatchDetailDialog = ({
                   >
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-12 w-12">
+                        <Avatar className="h-12 w-12 border">
                           <AvatarImage src={player?.avatarUrl} />
                           <AvatarFallback>
                             {player?.name.charAt(0)}
@@ -253,7 +251,7 @@ const MatchDetailDialog = ({
                             {player?.name}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            User ID: {player?.id}
+                            User ID: {player?.id.substring(0, 10)}...
                           </p>
                         </div>
                       </div>
@@ -269,18 +267,7 @@ const MatchDetailDialog = ({
                           />
                           Position: {result.position}
                         </div>
-                        <Badge
-                          variant={
-                            result.status === 'win' ? 'default' : 'destructive'
-                          }
-                          className={cn({
-                            'bg-green-500 hover:bg-green-600':
-                              result.status === 'win',
-                          })}
-                        >
-                          {result.status.charAt(0).toUpperCase() +
-                            result.status.slice(1)}
-                        </Badge>
+                         {result.isFlaggedForFraud && <Badge variant="destructive">Flagged</Badge>}
                       </div>
                       {match.status === 'disputed' && (
                         <Button
@@ -313,7 +300,7 @@ const MatchDetailDialog = ({
                           alt={`Screenshot from ${player?.name}`}
                           width={300}
                           height={200}
-                          className="rounded-md object-cover border-2 w-full h-auto"
+                          className="rounded-md object-contain border-2 w-full h-auto"
                         />
                       </a>
                     </div>
@@ -330,7 +317,7 @@ const MatchDetailDialog = ({
         <div className="flex flex-wrap justify-end gap-2 pt-4 border-t">
           {match.status === 'completed' &&
             !match.prizeDistributed &&
-            winnerPlayer && (
+            match.winnerId && (
               <Button
                 variant="accent"
                 onClick={handleDistributeWinnings}
@@ -341,7 +328,7 @@ const MatchDetailDialog = ({
                 ) : (
                   <HandCoins className="mr-2 h-4 w-4" />
                 )}{' '}
-                Distribute Prize to {winnerPlayer.name}
+                Distribute Prize to {match.players.find(p => p.id === match.winnerId)?.name}
               </Button>
             )}
           {match.prizeDistributed && (
@@ -350,13 +337,15 @@ const MatchDetailDialog = ({
             </p>
           )}
           {match.status === 'disputed' && (
-            <Button
-              variant="outline"
-              className="text-orange-500 border-orange-500 hover:bg-orange-100 hover:text-orange-600"
-              onClick={() => handleAction('Resolve Dispute')}
-            >
-              <AlertTriangle className="mr-2 h-4 w-4" /> Mark as Resolved
-            </Button>
+             <DialogClose asChild>
+                <Button
+                variant="outline"
+                className="text-orange-500 border-orange-500 hover:bg-orange-100 hover:text-orange-600"
+                onClick={() => handleAction('Resolve Dispute')}
+                >
+                <AlertTriangle className="mr-2 h-4 w-4" /> Manually Resolved
+                </Button>
+            </DialogClose>
           )}
           <Button variant="outline" onClick={() => handleAction('View Fraud Report')}>
             <Shield className="mr-2 h-4 w-4" /> View Fraud Report
@@ -385,7 +374,7 @@ function AdminMatchesPageContent() {
     if (!firestore) return;
     setLoading(true);
     const matchesRef = collection(firestore, 'matches');
-    const q = query(matchesRef); // Fetch all matches for admin
+    const q = query(matchesRef, orderBy('createdAt', 'desc')); // Fetch all matches for admin
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(
         (doc) => ({ id: doc.id, ...doc.data() } as Match)
@@ -421,15 +410,17 @@ function AdminMatchesPageContent() {
   const MatchTable = ({
     status,
     title,
+    description,
   }: {
     status: Match['status'];
     title: string;
+    description: string;
   }) => (
-    <Card>
+    <Card className="shadow-md">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription>
-          Matches currently in the &quot;{status}&quot; state.
+          {description}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -450,7 +441,7 @@ function AdminMatchesPageContent() {
                   colSpan={5}
                   className="text-center text-muted-foreground py-8"
                 >
-                  Loading...
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                 </TableCell>
               </TableRow>
             )}
@@ -475,9 +466,9 @@ function AdminMatchesPageContent() {
                           : 'secondary'
                       }
                       className={cn({
-                        'text-blue-600 border-blue-600':
+                        'text-blue-600 border-blue-600 bg-blue-50':
                           match.status === 'in-progress',
-                        'text-green-600 border-green-600':
+                        'text-green-600 border-green-600 bg-green-50':
                           match.status === 'completed',
                       })}
                     >
@@ -517,7 +508,12 @@ function AdminMatchesPageContent() {
         </h2>
       </div>
       {openMatch && (
-         <MatchDetailDialog match={openMatch} onUpdate={handleMatchUpdate} startOpen={true} />
+         <MatchDetailDialog 
+            match={openMatch} 
+            onUpdate={handleMatchUpdate} 
+            startOpen={true}
+            onOpenChange={(open) => !open && setOpenMatch(null)}
+        />
       )}
       <Tabs defaultValue="disputed" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
@@ -527,16 +523,16 @@ function AdminMatchesPageContent() {
           <TabsTrigger value="waiting">Waiting</TabsTrigger>
         </TabsList>
         <TabsContent value="disputed" className="mt-4">
-          <MatchTable status="disputed" title="Disputed Matches" />
+          <MatchTable status="disputed" title="Disputed Matches" description="Matches where player submissions conflict. Manual review required."/>
         </TabsContent>
         <TabsContent value="in-progress" className="mt-4">
-          <MatchTable status="in-progress" title="In-Progress Matches" />
+          <MatchTable status="in-progress" title="In-Progress Matches" description="Matches that have started but results are not yet fully submitted."/>
         </TabsContent>
         <TabsContent value="completed" className="mt-4">
-          <MatchTable status="completed" title="Completed Matches" />
+          <MatchTable status="completed" title="Completed Matches" description="Matches that have finished and are awaiting prize distribution or are finalized."/>
         </TabsContent>
         <TabsContent value="waiting" className="mt-4">
-          <MatchTable status="waiting" title="Waiting Matches" />
+          <MatchTable status="waiting" title="Waiting Matches" description="Matches waiting for more players to join." />
         </TabsContent>
       </Tabs>
     </>
@@ -545,7 +541,7 @@ function AdminMatchesPageContent() {
 
 export default function AdminMatchesPage() {
     return (
-        <React.Suspense fallback={<div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin"/></div>}>
+        <React.Suspense fallback={<div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>}>
             <AdminMatchesPageContent />
         </React.Suspense>
     )

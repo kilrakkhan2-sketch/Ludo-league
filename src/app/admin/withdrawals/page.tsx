@@ -33,22 +33,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useFirestore } from '@/firebase';
-import { collection, query, where, onSnapshot, doc, writeBatch, Timestamp, runTransaction } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, writeBatch, Timestamp, runTransaction, orderBy } from 'firebase/firestore';
+import type { WithdrawalRequest } from '@/lib/types';
 
-type WithdrawalRequest = {
-    id: string;
-    userId: string;
-    userName: string;
-    userAvatar: string;
-    amount: number;
-    createdAt: any;
-    status: 'pending' | 'approved' | 'rejected';
-    upiId: string;
-    bankDetails: string;
-};
-
-const UpiQrCode = ({ upiId, amount }: { upiId: string; amount: number }) => {
-  const upiUrl = `upi://pay?pa=${upiId}&pn=Ludo%20League%20Player&am=${amount.toFixed(
+const UpiQrCode = ({ upiId, amount, name }: { upiId: string; amount: number; name: string }) => {
+  const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(name)}&am=${amount.toFixed(
     2
   )}&cu=INR&tn=WithdrawalRequest`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
@@ -88,7 +77,7 @@ export default function AdminWithdrawalsPage() {
     if (!firestore) return;
     setLoading(true);
     const reqRef = collection(firestore, 'withdrawalRequests');
-    const q = query(reqRef, where('status', '==', 'pending'));
+    const q = query(reqRef, where('status', '==', 'pending'), orderBy('createdAt', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WithdrawalRequest));
         setRequests(data);
@@ -140,7 +129,7 @@ export default function AdminWithdrawalsPage() {
                     description: `Withdrawal approved`
                 });
             });
-            toast({ title: 'Request Approved', description: `Payment of ₹${request.amount} for ${request.userName} marked as complete.` });
+            toast({ title: 'Request Approved', description: `Payment of ₹${request.amount} for ${request.userName} marked as complete.`, className: 'bg-green-100 text-green-800' });
         } else { // Reject
             await writeBatch(firestore)
                 .update(requestRef, { status: 'rejected', rejectionReason: rejectionReason, reviewedAt: Timestamp.now() })
@@ -181,7 +170,7 @@ export default function AdminWithdrawalsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading && <TableRow><TableCell colSpan={5} className="text-center py-8">Loading requests...</TableCell></TableRow>}
+              {loading && <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary"/></TableCell></TableRow>}
               {!loading && requests.length === 0 && (
                     <TableRow>
                         <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
@@ -190,10 +179,10 @@ export default function AdminWithdrawalsPage() {
                     </TableRow>
                 )}
               {!loading && requests.map(request => (
-                <TableRow key={request.id}>
+                <TableRow key={request.id} className="hover:bg-muted/50">
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <Avatar>
+                      <Avatar className="border">
                         <AvatarImage src={request.userAvatar} />
                         <AvatarFallback>
                           {request.userName?.charAt(0)}
@@ -203,14 +192,14 @@ export default function AdminWithdrawalsPage() {
                     </div>
                   </TableCell>
                   <TableCell className="font-semibold">
-                    ₹{request.amount}
+                    ₹{request.amount.toLocaleString('en-IN')}
                   </TableCell>
-                  <TableCell className="text-xs">{request.upiId || request.bankDetails}</TableCell>
+                  <TableCell className="text-xs font-mono">{request.upiId || 'Bank Transfer'}</TableCell>
                   <TableCell>
                     {request.createdAt?.toDate().toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Dialog>
+                    <Dialog onOpenChange={() => setRejectionReason('')}>
                       <DialogTrigger asChild>
                         <Button variant="outline" size="sm">
                           <Eye className="h-4 w-4 mr-2" /> Review
@@ -222,7 +211,7 @@ export default function AdminWithdrawalsPage() {
                             Withdrawal for {request.userName}
                           </DialogTitle>
                           <DialogDescription>
-                            Scan the QR code to complete the payment via UPI. Verify name match before proceeding.
+                            Scan the QR code to complete the payment via UPI, or use bank details. Verify name match before proceeding.
                           </DialogDescription>
                         </DialogHeader>
                         <div className="py-4 space-y-4">
@@ -230,15 +219,16 @@ export default function AdminWithdrawalsPage() {
                             <UpiQrCode
                                 upiId={request.upiId}
                                 amount={request.amount}
+                                name={request.userName}
                             />
                           ) : (
-                            <div className="p-4 bg-muted rounded-md">
+                            <div className="p-4 bg-muted rounded-md border">
                                 <h4 className="font-semibold mb-2">Bank Details</h4>
                                 <p className="text-sm whitespace-pre-wrap">{request.bankDetails}</p>
                             </div>
                           )}
-                          <div className="space-y-2">
-                            <Label htmlFor="rejection-reason">Rejection Reason (if any)</Label>
+                          <div className="space-y-2 pt-4">
+                            <Label htmlFor="rejection-reason" className="font-semibold">Rejection Reason (if any)</Label>
                             <Input
                                 id="rejection-reason"
                                 placeholder="e.g., Name mismatch, invalid UPI"
@@ -254,7 +244,7 @@ export default function AdminWithdrawalsPage() {
                                 <Button
                                     variant="destructive"
                                     onClick={() => handleAction(request, 'reject')}
-                                    disabled={processingId === request.id}
+                                    disabled={!rejectionReason || processingId === request.id}
                                 >
                                     {processingId === request.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4" />} Reject
                                 </Button>

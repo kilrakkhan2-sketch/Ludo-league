@@ -96,7 +96,7 @@ export default function AdminDashboardPage() {
           <TabsTrigger value="suspicious-users">Suspicious Users</TabsTrigger>
         </TabsList>
         <TabsContent value="fraud-alerts">
-          <Card>
+          <Card className="shadow-md">
             <CardHeader>
               <CardTitle>Automated Fraud Alerts</CardTitle>
               <CardDescription>
@@ -119,7 +119,7 @@ export default function AdminDashboardPage() {
                   {loadingAlerts && (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                       </TableCell>
                     </TableRow>
                   )}
@@ -135,7 +135,7 @@ export default function AdminDashboardPage() {
                   )}
                   {!loadingAlerts &&
                     fraudAlerts.map((alert) => (
-                      <TableRow key={`${alert.matchId}-${alert.id}`}>
+                      <TableRow key={`${alert.matchId}-${alert.id}`} className="hover:bg-muted/50">
                         <TableCell className="font-medium">
                           {alert.userName}
                         </TableCell>
@@ -163,11 +163,11 @@ export default function AdminDashboardPage() {
           </Card>
         </TabsContent>
         <TabsContent value="suspicious-users">
-          <Card>
+          <Card className="shadow-md">
             <CardHeader>
               <CardTitle>Suspicious Users</CardTitle>
               <CardDescription>
-                Users with exceptionally high win rates.
+                Users with exceptionally high win rates that may indicate unfair play.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -185,7 +185,7 @@ export default function AdminDashboardPage() {
                   {loadingUsers && (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                       </TableCell>
                     </TableRow>
                   )}
@@ -201,12 +201,12 @@ export default function AdminDashboardPage() {
                   )}
                   {!loadingUsers &&
                     suspiciousUsers.map((user) => (
-                      <TableRow key={user.uid}>
+                      <TableRow key={user.uid} className="hover:bg-muted/50">
                         <TableCell className="font-medium">
                           {user.displayName}
                         </TableCell>
-                        <TableCell>{user.winRate}%</TableCell>
-                        <TableCell>₹{user.winnings || 0}</TableCell>
+                        <TableCell className="font-semibold text-red-600">{user.winRate}%</TableCell>
+                        <TableCell>₹{(user.winnings || 0).toLocaleString('en-IN')}</TableCell>
                         <TableCell>
                           <Badge
                             variant={
