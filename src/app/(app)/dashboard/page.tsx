@@ -7,6 +7,7 @@ import { mockMatches } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { Swords, Users } from "lucide-react";
 import Link from "next/link";
+import { UserNav } from "@/components/app/user-nav";
 
 export default function DashboardPage() {
   return (
@@ -14,6 +15,9 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Match Lobby</h2>
         <div className="flex items-center space-x-2">
+          <div className="md:hidden">
+            <UserNav />
+          </div>
           <CreateMatchDialog />
         </div>
       </div>
