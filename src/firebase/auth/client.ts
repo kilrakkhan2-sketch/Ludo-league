@@ -12,13 +12,15 @@ import {
   updateProfile,
   type Auth,
 } from 'firebase/auth';
-import { doc, setDoc, getFirestore, type Firestore } from 'firebase/firestore';
-import { getApp, getApps, type FirebaseApp } from 'firebase/app';
+import { doc, setDoc, getFirestore, serverTimestamp, type Firestore } from 'firebase/firestore';
+import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app';
+import { firebaseConfig } from '../config';
 
 function getFirebaseApp(): FirebaseApp {
     const apps = getApps();
     if (!apps.length) {
-        throw new Error("Firebase has not been initialized. Please ensure FirebaseProvider is set up correctly.");
+        // Initialize on the client if not already initialized
+        return initializeApp(firebaseConfig);
     }
     return apps[0];
 }
@@ -48,6 +50,7 @@ export async function signUpWithEmail(email: string, password: string, displayNa
     photoURL: user.photoURL,
     walletBalance: 0,
     kycStatus: 'not_submitted',
+    createdAt: serverTimestamp(),
   }, { merge: true });
 
   return user;
@@ -65,27 +68,19 @@ export async function signInWithGoogle() {
   const result = await signInWithPopup(auth, provider);
   const user = result.user;
 
-  // Create user profile in Firestore if it doesn't exist
+  // Create or update user profile in Firestore
   const firestore = getFirebaseFirestore();
   const userProfileRef = doc(firestore, 'users', user.uid);
-  // Use setDoc with merge:true to create or update, preventing overwrites of existing data
   await setDoc(userProfileRef, {
       uid: user.uid,
       email: user.email,
       displayName: user.displayName,
       photoURL: user.photoURL,
-  }, { merge: true });
-
-  // Now, check if some fields are missing and set initial values only if they don't exist.
-  // This is a bit more complex and might be better handled in a transaction or a cloud function
-  // For client-side, a simple merge on initial creation is often sufficient.
-  // Let's refine the above setDoc to be more robust.
-  
-  await setDoc(userProfileRef, {
+      // Set initial values only if they don't exist by merging
       walletBalance: 0,
       kycStatus: 'not_submitted',
+      createdAt: serverTimestamp(),
   }, { merge: true });
-
 
   return user;
 }

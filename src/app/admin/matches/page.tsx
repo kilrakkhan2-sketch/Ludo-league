@@ -33,7 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Match, MatchResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Crown, Eye, Users, XCircle, Shield, HandCoins, CheckCircle2, AlertTriangle, Ban, Loader2, Trophy } from "lucide-react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore } from "@/firebase";
 import { collection, onSnapshot, query, where, doc, runTransaction, getDocs, updateDoc } from "firebase/firestore";
@@ -49,6 +49,10 @@ const MatchDetailDialog = ({ match: initialMatch, onUpdate }: { match: Match, on
   const firestore = useFirestore();
 
   useEffect(() => {
+    setMatch(initialMatch); // Keep local state in sync with prop
+  }, [initialMatch]);
+
+  useEffect(() => {
     if (!firestore) return;
     const resultsRef = collection(firestore, `matches/${match.id}/results`);
     const unsubscribe = onSnapshot(resultsRef, (snapshot) => {
@@ -58,7 +62,7 @@ const MatchDetailDialog = ({ match: initialMatch, onUpdate }: { match: Match, on
     return () => unsubscribe();
   }, [firestore, match.id]);
 
-  const winnerResult = results ? results.find(r => r.status === 'win') : null;
+  const winnerResult = results.find(r => r.status === 'win');
   const winnerPlayer = winnerResult ? match.players.find(p => p.id === winnerResult.userId) : null;
   
   const handleDeclareWinner = async (winnerId: string) => {
@@ -73,7 +77,7 @@ const MatchDetailDialog = ({ match: initialMatch, onUpdate }: { match: Match, on
     try {
         await runTransaction(firestore, async (transaction) => {
             const matchRef = doc(firestore, 'matches', match.id);
-            // Mark the match as completed. The winner status is in the subcollection.
+            // Mark the match as completed.
             transaction.update(matchRef, { status: 'completed' });
             
             // Update status for all results in the subcollection
@@ -113,8 +117,8 @@ const MatchDetailDialog = ({ match: initialMatch, onUpdate }: { match: Match, on
         if (result.success) {
             toast({ title: "Success", description: result.message, className: 'bg-green-100 text-green-800' });
             const updatedMatch = { ...match, prizeDistributed: true } as Match;
-            setMatch(updatedMatch);
-            onUpdate(updatedMatch);
+            setMatch(updatedMatch); // Update local state
+            onUpdate(updatedMatch); // Update parent state
         } else {
             toast({ title: "Distribution Failed", description: result.message, variant: 'destructive' });
         }
@@ -372,7 +376,7 @@ export default function AdminMatchesPage() {
             </TabsContent>
             <TabsContent value="completed" className="mt-4">
               <MatchTable status="completed" title="Completed Matches" />
-            </Tabs-Content>
+            </TabsContent>
             <TabsContent value="waiting" className="mt-4">
                 <MatchTable status="waiting" title="Waiting Matches" />
             </TabsContent>

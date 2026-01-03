@@ -112,30 +112,32 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
         const matchDoc = await transaction.get(matchRef);
         if (!matchDoc.exists()) throw new Error("Match not found");
         
-        // Check if there are other 'win' claims
+        // Fetch all results for this match to check status
         const resultsRef = collection(firestore, `matches/${matchId}/results`);
-        const otherResultsSnapshot = await getDocs(resultsRef);
-        const otherWinClaims = otherResultsSnapshot.docs.filter(d => d.id !== user.uid && d.data().status === 'win');
+        const allResultsSnapshot = await getDocs(resultsRef);
+        const allResults = allResultsSnapshot.docs.map(d => d.data());
+
+        // Check for win claims
+        const winClaims = allResults.filter(r => r.status === 'win');
+
+        const matchData = matchDoc.data();
         
-        if (status === 'win' && otherWinClaims.length > 0) {
-            // If I claim win and someone else already did, it's a dispute.
+        // If I claim win and someone else already did, it's a dispute.
+        // Also if there are multiple win claims in total.
+        if (winClaims.length > 1) {
             transaction.update(matchRef, { status: 'disputed' });
+        } else if (matchDoc.data().status === 'in-progress' && allResults.length === matchData.playerIds.length) {
+            // If match is in-progress and everyone has submitted
+            if(winClaims.length === 1) {
+                 // All submitted, only one winner, no dispute. Mark as completed.
+                 transaction.update(matchRef, { status: 'completed' });
+            } else {
+                 // All submitted, but multiple or zero winners claimed. Dispute.
+                 transaction.update(matchRef, { status: 'disputed' });
+            }
         } else if (matchDoc.data().status === 'waiting') {
            // If the match is waiting, move it to in-progress on first submission.
            transaction.update(matchRef, { status: 'in-progress' });
-        } else {
-            // Check if all players have submitted and no conflicts
-            const matchData = matchDoc.data();
-            if (otherResultsSnapshot.size === matchData.playerIds.length) {
-                const winClaims = otherResultsSnapshot.docs.filter(d => d.data().status === 'win');
-                if (winClaims.length === 1) {
-                    // All submitted, only one winner, no dispute. Mark as completed.
-                    transaction.update(matchRef, { status: 'completed' });
-                } else if (winClaims.length > 1) {
-                    // All submitted, but multiple winners claimed. Dispute.
-                    transaction.update(matchRef, { status: 'disputed' });
-                }
-            }
         }
       });
       

@@ -9,8 +9,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { doc, runTransaction, collection, serverTimestamp, getDoc } from 'firebase/firestore';
-import { getFirebaseFirestore } from '@/firebase/auth/client'; // Using server-side capable firestore instance
+import { doc, runTransaction, collection, serverTimestamp, getFirestore } from 'firebase/firestore';
+import { getFirebaseApp } from '@/firebase/auth/client'; // Can use this to get firestore instance on server
 
 const DistributeWinningsInputSchema = z.object({
   matchId: z.string().describe('The ID of the match to distribute winnings for.'),
@@ -36,10 +36,12 @@ const distributeWinningsFlow = ai.defineFlow(
     outputSchema: DistributeWinningsOutputSchema,
   },
   async ({ matchId, winnerId }) => {
-    const firestore = getFirebaseFirestore();
+    // Initialize Firestore on the server-side.
+    // getApps check is needed to avoid re-initialization error in dev hot-reload.
+    const firestore = getFirestore(getFirebaseApp());
+
     const matchRef = doc(firestore, 'matches', matchId);
     const winnerRef = doc(firestore, 'users', winnerId);
-    const transactionRef = doc(collection(firestore, 'transactions'));
     
     try {
       const newBalance = await runTransaction(firestore, async (transaction) => {
@@ -74,7 +76,8 @@ const distributeWinningsFlow = ai.defineFlow(
         // Mark match as prize distributed
         transaction.update(matchRef, { prizeDistributed: true });
         
-        // Log the winnings transaction
+        // Log the winnings transaction in a new document in 'transactions' collection
+        const transactionRef = doc(collection(firestore, 'transactions'));
         transaction.set(transactionRef, {
           userId: winnerId,
           type: 'winnings',
