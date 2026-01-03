@@ -51,6 +51,14 @@
         "isBlocked": {
           "type": "boolean",
           "description": "Whether the user is blocked or not"
+        },
+        "isSuspended": {
+          "type": "boolean",
+          "description": "Whether the user is temporarily suspended."
+        },
+        "isWalletFrozen": {
+          "type": "boolean",
+          "description": "Whether the user's wallet is frozen."
         }
       }
     },

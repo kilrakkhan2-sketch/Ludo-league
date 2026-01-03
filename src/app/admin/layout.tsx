@@ -25,7 +25,7 @@ import {
   ShieldCheck,
 } from "lucide-react"
 import { useState } from "react"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger, SheetClose } from "@/components/ui/sheet"
 
 const AdminSidebarNav = () => {
   const pathname = usePathname()
@@ -100,14 +100,15 @@ export default function AdminLayout({
                     <SheetContent side="left" className="sm:max-w-xs bg-background">
                        <SheetHeader className="text-left">
                           <SheetTitle>
-                            <Link
-                                href="/dashboard"
-                                className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
-                                onClick={() => setSheetOpen(false)}
-                            >
-                                <Swords className="h-5 w-5 transition-all group-hover:scale-110" />
-                                <span className="sr-only">Ludo League</span>
-                            </Link>
+                            <SheetClose asChild>
+                                <Link
+                                    href="/dashboard"
+                                    className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
+                                >
+                                    <Swords className="h-5 w-5 transition-all group-hover:scale-110" />
+                                    <span className="sr-only">Ludo League</span>
+                                </Link>
+                            </SheetClose>
                           </SheetTitle>
                           <SheetDescription>
                             Admin navigation menu
@@ -115,17 +116,17 @@ export default function AdminLayout({
                         </SheetHeader>
                         <nav className="grid gap-6 text-lg font-medium mt-4">
                             {navItems.map(item => (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    className={cn("flex items-center gap-4 px-2.5",
-                                        pathname === item.href ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                                    )}
-                                    onClick={() => setSheetOpen(false)}
-                                >
-                                    <item.icon className="h-5 w-5" />
-                                    {item.label}
-                                </Link>
+                                <SheetClose asChild key={item.href}>
+                                    <Link
+                                        href={item.href}
+                                        className={cn("flex items-center gap-4 px-2.5",
+                                            pathname === item.href ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        <item.icon className="h-5 w-5" />
+                                        {item.label}
+                                    </Link>
+                                </SheetClose>
                             ))}
                         </nav>
                     </SheetContent>
