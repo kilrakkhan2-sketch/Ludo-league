@@ -1,7 +1,6 @@
-
 'use client';
 
-import Image from "next/image";
+import Image from 'next/image';
 import {
   Dialog,
   DialogContent,
@@ -10,17 +9,17 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogClose,
-} from "@/components/ui/dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+} from '@/components/ui/dialog';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -28,116 +27,180 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Match, MatchResult } from "@/lib/types";
-import { cn } from "@/lib/utils";
-import { Crown, Eye, Users, XCircle, Shield, HandCoins, CheckCircle2, AlertTriangle, Ban, Loader2, Trophy } from "lucide-react";
-import React, { useEffect, useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { useFirestore } from "@/firebase";
-import { collection, onSnapshot, query, where, doc, runTransaction, getDocs, updateDoc } from "firebase/firestore";
-import { distributeWinnings } from "@/ai/flows/distribute-winnings";
+} from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { Match, MatchResult } from '@/lib/types';
+import { cn } from '@/lib/utils';
+import {
+  Crown,
+  Eye,
+  Users,
+  XCircle,
+  Shield,
+  HandCoins,
+  CheckCircle2,
+  AlertTriangle,
+  Ban,
+  Loader2,
+  Trophy,
+} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { useFirestore } from '@/firebase';
+import {
+  collection,
+  onSnapshot,
+  query,
+  where,
+  doc,
+  runTransaction,
+  getDocs,
+  updateDoc,
+} from 'firebase/firestore';
+import { distributeWinnings } from '@/ai/flows/distribute-winnings';
+import { useSearchParams } from 'next/navigation';
 
-
-const MatchDetailDialog = ({ match: initialMatch, onUpdate }: { match: Match, onUpdate: (updatedMatch: Match) => void }) => {
+const MatchDetailDialog = ({
+  match: initialMatch,
+  onUpdate,
+  startOpen = false
+}: {
+  match: Match;
+  onUpdate: (updatedMatch: Match) => void;
+  startOpen?: boolean;
+}) => {
   const [match, setMatch] = useState(initialMatch);
   const [results, setResults] = useState<MatchResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDistributing, setIsDistributing] = useState(false);
+  const [isOpen, setIsOpen] = useState(startOpen);
+
   const { toast } = useToast();
   const firestore = useFirestore();
 
   useEffect(() => {
     setMatch(initialMatch); // Keep local state in sync with prop
   }, [initialMatch]);
+  
+  useEffect(() => {
+    setIsOpen(startOpen);
+  }, [startOpen]);
 
   useEffect(() => {
-    if (!firestore) return;
+    if (!firestore || !isOpen) return;
     const resultsRef = collection(firestore, `matches/${match.id}/results`);
     const unsubscribe = onSnapshot(resultsRef, (snapshot) => {
-        const resultsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MatchResult));
-        setResults(resultsData);
+      const resultsData = snapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as MatchResult)
+      );
+      setResults(resultsData);
     });
     return () => unsubscribe();
-  }, [firestore, match.id]);
+  }, [firestore, match.id, isOpen]);
 
-  const winnerResult = results.find(r => r.status === 'win');
-  const winnerPlayer = winnerResult ? match.players.find(p => p.id === winnerResult.userId) : null;
-  
+  const winnerResult = results.find((r) => r.status === 'win');
+  const winnerPlayer = winnerResult
+    ? match.players.find((p) => p.id === winnerResult.userId)
+    : null;
+
   const handleDeclareWinner = async (winnerId: string) => {
     if (!firestore) return;
     setIsProcessing(true);
-    const winnerPlayerInfo = match.players.find(p => p.id === winnerId);
+    const winnerPlayerInfo = match.players.find((p) => p.id === winnerId);
     toast({
-        title: "Processing...",
-        description: `Declaring ${winnerPlayerInfo?.name} as the winner.`,
+      title: 'Processing...',
+      description: `Declaring ${winnerPlayerInfo?.name} as the winner.`,
     });
-    
-    try {
-        await runTransaction(firestore, async (transaction) => {
-            const matchRef = doc(firestore, 'matches', match.id);
-            // Mark the match as completed.
-            transaction.update(matchRef, { status: 'completed' });
-            
-            // Update status for all results in the subcollection
-            const resultsRef = collection(firestore, `matches/${match.id}/results`);
-            const resultsSnapshot = await getDocs(resultsRef);
-            resultsSnapshot.forEach(resultDoc => {
-                const newStatus = resultDoc.data().userId === winnerId ? 'win' : 'loss';
-                transaction.update(doc(resultsRef, resultDoc.id), { status: newStatus });
-            });
-        });
-        
-        const updatedMatch = { ...match, status: 'completed' } as Match;
-        setMatch(updatedMatch);
-        onUpdate(updatedMatch);
 
-        toast({
-            title: "Winner Declared!",
-            description: `${winnerPlayerInfo?.name} is now the winner. You can now distribute the prize.`,
-            variant: 'default',
-            className: 'bg-green-100 text-green-800'
+    try {
+      await runTransaction(firestore, async (transaction) => {
+        const matchRef = doc(firestore, 'matches', match.id);
+        // Mark the match as completed.
+        transaction.update(matchRef, { status: 'completed' });
+
+        // Update status for all results in the subcollection
+        const resultsRef = collection(firestore, `matches/${match.id}/results`);
+        const resultsSnapshot = await getDocs(resultsRef);
+        resultsSnapshot.forEach((resultDoc) => {
+          const newStatus =
+            resultDoc.data().userId === winnerId ? 'win' : 'loss';
+          transaction.update(doc(resultsRef, resultDoc.id), {
+            status: newStatus,
+          });
         });
+      });
+
+      const updatedMatch = { ...match, status: 'completed' } as Match;
+      setMatch(updatedMatch);
+      onUpdate(updatedMatch);
+
+      toast({
+        title: 'Winner Declared!',
+        description: `${winnerPlayerInfo?.name} is now the winner. You can now distribute the prize.`,
+        variant: 'default',
+        className: 'bg-green-100 text-green-800',
+      });
     } catch (error: any) {
-        toast({ title: "Error Declaring Winner", description: error.message, variant: "destructive" });
+      toast({
+        title: 'Error Declaring Winner',
+        description: error.message,
+        variant: 'destructive',
+      });
     } finally {
-        setIsProcessing(false);
+      setIsProcessing(false);
     }
   };
 
   const handleDistributeWinnings = async () => {
     if (!winnerResult || !winnerPlayer) {
-      toast({ title: 'No winner declared for this match.', variant: 'destructive'});
+      toast({
+        title: 'No winner declared for this match.',
+        variant: 'destructive',
+      });
       return;
     }
     setIsDistributing(true);
     try {
-        const result = await distributeWinnings({ matchId: match.id, winnerId: winnerPlayer.id });
-        if (result.success) {
-            toast({ title: "Success", description: result.message, className: 'bg-green-100 text-green-800' });
-            const updatedMatch = { ...match, prizeDistributed: true } as Match;
-            setMatch(updatedMatch); // Update local state
-            onUpdate(updatedMatch); // Update parent state
-        } else {
-            toast({ title: "Distribution Failed", description: result.message, variant: 'destructive' });
-        }
+      const result = await distributeWinnings({
+        matchId: match.id,
+        winnerId: winnerPlayer.id,
+      });
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: result.message,
+          className: 'bg-green-100 text-green-800',
+        });
+        const updatedMatch = { ...match, prizeDistributed: true } as Match;
+        setMatch(updatedMatch); // Update local state
+        onUpdate(updatedMatch); // Update parent state
+      } else {
+        toast({
+          title: 'Distribution Failed',
+          description: result.message,
+          variant: 'destructive',
+        });
+      }
     } catch (error: any) {
-        toast({ title: 'Error', description: 'An unexpected error occurred.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
     } finally {
-        setIsDistributing(false);
+      setIsDistributing(false);
     }
-  }
-  
+  };
+
   const handleAction = (action: string) => {
     toast({
-        title: "Action Triggered",
-        description: `The action "${action}" has been initiated for match ${match.id}.`,
-    })
-  }
+      title: 'Action Triggered',
+      description: `The action "${action}" has been initiated for match ${match.id}.`,
+    });
+  };
 
   return (
-    <Dialog onOpenChange={(open) => !open && setMatch(initialMatch)}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Eye className="h-4 w-4 mr-2" />
@@ -148,209 +211,301 @@ const MatchDetailDialog = ({ match: initialMatch, onUpdate }: { match: Match, on
         <DialogHeader>
           <DialogTitle>Review Match: {match.id}</DialogTitle>
           <DialogDescription>
-            Prize Pool: ₹{match.prizePool} | Status:{" "}
+            Prize Pool: ₹{match.prizePool} | Status:{' '}
             <span
-              className={cn("font-semibold", {
-                "text-green-600": match.status === "completed",
-                "text-blue-600": match.status === "in-progress",
-                "text-yellow-600": match.status === "waiting",
-                "text-red-600": match.status === "disputed",
+              className={cn('font-semibold', {
+                'text-green-600': match.status === 'completed',
+                'text-blue-600': match.status === 'in-progress',
+                'text-yellow-600': match.status === 'waiting',
+                'text-red-600': match.status === 'disputed',
               })}
             >
               {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
             </span>
-            {winnerPlayer && match.status === 'completed' && ` | Winner: ${winnerPlayer.name}`}
+            {winnerPlayer &&
+              match.status === 'completed' &&
+              ` | Winner: ${winnerPlayer.name}`}
           </DialogDescription>
         </DialogHeader>
         <div className="mt-4 max-h-[70vh] overflow-y-auto p-1">
           <div className="space-y-4">
             <h4 className="font-semibold text-lg">Player Submissions</h4>
             {results && results.length > 0 ? (
-                results.map((result, index) => {
-              const player = match.players.find(
-                (p) => p.id === result.userId
-              );
-              return (
-                <div
-                  key={index}
-                  className="grid md:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/30"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-12 w-12">
-                        <AvatarImage src={player?.avatarUrl} />
-                        <AvatarFallback>
-                          {player?.name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-semibold text-base">{player?.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          User ID: {player?.id}
-                        </p>
+              results.map((result, index) => {
+                const player = match.players.find(
+                  (p) => p.id === result.userId
+                );
+                return (
+                  <div
+                    key={index}
+                    className="grid md:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/30"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={player?.avatarUrl} />
+                          <AvatarFallback>
+                            {player?.name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-semibold text-base">
+                            {player?.name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            User ID: {player?.id}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2 text-lg font-bold">
-                        <Trophy
-                          className={cn(
-                            "h-5 w-5",
-                            result.position === 1
-                              ? "text-yellow-500"
-                              : "text-muted-foreground"
-                          )}
-                        />
-                        Position: {result.position}
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 text-lg font-bold">
+                          <Trophy
+                            className={cn(
+                              'h-5 w-5',
+                              result.position === 1
+                                ? 'text-yellow-500'
+                                : 'text-muted-foreground'
+                            )}
+                          />
+                          Position: {result.position}
+                        </div>
+                        <Badge
+                          variant={
+                            result.status === 'win' ? 'default' : 'destructive'
+                          }
+                          className={cn({
+                            'bg-green-500 hover:bg-green-600':
+                              result.status === 'win',
+                          })}
+                        >
+                          {result.status.charAt(0).toUpperCase() +
+                            result.status.slice(1)}
+                        </Badge>
                       </div>
-                      <Badge
-                        variant={
-                          result.status === "win" ? "default" : "destructive"
-                        }
-                        className={cn({ "bg-green-500 hover:bg-green-600": result.status === "win" })}
-                      >
-                        {result.status.charAt(0).toUpperCase() + result.status.slice(1)}
-                      </Badge>
-                    </div>
-                    {match.status === 'disputed' && (
-                        <Button size="sm" className="w-full text-green-50 bg-green-600 hover:bg-green-700" onClick={() => handleDeclareWinner(result.userId)} disabled={isProcessing}>
-                            {isProcessing ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle2 className="h-4 w-4 mr-2"/>} Declare {player?.name} as Winner
+                      {match.status === 'disputed' && (
+                        <Button
+                          size="sm"
+                          className="w-full text-green-50 bg-green-600 hover:bg-green-700"
+                          onClick={() => handleDeclareWinner(result.userId)}
+                          disabled={isProcessing}
+                        >
+                          {isProcessing ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                          )}{' '}
+                          Declare {player?.name} as Winner
                         </Button>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-center justify-center gap-2">
-                     <p className="text-sm font-medium self-start">Submitted Screenshot</p>
-                    <a href={result.screenshotUrl} target="_blank" rel="noopener noreferrer" className="block w-full">
+                      )}
+                    </div>
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <p className="text-sm font-medium self-start">
+                        Submitted Screenshot
+                      </p>
+                      <a
+                        href={result.screenshotUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full"
+                      >
                         <Image
-                            src={result.screenshotUrl}
-                            alt={`Screenshot from ${player?.name}`}
-                            width={300}
-                            height={200}
-                            className="rounded-md object-cover border-2 w-full h-auto"
+                          src={result.screenshotUrl}
+                          alt={`Screenshot from ${player?.name}`}
+                          width={300}
+                          height={200}
+                          className="rounded-md object-cover border-2 w-full h-auto"
                         />
-                    </a>
+                      </a>
+                    </div>
                   </div>
-                </div>
-              );
-            })
-            ) : <p className="text-muted-foreground text-center py-4">No results have been submitted for this match yet.</p>
-            }
+                );
+              })
+            ) : (
+              <p className="text-muted-foreground text-center py-4">
+                No results have been submitted for this match yet.
+              </p>
+            )}
           </div>
         </div>
-         <div className="flex flex-wrap justify-end gap-2 pt-4 border-t">
-            {match.status === 'completed' && !match.prizeDistributed && winnerPlayer && (
-                 <Button variant="accent" onClick={handleDistributeWinnings} disabled={isDistributing}>
-                    {isDistributing ? <Loader2 className="h-4 w-4 animate-spin"/> : <HandCoins className="mr-2 h-4 w-4"/>} Distribute Prize to {winnerPlayer.name}
-                </Button>
+        <div className="flex flex-wrap justify-end gap-2 pt-4 border-t">
+          {match.status === 'completed' &&
+            !match.prizeDistributed &&
+            winnerPlayer && (
+              <Button
+                variant="accent"
+                onClick={handleDistributeWinnings}
+                disabled={isDistributing}
+              >
+                {isDistributing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <HandCoins className="mr-2 h-4 w-4" />
+                )}{' '}
+                Distribute Prize to {winnerPlayer.name}
+              </Button>
             )}
-             {match.prizeDistributed && (
-                <p className="text-sm text-green-600 font-medium flex items-center gap-2"><CheckCircle2 className="h-4 w-4"/> Winnings already distributed.</p>
-             )}
-            {match.status === 'disputed' && (
-                 <Button variant="outline" className="text-orange-500 border-orange-500 hover:bg-orange-100 hover:text-orange-600" onClick={() => handleAction('Resolve Dispute')}>
-                    <AlertTriangle className="mr-2 h-4 w-4"/> Mark as Resolved
-                </Button>
-            )}
-            <Button variant="outline" onClick={() => handleAction('View Fraud Report')}><Shield className="mr-2 h-4 w-4"/> View Fraud Report</Button>
-            <Button variant="destructive" onClick={() => handleAction('Cancel Match')}><XCircle className="mr-2 h-4 w-4"/> Cancel Match</Button>
-            <DialogClose asChild>
-                <Button variant="ghost">Close</Button>
-            </DialogClose>
-         </div>
+          {match.prizeDistributed && (
+            <p className="text-sm text-green-600 font-medium flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4" /> Winnings already distributed.
+            </p>
+          )}
+          {match.status === 'disputed' && (
+            <Button
+              variant="outline"
+              className="text-orange-500 border-orange-500 hover:bg-orange-100 hover:text-orange-600"
+              onClick={() => handleAction('Resolve Dispute')}
+            >
+              <AlertTriangle className="mr-2 h-4 w-4" /> Mark as Resolved
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => handleAction('View Fraud Report')}>
+            <Shield className="mr-2 h-4 w-4" /> View Fraud Report
+          </Button>
+          <Button variant="destructive" onClick={() => handleAction('Cancel Match')}>
+            <XCircle className="mr-2 h-4 w-4" /> Cancel Match
+          </Button>
+          <DialogClose asChild>
+            <Button variant="ghost">Close</Button>
+          </DialogClose>
+        </div>
       </DialogContent>
     </Dialog>
   );
 };
 
-export default function AdminMatchesPage() {
+function AdminMatchesPageContent() {
   const [allMatches, setAllMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const firestore = useFirestore();
+  const searchParams = useSearchParams();
+  const matchIdToOpen = searchParams.get('matchId');
+  const [openMatch, setOpenMatch] = useState<Match | null>(null);
 
   useEffect(() => {
-    if(!firestore) return;
+    if (!firestore) return;
     setLoading(true);
     const matchesRef = collection(firestore, 'matches');
     const q = query(matchesRef); // Fetch all matches for admin
     const unsubscribe = onSnapshot(q, (snapshot) => {
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
-        setAllMatches(data);
-        setLoading(false);
+      const data = snapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as Match)
+      );
+      setAllMatches(data);
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, [firestore]);
 
+  useEffect(() => {
+    if (matchIdToOpen && allMatches.length > 0) {
+      const matchToOpen = allMatches.find(m => m.id === matchIdToOpen);
+      if (matchToOpen) {
+        setOpenMatch(matchToOpen);
+      }
+    }
+  }, [matchIdToOpen, allMatches]);
 
   const handleMatchUpdate = (updatedMatch: Match) => {
-    setAllMatches(prevMatches => prevMatches.map(m => m.id === updatedMatch.id ? updatedMatch : m));
+    setAllMatches((prevMatches) =>
+      prevMatches.map((m) => (m.id === updatedMatch.id ? updatedMatch : m))
+    );
+     if (openMatch && openMatch.id === updatedMatch.id) {
+      setOpenMatch(updatedMatch);
+    }
   };
 
-  const matchesByStatus = (status: Match["status"]) =>
+  const matchesByStatus = (status: Match['status']) =>
     allMatches.filter((match) => match.status === status);
 
-  const MatchTable = ({ status, title }: { status: Match["status"], title: string }) => (
+  const MatchTable = ({
+    status,
+    title,
+  }: {
+    status: Match['status'];
+    title: string;
+  }) => (
     <Card>
-        <CardHeader>
-            <CardTitle>{title}</CardTitle>
-            <CardDescription>
-                Matches currently in the &quot;{status}&quot; state.
-            </CardDescription>
-        </CardHeader>
-        <CardContent>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Match ID</TableHead>
-                    <TableHead>Prize</TableHead>
-                    <TableHead>Players</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {loading && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>}
-                    {!loading && matchesByStatus(status).map((match) => (
-                    <TableRow key={match.id}>
-                        <TableCell className="font-mono text-xs">{match.id}</TableCell>
-                        <TableCell>₹{match.prizePool}</TableCell>
-                        <TableCell>
-                        <div className="flex items-center gap-1">
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                            {match.players.length} / {match.maxPlayers}
-                        </div>
-                        </TableCell>
-                        <TableCell>
-                        <Badge
-                            variant={
-                            match.status === "completed"
-                                ? "outline"
-                                : match.status === "disputed"
-                                ? "destructive"
-                                : "secondary"
-                            }
-                            className={cn({
-                                "text-blue-600 border-blue-600": match.status === 'in-progress',
-                                "text-green-600 border-green-600": match.status === 'completed',
-                            })}
-                        >
-                            {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
-                        </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                            <MatchDetailDialog match={match} onUpdate={handleMatchUpdate} />
-                        </TableCell>
-                    </TableRow>
-                    ))}
-                    {!loading && matchesByStatus(status).length === 0 && (
-                        <TableRow>
-                            <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                                No {status} matches found.
-                            </TableCell>
-                        </TableRow>
-                    )}
-                </TableBody>
-            </Table>
-        </CardContent>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>
+          Matches currently in the &quot;{status}&quot; state.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Match ID</TableHead>
+              <TableHead>Prize</TableHead>
+              <TableHead>Players</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading && (
+              <TableRow>
+                <TableCell
+                  colSpan={5}
+                  className="text-center text-muted-foreground py-8"
+                >
+                  Loading...
+                </TableCell>
+              </TableRow>
+            )}
+            {!loading &&
+              matchesByStatus(status).map((match) => (
+                <TableRow key={match.id}>
+                  <TableCell className="font-mono text-xs">{match.id}</TableCell>
+                  <TableCell>₹{match.prizePool}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      {match.players.length} / {match.maxPlayers}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        match.status === 'completed'
+                          ? 'outline'
+                          : match.status === 'disputed'
+                          ? 'destructive'
+                          : 'secondary'
+                      }
+                      className={cn({
+                        'text-blue-600 border-blue-600':
+                          match.status === 'in-progress',
+                        'text-green-600 border-green-600':
+                          match.status === 'completed',
+                      })}
+                    >
+                      {match.status.charAt(0).toUpperCase() +
+                        match.status.slice(1)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <MatchDetailDialog
+                      match={match}
+                      onUpdate={handleMatchUpdate}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            {!loading && matchesByStatus(status).length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={5}
+                  className="text-center text-muted-foreground py-8"
+                >
+                  No {status} matches found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
     </Card>
   );
 
@@ -361,26 +516,37 @@ export default function AdminMatchesPage() {
           Match Management
         </h2>
       </div>
-       <Tabs defaultValue="disputed" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="disputed">Disputed</TabsTrigger>
-              <TabsTrigger value="in-progress">In Progress</TabsTrigger>
-              <TabsTrigger value="completed">Completed</TabsTrigger>
-              <TabsTrigger value="waiting">Waiting</TabsTrigger>
-            </TabsList>
-            <TabsContent value="disputed" className="mt-4">
-                <MatchTable status="disputed" title="Disputed Matches" />
-            </TabsContent>
-            <TabsContent value="in-progress" className="mt-4">
-              <MatchTable status="in-progress" title="In-Progress Matches" />
-            </TabsContent>
-            <TabsContent value="completed" className="mt-4">
-              <MatchTable status="completed" title="Completed Matches" />
-            </TabsContent>
-            <TabsContent value="waiting" className="mt-4">
-                <MatchTable status="waiting" title="Waiting Matches" />
-            </TabsContent>
-          </Tabs>
+      {openMatch && (
+         <MatchDetailDialog match={openMatch} onUpdate={handleMatchUpdate} startOpen={true} />
+      )}
+      <Tabs defaultValue="disputed" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="disputed">Disputed</TabsTrigger>
+          <TabsTrigger value="in-progress">In Progress</TabsTrigger>
+          <TabsTrigger value="completed">Completed</TabsTrigger>
+          <TabsTrigger value="waiting">Waiting</TabsTrigger>
+        </TabsList>
+        <TabsContent value="disputed" className="mt-4">
+          <MatchTable status="disputed" title="Disputed Matches" />
+        </TabsContent>
+        <TabsContent value="in-progress" className="mt-4">
+          <MatchTable status="in-progress" title="In-Progress Matches" />
+        </TabsContent>
+        <TabsContent value="completed" className="mt-4">
+          <MatchTable status="completed" title="Completed Matches" />
+        </TabsContent>
+        <TabsContent value="waiting" className="mt-4">
+          <MatchTable status="waiting" title="Waiting Matches" />
+        </TabsContent>
+      </Tabs>
     </>
   );
+}
+
+export default function AdminMatchesPage() {
+    return (
+        <React.Suspense fallback={<div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin"/></div>}>
+            <AdminMatchesPageContent />
+        </React.Suspense>
+    )
 }

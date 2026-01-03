@@ -1,8 +1,13 @@
-
 'use client';
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -10,53 +15,77 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Ban, Eye, ShieldCheck, ThumbsDown, Loader2 } from "lucide-react"
-import { useFirestore } from "@/firebase"
-import { collection, query, where, onSnapshot, orderBy, limit } from "firebase/firestore"
-import { useEffect, useState } from "react"
-import type { UserProfile, MatchResult } from "@/lib/types"
+} from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Ban, Eye, ShieldCheck, ThumbsDown, Loader2 } from 'lucide-react';
+import { useFirestore } from '@/firebase';
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  orderBy,
+  limit,
+  collectionGroup,
+} from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import type { UserProfile, MatchResult, Match } from '@/lib/types';
+import Link from 'next/link';
+
+type FraudAlert = MatchResult & {
+  matchId: string;
+};
 
 export default function AdminDashboardPage() {
-    const firestore = useFirestore();
-    const [suspiciousUsers, setSuspiciousUsers] = useState<UserProfile[]>([]);
-    const [fraudAlerts, setFraudAlerts] = useState<MatchResult[]>([]);
-    const [loadingUsers, setLoadingUsers] = useState(true);
-    const [loadingAlerts, setLoadingAlerts] = useState(true);
+  const firestore = useFirestore();
+  const [suspiciousUsers, setSuspiciousUsers] = useState<UserProfile[]>([]);
+  const [fraudAlerts, setFraudAlerts] = useState<FraudAlert[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [loadingAlerts, setLoadingAlerts] = useState(true);
 
-    useEffect(() => {
-        if (!firestore) return;
+  useEffect(() => {
+    if (!firestore) return;
 
-        // Fetch suspicious users (e.g., win rate > 80%)
-        setLoadingUsers(true);
-        const usersRef = collection(firestore, 'users');
-        const suspiciousQuery = query(usersRef, where('winRate', '>=', 80), limit(20));
-        const unsubscribeUsers = onSnapshot(suspiciousQuery, snapshot => {
-            setSuspiciousUsers(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile)));
-            setLoadingUsers(false);
+    // Fetch suspicious users (e.g., win rate > 80%)
+    setLoadingUsers(true);
+    const usersRef = collection(firestore, 'users');
+    const suspiciousQuery = query(
+      usersRef,
+      where('winRate', '>=', 80),
+      limit(20)
+    );
+    const unsubscribeUsers = onSnapshot(suspiciousQuery, (snapshot) => {
+      setSuspiciousUsers(
+        snapshot.docs.map((doc) => ({ uid: doc.id, ...doc.data() } as UserProfile))
+      );
+      setLoadingUsers(false);
+    });
+
+    // Fetch fraud alerts using a collectionGroup query
+    setLoadingAlerts(true);
+    const resultsRef = collectionGroup(firestore, 'results');
+    const fraudQuery = query(resultsRef, where('isFlaggedForFraud', '==', true), limit(20));
+    const unsubscribeAlerts = onSnapshot(fraudQuery, (snapshot) => {
+        const alerts = snapshot.docs.map(doc => {
+            const matchId = doc.ref.parent.parent?.id || 'unknown';
+            return {
+                id: doc.id,
+                matchId: matchId,
+                ...doc.data()
+            } as FraudAlert;
         });
+        setFraudAlerts(alerts);
+        setLoadingAlerts(false);
+    }, (error) => {
+        console.error("Error fetching fraud alerts: ", error);
+        setLoadingAlerts(false);
+    });
 
-        // Fetch fraud alerts
-        setLoadingAlerts(true);
-        const resultsRef = collection(firestore, 'matchResults'); // This might need adjustment if results are in subcollections
-        const fraudQuery = query(resultsRef, where('isFlaggedForFraud', '==', true), limit(20));
-        // This query won't work if 'matchResults' is a subcollection. 
-        // A more complex query (e.g. collectionGroup) would be needed, which is harder to setup on the client.
-        // For now, we will assume a flat structure or just show an empty state.
-        // const unsubscribeAlerts = onSnapshot(fraudQuery, snapshot => {
-        //     setFraudAlerts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MatchResult)));
-        //     setLoadingAlerts(false);
-        // });
-        setLoadingAlerts(false); // Manually set to false as the query is likely to fail.
-
-
-        return () => {
-            unsubscribeUsers();
-            // unsubscribeAlerts();
-        }
-    }, [firestore]);
-
+    return () => {
+      unsubscribeUsers();
+      unsubscribeAlerts();
+    };
+  }, [firestore]);
 
   return (
     <>
@@ -71,7 +100,8 @@ export default function AdminDashboardPage() {
             <CardHeader>
               <CardTitle>Automated Fraud Alerts</CardTitle>
               <CardDescription>
-                Submissions automatically flagged by the system for review (e.g. duplicate screenshots).
+                Submissions automatically flagged by the system for review (e.g.
+                duplicate screenshots).
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -86,23 +116,47 @@ export default function AdminDashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {loadingAlerts && <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto"/></TableCell></TableRow>}
-                  {!loadingAlerts && fraudAlerts.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No fraud alerts to show.</TableCell></TableRow>}
-                  {!loadingAlerts && fraudAlerts.map((alert) => (
-                    <TableRow key={alert.id}>
-                      <TableCell className="font-medium">{alert.userName}</TableCell>
-                      <TableCell>Duplicate Screenshot</TableCell>
-                      <TableCell className="font-mono text-xs">{alert.id}</TableCell>
-                      <TableCell>{alert.submittedAt?.toDate().toLocaleDateString()}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex gap-2 justify-end">
-                            <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
-                            <Button variant="outline" size="sm" className="text-green-600 border-green-600 hover:bg-green-100 hover:text-green-700">Approve</Button>
-                            <Button variant="destructive" size="sm"><ThumbsDown className="mr-2 h-4 w-4"/>Reject</Button>
-                        </div>
+                  {loadingAlerts && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
+                  {!loadingAlerts && fraudAlerts.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="text-center py-8 text-muted-foreground"
+                      >
+                        No fraud alerts to show.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {!loadingAlerts &&
+                    fraudAlerts.map((alert) => (
+                      <TableRow key={`${alert.matchId}-${alert.id}`}>
+                        <TableCell className="font-medium">
+                          {alert.userName}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="destructive">Duplicate Screenshot</Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {alert.matchId}
+                        </TableCell>
+                        <TableCell>
+                          {alert.submittedAt?.toDate().toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button asChild variant="outline" size="sm">
+                            <Link href={`/admin/matches?matchId=${alert.matchId}`}>
+                                <Eye className="mr-2 h-4 w-4" /> Review
+                            </Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                 </TableBody>
               </Table>
             </CardContent>
@@ -128,26 +182,60 @@ export default function AdminDashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {loadingUsers && <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto"/></TableCell></TableRow>}
-                  {!loadingUsers && suspiciousUsers.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No suspicious users found.</TableCell></TableRow>}
-                  {!loadingUsers && suspiciousUsers.map((user) => (
-                    <TableRow key={user.uid}>
-                      <TableCell className="font-medium">{user.displayName}</TableCell>
-                      <TableCell>{user.winRate}%</TableCell>
-                      <TableCell>₹{user.winnings || 0}</TableCell>
-                      <TableCell>
-                        <Badge variant={user.kycStatus === 'approved' ? 'default': 'secondary'} className={user.kycStatus === 'approved' ? 'bg-green-100 text-green-800' : ''}>
-                          {user.kycStatus}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                         <div className="flex gap-2 justify-end">
-                            <Button variant="secondary" size="sm">Suspend</Button>
-                            <Button variant="destructive" size="sm"><Ban className="mr-2 h-4 w-4"/>Block</Button>
-                        </div>
+                  {loadingUsers && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
+                  {!loadingUsers && suspiciousUsers.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="text-center py-8 text-muted-foreground"
+                      >
+                        No suspicious users found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {!loadingUsers &&
+                    suspiciousUsers.map((user) => (
+                      <TableRow key={user.uid}>
+                        <TableCell className="font-medium">
+                          {user.displayName}
+                        </TableCell>
+                        <TableCell>{user.winRate}%</TableCell>
+                        <TableCell>₹{user.winnings || 0}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              user.kycStatus === 'approved'
+                                ? 'default'
+                                : 'secondary'
+                            }
+                            className={
+                              user.kycStatus === 'approved'
+                                ? 'bg-green-100 text-green-800'
+                                : ''
+                            }
+                          >
+                            {user.kycStatus}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex gap-2 justify-end">
+                            <Button variant="secondary" size="sm">
+                              Suspend
+                            </Button>
+                            <Button variant="destructive" size="sm">
+                              <Ban className="mr-2 h-4 w-4" />
+                              Block
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                 </TableBody>
               </Table>
             </CardContent>
@@ -155,5 +243,5 @@ export default function AdminDashboardPage() {
         </TabsContent>
       </Tabs>
     </>
-  )
+  );
 }
