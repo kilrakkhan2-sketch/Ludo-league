@@ -25,7 +25,7 @@ import {
   ShieldCheck,
 } from "lucide-react"
 import { useState } from "react"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet"
 
 const AdminSidebarNav = () => {
   const pathname = usePathname()
