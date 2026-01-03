@@ -4,6 +4,7 @@ export type User = {
   name: string;
   avatarUrl: string;
   winRate: number;
+  winnings: number;
   ipAddress: string;
   deviceId: string;
 };
@@ -66,10 +67,10 @@ export type Tournament = {
 
 
 export const mockUsers: User[] = [
-  { id: 'user-1', name: 'PlayerOne', avatarUrl: 'https://picsum.photos/seed/avatar1/40/40', winRate: 65, ipAddress: '192.168.1.1', deviceId: 'device-abc-123' },
-  { id: 'user-2', name: 'PlayerTwo', avatarUrl: 'https://picsum.photos/seed/avatar2/40/40', winRate: 58, ipAddress: '192.168.1.2', deviceId: 'device-def-456' },
-  { id: 'user-3', name: 'PlayerThree', avatarUrl: 'https://picsum.photos/seed/avatar3/40/40', winRate: 72, ipAddress: '192.168.1.1', deviceId: 'device-ghi-789' },
-  { id: 'user-4', name: 'PlayerFour', avatarUrl: 'https://picsum.photos/seed/avatar4/40/40', winRate: 91, ipAddress: '192.168.1.4', deviceId: 'device-jkl-012' },
+  { id: 'user-4', name: 'PlayerFour', avatarUrl: 'https://picsum.photos/seed/avatar4/40/40', winRate: 91, winnings: 25000, ipAddress: '192.168.1.4', deviceId: 'device-jkl-012' },
+  { id: 'user-3', name: 'PlayerThree', avatarUrl: 'https://picsum.photos/seed/avatar3/40/40', winRate: 72, winnings: 18000, ipAddress: '192.168.1.1', deviceId: 'device-ghi-789' },
+  { id: 'user-1', name: 'PlayerOne', avatarUrl: 'https://picsum.photos/seed/avatar1/40/40', winRate: 65, winnings: 12500, ipAddress: '192.168.1.1', deviceId: 'device-abc-123' },
+  { id: 'user-2', name: 'PlayerTwo', avatarUrl: 'https://picsum.photos/seed/avatar2/40/40', winRate: 58, winnings: 9800, ipAddress: '192.168.1.2', deviceId: 'device-def-456' },
 ];
 
 export const mockMatches: Match[] = [

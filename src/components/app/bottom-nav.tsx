@@ -3,14 +3,15 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Home, Wallet, Shield, User, Swords, ShieldCheck, Trophy } from "lucide-react"
+import { Home, Wallet, Shield, User, Swords, ShieldCheck, Trophy, BarChart } from "lucide-react"
 
 const navItems = [
   { href: "/dashboard", label: "Lobby", icon: Swords },
   { href: "/tournaments", label: "Tournaments", icon: Trophy },
+  { href: "/leaderboard", label: "Ranks", icon: BarChart },
   { href: "/wallet", label: "Wallet", icon: Wallet },
   { href: "/kyc", label: "KYC", icon: ShieldCheck },
-  { href: "/admin/dashboard", label: "Admin", icon: Shield },
+  // { href: "/admin/dashboard", label: "Admin", icon: Shield },
 ];
 
 export function BottomNav() {

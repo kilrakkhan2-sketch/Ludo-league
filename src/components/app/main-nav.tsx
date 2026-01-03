@@ -21,6 +21,11 @@ export function MainNav({
       label: "Tournaments",
       active: pathname.startsWith("/tournaments"),
     },
+     {
+      href: "/leaderboard",
+      label: "Leaderboard",
+      active: pathname === "/leaderboard",
+    },
     {
       href: "/wallet",
       label: "Wallet",
