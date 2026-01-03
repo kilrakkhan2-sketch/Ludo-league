@@ -45,9 +45,10 @@ const MatchDetailDialog = ({ match: initialMatch }: { match: Match }) => {
   
   const handleDeclareWinner = (winnerId: string) => {
     setIsProcessing(true);
+    const winnerPlayer = match.players.find(p => p.id === winnerId);
     toast({
         title: "Processing...",
-        description: `Declaring ${match.players.find(p => p.id === winnerId)?.name} as the winner.`,
+        description: `Declaring ${winnerPlayer?.name} as the winner.`,
     });
     // Simulate API call
     setTimeout(() => {
@@ -66,7 +67,7 @@ const MatchDetailDialog = ({ match: initialMatch }: { match: Match }) => {
         setIsProcessing(false);
         toast({
             title: "Winner Declared!",
-            description: "Payouts have been processed.",
+            description: `Payout of ₹${match.prizePool} has been processed for ${winnerPlayer?.name}.`,
             variant: 'default',
             className: 'bg-green-100 text-green-800'
         });

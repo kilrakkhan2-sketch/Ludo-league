@@ -1,3 +1,4 @@
+
 export type User = {
   id: string;
   name: string;
@@ -105,7 +106,7 @@ export const mockMatches: Match[] = [
   {
     id: 'match-5',
     entryFee: 150,
-    prizePool: 570,
+    prizePool: 280,
     players: mockUsers.slice(0, 2),
     maxPlayers: 2,
     status: 'disputed',
@@ -121,6 +122,8 @@ export const mockTransactions: Transaction[] = [
   { id: 'txn-2', type: 'entry-fee', amount: -100, date: '2024-05-21', status: 'completed' },
   { id: 'txn-3', type: 'winnings', amount: 380, date: '2024-05-22', status: 'completed' },
   { id: 'txn-4', type: 'withdrawal', amount: -500, date: '2024-05-23', status: 'pending' },
+  { id: 'txn-5', type: 'deposit', amount: 200, date: '2024-05-24', status: 'rejected' },
+  { id: 'txn-6', type: 'entry-fee', amount: -50, date: '2024-05-25', status: 'completed' },
 ];
 
 export const mockDepositRequests: DepositRequest[] = [

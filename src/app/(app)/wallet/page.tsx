@@ -1,3 +1,4 @@
+
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,7 +16,7 @@ import {
 import { mockTransactions } from "@/lib/data"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { cn } from "@/lib/utils"
-import { ArrowDownLeft, ArrowUpRight, UploadCloud } from "lucide-react"
+import { ArrowDownLeft, ArrowUpRight, UploadCloud, DownloadCloud, Landmark } from "lucide-react"
 
 export default function WalletPage() {
   const qrCodeImage = PlaceHolderImages.find(img => img.id === 'qr-code');
@@ -32,7 +33,7 @@ export default function WalletPage() {
       <div className="flex items-center justify-between space-y-2 mb-4">
         <h2 className="text-3xl font-bold tracking-tight">Wallet</h2>
       </div>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-8">
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div className="grid gap-2">
@@ -47,8 +48,50 @@ export default function WalletPage() {
             </CardHeader>
         </Card>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="lg:col-span-4">
+        <div className="grid gap-8 md:grid-cols-2">
+             <Card>
+            <CardHeader>
+                <CardTitle>Deposit Funds</CardTitle>
+                <CardDescription>Add money to your wallet to join matches.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-6">
+                <div className="flex flex-col items-center gap-4">
+                    <p className="text-sm text-center text-muted-foreground">Scan the QR code with your payment app.</p>
+                    {qrCodeImage && <Image src={qrCodeImage.imageUrl} alt="QR Code" width={200} height={200} className="rounded-lg" data-ai-hint={qrCodeImage.imageHint} />}
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="utr">UTR Number</Label>
+                    <Input id="utr" placeholder="Enter the UTR/Transaction ID" />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="screenshot">Payment Screenshot</Label>
+                    <Input id="screenshot" type="file" className="text-muted-foreground file:text-primary"/>
+                </div>
+                <Button className="w-full" variant="accent"><UploadCloud className="mr-2 h-4 w-4" /> Submit for Approval</Button>
+            </CardContent>
+            </Card>
+            <Card>
+            <CardHeader>
+                <CardTitle>Withdraw Funds</CardTitle>
+                <CardDescription>Request a withdrawal to your verified bank account.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-6">
+                <p className="text-sm p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg flex items-start gap-2">
+                    <Landmark className="h-4 w-4 mt-0.5 shrink-0"/>
+                    <span>Withdrawals will be sent to the bank account you provided during KYC verification.</span>
+                </p>
+                <div className="grid gap-2">
+                    <Label htmlFor="withdraw-amount">Amount</Label>
+                    <Input id="withdraw-amount" type="number" placeholder="e.g., 500" />
+                </div>
+
+                <Button className="w-full" variant="accent"><DownloadCloud className="mr-2 h-4 w-4" /> Request Withdrawal</Button>
+            </CardContent>
+            </Card>
+        </div>
+
+
+        <Card>
             <CardHeader>
                 <CardTitle>Recent Transactions</CardTitle>
                 <CardDescription>A list of your recent wallet activity.</CardDescription>
@@ -76,9 +119,9 @@ export default function WalletPage() {
                         </TableCell>
                         <TableCell>
                         <Badge variant={transaction.status === 'completed' ? 'default' : transaction.status === 'pending' ? 'secondary' : 'destructive'} className={cn({
-                            "bg-green-500/20 text-green-700 hover:bg-green-500/30": transaction.status === "completed",
-                            "bg-yellow-500/20 text-yellow-700 hover:bg-yellow-500/30": transaction.status === "pending",
-                            "bg-red-500/20 text-red-700 hover:bg-red-500/30": transaction.status === "rejected",
+                            "bg-green-100 text-green-800 border-green-200 hover:bg-green-100": transaction.status === "completed",
+                            "bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100": transaction.status === "pending",
+                            "bg-red-100 text-red-800 border-red-200 hover:bg-red-100": transaction.status === "rejected",
                         })}>
                             {transaction.status}
                         </Badge>
@@ -91,29 +134,7 @@ export default function WalletPage() {
                 </TableBody>
                 </Table>
             </CardContent>
-            </Card>
-            <Card className="lg:col-span-3">
-            <CardHeader>
-                <CardTitle>Deposit Funds</CardTitle>
-                <CardDescription>Add money to your wallet to join matches.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-6">
-                <div className="flex flex-col items-center gap-4">
-                    <p className="text-sm text-center text-muted-foreground">Scan the QR code with your payment app.</p>
-                    {qrCodeImage && <Image src={qrCodeImage.imageUrl} alt="QR Code" width={200} height={200} className="rounded-lg" data-ai-hint={qrCodeImage.imageHint} />}
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="utr">UTR Number</Label>
-                    <Input id="utr" placeholder="Enter the UTR/Transaction ID" />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="screenshot">Payment Screenshot</Label>
-                    <Input id="screenshot" type="file" className="text-muted-foreground file:text-primary"/>
-                </div>
-                <Button className="w-full" variant="accent"><UploadCloud className="mr-2 h-4 w-4" /> Submit for Approval</Button>
-            </CardContent>
-            </Card>
-        </div>
+        </Card>
       </div>
     </>
   )
