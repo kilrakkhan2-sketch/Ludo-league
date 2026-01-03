@@ -4,68 +4,68 @@
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 45 90% 55%; /* Gold */
-    --primary-foreground: 144 60% 10%; /* Dark Green for text on gold */
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
+    --background: 159 61% 15%; /* #0F3D2E */
+    --foreground: 240 5% 96%; /* #F5F5F5 */
+    --card: 159 56% 25%; /* #1F6F54 */
+    --card-foreground: 240 5% 96%;
+    --popover: 159 61% 15%;
+    --popover-foreground: 240 5% 96%;
+    --primary: 45 74% 52%; /* #D4AF37 */
+    --primary-foreground: 159 61% 15%;
+    --secondary: 159 56% 25%;
+    --secondary-foreground: 240 5% 96%;
+    --muted: 159 56% 25%;
     --muted-foreground: 240 5% 64.9%;
-    --accent: 45 90% 55%; /* Gold */
-    --accent-foreground: 144 60% 10%; /* Dark Green for text on gold */
-    --destructive: 0 62.8% 30.6%;
+    --accent: 45 74% 52%;
+    --accent-foreground: 159 61% 15%;
+    --destructive: 0 63% 40%; /* #D32F2F */
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 45 90% 55%; /* Gold */
+    --border: 45 68% 66%; /* #E6C768 */
+    --input: 159 56% 25%;
+    --ring: 45 74% 52%;
     --radius: 0.8rem;
     
     /* Custom Sidebar Colors */
-    --sidebar-background: 144 80% 12%; /* Dark Green */
+    --sidebar-background: 159 61% 15%;
     --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 45 90% 60%; /* Brighter Gold */
-    --sidebar-primary-foreground: 144 60% 10%;
-    --sidebar-accent: 144 65% 20%;
+    --sidebar-primary: 45 74% 52%;
+    --sidebar-primary-foreground: 159 61% 15%;
+    --sidebar-accent: 159 56% 25%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 144 70% 15%;
-    --sidebar-ring: 45 90% 55%;
+    --sidebar-border: 159 56% 20%;
+    --sidebar-ring: 45 74% 52%;
   }
 
   .dark {
-    --background: 144 70% 13%; /* Dark Green */
-    --foreground: 0 0% 98%;
-    --card: 144 65% 16%;
-    --card-foreground: 0 0% 98%;
-    --popover: 144 70% 13%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 45 90% 55%; /* Gold */
-    --primary-foreground: 144 60% 10%; /* Dark Green for text on gold */
-    --secondary: 144 50% 22%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 144 50% 22%;
+    --background: 159 61% 15%; /* #0F3D2E */
+    --foreground: 240 5% 96%; /* #F5F5F5 */
+    --card: 159 56% 25%; /* #1F6F54 */
+    --card-foreground: 240 5% 96%;
+    --popover: 159 61% 15%;
+    --popover-foreground: 240 5% 96%;
+    --primary: 45 74% 52%; /* #D4AF37 */
+    --primary-foreground: 159 61% 15%;
+    --secondary: 159 56% 25%;
+    --secondary-foreground: 240 5% 96%;
+    --muted: 159 56% 25%;
     --muted-foreground: 0 0% 60%;
-    --accent: 45 90% 55%; /* Gold */
-    --accent-foreground: 144 60% 10%; /* Dark Green for text on gold */
-    --destructive: 0 62.8% 30.6%;
+    --accent: 45 74% 52%; /* #D4AF37 */
+    --accent-foreground: 159 61% 15%;
+    --destructive: 0 63% 40%; /* #D32F2F */
     --destructive-foreground: 0 0% 98%;
-    --border: 144 60% 20%;
-    --input: 144 60% 20%;
-    --ring: 45 90% 55%; /* Gold */
+    --border: 45 68% 66%; /* #E6C768 */
+    --input: 159 56% 25%;
+    --ring: 45 74% 52%;
     
     /* Custom Sidebar Colors */
-    --sidebar-background: 144 80% 12%; /* Dark Green */
+    --sidebar-background: 159 61% 15%;
     --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 45 90% 60%; /* Brighter Gold */
-    --sidebar-primary-foreground: 144 60% 10%;
-    --sidebar-accent: 144 65% 20%;
+    --sidebar-primary: 45 74% 52%;
+    --sidebar-primary-foreground: 159 61% 15%;
+    --sidebar-accent: 159 56% 25%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 144 70% 15%;
-    --sidebar-ring: 45 90% 55%;
+    --sidebar-border: 159 56% 20%;
+    --sidebar-ring: 45 74% 52%;
   }
 }
 

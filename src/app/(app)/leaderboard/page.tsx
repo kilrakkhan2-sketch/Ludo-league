@@ -46,9 +46,9 @@ export default function LeaderboardPage() {
 
 
   const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Crown className="h-6 w-6 text-yellow-500" />;
-    if (rank === 2) return <Medal className="h-6 w-6 text-slate-400" />;
-    if (rank === 3) return <Trophy className="h-6 w-6 text-orange-400" />;
+    if (rank === 1) return <Crown className="h-6 w-6 text-[#D4AF37]" />; // Gold
+    if (rank === 2) return <Medal className="h-6 w-6 text-[#C0C0C0]" />; // Silver
+    if (rank === 3) return <Trophy className="h-6 w-6 text-[#CD7F32]" />; // Bronze
     return <span className="font-bold text-lg">{rank}</span>;
   }
 
@@ -95,9 +95,9 @@ export default function LeaderboardPage() {
                         const rank = index + 1;
                         return (
                             <TableRow key={user.uid} className={cn({
-                                "bg-yellow-500/10": rank === 1,
-                                "bg-slate-500/10": rank === 2,
-                                "bg-orange-500/10": rank === 3,
+                                "bg-[#D4AF37]/10": rank === 1,
+                                "bg-[#C0C0C0]/10": rank === 2,
+                                "bg-[#CD7F32]/10": rank === 3,
                             })}>
                                 <TableCell className="text-center">
                                     <div className="flex justify-center items-center h-full">
