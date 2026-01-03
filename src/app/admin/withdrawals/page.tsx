@@ -41,7 +41,7 @@ const mockWithdrawalRequests = [
     id: 'wd-1',
     user: mockUsers[0],
     amount: 1200,
-    date: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    date: '2024-07-28T10:00:00Z',
     status: 'pending',
     upiId: 'playerone@exampleupi',
   },
@@ -49,7 +49,7 @@ const mockWithdrawalRequests = [
     id: 'wd-2',
     user: mockUsers[2],
     amount: 500,
-    date: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+    date: '2024-07-28T06:00:00Z',
     status: 'pending',
     upiId: 'playerthree@exampleupi',
   },
@@ -118,7 +118,7 @@ export default function AdminWithdrawalsPage() {
         <Download className="h-8 w-8 text-primary" />
         Withdrawal Requests
       </h2>
-      <Card>
+      <Card className="shadow-md">
         <CardHeader>
           <CardTitle>Pending Withdrawals</CardTitle>
           <CardDescription>
