@@ -10,7 +10,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { doc, runTransaction, collection, serverTimestamp, getFirestore } from 'firebase/firestore';
-import { getFirebaseApp } from '@/firebase/auth/client'; // Can use this to get firestore instance on server
+import { getFirebaseApp } from '@/firebase/server'; // Can use this to get firestore instance on server
 
 const DistributeWinningsInputSchema = z.object({
   matchId: z.string().describe('The ID of the match to distribute winnings for.'),

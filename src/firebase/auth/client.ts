@@ -16,7 +16,7 @@ import { doc, setDoc, getFirestore, serverTimestamp, type Firestore } from 'fire
 import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app';
 import { firebaseConfig } from '../config';
 
-function getFirebaseApp(): FirebaseApp {
+export function getFirebaseApp(): FirebaseApp {
     const apps = getApps();
     if (!apps.length) {
         // Initialize on the client if not already initialized
