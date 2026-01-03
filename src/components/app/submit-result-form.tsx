@@ -142,7 +142,7 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
       const storage = getStorage();
       const storageRef = ref(
         storage,
-        `match-results/${matchId}/${user.uid}.jpg`
+        `match-results/${matchId}/${user.uid}_${Date.now()}.jpg`
       );
       await uploadString(storageRef, dataUri, 'data_url');
       const screenshotUrl = await getDownloadURL(storageRef);
@@ -175,14 +175,17 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
         const resultsRef = collection(firestore, `matches/${matchId}/results`);
         const allResultsSnapshot = await getDocs(resultsRef);
         const allResults = allResultsSnapshot.docs.map((d) => d.data());
+        // Also include the current submission if it's not in the snapshot yet
+        const currentSubmission = { position, status };
+        if (!allResults.find(r => r.userId === user.uid)) {
+            allResults.push(currentSubmission);
+        }
 
         // Check for win claims
         const winClaims = allResults.filter((r) => r.status === 'win');
 
         const matchData = matchDoc.data();
 
-        // If I claim win and someone else already did, it's a dispute.
-        // Also if there are multiple win claims in total.
         if (winClaims.length > 1) {
           transaction.update(matchRef, { status: 'disputed' });
         } else if (
@@ -192,7 +195,7 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
           // If match is in-progress and everyone has submitted
           if (winClaims.length === 1) {
             // All submitted, only one winner, no dispute. Mark as completed.
-            transaction.update(matchRef, { status: 'completed' });
+            transaction.update(matchRef, { status: 'completed', winnerId: winClaims[0].userId });
           } else {
             // All submitted, but multiple or zero winners claimed. Dispute.
             transaction.update(matchRef, { status: 'disputed' });

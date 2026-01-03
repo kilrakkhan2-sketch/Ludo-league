@@ -116,8 +116,9 @@ export default function KycPage() {
                 return;
             }
 
-            const idProofUrl = await uploadFile(idProof, `kyc/${user.uid}/id_proof.jpg`);
-            const selfieUrl = await uploadFile(selfie, `kyc/${user.uid}/selfie.jpg`);
+            const timestamp = Date.now();
+            const idProofUrl = await uploadFile(idProof, `kyc/${user.uid}/id_proof_${timestamp}.jpg`);
+            const selfieUrl = await uploadFile(selfie, `kyc/${user.uid}/selfie_${timestamp}.jpg`);
 
             const kycApplicationRef = doc(firestore, 'kycApplications', user.uid);
             await setDoc(kycApplicationRef, {
@@ -130,7 +131,7 @@ export default function KycPage() {
                 upiId,
                 userName: user.displayName,
                 userAvatar: user.photoURL,
-            });
+            }, { merge: true });
 
             const userProfileRef = doc(firestore, 'users', user.uid);
             await setDoc(userProfileRef, { kycStatus: 'pending' }, { merge: true });

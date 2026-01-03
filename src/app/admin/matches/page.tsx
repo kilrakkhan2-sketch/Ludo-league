@@ -159,6 +159,8 @@ const MatchDetailDialog = ({
     const winnerPlayerInfo = match.players.find(p => p.id === match.winnerId);
     
     setIsDistributing(true);
+    toast({ title: "Distributing winnings...", description: `Processing payment for ${winnerPlayerInfo?.name}`});
+
     try {
       const result = await distributeWinnings({
         matchId: match.id,

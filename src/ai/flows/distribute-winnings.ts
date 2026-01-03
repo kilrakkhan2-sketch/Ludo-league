@@ -37,7 +37,6 @@ const distributeWinningsFlow = ai.defineFlow(
   },
   async ({ matchId, winnerId }) => {
     // Initialize Firestore on the server-side.
-    // getApps check is needed to avoid re-initialization error in dev hot-reload.
     const firestore = getFirestore(getFirebaseApp());
 
     const matchRef = doc(firestore, 'matches', matchId);
