@@ -13,8 +13,13 @@ export function MainNav({
   const routes = [
     {
       href: "/dashboard",
-      label: "Lobby",
+      label: "Home",
       active: pathname === "/dashboard",
+    },
+    {
+      href: "/lobby",
+      label: "Lobby",
+      active: pathname.startsWith("/lobby") || pathname.startsWith('/match'),
     },
     {
       href: "/tournaments",
@@ -53,10 +58,10 @@ export function MainNav({
           key={route.href}
           href={route.href}
           className={cn(
-            "text-md font-medium transition-colors hover:text-primary",
+            "text-md font-medium transition-colors hover:text-primary-foreground/80",
             route.active
-              ? "text-primary font-semibold"
-              : "text-muted-foreground"
+              ? "text-primary-foreground font-semibold"
+              : "text-primary-foreground/60"
           )}
         >
           {route.label}

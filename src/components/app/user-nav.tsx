@@ -37,16 +37,16 @@ export function UserNav() {
 
   return (
     <div className="flex items-center gap-4">
-      <div className="hidden md:flex items-center gap-2 bg-muted px-3 py-1.5 rounded-full text-sm font-semibold">
-        <Wallet className="h-4 w-4 text-primary" />
+      <div className="hidden md:flex items-center gap-2 bg-primary-foreground/10 text-primary-foreground px-3 py-1.5 rounded-full text-sm font-semibold">
+        <Wallet className="h-4 w-4" />
         <span>₹{walletBalance.toFixed(2)}</span>
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-            <Avatar className="h-9 w-9">
+            <Avatar className="h-9 w-9 border-2 border-primary-foreground/50">
               <AvatarImage src={user?.photoURL || ''} alt={user?.displayName || 'User'} />
-              <AvatarFallback>
+              <AvatarFallback className="bg-primary-foreground/20 text-primary-foreground">
                 {user?.displayName?.charAt(0).toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
