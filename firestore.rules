@@ -69,8 +69,10 @@ service cloud.firestore {
     match /transactions/{transactionId} {
         // Read: A user can only read their own transactions. Admins can read all.
         allow read: if isSignedIn() && (isOwner(resource.data.userId) || isAdmin());
-        // Create, Update, Delete: All transactions are created and managed server-side. Deny client operations.
-        allow create, update, delete: if false;
+        // Create: A user can create their own transaction log (e.g. for an entry fee).
+        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
+        // Update, Delete: Deny client-side updates/deletes. Should be server-managed.
+        allow update, delete: if false;
     }
 
     // Matches /depositRequests/{depositId}
