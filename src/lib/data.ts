@@ -52,6 +52,19 @@ export type FraudAlert = {
     date: string;
 }
 
+export type Tournament = {
+  id: string;
+  name: string;
+  bannerImageUrl: string;
+  entryFee: number;
+  totalSlots: number;
+  filledSlots: number;
+  prizePool: number;
+  startTime: string;
+  status: 'upcoming' | 'live' | 'completed' | 'cancelled';
+};
+
+
 export const mockUsers: User[] = [
   { id: 'user-1', name: 'PlayerOne', avatarUrl: 'https://picsum.photos/seed/avatar1/40/40', winRate: 65, ipAddress: '192.168.1.1', deviceId: 'device-abc-123' },
   { id: 'user-2', name: 'PlayerTwo', avatarUrl: 'https://picsum.photos/seed/avatar2/40/40', winRate: 58, ipAddress: '192.168.1.2', deviceId: 'device-def-456' },
@@ -162,5 +175,52 @@ export const mockFraudAlerts: FraudAlert[] = [
         reason: 'Suspiciously high win rate (91%) over last 10 games.',
         screenshotUrl: 'https://picsum.photos/seed/ludo-fraud-2/600/400',
         date: '2024-05-22T18:00:00Z',
+    }
+];
+
+export const mockTournaments: Tournament[] = [
+    {
+        id: 'tour-1',
+        name: 'Weekly Mega Ludo',
+        bannerImageUrl: 'https://picsum.photos/seed/tour1/800/400',
+        entryFee: 100,
+        totalSlots: 100,
+        filledSlots: 88,
+        prizePool: 9000,
+        startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'upcoming'
+    },
+    {
+        id: 'tour-2',
+        name: 'Weekend Bonanza',
+        bannerImageUrl: 'https://picsum.photos/seed/tour2/800/400',
+        entryFee: 50,
+        totalSlots: 200,
+        filledSlots: 200,
+        prizePool: 9500,
+        startTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'upcoming'
+    },
+    {
+        id: 'tour-3',
+        name: 'Daily Rapid Fire',
+        bannerImageUrl: 'https://picsum.photos/seed/tour3/800/400',
+        entryFee: 20,
+        totalSlots: 50,
+        filledSlots: 45,
+        prizePool: 900,
+        startTime: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+        status: 'live'
+    },
+    {
+        id: 'tour-4',
+        name: 'Monthly Pro League',
+        bannerImageUrl: 'https://picsum.photos/seed/tour4/800/400',
+        entryFee: 500,
+        totalSlots: 100,
+        filledSlots: 100,
+        prizePool: 45000,
+        startTime: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'completed'
     }
 ]
