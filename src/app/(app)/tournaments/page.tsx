@@ -1,15 +1,18 @@
-
+'use client';
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { mockTournaments } from "@/lib/data";
 import { cn } from "@/lib/utils";
-import { Calendar, Users, Trophy, Ticket, CircleDotDashed, CheckCircle2 } from "lucide-react";
+import { Calendar, Users, Trophy, Ticket, CircleDotDashed, CheckCircle2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useFirestore } from "@/firebase";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import type { Tournament } from "@/lib/types";
 
-const TournamentCard = ({ tournament }: { tournament: (typeof mockTournaments)[0] }) => (
+const TournamentCard = ({ tournament }: { tournament: Tournament }) => (
     <Card className="flex flex-col overflow-hidden">
         <div className="relative h-40 w-full">
             <Image
@@ -32,7 +35,7 @@ const TournamentCard = ({ tournament }: { tournament: (typeof mockTournaments)[0
             <CardTitle>{tournament.name}</CardTitle>
             <CardDescription className="flex items-center gap-2 pt-1">
                 <Calendar className="h-4 w-4" />
-                <span>Starts: {new Date(tournament.startTime).toLocaleString()}</span>
+                <span>Starts: {new Date(tournament.startTime.seconds * 1000).toLocaleString()}</span>
             </CardDescription>
         </CardHeader>
         <CardContent className="flex-grow space-y-3">
@@ -73,9 +76,44 @@ const TournamentCard = ({ tournament }: { tournament: (typeof mockTournaments)[0
 );
 
 export default function TournamentsPage() {
-    const upcomingTournaments = mockTournaments.filter(t => t.status === 'upcoming');
-    const liveTournaments = mockTournaments.filter(t => t.status === 'live');
-    const completedTournaments = mockTournaments.filter(t => t.status === 'completed');
+    const firestore = useFirestore();
+    const [tournaments, setTournaments] = useState<Tournament[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!firestore) return;
+        setLoading(true);
+        const tourneysRef = collection(firestore, 'tournaments');
+        const unsubscribe = onSnapshot(tourneysRef, (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tournament));
+            setTournaments(data);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [firestore]);
+
+    const upcomingTournaments = tournaments.filter(t => t.status === 'upcoming');
+    const liveTournaments = tournaments.filter(t => t.status === 'live');
+    const completedTournaments = tournaments.filter(t => t.status === 'completed');
+
+    const TournamentList = ({ list, emptyMessage }: { list: Tournament[], emptyMessage: string }) => {
+        if (loading) {
+            return (
+                <div className="flex justify-center items-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+                </div>
+            );
+        }
+        if (list.length === 0) {
+            return <p className="text-center text-muted-foreground py-8">{emptyMessage}</p>
+        }
+        return (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                {list.map(t => <TournamentCard key={t.id} tournament={t} />)}
+            </div>
+        );
+    }
 
   return (
     <>
@@ -96,31 +134,13 @@ export default function TournamentsPage() {
                 </TabsTrigger>
             </TabsList>
             <TabsContent value="upcoming">
-                {upcomingTournaments.length > 0 ? (
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                        {upcomingTournaments.map(t => <TournamentCard key={t.id} tournament={t} />)}
-                    </div>
-                ) : (
-                    <p className="text-center text-muted-foreground py-8">No upcoming tournaments right now.</p>
-                )}
+                <TournamentList list={upcomingTournaments} emptyMessage="No upcoming tournaments right now." />
             </TabsContent>
             <TabsContent value="live">
-                 {liveTournaments.length > 0 ? (
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                        {liveTournaments.map(t => <TournamentCard key={t.id} tournament={t} />)}
-                    </div>
-                ) : (
-                    <p className="text-center text-muted-foreground py-8">No live tournaments right now.</p>
-                )}
+                 <TournamentList list={liveTournaments} emptyMessage="No live tournaments right now." />
             </TabsContent>
             <TabsContent value="completed">
-                 {completedTournaments.length > 0 ? (
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                        {completedTournaments.map(t => <TournamentCard key={t.id} tournament={t} />)}
-                    </div>
-                ) : (
-                    <p className="text-center text-muted-foreground py-8">No completed tournaments found.</p>
-                )}
+                 <TournamentList list={completedTournaments} emptyMessage="No completed tournaments found." />
             </TabsContent>
         </Tabs>
     </>

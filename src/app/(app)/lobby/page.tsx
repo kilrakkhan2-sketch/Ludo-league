@@ -1,16 +1,100 @@
-
-import Image from "next/image";
-import { CreateMatchDialog } from "@/components/app/create-match-dialog";
+'use client';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { mockMatches } from "@/lib/data";
 import { cn } from "@/lib/utils";
-import { Swords, Users, Star, History } from "lucide-react";
+import { Swords, Users, Star, History, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { UserNav } from "@/components/app/user-nav";
+import { useUser, useFirestore } from "@/firebase";
+import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion, runTransaction, Timestamp } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import { CreateMatchDialog } from "@/components/app/create-match-dialog";
+import { useToast } from "@/hooks/use-toast";
+import type { Match } from "@/lib/types";
 
-const MatchCard = ({ match }: { match: (typeof mockMatches)[0] }) => (
+const MatchCard = ({ match }: { match: Match }) => {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isJoining, setIsJoining] = useState(false);
+
+    const handleJoinMatch = async () => {
+        if (!user || !firestore) {
+            toast({ title: "You must be logged in to join.", variant: "destructive"});
+            return;
+        }
+        setIsJoining(true);
+        try {
+            const matchRef = doc(firestore, "matches", match.id);
+            const userRef = doc(firestore, "users", user.uid);
+            
+            await runTransaction(firestore, async (transaction) => {
+                const matchDoc = await transaction.get(matchRef);
+                const userDoc = await transaction.get(userRef);
+
+                if (!matchDoc.exists() || !userDoc.exists()) {
+                    throw new Error("Match or user not found!");
+                }
+
+                const matchData = matchDoc.data();
+                const userData = userDoc.data();
+                
+                if ((userData.walletBalance || 0) < matchData.entryFee) {
+                    throw new Error("Insufficient wallet balance.");
+                }
+
+                if (matchData.playerIds.length >= matchData.maxPlayers) {
+                    throw new Error("Match is already full.");
+                }
+                
+                if (matchData.playerIds.includes(user.uid)) {
+                    // This case should ideally not happen if UI is correct, but as a safeguard.
+                    return;
+                }
+                
+                const newBalance = (userData.walletBalance || 0) - matchData.entryFee;
+                
+                transaction.update(userRef, { walletBalance: newBalance });
+                transaction.update(matchRef, { 
+                    playerIds: arrayUnion(user.uid),
+                    players: arrayUnion({
+                        id: user.uid,
+                        name: user.displayName,
+                        avatarUrl: user.photoURL,
+                    })
+                });
+
+                const transactionRef = doc(collection(firestore, "transactions"));
+                transaction.set(transactionRef, {
+                    userId: user.uid,
+                    type: "entry-fee",
+                    amount: -matchData.entryFee,
+                    status: "completed",
+                    createdAt: Timestamp.now(),
+                    relatedMatchId: match.id,
+                    description: `Entry fee for match ${match.id}`
+                });
+
+            });
+
+            toast({ title: "Successfully joined match!" });
+
+        } catch (error: any) {
+            console.error("Error joining match:", error);
+            toast({
+                title: "Failed to join match",
+                description: error.message || "An unexpected error occurred.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsJoining(false);
+        }
+    };
+    
+    const canJoin = match.status === 'waiting' && !match.playerIds.includes(user?.uid || '');
+    const canView = match.playerIds.includes(user?.uid || '');
+
+    return (
     <Card key={match.id} className="w-full shadow-md hover:shadow-lg transition-shadow">
         <div className="flex items-center p-4">
             <div className="flex-grow">
@@ -38,7 +122,7 @@ const MatchCard = ({ match }: { match: (typeof mockMatches)[0] }) => (
                         </div>
                         <div className="flex items-center gap-1">
                             <Users className="h-4 w-4" />
-                            <span>{match.players.length}/{match.maxPlayers}</span>
+                            <span>{match.playerIds.length}/{match.maxPlayers}</span>
                         </div>
                     </div>
                 </CardContent>
@@ -52,22 +136,62 @@ const MatchCard = ({ match }: { match: (typeof mockMatches)[0] }) => (
                 })}>
                     {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
                 </div>
-                 <Button asChild className="w-full h-9" variant={match.status === 'waiting' ? 'default' : 'outline'} disabled={match.status !== 'waiting' && match.status !== 'in-progress' && match.status !== 'disputed'}>
-                    <Link href={`/match/${match.id}`}>
-                        {match.status === 'waiting' ? 'Join' : 'View'}
-                    </Link>
-                </Button>
+                 {canView ? (
+                    <Button asChild className="w-full h-9" variant="outline">
+                        <Link href={`/match/${match.id}`}>
+                            View
+                        </Link>
+                    </Button>
+                 ) : (
+                    <Button onClick={handleJoinMatch} className="w-full h-9" variant="default" disabled={!canJoin || isJoining}>
+                        {isJoining ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Join'}
+                    </Button>
+                 )}
             </div>
         </div>
     </Card>
-);
+    );
+};
 
 
 export default function LobbyPage() {
-    // Assuming user-1 has joined these matches. In a real app, this would be dynamic.
-    const myMatches = mockMatches.filter(m => m.players.some(p => p.id === 'user-1'));
-    const openMatches = mockMatches.filter(m => m.status === 'waiting' && !myMatches.find(myM => myM.id === m.id));
-    const ongoingMatches = mockMatches.filter(m => m.status === 'in-progress' && !myMatches.find(myM => myM.id === m.id));
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const [myMatches, setMyMatches] = useState<Match[]>([]);
+  const [openMatches, setOpenMatches] = useState<Match[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!firestore || !user) return;
+
+    setLoading(true);
+
+    const matchesRef = collection(firestore, "matches");
+    
+    // My Matches
+    const myMatchesQuery = query(matchesRef, where("playerIds", "array-contains", user.uid));
+    const unsubscribeMyMatches = onSnapshot(myMatchesQuery, (snapshot) => {
+        const matchesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
+        setMyMatches(matchesData);
+        setLoading(false);
+    });
+
+    // Open Matches (that I am not in)
+    const openMatchesQuery = query(matchesRef, where("status", "==", "waiting"));
+     const unsubscribeOpenMatches = onSnapshot(openMatchesQuery, (snapshot) => {
+        const matchesData = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as Match))
+            .filter(match => !match.playerIds.includes(user.uid));
+        setOpenMatches(matchesData);
+        setLoading(false);
+    });
+
+    return () => {
+        unsubscribeMyMatches();
+        unsubscribeOpenMatches();
+    }
+  }, [firestore, user]);
+
 
   return (
     <>
@@ -93,7 +217,11 @@ export default function LobbyPage() {
             <h3 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
                 <Swords className="h-6 w-6 text-primary"/> Open Matches
             </h3>
-            {openMatches.length > 0 ? (
+            {loading ? (
+                 <div className="flex items-center justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+                 </div>
+            ) : openMatches.length > 0 ? (
                 <div className="flex flex-col gap-4">
                     {openMatches.map((match) => (
                        <MatchCard key={match.id} match={match} />
@@ -105,20 +233,6 @@ export default function LobbyPage() {
                 </Card>
             )}
         </section>
-
-        {ongoingMatches.length > 0 && (
-             <section>
-                <h3 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
-                    <History className="h-6 w-6 text-blue-500"/> Ongoing Matches
-                </h3>
-                <div className="flex flex-col gap-4">
-                    {ongoingMatches.map((match) => (
-                        <MatchCard key={match.id} match={match} />
-                    ))}
-                </div>
-            </section>
-        )}
-
       </div>
     </>
   );

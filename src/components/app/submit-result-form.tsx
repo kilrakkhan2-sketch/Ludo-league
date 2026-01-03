@@ -1,8 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { useFormStatus } from "react-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { submitResult, type FormState } from "@/lib/actions";
 import {
   AlertCircle,
   CheckCircle2,
@@ -25,32 +23,20 @@ import {
   UploadCloud,
   XCircle,
 } from "lucide-react";
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" className="w-full" disabled={pending} variant="accent">
-      {pending ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Submitting...
-        </>
-      ) : (
-        <>
-          <UploadCloud className="mr-2 h-4 w-4" />
-          Submit Result for Review
-        </>
-      )}
-    </Button>
-  );
-}
+import { useUser, useFirestore } from "@/firebase";
+import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
+import { collection, addDoc, serverTimestamp, doc, updateDoc, runTransaction } from "firebase/firestore";
+import { detectDuplicateScreenshots } from "@/ai/flows/detect-duplicate-screenshots";
 
 export function SubmitResultForm({ matchId }: { matchId: string }) {
-  const initialState: FormState = undefined;
-  const [state, dispatch] = useActionState(submitResult, initialState);
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const { toast } = useToast();
+
   const [preview, setPreview] = useState<string | null>(null);
   const [dataUri, setDataUri] = useState<string>("");
-  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formState, setFormState] = useState<{message: string, isError: boolean} | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -64,15 +50,90 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
     }
   };
 
-  useEffect(() => {
-    if (state?.message) {
-      toast({
-        title: state.isError ? "Submission Failed" : "Submission Successful",
-        description: state.message,
-        variant: state.isError ? "destructive" : "default",
-      });
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!user || !firestore || !dataUri) {
+        toast({ title: "Please login and select a screenshot.", variant: "destructive"});
+        return;
     }
-  }, [state, toast]);
+
+    setIsSubmitting(true);
+    setFormState(null);
+    
+    const formData = new FormData(e.currentTarget);
+    const position = Number(formData.get("position"));
+    const status = formData.get("status") as "win" | "loss";
+    
+    if (!position || !status) {
+        toast({ title: "Please select your position and status.", variant: "destructive"});
+        setIsSubmitting(false);
+        return;
+    }
+
+    try {
+      // Step 1: Fraud Detection
+      const fraudResult = await detectDuplicateScreenshots({
+        screenshotDataUri: dataUri,
+        matchId,
+      });
+
+      let isFlaggedForFraud = false;
+      if (fraudResult.isDuplicate) {
+        isFlaggedForFraud = true;
+        const duplicateMatches = fraudResult.duplicateMatchIds.join(', ');
+        const message = `Fraud Warning: This screenshot may have been used in other matches (${duplicateMatches}). Submission flagged for review.`;
+        setFormState({ message, isError: true });
+        // Don't return, just flag it and proceed to save.
+      }
+
+      // Step 2: Upload screenshot to Firebase Storage
+      const storage = getStorage();
+      const storageRef = ref(storage, `match-results/${matchId}/${user.uid}.jpg`);
+      await uploadString(storageRef, dataUri, 'data_url');
+      const screenshotUrl = await getDownloadURL(storageRef);
+
+      // Step 3: Save result to Firestore subcollection
+      const matchRef = doc(firestore, 'matches', matchId);
+      const resultsRef = collection(matchRef, 'results');
+      
+      await addDoc(resultsRef, {
+        userId: user.uid,
+        userName: user.displayName,
+        userAvatar: user.photoURL,
+        position,
+        status,
+        screenshotUrl,
+        submittedAt: serverTimestamp(),
+        isFlaggedForFraud,
+      });
+
+      // Step 4: Check for conflicts and update match status
+      await runTransaction(firestore, async (transaction) => {
+        const matchDoc = await transaction.get(matchRef);
+        if (!matchDoc.exists()) throw new Error("Match not found");
+        
+        const otherResultsSnapshot = await getDocs(collection(matchRef, 'results'));
+        const otherWinClaims = otherResultsSnapshot.docs.filter(doc => doc.data().status === 'win' && doc.data().userId !== user.uid);
+        
+        if (status === 'win' && otherWinClaims.length > 0) {
+            transaction.update(matchRef, { status: 'disputed' });
+        } else if (matchDoc.data().status === 'waiting') {
+           transaction.update(matchRef, { status: 'in-progress' });
+        }
+      });
+      
+      if (!isFlaggedForFraud) {
+        setFormState({ message: "Result submitted successfully! Your submission is now under review.", isError: false });
+      }
+
+    } catch (error: any) {
+        console.error("Error submitting result:", error);
+        setFormState({ message: "An unexpected error occurred. Please try again.", isError: true });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
+
 
   return (
     <Card>
@@ -83,10 +144,7 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={dispatch} className="space-y-6">
-          <input type="hidden" name="matchId" value={matchId} />
-          <input type="hidden" name="screenshotDataUri" value={dataUri} />
-
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="screenshot">Result Screenshot</Label>
             <Input
@@ -158,15 +216,27 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
             </RadioGroup>
           </div>
 
-          {state?.message && (
-             <Alert variant={state.isError ? "destructive" : "default"} className={!state.isError ? "bg-green-50 border-green-200 text-green-800" : ""}>
-              {state.isError ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4 !text-green-500"/>}
-              <AlertTitle>{state.isError ? "Error" : "Success"}</AlertTitle>
-              <AlertDescription>{state.message}</AlertDescription>
+          {formState && (
+             <Alert variant={formState.isError ? "destructive" : "default"} className={!formState.isError ? "bg-green-50 border-green-200 text-green-800" : ""}>
+              {formState.isError ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4 !text-green-500"/>}
+              <AlertTitle>{formState.isError ? "Error" : "Success"}</AlertTitle>
+              <AlertDescription>{formState.message}</AlertDescription>
             </Alert>
           )}
 
-          <SubmitButton />
+          <Button type="submit" className="w-full" disabled={isSubmitting} variant="accent">
+            {isSubmitting ? (
+                <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Submitting...
+                </>
+            ) : (
+                <>
+                <UploadCloud className="mr-2 h-4 w-4" />
+                Submit Result for Review
+                </>
+            )}
+            </Button>
         </form>
       </CardContent>
     </Card>

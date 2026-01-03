@@ -1,4 +1,4 @@
-
+'use client';
 import Image from "next/image"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -11,10 +11,87 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { mockDepositRequests } from "@/lib/data"
-import { CheckCircle2, Eye, XCircle } from "lucide-react"
+import { CheckCircle2, Eye, XCircle, Loader2 } from "lucide-react"
+import { useFirestore } from "@/firebase"
+import { collection, onSnapshot, query, where, doc, runTransaction, writeBatch, Timestamp } from "firebase/firestore"
+import { useEffect, useState } from "react"
+import { useToast } from "@/hooks/use-toast"
+
+type DepositRequest = {
+    id: string;
+    userId: string;
+    userName: string;
+    userAvatar: string;
+    amount: number;
+    utr: string;
+    screenshotUrl: string;
+    createdAt: any;
+}
+
 
 export default function AdminDepositsPage() {
+  const firestore = useFirestore();
+  const [requests, setRequests] = useState<DepositRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!firestore) return;
+    setLoading(true);
+    const reqRef = collection(firestore, 'depositRequests');
+    const q = query(reqRef, where('status', '==', 'pending'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DepositRequest));
+        setRequests(data);
+        setLoading(false);
+    });
+    return () => unsubscribe();
+  }, [firestore]);
+
+  const handleAction = async (request: DepositRequest, action: 'approve' | 'reject') => {
+    if (!firestore) return;
+    setProcessingId(request.id);
+    
+    try {
+        const requestRef = doc(firestore, 'depositRequests', request.id);
+        const userRef = doc(firestore, 'users', request.userId);
+
+        if (action === 'approve') {
+            await runTransaction(firestore, async (transaction) => {
+                const userDoc = await transaction.get(userRef);
+                if (!userDoc.exists()) {
+                    throw new Error("User not found!");
+                }
+                const newBalance = (userDoc.data().walletBalance || 0) + request.amount;
+                transaction.update(userRef, { walletBalance: newBalance });
+                transaction.update(requestRef, { status: 'approved' });
+
+                const transactionRef = doc(collection(firestore, "transactions"));
+                transaction.set(transactionRef, {
+                    userId: request.userId,
+                    type: "deposit",
+                    amount: request.amount,
+                    status: "completed",
+                    createdAt: Timestamp.now(),
+                    relatedMatchId: '',
+                    description: `Deposit approved: ${request.utr}`
+                });
+            });
+            toast({ title: `Request approved for ${request.userName}`});
+        } else { // Reject
+            await writeBatch(firestore).update(requestRef, { status: 'rejected' }).commit();
+            toast({ title: `Request rejected for ${request.userName}`, variant: 'destructive'});
+        }
+
+    } catch (error: any) {
+        console.error(`Error ${action}ing deposit:`, error);
+        toast({ title: `Failed to ${action} request`, description: error.message, variant: 'destructive' });
+    } finally {
+        setProcessingId(null);
+    }
+  };
+
   return (
     <>
       <h2 className="text-3xl font-bold tracking-tight mb-4">Deposit Requests</h2>
@@ -38,20 +115,22 @@ export default function AdminDepositsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockDepositRequests.map((request) => (
+                {loading && <TableRow><TableCell colSpan={6} className="text-center py-8">Loading requests...</TableCell></TableRow>}
+                {!loading && requests.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-8">No pending deposit requests.</TableCell></TableRow>}
+              {!loading && requests.map((request) => (
                 <TableRow key={request.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar>
-                        <AvatarImage src={request.user.avatarUrl} />
-                        <AvatarFallback>{request.user.name.charAt(0)}</AvatarFallback>
+                        <AvatarImage src={request.userAvatar} />
+                        <AvatarFallback>{request.userName?.charAt(0)}</AvatarFallback>
                       </Avatar>
-                      <span className="font-medium">{request.user.name}</span>
+                      <span className="font-medium">{request.userName}</span>
                     </div>
                   </TableCell>
                   <TableCell>₹{request.amount}</TableCell>
                   <TableCell>{request.utr}</TableCell>
-                  <TableCell>{new Date(request.date).toLocaleString()}</TableCell>
+                  <TableCell>{request.createdAt?.toDate().toLocaleString()}</TableCell>
                   <TableCell>
                     <Button variant="outline" size="sm" asChild>
                         <a href={request.screenshotUrl} target="_blank" rel="noopener noreferrer">
@@ -61,11 +140,11 @@ export default function AdminDepositsPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex gap-2 justify-end">
-                        <Button variant="outline" size="sm" className="text-green-600 border-green-500 hover:bg-green-100 hover:text-green-700">
-                            <CheckCircle2 className="h-4 w-4 mr-2" /> Approve
+                        <Button variant="outline" size="sm" className="text-green-600 border-green-500 hover:bg-green-100 hover:text-green-700" onClick={() => handleAction(request, 'approve')} disabled={processingId === request.id}>
+                           {processingId === request.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <><CheckCircle2 className="h-4 w-4 mr-2" /> Approve</>}
                         </Button>
-                        <Button variant="destructive" size="sm">
-                            <XCircle className="h-4 w-4 mr-2" /> Reject
+                        <Button variant="destructive" size="sm" onClick={() => handleAction(request, 'reject')} disabled={processingId === request.id}>
+                           {processingId === request.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <><XCircle className="h-4 w-4 mr-2" /> Reject</>}
                         </Button>
                     </div>
                   </TableCell>

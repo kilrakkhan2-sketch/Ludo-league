@@ -1,4 +1,4 @@
-
+'use client';
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -13,21 +13,143 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { mockTransactions } from "@/lib/data"
-import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { cn } from "@/lib/utils"
-import { ArrowDownLeft, ArrowUpRight, UploadCloud, DownloadCloud, Landmark, Wallet as WalletIcon, AlertCircle } from "lucide-react"
+import { ArrowDownLeft, ArrowUpRight, UploadCloud, DownloadCloud, Landmark, Wallet as WalletIcon, AlertCircle, Loader2 } from "lucide-react"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
+import { useUser, useFirestore } from "@/firebase"
+import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp } from "firebase/firestore"
+import { useEffect, useState } from "react"
+import type { Transaction } from "@/lib/types"
+import { useToast } from "@/hooks/use-toast"
+import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage"
+
 
 export default function WalletPage() {
-  const qrCodeImage = PlaceHolderImages.find(img => img.id === 'qr-code');
+  const { user, userProfile } = useUser();
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isDepositing, setIsDepositing] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [depositScreenshot, setDepositScreenshot] = useState<File | null>(null);
 
-  const balance = mockTransactions.reduce((acc, txn) => {
-    if (txn.status === 'completed') {
-      return acc + txn.amount;
+  const qrCodeImage = { imageUrl: "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=ludoleague@example&pn=Ludo%20League&am=100", imageHint: "qr code"};
+  
+  const balance = userProfile?.walletBalance ?? 0;
+
+  useEffect(() => {
+    if (!firestore || !user) return;
+
+    const transRef = collection(firestore, 'transactions');
+    const q = query(transRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
+        setTransactions(data);
+        setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [firestore, user]);
+
+  const handleDepositSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!user || !firestore || !depositScreenshot) {
+        toast({ title: "Please fill all fields", variant: "destructive" });
+        return;
     }
-    return acc;
-  }, 0);
+    setIsDepositing(true);
+    const formData = new FormData(e.currentTarget);
+    const utr = formData.get('utr') as string;
+    const amount = Number(formData.get('deposit-amount'));
+    
+    if(!utr || !amount || amount <= 0) {
+        toast({title: "Invalid UTR or Amount", variant: "destructive"});
+        setIsDepositing(false);
+        return;
+    }
+    
+    try {
+        const storage = getStorage();
+        const storageRef = ref(storage, `deposits/${user.uid}/${Date.now()}`);
+        const reader = new FileReader();
+
+        reader.onload = async (event) => {
+            const dataUrl = event.target?.result as string;
+            await uploadString(storageRef, dataUrl, 'data_url');
+            const screenshotUrl = await getDownloadURL(storageRef);
+
+            await addDoc(collection(firestore, 'depositRequests'), {
+                userId: user.uid,
+                userName: user.displayName,
+                userAvatar: user.photoURL,
+                amount,
+                utr,
+                screenshotUrl,
+                status: 'pending',
+                createdAt: serverTimestamp(),
+            });
+            
+            toast({ title: "Deposit request submitted successfully." });
+            (e.target as HTMLFormElement).reset();
+            setDepositScreenshot(null);
+            setIsDepositing(false);
+        }
+        reader.readAsDataURL(depositScreenshot);
+
+    } catch (error: any) {
+        toast({ title: "Deposit Failed", description: error.message, variant: "destructive" });
+        setIsDepositing(false);
+    }
+  };
+
+  const handleWithdrawalSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+     if (!user || !firestore) {
+        toast({ title: "Please login first", variant: "destructive" });
+        return;
+    }
+    if(userProfile?.kycStatus !== 'approved') {
+        toast({ title: "KYC not approved", description: "Please complete your KYC to enable withdrawals.", variant: "destructive" });
+        return;
+    }
+    setIsWithdrawing(true);
+    const formData = new FormData(e.currentTarget);
+    const amount = Number(formData.get('withdraw-amount'));
+
+    if (!amount || amount < 100) {
+        toast({ title: "Invalid Amount", description: "Minimum withdrawal is ₹100.", variant: "destructive" });
+        setIsWithdrawing(false);
+        return;
+    }
+    if (amount > balance) {
+        toast({ title: "Insufficient Balance", variant: "destructive"});
+        setIsWithdrawing(false);
+        return;
+    }
+
+    try {
+        await addDoc(collection(firestore, 'withdrawalRequests'), {
+            userId: user.uid,
+            userName: user.displayName,
+            userAvatar: user.photoURL,
+            amount,
+            status: 'pending',
+            createdAt: serverTimestamp(),
+            upiId: userProfile?.upiId || '',
+            bankDetails: userProfile?.bankDetails || '',
+        });
+        toast({ title: "Withdrawal request submitted successfully." });
+        (e.target as HTMLFormElement).reset();
+    } catch(error: any) {
+        toast({ title: "Request Failed", description: error.message, variant: "destructive" });
+    } finally {
+        setIsWithdrawing(false);
+    }
+  }
+
 
   return (
     <>
@@ -48,53 +170,68 @@ export default function WalletPage() {
 
         <div className="grid gap-8 md:grid-cols-2">
              <Card className="shadow-md">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><UploadCloud className="h-6 w-6 text-green-500" />Deposit Funds</CardTitle>
-                <CardDescription>Add money to your wallet to join matches.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-6">
-                <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Important: Name Match Required</AlertTitle>
-                    <AlertDescription>
-                        Please deposit from a bank account or UPI ID where the name matches your KYC documents. Mismatched names will result in rejection of the deposit.
-                    </AlertDescription>
-                </Alert>
-                <div className="flex flex-col items-center gap-4 p-4 bg-muted/50 rounded-lg">
-                    <p className="text-sm text-center text-muted-foreground">Scan the QR code with your payment app and enter the UTR below.</p>
-                    {qrCodeImage && <Image src={qrCodeImage.imageUrl} alt="QR Code" width={200} height={200} className="rounded-lg border-2 shadow-md" data-ai-hint={qrCodeImage.imageHint} />}
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="utr">UTR / Transaction ID</Label>
-                    <Input id="utr" placeholder="Enter the 12-digit UTR/Transaction ID" />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="screenshot">Payment Screenshot</Label>
-                    <Input id="screenshot" type="file" className="text-muted-foreground file:text-primary"/>
-                </div>
-                <Button className="w-full" variant="accent"><UploadCloud className="mr-2 h-4 w-4" /> Submit Deposit</Button>
-            </CardContent>
+                <form onSubmit={handleDepositSubmit}>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><UploadCloud className="h-6 w-6 text-green-500" />Deposit Funds</CardTitle>
+                        <CardDescription>Add money to your wallet to join matches.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-6">
+                        <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Important: Name Match Required</AlertTitle>
+                            <AlertDescription>
+                                Please deposit from a bank account or UPI ID where the name matches your KYC documents. Mismatched names will result in rejection of the deposit.
+                            </AlertDescription>
+                        </Alert>
+                        <div className="flex flex-col items-center gap-4 p-4 bg-muted/50 rounded-lg">
+                            <p className="text-sm text-center text-muted-foreground">Scan the QR code with your payment app and enter the details below.</p>
+                            {qrCodeImage && <Image src={qrCodeImage.imageUrl} alt="QR Code" width={200} height={200} className="rounded-lg border-2 shadow-md" data-ai-hint={qrCodeImage.imageHint} />}
+                        </div>
+                         <div className="grid gap-2">
+                            <Label htmlFor="deposit-amount">Amount</Label>
+                            <Input id="deposit-amount" name="deposit-amount" type="number" placeholder="Enter deposit amount" required />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="utr">UTR / Transaction ID</Label>
+                            <Input id="utr" name="utr" placeholder="Enter the 12-digit UTR/Transaction ID" required/>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="screenshot">Payment Screenshot</Label>
+                            <Input id="screenshot" name="screenshot" type="file" required className="text-muted-foreground file:text-primary" onChange={(e) => setDepositScreenshot(e.target.files ? e.target.files[0] : null)} />
+                        </div>
+                        <Button type="submit" className="w-full" variant="accent" disabled={isDepositing}>
+                            {isDepositing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
+                            Submit Deposit
+                        </Button>
+                    </CardContent>
+                </form>
             </Card>
             <Card className="shadow-md">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><DownloadCloud className="h-6 w-6 text-blue-500" />Withdraw Funds</CardTitle>
-                <CardDescription>Request a withdrawal to your bank account.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-6">
-                <Alert variant='default' className="bg-blue-50 border-blue-200 text-blue-800">
-                    <Landmark className="h-4 w-4 !text-blue-600" />
-                    <AlertTitle>Withdrawal Policy</AlertTitle>
-                    <AlertDescription>
-                        Withdrawals are sent to the bank account/UPI ID verified via KYC. Ensure the name matches your KYC details. Approval may take up to 24 hours.
-                    </AlertDescription>
-                </Alert>
-                <div className="grid gap-2">
-                    <Label htmlFor="withdraw-amount">Amount (Min. ₹100)</Label>
-                    <Input id="withdraw-amount" type="number" placeholder="e.g., 500" />
-                </div>
+                <form onSubmit={handleWithdrawalSubmit}>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><DownloadCloud className="h-6 w-6 text-blue-500" />Withdraw Funds</CardTitle>
+                        <CardDescription>Request a withdrawal to your bank account.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-6">
+                        <Alert variant='default' className="bg-blue-50 border-blue-200 text-blue-800">
+                            <Landmark className="h-4 w-4 !text-blue-600" />
+                            <AlertTitle>Withdrawal Policy</AlertTitle>
+                            <AlertDescription>
+                                Withdrawals are sent to the bank account/UPI ID verified via KYC. Ensure the name matches your KYC details. Approval may take up to 24 hours.
+                            </AlertDescription>
+                        </Alert>
+                        <div className="grid gap-2">
+                            <Label htmlFor="withdraw-amount">Amount (Min. ₹100)</Label>
+                            <Input id="withdraw-amount" name="withdraw-amount" type="number" placeholder="e.g., 500" required />
+                        </div>
 
-                <Button className="w-full"><DownloadCloud className="mr-2 h-4 w-4" /> Request Withdrawal</Button>
-            </CardContent>
+                        <Button type="submit" className="w-full" disabled={isWithdrawing || userProfile?.kycStatus !== 'approved'}>
+                            {isWithdrawing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <DownloadCloud className="mr-2 h-4 w-4" />}
+                            Request Withdrawal
+                        </Button>
+                        {userProfile?.kycStatus !== 'approved' && <p className="text-xs text-center text-red-500">KYC must be approved for withdrawals.</p>}
+                    </CardContent>
+                </form>
             </Card>
         </div>
 
@@ -115,7 +252,10 @@ export default function WalletPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {mockTransactions.map((transaction) => (
+                    {loading && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Loading transactions...</TableCell></TableRow>}
+                    {!loading && transactions.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No transactions yet.</TableCell></TableRow>}
+
+                    {!loading && transactions.map((transaction) => (
                     <TableRow key={transaction.id} className="font-medium">
                         <TableCell>
                         <div className="font-semibold flex items-center gap-2">
@@ -136,7 +276,7 @@ export default function WalletPage() {
                         </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground text-xs">
-                            {new Date(transaction.date).toLocaleString()}
+                            {transaction.createdAt?.toDate().toLocaleString()}
                         </TableCell>
                         <TableCell className={cn("text-right font-bold text-lg", transaction.amount > 0 ? 'text-green-600' : 'text-red-600')}>
                         {transaction.amount > 0 ? '+' : '-'}₹{Math.abs(transaction.amount).toFixed(2)}

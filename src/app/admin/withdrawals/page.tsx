@@ -1,7 +1,5 @@
-
 'use client';
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import {
   Dialog,
@@ -30,30 +28,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { mockUsers } from '@/lib/data';
-import { CheckCircle2, Download, Eye, QrCode, XCircle } from 'lucide-react';
+import { CheckCircle2, Download, Eye, Loader2, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useFirestore } from '@/firebase';
+import { collection, query, where, onSnapshot, doc, writeBatch, Timestamp, runTransaction } from 'firebase/firestore';
 
-const mockWithdrawalRequests = [
-  {
-    id: 'wd-1',
-    user: mockUsers[0],
-    amount: 1200,
-    date: '2024-07-28T10:00:00Z',
-    status: 'pending',
-    upiId: 'playerone@exampleupi',
-  },
-  {
-    id: 'wd-2',
-    user: mockUsers[2],
-    amount: 500,
-    date: '2024-07-28T06:00:00Z',
-    status: 'pending',
-    upiId: 'playerthree@exampleupi',
-  },
-];
+type WithdrawalRequest = {
+    id: string;
+    userId: string;
+    userName: string;
+    userAvatar: string;
+    amount: number;
+    createdAt: any;
+    status: 'pending' | 'approved' | 'rejected';
+    upiId: string;
+    bankDetails: string;
+};
 
 const UpiQrCode = ({ upiId, amount }: { upiId: string; amount: number }) => {
   const upiUrl = `upi://pay?pa=${upiId}&pn=Ludo%20League%20Player&am=${amount.toFixed(
@@ -85,31 +77,83 @@ const UpiQrCode = ({ upiId, amount }: { upiId: string; amount: number }) => {
 };
 
 export default function AdminWithdrawalsPage() {
-  const [requests, setRequests] = useState(mockWithdrawalRequests);
+  const firestore = useFirestore();
+  const [requests, setRequests] = useState<WithdrawalRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const { toast } = useToast();
 
-  const handleAction = (id: string, action: 'approve' | 'reject') => {
+   useEffect(() => {
+    if (!firestore) return;
+    setLoading(true);
+    const reqRef = collection(firestore, 'withdrawalRequests');
+    const q = query(reqRef, where('status', '==', 'pending'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WithdrawalRequest));
+        setRequests(data);
+        setLoading(false);
+    });
+    return () => unsubscribe();
+  }, [firestore]);
+
+
+  const handleAction = async (request: WithdrawalRequest, action: 'approve' | 'reject') => {
+    if(!firestore) return;
+    
     if (action === 'reject' && !rejectionReason) {
       toast({
         title: 'Reason Required',
         description: 'Please provide a reason for rejecting the request.',
         variant: 'destructive',
       });
-      return false;
+      return;
     }
+    
+    setProcessingId(request.id);
 
-    const request = requests.find(req => req.id === id);
-    toast({
-      title: `Request ${action === 'approve' ? 'Approved' : 'Rejected'}`,
-      description: `${action === 'approve' ? 'Payment of' : 'Request for'} ₹${request?.amount} for ${request?.user.name} has been processed.`,
-      variant: action === 'approve' ? 'default' : 'destructive',
-      className: action === 'approve' ? 'bg-green-100 text-green-800' : ''
-    });
+    try {
+        const requestRef = doc(firestore, 'withdrawalRequests', request.id);
+        const userRef = doc(firestore, 'users', request.userId);
 
-    setRequests(requests.filter(req => req.id !== id));
-    setRejectionReason('');
-    return true;
+        if (action === 'approve') {
+             await runTransaction(firestore, async (transaction) => {
+                const userDoc = await transaction.get(userRef);
+                if (!userDoc.exists()) {
+                    throw new Error("User not found!");
+                }
+                const currentBalance = userDoc.data().walletBalance || 0;
+                if (currentBalance < request.amount) {
+                    throw new Error("User has insufficient balance for this withdrawal.");
+                }
+                const newBalance = currentBalance - request.amount;
+                transaction.update(userRef, { walletBalance: newBalance });
+                transaction.update(requestRef, { status: 'approved', reviewedAt: Timestamp.now() });
+
+                const transactionRef = doc(collection(firestore, "transactions"));
+                transaction.set(transactionRef, {
+                    userId: request.userId,
+                    type: "withdrawal",
+                    amount: -request.amount,
+                    status: "completed",
+                    createdAt: Timestamp.now(),
+                    description: `Withdrawal approved`
+                });
+            });
+            toast({ title: 'Request Approved', description: `Payment of ₹${request.amount} for ${request.userName} marked as complete.` });
+        } else { // Reject
+            await writeBatch(firestore)
+                .update(requestRef, { status: 'rejected', rejectionReason: rejectionReason, reviewedAt: Timestamp.now() })
+                .commit();
+            toast({ title: 'Request Rejected', variant: 'destructive' });
+        }
+        setRejectionReason('');
+
+    } catch (error: any) {
+        toast({ title: `Failed to ${action} request`, description: error.message, variant: 'destructive' });
+    } finally {
+        setProcessingId(null);
+    }
   };
 
   return (
@@ -131,31 +175,39 @@ export default function AdminWithdrawalsPage() {
               <TableRow>
                 <TableHead>User</TableHead>
                 <TableHead>Amount</TableHead>
-                <TableHead>UPI ID</TableHead>
+                <TableHead>Payment To</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {requests.map(request => (
+              {loading && <TableRow><TableCell colSpan={5} className="text-center py-8">Loading requests...</TableCell></TableRow>}
+              {!loading && requests.length === 0 && (
+                    <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                            No pending withdrawal requests.
+                        </TableCell>
+                    </TableRow>
+                )}
+              {!loading && requests.map(request => (
                 <TableRow key={request.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar>
-                        <AvatarImage src={request.user.avatarUrl} />
+                        <AvatarImage src={request.userAvatar} />
                         <AvatarFallback>
-                          {request.user.name.charAt(0)}
+                          {request.userName?.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="font-medium">{request.user.name}</span>
+                      <span className="font-medium">{request.userName}</span>
                     </div>
                   </TableCell>
                   <TableCell className="font-semibold">
                     ₹{request.amount}
                   </TableCell>
-                  <TableCell>{request.upiId}</TableCell>
+                  <TableCell className="text-xs">{request.upiId || request.bankDetails}</TableCell>
                   <TableCell>
-                    {new Date(request.date).toLocaleString()}
+                    {request.createdAt?.toDate().toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right">
                     <Dialog>
@@ -167,22 +219,29 @@ export default function AdminWithdrawalsPage() {
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>
-                            Withdrawal for {request.user.name}
+                            Withdrawal for {request.userName}
                           </DialogTitle>
                           <DialogDescription>
                             Scan the QR code to complete the payment via UPI. Verify name match before proceeding.
                           </DialogDescription>
                         </DialogHeader>
                         <div className="py-4 space-y-4">
-                          <UpiQrCode
-                            upiId={request.upiId}
-                            amount={request.amount}
-                          />
+                          {request.upiId ? (
+                            <UpiQrCode
+                                upiId={request.upiId}
+                                amount={request.amount}
+                            />
+                          ) : (
+                            <div className="p-4 bg-muted rounded-md">
+                                <h4 className="font-semibold mb-2">Bank Details</h4>
+                                <p className="text-sm whitespace-pre-wrap">{request.bankDetails}</p>
+                            </div>
+                          )}
                           <div className="space-y-2">
                             <Label htmlFor="rejection-reason">Rejection Reason (if any)</Label>
                             <Input
                                 id="rejection-reason"
-                                placeholder="e.g., Insufficient funds, invalid UPI"
+                                placeholder="e.g., Name mismatch, invalid UPI"
                                 value={rejectionReason}
                                 onChange={(e) => setRejectionReason(e.target.value)}
                             />
@@ -192,35 +251,26 @@ export default function AdminWithdrawalsPage() {
                             <DialogClose asChild>
                                 <Button variant="ghost">Cancel</Button>
                             </DialogClose>
-                            <DialogClose asChild>
                                 <Button
                                     variant="destructive"
-                                    onClick={() => handleAction(request.id, 'reject')}
+                                    onClick={() => handleAction(request, 'reject')}
+                                    disabled={processingId === request.id}
                                 >
-                                    <XCircle className="mr-2 h-4 w-4" /> Reject
+                                    {processingId === request.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4" />} Reject
                                 </Button>
-                            </DialogClose>
-                            <DialogClose asChild>
                                 <Button
                                 variant="accent"
-                                onClick={() => handleAction(request.id, 'approve')}
+                                onClick={() => handleAction(request, 'approve')}
+                                disabled={processingId === request.id}
                                 >
-                                <CheckCircle2 className="mr-2 h-4 w-4" /> Approve & Mark as Paid
+                                {processingId === request.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle2 className="mr-2 h-4 w-4" />} Approve & Mark as Paid
                                 </Button>
-                            </DialogClose>
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
                   </TableCell>
                 </TableRow>
               ))}
-                {requests.length === 0 && (
-                    <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                            No pending withdrawal requests.
-                        </TableCell>
-                    </TableRow>
-                )}
             </TableBody>
           </Table>
         </CardContent>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -10,6 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { CheckCircle, Clock, FileUp, Loader2, ShieldCheck, XCircle, Landmark, AtSign } from 'lucide-react';
+import { useUser } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 type KycStatus = 'not_submitted' | 'pending' | 'approved' | 'rejected';
 
@@ -49,18 +53,103 @@ const KycStatusIndicator = ({ status, reason }: { status: KycStatus, reason?: st
 
 
 export default function KycPage() {
-    const [kycStatus, setKycStatus] = useState<KycStatus>('not_submitted');
-    const [rejectionReason, setRejectionReason] = useState("Selfie was not clear.");
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { user, userProfile } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [idProof, setIdProof] = useState<File | null>(null);
+    const [selfie, setSelfie] = useState<File | null>(null);
+
+    const kycStatus: KycStatus = userProfile?.kycStatus || 'not_submitted';
+    const rejectionReason = userProfile?.kycRejectionReason;
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<File | null>>) => {
+        if (e.target.files && e.target.files[0]) {
+            setter(e.target.files[0]);
+        }
+    };
+    
+    const uploadFile = async (file: File, path: string): Promise<string> => {
+        const storage = getStorage();
+        const storageRef = ref(storage, path);
+        const reader = new FileReader();
+        return new Promise((resolve, reject) => {
+            reader.onload = async (e) => {
+                try {
+                    const dataUrl = e.target?.result as string;
+                    await uploadString(storageRef, dataUrl, 'data_url');
+                    const downloadUrl = await getDownloadURL(storageRef);
+                    resolve(downloadUrl);
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (!user || !firestore || !idProof || !selfie) {
+            toast({
+                title: "Error",
+                description: "Please fill all fields and upload both documents.",
+                variant: "destructive"
+            });
+            return;
+        }
+
         setIsSubmitting(true);
-        // Simulate API call
-        setTimeout(() => {
-            setKycStatus('pending');
+        try {
+            const formData = new FormData(e.currentTarget);
+            const bankDetails = formData.get('bank-details') as string;
+            const upiId = formData.get('upi-id') as string;
+            
+            if(!bankDetails && !upiId) {
+                toast({
+                    title: "Payment Info Missing",
+                    description: "Please provide either bank details or a UPI ID.",
+                    variant: "destructive"
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
+            const idProofUrl = await uploadFile(idProof, `kyc/${user.uid}/id_proof.jpg`);
+            const selfieUrl = await uploadFile(selfie, `kyc/${user.uid}/selfie.jpg`);
+
+            const kycApplicationRef = doc(firestore, 'kycApplications', user.uid);
+            await setDoc(kycApplicationRef, {
+                userId: user.uid,
+                status: 'pending',
+                submittedAt: serverTimestamp(),
+                aadhaarPanUrl: idProofUrl,
+                selfieUrl: selfieUrl,
+                bankDetails,
+                upiId,
+                userName: user.displayName,
+                userAvatar: user.photoURL,
+            });
+
+            const userProfileRef = doc(firestore, 'users', user.uid);
+            await setDoc(userProfileRef, { kycStatus: 'pending' }, { merge: true });
+
+            toast({
+                title: "Success",
+                description: "Your KYC documents have been submitted for review."
+            });
+
+        } catch (error: any) {
+            console.error("KYC Submission Error: ", error);
+            toast({
+                title: "Submission Failed",
+                description: error.message || "An unexpected error occurred.",
+                variant: "destructive"
+            });
+        } finally {
             setIsSubmitting(false);
-        }, 2000);
+        }
     };
 
     const canSubmit = kycStatus === 'not_submitted' || kycStatus === 'rejected';
@@ -94,19 +183,19 @@ export default function KycPage() {
                     <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <Label htmlFor="id-proof">Aadhaar / PAN Card</Label>
-                            <Input id="id-proof" type="file" required className="file:text-primary"/>
+                            <Input id="id-proof" type="file" required className="file:text-primary" onChange={(e) => handleFileChange(e, setIdProof)} />
                             <p className="text-xs text-muted-foreground">Upload a clear image of the front of your document.</p>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="selfie">Selfie</Label>
-                            <Input id="selfie" type="file" required className="file:text-primary"/>
+                            <Input id="selfie" type="file" required className="file:text-primary" onChange={(e) => handleFileChange(e, setSelfie)} />
                             <p className="text-xs text-muted-foreground">Upload a clear, recent selfie.</p>
                         </div>
                     </div>
                      <div className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="bank-details" className='flex items-center gap-2'><Landmark className='w-4 h-4'/> Bank Account Details</Label>
-                            <Textarea id="bank-details" placeholder="Enter your full name, bank name, account number, and IFSC code." required rows={4}/>
+                            <Textarea name="bank-details" id="bank-details" placeholder="Enter your full name, bank name, account number, and IFSC code." rows={4}/>
                         </div>
                         <div className="relative">
                             <div className="absolute inset-0 flex items-center">
@@ -120,7 +209,7 @@ export default function KycPage() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="upi-id" className='flex items-center gap-2'><AtSign className='w-4 h-4'/> UPI ID</Label>
-                            <Input id="upi-id" placeholder="yourname@upi" required />
+                            <Input name="upi-id" id="upi-id" placeholder="yourname@upi" />
                         </div>
                     </div>
 

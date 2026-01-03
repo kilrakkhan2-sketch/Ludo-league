@@ -1,0 +1,112 @@
+import type { Timestamp } from "firebase/firestore";
+
+export type UserProfile = {
+  uid: string;
+  displayName: string;
+  email: string;
+  photoURL: string;
+  walletBalance: number;
+  kycStatus: 'not_submitted' | 'pending' | 'approved' | 'rejected';
+  kycRejectionReason?: string;
+  winRate?: number;
+  winnings?: number;
+  ipAddress?: string;
+  deviceId?: string;
+};
+
+export type PlayerInfo = {
+    id: string;
+    name: string;
+    avatarUrl: string;
+    winRate?: number;
+}
+
+export type Match = {
+  id: string;
+  creatorId: string;
+  entryFee: number;
+  prizePool: number;
+  players: PlayerInfo[];
+  playerIds: string[];
+  maxPlayers: number;
+  status: 'waiting' | 'in-progress' | 'completed' | 'disputed' | 'cancelled';
+  roomCode?: string;
+  createdAt: Timestamp;
+};
+
+export type MatchResult = {
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  position: number;
+  status: 'win' | 'loss';
+  screenshotUrl: string;
+  submittedAt: Timestamp;
+  isFlaggedForFraud?: boolean;
+};
+
+export type Transaction = {
+  id: string;
+  userId: string;
+  type: 'deposit' | 'withdrawal' | 'entry-fee' | 'winnings' | 'refund' | 'tournament-fee';
+  amount: number;
+  createdAt: Timestamp;
+  status: 'completed' | 'pending' | 'rejected';
+  relatedMatchId?: string;
+  description: string;
+};
+
+export type DepositRequest = {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  amount: number;
+  utr: string;
+  screenshotUrl: string;
+  createdAt: Timestamp;
+  status: 'pending' | 'approved' | 'rejected';
+};
+
+export type WithdrawalRequest = {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  amount: number;
+  status: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
+  createdAt: Timestamp;
+  reviewedAt?: Timestamp;
+  upiId?: string;
+  bankDetails?: string;
+};
+
+
+export type KycApplication = {
+    id: string; // doc id is user id
+    userId: string;
+    userName: string;
+    userAvatar: string;
+    status: 'pending' | 'approved' | 'rejected';
+    submittedAt: Timestamp;
+    reviewedAt?: Timestamp;
+    rejectionReason?: string;
+    aadhaarPanUrl: string;
+    selfieUrl: string;
+    bankDetails?: string;
+    upiId?: string;
+};
+
+
+export type Tournament = {
+  id: string;
+  name: string;
+  bannerImageUrl: string;
+  entryFee: number;
+  totalSlots: number;
+  filledSlots: number;
+  prizePool: number;
+  startTime: Timestamp;
+  status: 'upcoming' | 'live' | 'completed' | 'cancelled';
+};

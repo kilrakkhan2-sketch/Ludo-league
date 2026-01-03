@@ -1,15 +1,66 @@
+'use client';
 import Image from "next/image";
 import { SubmitResultForm } from "@/components/app/submit-result-form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { mockMatches, mockUsers } from "@/lib/data";
 import { cn } from "@/lib/utils";
-import { Copy, Crown, ShieldCheck, Swords, Users, Wallet } from "lucide-react";
+import { Copy, Crown, ShieldCheck, Swords, Users, Wallet, Loader2, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useFirestore } from "@/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import type { Match } from "@/lib/types";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+
 
 export default function MatchPage({ params }: { params: { id: string } }) {
-  const match = mockMatches.find(m => m.id === params.id) ?? mockMatches[1];
+  const firestore = useFirestore();
+  const [match, setMatch] = useState<Match | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!firestore || !params.id) return;
+    setLoading(true);
+    const matchRef = doc(firestore, 'matches', params.id);
+    const unsubscribe = onSnapshot(matchRef, (doc) => {
+        if(doc.exists()) {
+            setMatch({ id: doc.id, ...doc.data() } as Match);
+        } else {
+            console.error("Match not found!");
+            setMatch(null);
+        }
+        setLoading(false);
+    }, (error) => {
+        console.error("Error fetching match:", error);
+        setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [firestore, params.id]);
+
+  const handleCopyRoomCode = () => {
+    if (match?.roomCode) {
+        navigator.clipboard.writeText(match.roomCode);
+        toast({ title: "Room code copied!" });
+    }
+  };
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
+  }
+
+  if (!match) {
+    return (
+        <Alert variant="destructive">
+            <Info className="h-4 w-4" />
+            <AlertTitle>Match Not Found</AlertTitle>
+            <AlertDescription>The match you are looking for does not exist or has been removed.</AlertDescription>
+        </Alert>
+    );
+  }
 
   return (
     <>
@@ -19,11 +70,12 @@ export default function MatchPage({ params }: { params: { id: string } }) {
             "bg-green-100 text-green-800": match.status === 'waiting',
             "bg-blue-100 text-blue-800": match.status === 'in-progress',
             "bg-gray-100 text-gray-800": match.status === 'completed',
+            "bg-red-100 text-red-800": match.status === 'disputed',
         })}>
             Status: {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
         </div>
       </div>
-      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 mt-4">
         <div className="lg:col-span-2 space-y-8">
             {match.status === 'in-progress' && match.roomCode && (
                  <Card>
@@ -34,7 +86,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
                     </CardHeader>
                     <CardContent className="flex items-center justify-between bg-muted/50 p-4 rounded-lg">
                         <p className="text-2xl font-mono tracking-widest font-bold text-primary">{match.roomCode}</p>
-                        <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(match.roomCode || '')}>
+                        <Button variant="ghost" size="icon" onClick={handleCopyRoomCode}>
                             <Copy className="h-5 w-5 text-muted-foreground" />
                         </Button>
                     </CardContent>
@@ -59,7 +111,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
                     </div>
                      <div className="flex justify-between items-center">
                         <span className="text-muted-foreground flex items-center gap-2"><Users className="h-4 w-4"/> Players</span>
-                        <span className="font-semibold">{match.players.length} / {match.maxPlayers}</span>
+                        <span className="font-semibold">{match.playerIds.length} / {match.maxPlayers}</span>
                     </div>
                 </CardContent>
             </Card>
@@ -78,7 +130,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
                                 </Avatar>
                                 <div>
                                     <p className="font-semibold">{player.name}</p>
-                                    <p className="text-sm text-muted-foreground">Win Rate: {player.winRate}%</p>
+                                    <p className="text-sm text-muted-foreground">Win Rate: {player.winRate || 0}%</p>
                                 </div>
                             </div>
                             <Badge variant="outline"><ShieldCheck className="h-3 w-3 mr-1 text-green-500"/> Verified</Badge>

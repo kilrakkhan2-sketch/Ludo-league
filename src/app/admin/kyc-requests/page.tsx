@@ -1,6 +1,4 @@
-
 'use client';
-
 import Image from "next/image"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -24,48 +22,85 @@ import {
   DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog"
-import { mockUsers } from "@/lib/data"
-import { CheckCircle2, Download, Eye, Search, XCircle } from "lucide-react"
-import { useState } from "react"
+import { CheckCircle2, Download, Eye, Loader2, XCircle } from "lucide-react"
+import { useEffect, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { useFirestore } from "@/firebase"
+import { collection, onSnapshot, query, where, doc, writeBatch } from "firebase/firestore"
+import { useToast } from "@/hooks/use-toast"
 
+type KycRequest = {
+    id: string;
+    userId: string;
+    userName: string;
+    userAvatar: string;
+    status: 'pending' | 'approved' | 'rejected';
+    submittedAt: any;
+    aadhaarPanUrl: string;
+    selfieUrl: string;
+    bankDetails?: string;
+    upiId?: string;
+};
 
-const mockKycRequests = [
-    {
-        id: 'kyc-1',
-        user: mockUsers[0],
-        date: new Date().toISOString(),
-        status: 'pending',
-        aadhaarPanUrl: 'https://picsum.photos/seed/aadhaar1/800/500',
-        selfieUrl: 'https://picsum.photos/seed/selfie1/600/600',
-        bankDetails: 'PlayerOne\nBank of Example\nAcct: 1234567890\nIFSC: EXAM0001234'
-    },
-    {
-        id: 'kyc-2',
-        user: mockUsers[1],
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'pending',
-        aadhaarPanUrl: 'https://picsum.photos/seed/aadhaar2/800/500',
-        selfieUrl: 'https://picsum.photos/seed/selfie2/600/600',
-        bankDetails: 'playertwo@exampleupi'
-    },
-]
 
 export default function AdminKycRequestsPage() {
-    const [requests, setRequests] = useState(mockKycRequests);
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [requests, setRequests] = useState<KycRequest[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [processingId, setProcessingId] = useState<string | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
 
-    const handleAction = (id: string, action: 'approve' | 'reject') => {
-        if(action === 'reject' && !rejectionReason){
-            alert('Please provide a reason for rejection.');
+    useEffect(() => {
+        if (!firestore) return;
+        setLoading(true);
+        const kycRef = collection(firestore, 'kycApplications');
+        const q = query(kycRef, where('status', '==', 'pending'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as KycRequest));
+            setRequests(data);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [firestore]);
+
+    const handleAction = async (request: KycRequest, action: 'approve' | 'reject') => {
+        if (!firestore) return;
+
+        if (action === 'reject' && !rejectionReason) {
+            toast({ title: 'Please provide a reason for rejection.', variant: 'destructive' });
             return;
         }
 
-        console.log(`Request ${id} ${action}d. Reason: ${rejectionReason}`);
-        setRequests(requests.filter(req => req.id !== id));
-        setRejectionReason('');
+        setProcessingId(request.id);
+
+        try {
+            const batch = writeBatch(firestore);
+            const userRef = doc(firestore, 'users', request.userId);
+            const kycRef = doc(firestore, 'kycApplications', request.id);
+
+            if (action === 'approve') {
+                batch.update(userRef, { kycStatus: 'approved' });
+                batch.update(kycRef, { status: 'approved' });
+                toast({ title: `KYC for ${request.userName} approved!`});
+            } else {
+                batch.update(userRef, { kycStatus: 'rejected', kycRejectionReason: rejectionReason });
+                batch.update(kycRef, { status: 'rejected', rejectionReason: rejectionReason });
+                toast({ title: `KYC for ${request.userName} rejected.`, variant: 'destructive' });
+            }
+
+            await batch.commit();
+            setRejectionReason('');
+
+        } catch (error: any) {
+            console.error("Error processing KYC:", error);
+            toast({ title: 'Action failed', description: error.message, variant: 'destructive' });
+        } finally {
+            setProcessingId(null);
+        }
     }
 
   return (
@@ -89,23 +124,25 @@ export default function AdminKycRequestsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {requests.map((request) => (
+               {loading && <TableRow><TableCell colSpan={4} className="text-center py-8">Loading requests...</TableCell></TableRow>}
+               {!loading && requests.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-8">No pending KYC requests.</TableCell></TableRow>}
+              {!loading && requests.map((request) => (
                 <TableRow key={request.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar>
-                        <AvatarImage src={request.user.avatarUrl} />
-                        <AvatarFallback>{request.user.name.charAt(0)}</AvatarFallback>
+                        <AvatarImage src={request.userAvatar} />
+                        <AvatarFallback>{request.userName?.charAt(0)}</AvatarFallback>
                       </Avatar>
-                      <span className="font-medium">{request.user.name}</span>
+                      <span className="font-medium">{request.userName}</span>
                     </div>
                   </TableCell>
-                  <TableCell>{new Date(request.date).toLocaleDateString()}</TableCell>
+                  <TableCell>{request.submittedAt?.toDate().toLocaleDateString()}</TableCell>
                   <TableCell>
                     <Badge variant="secondary">{request.status}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Dialog>
+                    <Dialog onOpenChange={(open) => !open && setRejectionReason('')}>
                         <DialogTrigger asChild>
                             <Button variant="outline" size="sm">
                                 <Eye className="h-4 w-4 mr-2"/> Review
@@ -113,7 +150,7 @@ export default function AdminKycRequestsPage() {
                         </DialogTrigger>
                         <DialogContent className="max-w-4xl">
                             <DialogHeader>
-                                <DialogTitle>Review KYC: {request.user.name}</DialogTitle>
+                                <DialogTitle>Review KYC: {request.userName}</DialogTitle>
                                 <DialogDescription>
                                     Verify the user's documents and bank details.
                                 </DialogDescription>
@@ -137,7 +174,7 @@ export default function AdminKycRequestsPage() {
                                 </div>
                                 <div className="space-y-4">
                                     <h4 className="font-semibold">Bank / UPI Details</h4>
-                                    <p className="whitespace-pre-wrap p-4 bg-muted rounded-md text-sm">{request.bankDetails}</p>
+                                    <p className="whitespace-pre-wrap p-4 bg-muted rounded-md text-sm">{request.bankDetails || request.upiId || 'Not provided'}</p>
 
                                     <div className="space-y-2">
                                         <Label htmlFor="rejection-reason">Rejection Reason (if any)</Label>
@@ -154,16 +191,12 @@ export default function AdminKycRequestsPage() {
                                 <DialogClose asChild>
                                     <Button variant="outline">Cancel</Button>
                                 </DialogClose>
-                                <DialogClose asChild>
-                                    <Button variant="destructive" onClick={() => handleAction(request.id, 'reject')}>
-                                        <XCircle className="mr-2 h-4 w-4"/> Reject
-                                    </Button>
-                                </DialogClose>
-                                <DialogClose asChild>
-                                    <Button variant="accent" onClick={() => handleAction(request.id, 'approve')}>
-                                        <CheckCircle2 className="mr-2 h-4 w-4"/> Approve
-                                    </Button>
-                                </DialogClose>
+                                <Button variant="destructive" onClick={() => handleAction(request, 'reject')} disabled={processingId === request.id}>
+                                    {processingId === request.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4"/>} Reject
+                                </Button>
+                                <Button variant="accent" onClick={() => handleAction(request, 'approve')} disabled={processingId === request.id}>
+                                   {processingId === request.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle2 className="mr-2 h-4 w-4"/>} Approve
+                                </Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
