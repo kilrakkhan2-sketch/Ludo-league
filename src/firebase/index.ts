@@ -1,6 +1,7 @@
-import { getApps, initializeApp, type FirebaseOptions } from 'firebase/app';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+
+import { getApps, initializeApp, type FirebaseApp, type FirebaseOptions } from 'firebase/app';
+import { getAuth, connectAuthEmulator, type Auth } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator, type Firestore } from 'firebase/firestore';
 
 import { firebaseConfig } from './config';
 import { useUser } from './auth/use-user';
@@ -8,7 +9,12 @@ import { FirebaseProvider, useFirebase, useFirebaseApp, useAuth, useFirestore } 
 import { FirebaseClientProvider } from './client-provider';
 
 
-function initializeFirebase(config: FirebaseOptions) {
+function initializeFirebase(config: FirebaseOptions): { app: FirebaseApp; auth: Auth; firestore: Firestore } | null {
+  // Don't initialize on the server if the config is not complete
+  if (typeof window === 'undefined' && !config.apiKey) {
+    return null;
+  }
+  
   const apps = getApps();
   const app = apps.length > 0 ? apps[0] : initializeApp(config);
   const auth = getAuth(app);
@@ -21,6 +27,7 @@ function initializeFirebase(config: FirebaseOptions) {
     // by default the host is localhost, but in a cloud workstation
     // it needs to be re-routed.
     try {
+        // These will throw if the emulator is already connected.
         connectFirestoreEmulator(firestore, host, 8080);
         connectAuthEmulator(auth, `http://${host}:9099`, { disableWarnings: true });
     } catch (e) {

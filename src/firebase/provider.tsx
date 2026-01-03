@@ -1,18 +1,20 @@
+
 'use client';
 
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { FirebaseApp } from 'firebase/app';
 import type { Auth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 
 import { initializeFirebase } from './index';
 import { firebaseConfig } from './config';
+import { UserProvider } from './auth/use-user';
 
 type FirebaseContextValue = {
   app: FirebaseApp;
   auth: Auth;
   firestore: Firestore;
-};
+} | null;
 
 const FirebaseContext = createContext<FirebaseContextValue | undefined>(
   undefined
@@ -23,11 +25,26 @@ type FirebaseProviderProps = {
 };
 
 export function FirebaseProvider({ children }: FirebaseProviderProps) {
-  const services = useMemo(() => initializeFirebase(firebaseConfig), []);
+  const [services, setServices] = useState<FirebaseContextValue>(null);
+  
+  useEffect(() => {
+    // Initialize Firebase on the client-side
+    if (typeof window !== 'undefined') {
+      const initializedServices = initializeFirebase(firebaseConfig);
+      setServices(initializedServices);
+    }
+  }, []);
+
+  if (!services) {
+    // You can return a loader here if you want
+    return null;
+  }
 
   return (
     <FirebaseContext.Provider value={services}>
-      {children}
+      <UserProvider>
+        {children}
+      </UserProvider>
     </FirebaseContext.Provider>
   );
 }
@@ -35,8 +52,11 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
 export function useFirebase() {
   const context = useContext(FirebaseContext);
 
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useFirebase must be used within a FirebaseProvider');
+  }
+  if (context === null) {
+      throw new Error('Firebase has not been initialized yet. Make sure you are using useFirebase within a component wrapped by FirebaseProvider.');
   }
 
   return context;

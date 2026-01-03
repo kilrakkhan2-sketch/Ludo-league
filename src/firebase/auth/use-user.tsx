@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -8,9 +9,8 @@ import {
   type ReactNode,
 } from 'react';
 import type { User } from 'firebase/auth';
-import { useAuth } from '../provider';
+import { useAuth, useFirestore } from '../provider';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { useFirestore } from '../provider';
 
 type UserContextValue = {
   user: User | null;
@@ -28,6 +28,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!auth) {
+        // Auth service might not be available on initial server render.
+        // It will become available on the client.
+        return;
+    };
     const unsubscribe = auth.onAuthStateChanged((user) => {
       setUser(user);
       setLoading(false);
@@ -45,6 +50,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
         } else {
           setUserProfile(null);
         }
+      }, (error) => {
+          console.error("Error listening to user profile:", error);
+          setUserProfile(null);
       });
       return () => unsubscribe();
     } else {
