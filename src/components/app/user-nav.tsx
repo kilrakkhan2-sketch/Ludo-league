@@ -1,5 +1,6 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+'use client';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,35 +10,56 @@ import {
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { PlaceHolderImages } from "@/lib/placeholder-images"
-import { CreditCard, LogOut, Settings, User, ShieldCheck, Wallet } from "lucide-react"
-import Link from "next/link"
+} from '@/components/ui/dropdown-menu';
+import { useUser } from '@/firebase';
+import { signOut } from '@/firebase/auth/client';
+import {
+  CreditCard,
+  LogOut,
+  Settings,
+  User,
+  ShieldCheck,
+  Wallet,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export function UserNav() {
-  const userAvatar = PlaceHolderImages.find(img => img.id === 'avatar-1');
+  const { user, userProfile } = useUser();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/');
+  };
+
+  const walletBalance = userProfile?.walletBalance ?? 0;
 
   return (
     <div className="flex items-center gap-4">
       <div className="hidden md:flex items-center gap-2 bg-muted px-3 py-1.5 rounded-full text-sm font-semibold">
         <Wallet className="h-4 w-4 text-primary" />
-        <span>₹480.00</span>
+        <span>₹{walletBalance.toFixed(2)}</span>
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
             <Avatar className="h-9 w-9">
-              {userAvatar && <AvatarImage src={userAvatar.imageUrl} alt="@shadcn" data-ai-hint={userAvatar.imageHint} />}
-              <AvatarFallback>PO</AvatarFallback>
+              <AvatarImage src={user?.photoURL || ''} alt={user?.displayName || 'User'} />
+              <AvatarFallback>
+                {user?.displayName?.charAt(0).toUpperCase() || 'U'}
+              </AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">PlayerOne</p>
+              <p className="text-sm font-medium leading-none">
+                {user?.displayName || 'User'}
+              </p>
               <p className="text-xs leading-none text-muted-foreground">
-                playerone@example.com
+                {user?.email || 'No email'}
               </p>
             </div>
           </DropdownMenuLabel>
@@ -67,7 +89,7 @@ export function UserNav() {
             </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={handleSignOut}>
             <LogOut className="mr-2 h-4 w-4" />
             <span>Log out</span>
             <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
@@ -75,5 +97,5 @@ export function UserNav() {
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
-  )
+  );
 }
