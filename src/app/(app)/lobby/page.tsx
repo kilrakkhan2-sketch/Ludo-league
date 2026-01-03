@@ -100,7 +100,7 @@ export default function LobbyPage() {
                     ))}
                 </div>
             ) : (
-                <Card className="flex items-center justify-center p-8 border-dashed">
+                <Card className="flex items-center justify-center p-8 border-dashed shadow-md">
                     <p className="text-muted-foreground">No open matches available. Why not create one?</p>
                 </Card>
             )}

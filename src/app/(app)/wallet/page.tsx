@@ -62,7 +62,7 @@ export default function WalletPage() {
                 </Alert>
                 <div className="flex flex-col items-center gap-4 p-4 bg-muted/50 rounded-lg">
                     <p className="text-sm text-center text-muted-foreground">Scan the QR code with your payment app and enter the UTR below.</p>
-                    {qrCodeImage && <Image src={qrCodeImage.imageUrl} alt="QR Code" width={200} height={200} className="rounded-lg border-2" data-ai-hint={qrCodeImage.imageHint} />}
+                    {qrCodeImage && <Image src={qrCodeImage.imageUrl} alt="QR Code" width={200} height={200} className="rounded-lg border-2 shadow-md" data-ai-hint={qrCodeImage.imageHint} />}
                 </div>
                 <div className="grid gap-2">
                     <Label htmlFor="utr">UTR / Transaction ID</Label>
