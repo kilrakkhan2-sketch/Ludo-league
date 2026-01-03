@@ -16,7 +16,7 @@ import {
 import { mockTransactions } from "@/lib/data"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { cn } from "@/lib/utils"
-import { ArrowDownLeft, ArrowUpRight, UploadCloud, DownloadCloud, Landmark } from "lucide-react"
+import { ArrowDownLeft, ArrowUpRight, UploadCloud, DownloadCloud, Landmark, Wallet as WalletIcon } from "lucide-react"
 
 export default function WalletPage() {
   const qrCodeImage = PlaceHolderImages.find(img => img.id === 'qr-code');
@@ -30,11 +30,8 @@ export default function WalletPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between space-y-2 mb-4">
-        <h2 className="text-3xl font-bold tracking-tight">Wallet</h2>
-      </div>
-      <div className="flex flex-col gap-8">
-        <Card>
+      <div className="grid gap-8">
+        <Card className="shadow-md">
             <CardHeader className="flex flex-row items-center justify-between">
                 <div className="grid gap-2">
                     <CardTitle>Current Balance</CardTitle>
@@ -49,49 +46,49 @@ export default function WalletPage() {
         </Card>
 
         <div className="grid gap-8 md:grid-cols-2">
-             <Card>
+             <Card className="shadow-md">
             <CardHeader>
-                <CardTitle>Deposit Funds</CardTitle>
+                <CardTitle className="flex items-center gap-2"><UploadCloud className="h-6 w-6 text-green-500" />Deposit Funds</CardTitle>
                 <CardDescription>Add money to your wallet to join matches.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-6">
-                <div className="flex flex-col items-center gap-4">
-                    <p className="text-sm text-center text-muted-foreground">Scan the QR code with your payment app.</p>
-                    {qrCodeImage && <Image src={qrCodeImage.imageUrl} alt="QR Code" width={200} height={200} className="rounded-lg" data-ai-hint={qrCodeImage.imageHint} />}
+                <div className="flex flex-col items-center gap-4 p-4 bg-muted/50 rounded-lg">
+                    <p className="text-sm text-center text-muted-foreground">Scan the QR code with your payment app and enter the UTR below.</p>
+                    {qrCodeImage && <Image src={qrCodeImage.imageUrl} alt="QR Code" width={200} height={200} className="rounded-lg border-2" data-ai-hint={qrCodeImage.imageHint} />}
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="utr">UTR Number</Label>
-                    <Input id="utr" placeholder="Enter the UTR/Transaction ID" />
+                    <Label htmlFor="utr">UTR / Transaction ID</Label>
+                    <Input id="utr" placeholder="Enter the 12-digit UTR/Transaction ID" />
                 </div>
                 <div className="grid gap-2">
                     <Label htmlFor="screenshot">Payment Screenshot</Label>
                     <Input id="screenshot" type="file" className="text-muted-foreground file:text-primary"/>
                 </div>
-                <Button className="w-full" variant="accent"><UploadCloud className="mr-2 h-4 w-4" /> Submit for Approval</Button>
+                <Button className="w-full" variant="accent"><UploadCloud className="mr-2 h-4 w-4" /> Submit Deposit</Button>
             </CardContent>
             </Card>
-            <Card>
+            <Card className="shadow-md">
             <CardHeader>
-                <CardTitle>Withdraw Funds</CardTitle>
-                <CardDescription>Request a withdrawal to your verified bank account.</CardDescription>
+                <CardTitle className="flex items-center gap-2"><DownloadCloud className="h-6 w-6 text-blue-500" />Withdraw Funds</CardTitle>
+                <CardDescription>Request a withdrawal to your bank account.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-6">
                 <p className="text-sm p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg flex items-start gap-2">
                     <Landmark className="h-4 w-4 mt-0.5 shrink-0"/>
-                    <span>Withdrawals will be sent to the bank account you provided during KYC verification.</span>
+                    <span>Withdrawals are sent to the bank account verified via KYC. Approval may take up to 24 hours.</span>
                 </p>
                 <div className="grid gap-2">
-                    <Label htmlFor="withdraw-amount">Amount</Label>
+                    <Label htmlFor="withdraw-amount">Amount (Min. ₹100)</Label>
                     <Input id="withdraw-amount" type="number" placeholder="e.g., 500" />
                 </div>
 
-                <Button className="w-full" variant="accent"><DownloadCloud className="mr-2 h-4 w-4" /> Request Withdrawal</Button>
+                <Button className="w-full"><DownloadCloud className="mr-2 h-4 w-4" /> Request Withdrawal</Button>
             </CardContent>
             </Card>
         </div>
 
 
-        <Card>
+        <Card className="shadow-md">
             <CardHeader>
                 <CardTitle>Recent Transactions</CardTitle>
                 <CardDescription>A list of your recent wallet activity.</CardDescription>
@@ -100,34 +97,38 @@ export default function WalletPage() {
                 <Table>
                 <TableHeader>
                     <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Details</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
+                    <TableHead>Date</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {mockTransactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
+                    <TableRow key={transaction.id} className="font-medium">
                         <TableCell>
-                        <div className="font-medium flex items-center gap-2">
+                        <div className="font-semibold flex items-center gap-2">
                             {transaction.amount > 0 ? <ArrowDownLeft className="h-4 w-4 text-green-500" /> : <ArrowUpRight className="h-4 w-4 text-red-500" />}
                             {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1).replace('-', ' ')}
                         </div>
-                        <div className="text-sm text-muted-foreground md:inline">
-                            {new Date(transaction.date).toLocaleDateString()}
+                        <div className="text-xs text-muted-foreground md:inline">
+                           ID: {transaction.id}
                         </div>
                         </TableCell>
-                        <TableCell>
-                        <Badge variant={transaction.status === 'completed' ? 'default' : transaction.status === 'pending' ? 'secondary' : 'destructive'} className={cn({
+                         <TableCell className="text-center">
+                        <Badge variant={transaction.status === 'completed' ? 'default' : transaction.status === 'pending' ? 'secondary' : 'destructive'} className={cn("text-xs", {
                             "bg-green-100 text-green-800 border-green-200 hover:bg-green-100": transaction.status === "completed",
                             "bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100": transaction.status === "pending",
                             "bg-red-100 text-red-800 border-red-200 hover:bg-red-100": transaction.status === "rejected",
                         })}>
-                            {transaction.status}
+                            {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
                         </Badge>
                         </TableCell>
-                        <TableCell className={cn("text-right font-semibold", transaction.amount > 0 ? 'text-green-600' : 'text-red-600')}>
-                        ₹{Math.abs(transaction.amount).toFixed(2)}
+                        <TableCell className="text-muted-foreground text-xs">
+                            {new Date(transaction.date).toLocaleString()}
+                        </TableCell>
+                        <TableCell className={cn("text-right font-bold text-lg", transaction.amount > 0 ? 'text-green-600' : 'text-red-600')}>
+                        {transaction.amount > 0 ? '+' : '-'}₹{Math.abs(transaction.amount).toFixed(2)}
                         </TableCell>
                     </TableRow>
                     ))}

@@ -14,7 +14,6 @@ import {
 import { useUser } from '@/firebase';
 import { signOut } from '@/firebase/auth/client';
 import {
-  CreditCard,
   LogOut,
   Settings,
   User,
@@ -71,16 +70,18 @@ export function UserNav() {
               <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
+              <Link href="/wallet">
+                <Wallet className="mr-2 h-4 w-4" />
+                <span>My Wallet</span>
+                <DropdownMenuShortcut>⌘W</DropdownMenuShortcut>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
               <Link href="/kyc">
                 <ShieldCheck className="mr-2 h-4 w-4" />
                 <span>KYC</span>
                 <DropdownMenuShortcut>⇧⌘K</DropdownMenuShortcut>
               </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <CreditCard className="mr-2 h-4 w-4" />
-              <span>Billing</span>
-              <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuItem>
               <Settings className="mr-2 h-4 w-4" />
