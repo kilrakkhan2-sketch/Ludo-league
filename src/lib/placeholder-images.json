@@ -3,7 +3,7 @@
     {
       "id": "qr-code",
       "description": "QR code for payment",
-      "imageUrl": "https://images.unsplash.com/photo-1600147131759-880e94a6185f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxxciUyMGNvZGV8ZW58MHx8fHwxNzY3Mzg4NDU1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi%3A%2F%2Fpay%3Fpa%3Dludoleague%40example%26pn%3DLudo%2520League",
       "imageHint": "qr code"
     },
     {
@@ -51,49 +51,49 @@
     {
       "id": "banner-1",
       "description": "Promotional banner for a ludo tournament.",
-      "imageUrl": "https://images.unsplash.com/photo-1642056448378-4e83951f964e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxsdWRvJTIwZ2FtZXxlbnwwfHx8fDE3Njc0NDM1MTl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1667552749299-551eec9151f6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxsdWRvJTIwZ2FtZXxlbnwwfHx8fDE3Njc0NDM1MTl8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "ludo game"
     },
     {
       "id": "banner-2",
       "description": "Promotional banner for weekly challenge.",
-      "imageUrl": "https://images.unsplash.com/photo-1735719075836-e795216fb4ba?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxkaWNlJTIwZ2FtZXxlbnwwfHx8fDE3Njc0NDM1MTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1643829434220-43df2b9a485a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxkaWNlJTIwZ2FtZXxlbnwwfHx8fDE3Njc0NDM1MTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "dice game"
     },
     {
       "id": "banner-3",
       "description": "Promotional banner for new user bonus.",
-      "imageUrl": "https://images.unsplash.com/photo-1656761961810-9e0f885dff6a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHx3aW5uZXIlMjBwcml6ZXxlbnwwfHx8fDE3Njc0NDM1MTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1656761961831-bf4f231500b1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx3aW5uZXIlMjBwcml6ZXxlbnwwfHx8fDE3Njc0NDM1MTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "winner prize"
     },
     {
       "id": "banner-lobby",
       "description": "Banner for the match lobby.",
-      "imageUrl": "https://images.unsplash.com/photo-1677816156435-e844da620fa9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxnYW1lJTIwYm9hcmR8ZW58MHx8fHwxNzY3MzYzNDQxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1654741522302-5e070439774c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxnYW1lJTIwYm9hcmR8ZW58MHx8fHwxNzY3MzYzNDQxfDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "game board"
     },
     {
       "id": "banner-tournaments",
       "description": "Banner for the tournaments page.",
-      "imageUrl": "https://images.unsplash.com/photo-1761751237599-045ee9c853a9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8Y2hhbXBpb25zaGlwJTIwdHJvcGh5fGVufDB8fHx8MTc2NzM3MzA2Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1759446334429-bb1f2d1d9f13?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxjaGFtcGlvbnNoaXAlMjB0cm9waHl8ZW58MHx8fHwxNzY3MzczMDYyfDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "championship trophy"
     },
     {
       "id": "banner-leaderboard",
       "description": "Banner for the leaderboard page.",
-      "imageUrl": "https://images.unsplash.com/photo-1708014116024-bfd31805142d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHx3aW5uZXJzJTIwcG9kaXVtfGVufDB8fHx8MTc2NzQ0MzUxOHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1659277319138-bc5ea0b3377f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHx3aW5uZXJzJTIwcG9kaXVtfGVufDB8fHx8MTc2NzQ0MzUxOHww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "winners podium"
     },
     {
       "id": "banner-wallet",
       "description": "Banner for the wallet page.",
-      "imageUrl": "https://images.unsplash.com/photo-1726065235158-d9c3f817f331?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8ZGlnaXRhbCUyMHdhbGxldHxlbnwwfHx8fDE3Njc0MDkzNDl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1599050751795-6cdaafbc2319?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxkaWdpdGFsJTIwd2FsbGV0fGVufDB8fHx8MTc2NzQwOTM0OXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "digital wallet"
     },
     {
       "id": "banner-kyc",
       "description": "Banner for the KYC page.",
-      "imageUrl": "https://images.unsplash.com/photo-1620887110499-d54ecf17cefb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxpZGVudGl0eSUyMHZlcmlmaWNhdGlvbnxlbnwwfHx8fDE3Njc0NDM1MTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1762330469123-ce98036eff16?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxpZGVudGl0eSUyMHZlcmlmaWNhdGlvbnxlbnwwfHx8fDE3Njc0NDM1MTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "identity verification"
     }
   ]

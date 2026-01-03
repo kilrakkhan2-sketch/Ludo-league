@@ -38,7 +38,7 @@ export default function WalletPage() {
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [depositScreenshot, setDepositScreenshot] = useState<File | null>(null);
 
-  const qrCodeImage = { imageUrl: "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=ludoleague@example&pn=Ludo%20League&am=100", imageHint: "qr code"};
+  const qrCodeImage = PlaceHolderImages.find(img => img.id === 'qr-code');
   
   const balance = userProfile?.walletBalance ?? 0;
 
