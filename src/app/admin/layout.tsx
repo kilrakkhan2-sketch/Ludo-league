@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link"
@@ -23,6 +24,7 @@ import {
   Trophy,
   Users,
   ShieldCheck,
+  Download,
 } from "lucide-react"
 import { useState } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger, SheetClose } from "@/components/ui/sheet"
@@ -32,6 +34,7 @@ const AdminSidebarNav = () => {
   const navItems = [
     { href: "/admin/dashboard", label: "Fraud Dashboard", icon: ShieldAlert },
     { href: "/admin/deposits", label: "Deposits", icon: WalletCards },
+    { href: "/admin/withdrawals", label: "Withdrawals", icon: Download },
     { href: "/admin/matches", label: "Matches", icon: Trophy },
     { href: "/admin/kyc-requests", label: "KYC Requests", icon: Users },
   ]
@@ -66,6 +69,7 @@ export default function AdminLayout({
         { href: "/dashboard", label: "App Lobby", icon: Swords },
         { href: "/admin/dashboard", label: "Admin Dashboard", icon: LayoutDashboard },
         { href: "/admin/deposits", label: "Deposits", icon: WalletCards },
+        { href: "/admin/withdrawals", label: "Withdrawals", icon: Download },
         { href: "/admin/matches", label: "Matches", icon: Trophy },
         { href: "/admin/kyc-requests", label: "KYC Requests", icon: ShieldCheck },
     ]

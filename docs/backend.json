@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -111,7 +112,11 @@
         },
         "bankDetails": {
           "type": "string",
-          "description": "User's bank account or UPI information."
+          "description": "User's bank account information (name, account number, IFSC)."
+        },
+        "upiId": {
+            "type": "string",
+            "description": "User's UPI ID."
         }
       },
       "required": [
@@ -119,8 +124,7 @@
         "status",
         "submittedAt",
         "aadhaarPanUrl",
-        "selfieUrl",
-        "bankDetails"
+        "selfieUrl"
       ]
     },
     "Match": {

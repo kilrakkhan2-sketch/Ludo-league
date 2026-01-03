@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { CheckCircle, Clock, FileUp, Loader2, ShieldCheck, XCircle } from 'lucide-react';
+import { CheckCircle, Clock, FileUp, Loader2, ShieldCheck, XCircle, Landmark, AtSign } from 'lucide-react';
 
 type KycStatus = 'not_submitted' | 'pending' | 'approved' | 'rejected';
 
@@ -20,7 +20,7 @@ const KycStatusIndicator = ({ status, reason }: { status: KycStatus, reason?: st
                 <Alert variant="default" className="bg-green-50 border-green-200 text-green-800">
                     <CheckCircle className="h-4 w-4 !text-green-600" />
                     <AlertTitle>KYC Approved</AlertTitle>
-                    <AlertDescription>Your KYC has been successfully verified. Your wallet is fully active.</AlertDescription>
+                    <AlertDescription>Your KYC has been successfully verified. Your wallet is fully active for withdrawals.</AlertDescription>
                 </Alert>
             );
         case 'pending':
@@ -80,10 +80,10 @@ export default function KycPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Submit Documents</CardTitle>
+            <CardTitle>Submit Documents & Bank Details</CardTitle>
             <CardDescription>
                 {canSubmit 
-                ? "Upload your documents to complete KYC. Your wallet will be locked for withdrawals until approved."
+                ? "Upload your documents and provide payment details. Withdrawals will only be processed to the verified Bank Account or UPI ID."
                 : "Your documents are currently under review. You can resubmit if your application is rejected."
                 }
             </CardDescription>
@@ -103,9 +103,25 @@ export default function KycPage() {
                             <p className="text-xs text-muted-foreground">Upload a clear, recent selfie.</p>
                         </div>
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="bank-details">Bank Account / UPI Details</Label>
-                        <Textarea id="bank-details" placeholder="Enter your full name, bank name, account number, IFSC code, OR your UPI ID." required rows={4}/>
+                     <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="bank-details" className='flex items-center gap-2'><Landmark className='w-4 h-4'/> Bank Account Details</Label>
+                            <Textarea id="bank-details" placeholder="Enter your full name, bank name, account number, and IFSC code." required rows={4}/>
+                        </div>
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-background px-2 text-muted-foreground">
+                                OR
+                                </span>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="upi-id" className='flex items-center gap-2'><AtSign className='w-4 h-4'/> UPI ID</Label>
+                            <Input id="upi-id" placeholder="yourname@upi" required />
+                        </div>
                     </div>
 
                     <Button type="submit" disabled={isSubmitting} variant="accent" className="w-full md:w-auto">
