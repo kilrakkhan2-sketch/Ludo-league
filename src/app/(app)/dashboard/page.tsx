@@ -12,9 +12,9 @@ import { UserNav } from "@/components/app/user-nav";
 
 const MatchCard = ({ match }: { match: (typeof mockMatches)[0] }) => (
     <Card key={match.id} className="flex flex-col">
-        <CardHeader className="p-4">
+        <CardHeader className="p-3">
             <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-lg">
+            <CardTitle className="flex items-center gap-2 text-base">
                 <Swords className="h-5 w-5 text-primary" />
                 <span>Prize: ₹{match.prizePool}</span>
             </CardTitle>
@@ -27,22 +27,30 @@ const MatchCard = ({ match }: { match: (typeof mockMatches)[0] }) => (
                 {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
             </div>
             </div>
-            <CardDescription>Entry: ₹{match.entryFee}</CardDescription>
+            <CardDescription className="pt-1">Entry: ₹{match.entryFee}</CardDescription>
         </CardHeader>
-        <CardContent className="flex-grow p-4 pt-0">
+        <CardContent className="flex-grow p-3 pt-0">
             <div className="flex items-center justify-between">
-            <div className="flex items-center">
-                {match.players.map((player, index) => (
-                <Avatar key={player.id} className={`h-8 w-8 border-2 border-background ${index > 0 ? '-ml-3' : ''}`}>
-                    <AvatarImage src={player.avatarUrl} alt={player.name} />
-                    <AvatarFallback>{player.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                ))}
-            </div>
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Users className="h-4 w-4" />
-                <span>{match.players.length}/{match.maxPlayers}</span>
-            </div>
+                <div className="flex items-center -space-x-3">
+                    {match.players.slice(0, 2).map((player) => (
+                    <Avatar key={player.id} className={`h-8 w-8 border-2 border-background`}>
+                        <AvatarImage src={player.avatarUrl} alt={player.name} />
+                        <AvatarFallback>{player.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    ))}
+                    {match.players.length > 2 && (
+                        <Avatar className="h-8 w-8 border-2 border-background">
+                            <AvatarFallback>+{match.players.length - 2}</AvatarFallback>
+                        </Avatar>
+                    )}
+                </div>
+                <div className="flex flex-col items-center">
+                  <Swords className="h-8 w-8 text-primary/30" />
+                </div>
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    <span>{match.players.length}/{match.maxPlayers}</span>
+                </div>
             </div>
         </CardContent>
         <CardFooter className="p-2 pt-0 border-t mt-2">
@@ -80,7 +88,7 @@ export default function DashboardPage() {
                 <h3 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
                     <Star className="h-6 w-6 text-yellow-500"/> My Matches
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {myMatches.map((match) => (
                         <MatchCard key={match.id} match={match} />
                     ))}
@@ -93,7 +101,7 @@ export default function DashboardPage() {
                 <Swords className="h-6 w-6 text-primary"/> Open Matches
             </h3>
             {openMatches.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {openMatches.map((match) => (
                        <MatchCard key={match.id} match={match} />
                     ))}
@@ -108,7 +116,7 @@ export default function DashboardPage() {
                 <h3 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
                     <History className="h-6 w-6 text-blue-500"/> Ongoing Matches
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {ongoingMatches.map((match) => (
                         <MatchCard key={match.id} match={match} />
                     ))}
