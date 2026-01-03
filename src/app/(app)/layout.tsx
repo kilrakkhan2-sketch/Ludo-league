@@ -1,6 +1,6 @@
 
 'use client';
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { UserNav } from "@/components/app/user-nav";
 import { Swords, PanelLeft } from "lucide-react";
 import Link from "next/link";
@@ -9,8 +9,10 @@ import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader
 import { Button } from "@/components/ui/button";
 import { Home, Swords as LobbyIcon, Trophy, BarChart, Wallet, ShieldCheck, FileText, Landmark, Shield, Gavel, FileBadge, User, Settings } from "lucide-react";
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { useUser } from "@/firebase";
+import { Loader2 } from "lucide-react";
 
 const pageTitles: { [key: string]: string } = {
   "/dashboard": "Home",
@@ -103,6 +105,22 @@ export default function AppLayout({
 }) {
   const pathname = usePathname();
   const title = getTitle(pathname);
+  const { user, loading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/');
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider>
