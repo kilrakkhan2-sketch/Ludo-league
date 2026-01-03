@@ -63,6 +63,11 @@
         "isWalletFrozen": {
           "type": "boolean",
           "description": "Whether the user's wallet is frozen for transactions."
+        },
+        "joinedTournamentIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of tournament IDs the user has joined."
         }
       }
     },
@@ -155,11 +160,12 @@
         "type": "object",
         "properties": {
             "userId": {"type": "string"},
-            "type": {"type": "string", "enum": ["deposit", "withdrawal", "entry-fee", "winnings", "refund"]},
+            "type": {"type": "string", "enum": ["deposit", "withdrawal", "entry-fee", "winnings", "refund", "tournament-fee"]},
             "amount": {"type": "number", "description": "Positive for credit, negative for debit."},
             "status": {"type": "string", "enum": ["completed", "pending", "rejected"]},
             "createdAt": {"type": "string", "format": "date-time"},
             "relatedMatchId": {"type": "string", "description": "ID of the match, if applicable."},
+            "relatedTournamentId": {"type": "string", "description": "ID of the tournament, if applicable."},
             "description": {"type": "string"}
         },
         "required": ["userId", "type", "amount", "status", "createdAt"]
@@ -210,6 +216,30 @@
         "notes": {"type": "string", "description": "Details or reasons for the action."}
       },
       "required": ["adminId", "action", "timestamp"]
+    },
+    "Tournament": {
+        "title": "Tournament",
+        "description": "Represents a multi-match tournament event.",
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "bannerImageUrl": {"type": "string", "format": "uri"},
+            "entryFee": {"type": "number"},
+            "totalSlots": {"type": "number"},
+            "filledSlots": {"type": "number"},
+            "playerIds": {"type": "array", "items": {"type": "string"}},
+            "commissionType": {"type": "string", "enum": ["percentage", "fixed"]},
+            "commissionValue": {"type": "number"},
+            "prizePool": {"type": "number"},
+            "prizeDistribution": {"type": "object", "description": "Defines how the prize pool is distributed."},
+            "startTime": {"type": "string", "format": "date-time"},
+            "endTime": {"type": "string", "format": "date-time"},
+            "rules": {"type": "string"},
+            "status": {"type": "string", "enum": ["upcoming", "live", "completed", "cancelled", "paused"]},
+            "adminNotes": {"type": "string", "description": "Internal notes for admins."},
+            "createdBy": {"type": "string", "description": "Admin ID who created the tournament."}
+        },
+        "required": ["name", "entryFee", "totalSlots", "filledSlots", "playerIds", "commissionType", "commissionValue", "startTime", "status", "createdBy"]
     }
   },
   "auth": {
@@ -232,7 +262,7 @@
       "schema": {
         "$ref": "#/backend/entities/Match"
       },
-      "description": "Stores all match data."
+      "description": "Stores all individual match data."
     },
     "/matches/{matchId}/results/{userId}": {
       "schema": {
@@ -263,6 +293,18 @@
             "$ref": "#/backend/entities/AdminLog"
         },
         "description": "Logs all significant actions taken by administrators for auditing purposes."
+    },
+    "/tournaments/{tournamentId}": {
+        "schema": {
+            "$ref": "#/backend/entities/Tournament"
+        },
+        "description": "Stores all tournament data and configuration."
+    },
+    "/tournaments/{tournamentId}/matches/{matchId}": {
+        "schema": {
+            "$ref": "#/backend/entities/Match"
+        },
+        "description": "Stores all matches that are part of a specific tournament."
     }
   }
 }
