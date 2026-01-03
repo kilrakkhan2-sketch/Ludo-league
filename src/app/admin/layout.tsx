@@ -21,15 +21,17 @@ import {
   ShieldAlert,
   PanelLeft,
   Home,
+  Trophy,
 } from "lucide-react"
 import { useState } from "react"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 
 const AdminSidebarNav = () => {
   const pathname = usePathname()
   const navItems = [
     { href: "/admin/dashboard", label: "Fraud Dashboard", icon: ShieldAlert },
     { href: "/admin/deposits", label: "Deposits", icon: WalletCards },
+    { href: "/admin/matches", label: "Matches", icon: Trophy },
   ]
   return (
     <SidebarMenu>
@@ -84,7 +86,7 @@ export default function AdminLayout({
                         </Button>
                     </SheetTrigger>
                     <SheetContent side="left" className="sm:max-w-xs bg-background">
-                        <SheetHeader>
+                        <SheetHeader className="text-left">
                           <SheetTitle>
                             <Link
                                 href="/dashboard"
@@ -95,7 +97,7 @@ export default function AdminLayout({
                                 <span className="sr-only">Ludo League</span>
                             </Link>
                           </SheetTitle>
-                          <SheetDescription className="sr-only">
+                          <SheetDescription>
                             Admin navigation menu
                           </SheetDescription>
                         </SheetHeader>
@@ -111,6 +113,10 @@ export default function AdminLayout({
                              <Link href="/admin/deposits" className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground" onClick={() => setSheetOpen(false)}>
                                 <WalletCards className="h-5 w-5" />
                                 Deposits
+                            </Link>
+                            <Link href="/admin/matches" className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground" onClick={() => setSheetOpen(false)}>
+                                <Trophy className="h-5 w-5" />
+                                Matches
                             </Link>
                         </nav>
                     </SheetContent>

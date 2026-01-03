@@ -3,10 +3,10 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Home, Wallet, Shield, User } from "lucide-react"
+import { Home, Wallet, Shield, User, Swords } from "lucide-react"
 
 const navItems = [
-  { href: "/dashboard", label: "Home", icon: Home },
+  { href: "/dashboard", label: "Lobby", icon: Swords },
   { href: "/wallet", label: "Wallet", icon: Wallet },
   { href: "/admin/dashboard", label: "Admin", icon: Shield },
 ];

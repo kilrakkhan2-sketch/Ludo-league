@@ -13,7 +13,7 @@ export function MainNav({
   const routes = [
     {
       href: "/dashboard",
-      label: "Dashboard",
+      label: "Lobby",
       active: pathname === "/dashboard",
     },
     {
@@ -40,7 +40,7 @@ export function MainNav({
           className={cn(
             "text-sm font-medium transition-colors hover:text-primary",
             route.active
-              ? "text-black dark:text-white"
+              ? "text-black dark:text-white font-semibold"
               : "text-muted-foreground"
           )}
         >
