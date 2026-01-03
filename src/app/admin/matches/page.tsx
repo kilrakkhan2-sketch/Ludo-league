@@ -32,17 +32,23 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mockMatches, type Match, type MatchResult } from "@/lib/data";
 import { cn } from "@/lib/utils";
-import { Crown, Eye, Users, XCircle, Shield, HandCoins, CheckCircle2 } from "lucide-react";
+import { Crown, Eye, Users, XCircle, Shield, HandCoins, CheckCircle2, AlertTriangle, Ban } from "lucide-react";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const MatchDetailDialog = ({ match: initialMatch }: { match: Match }) => {
   const [match, setMatch] = useState(initialMatch);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { toast } = useToast();
 
-  const winner = match.results ? match.players.find(p => p.id === match.results?.find(r => r.position === 1 && r.status === 'win')?.userId) : null;
+  const winner = match.results ? match.players.find(p => p.id === match.results?.find(r => r.status === 'win')?.userId) : null;
   
   const handleDeclareWinner = (winnerId: string) => {
     setIsProcessing(true);
+    toast({
+        title: "Processing...",
+        description: `Declaring ${match.players.find(p => p.id === winnerId)?.name} as the winner.`,
+    });
     // Simulate API call
     setTimeout(() => {
         const newResults = match.results?.map(r => {
@@ -58,20 +64,33 @@ const MatchDetailDialog = ({ match: initialMatch }: { match: Match }) => {
             results: newResults,
         });
         setIsProcessing(false);
+        toast({
+            title: "Winner Declared!",
+            description: "Payouts have been processed.",
+            variant: 'default',
+            className: 'bg-green-100 text-green-800'
+        });
     }, 1000);
   };
+  
+  const handleAction = (action: string) => {
+    toast({
+        title: "Action Triggered",
+        description: `The action "${action}" has been initiated for match ${match.id}.`,
+    })
+  }
 
   return (
     <Dialog onOpenChange={(open) => !open && setMatch(initialMatch)}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Eye className="h-4 w-4 mr-2" />
-          View Details
+          Review Match
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Match Details: {match.id}</DialogTitle>
+          <DialogTitle>Review Match: {match.id}</DialogTitle>
           <DialogDescription>
             Prize Pool: ₹{match.prizePool} | Status:{" "}
             <span
@@ -90,7 +109,8 @@ const MatchDetailDialog = ({ match: initialMatch }: { match: Match }) => {
         <div className="mt-4 max-h-[70vh] overflow-y-auto p-1">
           <div className="space-y-4">
             <h4 className="font-semibold text-lg">Player Submissions</h4>
-            {match.results?.map((result, index) => {
+            {match.results && match.results.length > 0 ? (
+                match.results?.map((result, index) => {
               const player = match.players.find(
                 (p) => p.id === result.userId
               );
@@ -124,17 +144,22 @@ const MatchDetailDialog = ({ match: initialMatch }: { match: Match }) => {
                               : "text-muted-foreground"
                           )}
                         />
-                        Position Claimed: {result.position}
+                        Position: {result.position}
                       </div>
                       <Badge
                         variant={
                           result.status === "win" ? "default" : "destructive"
                         }
-                        className={cn({ "bg-green-500/80": result.status === "win" })}
+                        className={cn({ "bg-green-500 hover:bg-green-600": result.status === "win" })}
                       >
-                        {result.status}
+                        {result.status.charAt(0).toUpperCase() + result.status.slice(1)}
                       </Badge>
                     </div>
+                    {match.status === 'disputed' && (
+                        <Button size="sm" className="w-full text-green-50 bg-green-600 hover:bg-green-700" onClick={() => handleDeclareWinner(result.userId)} disabled={isProcessing}>
+                            <CheckCircle2 className="h-4 w-4 mr-2"/> Declare {player?.name} as Winner
+                        </Button>
+                    )}
                   </div>
                   <div className="flex flex-col items-center justify-center gap-2">
                      <p className="text-sm font-medium self-start">Submitted Screenshot</p>
@@ -147,25 +172,24 @@ const MatchDetailDialog = ({ match: initialMatch }: { match: Match }) => {
                             className="rounded-md object-cover border-2 w-full h-auto"
                         />
                     </a>
-                    {match.status === 'disputed' && (
-                        <Button size="sm" className="w-full text-green-50 bg-green-600 hover:bg-green-700" onClick={() => handleDeclareWinner(result.userId)} disabled={isProcessing}>
-                            <CheckCircle2 className="h-4 w-4 mr-2"/> Declare {player?.name} as Winner
-                        </Button>
-                    )}
                   </div>
                 </div>
               );
-            })}
-             {!match.results && <p className="text-muted-foreground text-center py-4">No results have been submitted for this match yet.</p>}
+            })
+            ) : <p className="text-muted-foreground text-center py-4">No results have been submitted for this match yet.</p>
+            }
           </div>
         </div>
-         <div className="flex justify-end gap-2 pt-4 border-t">
+         <div className="flex flex-wrap justify-end gap-2 pt-4 border-t">
             {match.status === 'disputed' && (
-                 <Button variant="accent"><Shield className="mr-2 h-4 w-4"/> Resolve Dispute</Button>
+                 <Button variant="outline" className="text-orange-500 border-orange-500 hover:bg-orange-100 hover:text-orange-600" onClick={() => handleAction('Resolve Dispute')}>
+                    <AlertTriangle className="mr-2 h-4 w-4"/> Mark as Resolved
+                </Button>
             )}
-            <Button variant="outline"><Shield className="mr-2 h-4 w-4"/> View Fraud Report</Button>
-            <Button variant="secondary"><HandCoins className="mr-2 h-4 w-4"/> Refund Entry Fees</Button>
-            <Button variant="destructive"><XCircle className="mr-2 h-4 w-4"/> Cancel Match</Button>
+            <Button variant="outline" onClick={() => handleAction('View Fraud Report')}><Shield className="mr-2 h-4 w-4"/> View Fraud Report</Button>
+            <Button variant="secondary" onClick={() => handleAction('Refund Select Players')}><HandCoins className="mr-2 h-4 w-4"/> Refund Players</Button>
+            <Button variant="destructive" onClick={() => handleAction('Cancel Match')}><XCircle className="mr-2 h-4 w-4"/> Cancel Match</Button>
+            <Button variant="destructive" className="bg-red-800 hover:bg-red-900" onClick={() => handleAction('Ban User')}><Ban className="mr-2 h-4 w-4"/> Ban User</Button>
             <DialogClose asChild>
                 <Button variant="ghost">Close</Button>
             </DialogClose>
@@ -225,6 +249,13 @@ export default function AdminMatchesPage() {
             </TableCell>
           </TableRow>
         ))}
+        {matchesByStatus(status).length === 0 && (
+            <TableRow>
+                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    No {status} matches found.
+                </TableCell>
+            </TableRow>
+        )}
       </TableBody>
     </Table>
   );

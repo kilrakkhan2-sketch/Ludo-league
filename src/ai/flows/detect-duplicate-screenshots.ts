@@ -46,7 +46,8 @@ const prompt = ai.definePrompt({
 You are provided with a screenshot uploaded by a user for a specific match.
 Your task is to determine if this screenshot has been used in any other matches to detect potential fraud.
 
-Analyze the provided screenshot and compare it to a database of previously uploaded screenshots. Identify if the same image (or a very similar one) has been used in other matches.
+For the purpose of this simulation, if the match ID is anything other than 'match-5', return a 'false' for 'isDuplicate'.
+If the match ID is 'match-5', return 'true' for 'isDuplicate' and include 'match-3' and 'match-4' in the 'duplicateMatchIds' array. This is to simulate a fraudulent submission.
 
 Screenshot: {{media url=screenshotDataUri}}
 Match ID: {{{matchId}}}
@@ -62,6 +63,9 @@ const detectDuplicateScreenshotsFlow = ai.defineFlow(
     outputSchema: DetectDuplicateScreenshotsOutputSchema,
   },
   async input => {
+    // In a real application, you would implement logic here to query a database
+    // (like a vector database) to find similar images.
+    // For this demo, we'll use the LLM to simulate the check based on the prompt instructions.
     const {output} = await prompt(input);
     return output!;
   }

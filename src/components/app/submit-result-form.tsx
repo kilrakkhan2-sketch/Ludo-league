@@ -23,6 +23,7 @@ import {
   Crown,
   Loader2,
   UploadCloud,
+  XCircle,
 } from "lucide-react";
 
 function SubmitButton() {
@@ -37,7 +38,7 @@ function SubmitButton() {
       ) : (
         <>
           <UploadCloud className="mr-2 h-4 w-4" />
-          Submit Result
+          Submit Result for Review
         </>
       )}
     </Button>
@@ -78,7 +79,7 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
       <CardHeader>
         <CardTitle>Submit Match Result</CardTitle>
         <CardDescription>
-          Upload your result screenshot and select your position.
+          Upload your result screenshot, select your position, and choose your status. All submissions are manually verified by an admin.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -128,7 +129,7 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
           </div>
 
           <div className="space-y-2">
-            <Label>Match Status</Label>
+            <Label>Your Claimed Status</Label>
             <RadioGroup
               name="status"
               required
@@ -151,16 +152,16 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
                   htmlFor="loss"
                   className="flex items-center gap-1.5 cursor-pointer text-red-600"
                 >
-                  <AlertCircle className="h-4 w-4" />I Lost
+                  <XCircle className="h-4 w-4" />I Lost
                 </Label>
               </div>
             </RadioGroup>
           </div>
 
-          {state?.isError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
+          {state?.message && (
+             <Alert variant={state.isError ? "destructive" : "default"} className={!state.isError ? "bg-green-50 border-green-200 text-green-800" : ""}>
+              {state.isError ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4 !text-green-500"/>}
+              <AlertTitle>{state.isError ? "Error" : "Success"}</AlertTitle>
               <AlertDescription>{state.message}</AlertDescription>
             </Alert>
           )}

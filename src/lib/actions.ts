@@ -55,7 +55,7 @@ export async function submitResult(
     // In a real app, you would save the result to your database here.
     console.log("Result submitted and verified:", parsed.data);
     
-    return { message: "Result submitted successfully! Winnings will be processed shortly.", isError: false };
+    return { message: "Result submitted successfully! Your submission is now under review.", isError: false };
 
   } catch (error) {
     console.error("Error submitting result:", error);
