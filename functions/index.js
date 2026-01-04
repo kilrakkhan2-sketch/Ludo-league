@@ -14,10 +14,10 @@ exports.setAdminClaim = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('permission-denied', 'Only admins can set admin claims.');
   }
 
-  const { uid } = data;
-  await admin.auth().setCustomUserClaims(uid, { admin: true });
+  const { uid, isAdmin } = data;
+  await admin.auth().setCustomUserClaims(uid, { admin: isAdmin });
 
-  return { message: `Success! ${uid} has been made an admin.` };
+  return { message: `Success! User ${uid} has been ${isAdmin ? 'made an admin' : 'removed as an admin'}.` };
 });
 
 // Function triggered on result submission

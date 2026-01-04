@@ -14,6 +14,7 @@ import {
   startAt,
   endAt,
 } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { UserProfile } from '@/lib/types';
@@ -102,17 +103,32 @@ const UserDetailModal = ({
   };
   
   const handleAdminToggle = async () => {
-    if(!firestore || !adminUser) return;
-    const userRef = doc(firestore, 'users', user.uid);
+    if (!adminUser) return;
+    const functions = getFunctions();
+    const setAdminClaim = httpsCallable(functions, 'setAdminClaim');
     const newIsAdmin = !(user as any).isAdmin;
+
     try {
+      await setAdminClaim({ uid: user.uid, isAdmin: newIsAdmin });
+      // Also update the local user document to reflect the change immediately
+      if(firestore) {
+        const userRef = doc(firestore, 'users', user.uid);
         await updateDoc(userRef, { isAdmin: newIsAdmin });
-        toast({ title: `User ${newIsAdmin ? 'promoted to' : 'demoted from'} admin` });
-        onOpenChange(false);
-    } catch(e: any) {
-        toast({ title: 'Failed to update admin status', description: e.message, variant: 'destructive' });
+      }
+      toast({
+        title: `User ${newIsAdmin ? 'promoted to' : 'demoted from'} admin`,
+        className: 'bg-green-100 text-green-800',
+      });
+      onOpenChange(false);
+    } catch (e: any) {
+      console.error(e);
+      toast({
+        title: 'Failed to update admin status',
+        description: e.message,
+        variant: 'destructive',
+      });
     }
-  }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -323,5 +339,3 @@ export default function AdminUsersPage() {
     </>
   );
 }
-
-    
