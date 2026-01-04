@@ -62,59 +62,6 @@ exports.onResultSubmit = functions.firestore
     });
   });
 
-// This function can be called (e.g., via HTTPS or from another function) to distribute winnings.
-exports.distributeWinnings = functions.https.onRequest(async (req, res) => {
-    const { matchId } = req.body;
-    if (!matchId) {
-        res.status(400).send('Match ID is required.');
-        return;
-    }
-
-    const matchRef = db.doc(`matches/${matchId}`);
-    
-    try {
-        await db.runTransaction(async (transaction) => {
-            const matchDoc = await transaction.get(matchRef);
-            if (!matchDoc.exists) throw new Error('Match not found.');
-            
-            const matchData = matchDoc.data();
-            const { winnerId, prizePool, prizeDistributed, status } = matchData;
-
-            if (status !== 'completed') throw new Error('Match is not completed yet.');
-            if (prizeDistributed) throw new Error('Prizes already distributed.');
-            if (!winnerId) throw new Error('No winner declared for this match.');
-
-            const winnerRef = db.doc(`users/${winnerId}`);
-            const winnerDoc = await transaction.get(winnerRef);
-            if (!winnerDoc.exists) throw new Error('Winner not found.');
-
-            const commission = prizePool * 0.10; // 10% commission
-            const amountToCredit = prizePool - commission;
-
-            const currentBalance = winnerDoc.data().walletBalance || 0;
-            const newBalance = currentBalance + amountToCredit;
-
-            transaction.update(winnerRef, { walletBalance: newBalance });
-            transaction.update(matchRef, { prizeDistributed: true });
-            
-            // Log the transaction
-            const transRef = db.collection('transactions').doc();
-            transaction.set(transRef, {
-                userId: winnerId,
-                type: 'winnings',
-                amount: amountToCredit,
-                status: 'completed',
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                relatedMatchId: matchId,
-                description: `Winnings from match ${matchId}`
-            });
-        });
-        res.status(200).send({ success: true, message: 'Winnings distributed successfully.' });
-    } catch (error) {
-        console.error('Error distributing winnings:', error);
-        res.status(500).send({ success: false, message: error.message });
-    }
-});
 
 // This function triggers when a deposit request is approved to handle referral commissions.
 exports.onDepositApproved = functions.firestore

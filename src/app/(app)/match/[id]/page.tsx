@@ -5,7 +5,7 @@ import { SubmitResultForm } from "@/components/app/submit-result-form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Copy, Crown, ShieldCheck, Swords, Users, Wallet, Loader2, Info, Trash2, LogOut } from "lucide-react";
+import { Copy, Crown, ShieldCheck, Swords, Users, Wallet, Loader2, Info, Trash2, LogOut, FileQuestion, Gamepad2, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useFirestore, useUser } from "@/firebase";
@@ -168,18 +168,41 @@ export default function MatchPage() {
       </div>
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 mt-4">
         <div className="lg:col-span-2 space-y-8">
-            {match.status === 'in-progress' && match.roomCode && (
+            {(match.status === 'in-progress' || (match.status === 'waiting' && match.playerIds.length === match.maxPlayers)) && (
                  <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <Swords className="h-5 w-5 text-primary"/> Ludo King Room Code
+                            <Swords className="h-5 w-5 text-primary"/> Steps to Play
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="flex items-center justify-between bg-muted/50 p-4 rounded-lg">
-                        <p className="text-2xl font-mono tracking-widest font-bold text-primary">{match.roomCode}</p>
-                        <Button variant="ghost" size="icon" onClick={handleCopyRoomCode}>
-                            <Copy className="h-5 w-5 text-muted-foreground" />
-                        </Button>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-start gap-4">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-lg">1</div>
+                            <div>
+                                <p className="font-semibold">Copy Room Code</p>
+                                <p className="text-sm text-muted-foreground">The creator has provided a Ludo King room code. Click to copy it.</p>
+                                <div className="flex items-center justify-between bg-muted/50 p-2 rounded-lg mt-2">
+                                    <p className="text-lg font-mono tracking-widest font-bold text-primary">{match.roomCode || "Waiting for code..."}</p>
+                                    <Button variant="ghost" size="icon" onClick={handleCopyRoomCode} disabled={!match.roomCode}>
+                                        <Copy className="h-5 w-5 text-muted-foreground" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                         <div className="flex items-start gap-4">
+                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-lg">2</div>
+                            <div>
+                                <p className="font-semibold">Join in Ludo King</p>
+                                <p className="text-sm text-muted-foreground">Open Ludo King, select "Play with Friends", and join the room using the code.</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-4">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-lg">3</div>
+                            <div>
+                                <p className="font-semibold">Play & Win</p>
+                                <p className="text-sm text-muted-foreground">After the match, take a screenshot of the results screen and submit it below.</p>
+                            </div>
+                        </div>
                     </CardContent>
                  </Card>
             )}

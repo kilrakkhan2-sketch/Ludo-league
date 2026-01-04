@@ -9,8 +9,9 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { doc, runTransaction, collection, serverTimestamp, getFirestore } from 'firebase/firestore';
+import { doc, runTransaction, collection, serverTimestamp, getFirestore, writeBatch, getDoc, updateDoc } from 'firebase/firestore';
 import { getFirebaseApp } from '@/firebase/server'; // Can use this to get firestore instance on server
+import { calculateWinRate } from './calculate-win-rate';
 
 const DistributeWinningsInputSchema = z.object({
   matchId: z.string().describe('The ID of the match to distribute winnings for.'),
@@ -40,18 +41,23 @@ const distributeWinningsFlow = ai.defineFlow(
     const firestore = getFirestore(getFirebaseApp());
 
     const matchRef = doc(firestore, 'matches', matchId);
-    const winnerRef = doc(firestore, 'users', winnerId);
     
     try {
       const newBalance = await runTransaction(firestore, async (transaction) => {
         const matchDoc = await transaction.get(matchRef);
+        
+        if (!matchDoc.exists()) {
+          throw new Error('Match not found.');
+        }
+        
+        const matchData = matchDoc.data();
+        const winnerRef = doc(firestore, 'users', winnerId);
         const winnerDoc = await transaction.get(winnerRef);
-
-        if (!matchDoc.exists() || !winnerDoc.exists()) {
-          throw new Error('Match or winner not found.');
+        
+        if (!winnerDoc.exists()) {
+            throw new Error('Winner not found.');
         }
 
-        const matchData = matchDoc.data();
         const winnerData = winnerDoc.data();
 
         if (matchData.status !== 'completed') {
@@ -90,9 +96,16 @@ const distributeWinningsFlow = ai.defineFlow(
         return updatedBalance;
       });
 
+      // After winnings are distributed, update stats for all players in the match
+      const matchDoc = await getDoc(matchRef);
+      const playerIds = matchDoc.data()?.playerIds || [];
+      for (const playerId of playerIds) {
+          await calculateWinRate({ userId: playerId });
+      }
+
       return {
         success: true,
-        message: 'Winnings distributed successfully!',
+        message: 'Winnings distributed successfully and player stats updated!',
         newBalance: newBalance,
       };
 
