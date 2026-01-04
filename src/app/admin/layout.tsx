@@ -27,6 +27,7 @@ import {
   Download,
   FolderKanban,
   AtSign,
+  Gift,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger, SheetClose } from "@/components/ui/sheet"
@@ -42,7 +43,7 @@ const AdminSidebarNav = () => {
 
 
   const navItems = [
-    { href: "/admin/dashboard", label: "Fraud Dashboard", icon: ShieldAlert },
+    { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/users", label: "User Management", icon: Users },
     { href: "/admin/matches", label: "Matches", icon: Trophy },
     { href: "/admin/tournaments", label: "Tournaments", icon: Trophy },
@@ -50,6 +51,7 @@ const AdminSidebarNav = () => {
     { href: "/admin/withdrawals", label: "Withdrawals", icon: Download },
     { href: "/admin/kyc-requests", label: "KYC Requests", icon: ShieldCheck },
     { href: "/admin/upi-management", label: "UPI Management", icon: AtSign },
+    { href: "/admin/referral-settings", label: "Referral Settings", icon: Gift },
     { href: "/admin/storage", label: "Storage", icon: FolderKanban },
   ]
   return (
@@ -89,6 +91,7 @@ export default function AdminLayout({
         { href: "/admin/withdrawals", label: "Withdrawals", icon: Download },
         { href: "/admin/kyc-requests", label: "KYC Requests", icon: ShieldCheck },
         { href: "/admin/upi-management", label: "UPI Management", icon: AtSign },
+        { href: "/admin/referral-settings", label: "Referral Settings", icon: Gift },
         { href: "/admin/storage", label: "Storage", icon: FolderKanban },
     ]
 

@@ -182,8 +182,8 @@ export default function WalletPage() {
     const formData = new FormData(e.currentTarget);
     const amount = Number(formData.get('withdraw-amount'));
 
-    if (!amount || amount < 100) {
-        toast({ title: "Invalid Amount", description: "Minimum withdrawal is ₹100.", variant: "destructive" });
+    if (!amount || amount < 300) {
+        toast({ title: "Invalid Amount", description: "Minimum withdrawal is ₹300.", variant: "destructive" });
         setIsWithdrawing(false);
         return;
     }
@@ -287,12 +287,12 @@ export default function WalletPage() {
                             <Landmark className="h-4 w-4 !text-blue-600" />
                             <AlertTitle>Withdrawal Policy</AlertTitle>
                             <AlertDescription>
-                                Withdrawals are sent to the bank account/UPI ID verified via KYC. Ensure the name matches your KYC details. Approval may take up to 24 hours.
+                                Withdrawals are sent to the bank account/UPI ID verified via KYC. Approval may take up to 24 hours.
                             </AlertDescription>
                         </Alert>
                         <div className="grid gap-2">
-                            <Label htmlFor="withdraw-amount">Amount (Min. ₹100)</Label>
-                            <Input id="withdraw-amount" name="withdraw-amount" type="number" placeholder="e.g., 500" required />
+                            <Label htmlFor="withdraw-amount">Amount (Min. ₹300)</Label>
+                            <Input id="withdraw-amount" name="withdraw-amount" type="number" placeholder="e.g., 500" required min="300" />
                         </div>
 
                         <Button type="submit" className="w-full" disabled={isWithdrawing || userProfile?.kycStatus !== 'approved'}>
@@ -361,5 +361,3 @@ export default function WalletPage() {
     </div>
   )
 }
-
-    

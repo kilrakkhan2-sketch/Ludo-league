@@ -1,6 +1,4 @@
 'use client';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -17,229 +15,318 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Ban, Eye, ShieldCheck, ThumbsDown, Loader2 } from 'lucide-react';
-import { useFirestore } from '@/firebase';
 import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-  orderBy,
-  limit,
-  collectionGroup,
-} from 'firebase/firestore';
-import { useEffect, useState } from 'react';
-import type { UserProfile, MatchResult, Match } from '@/lib/types';
-import Link from 'next/link';
+  DollarSign,
+  Users,
+  CreditCard,
+  Activity,
+  ArrowUpRight,
+  ArrowDownLeft,
+} from 'lucide-react';
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
-type FraudAlert = MatchResult & {
-  matchId: string;
-};
+const data = [
+  {
+    name: 'Jan',
+    total: Math.floor(Math.random() * 5000) + 1000,
+  },
+  {
+    name: 'Feb',
+    total: Math.floor(Math.random() * 5000) + 1000,
+  },
+  {
+    name: 'Mar',
+    total: Math.floor(Math.random() * 5000) + 1000,
+  },
+  {
+    name: 'Apr',
+    total: Math.floor(Math.random() * 5000) + 1000,
+  },
+  {
+    name: 'May',
+    total: Math.floor(Math.random() * 5000) + 1000,
+  },
+  {
+    name: 'Jun',
+    total: Math.floor(Math.random() * 5000) + 1000,
+  },
+  {
+    name: 'Jul',
+    total: Math.floor(Math.random() * 5000) + 1000,
+  },
+  {
+    name: 'Aug',
+    total: Math.floor(Math.random() * 5000) + 1000,
+  },
+  {
+    name: 'Sep',
+    total: Math.floor(Math.random() * 5000) + 1000,
+  },
+  {
+    name: 'Oct',
+    total: Math.floor(Math.random() * 5000) + 1000,
+  },
+  {
+    name: 'Nov',
+    total: Math.floor(Math.random() * 5000) + 1000,
+  },
+  {
+    name: 'Dec',
+    total: Math.floor(Math.random() * 5000) + 1000,
+  },
+];
 
 export default function AdminDashboardPage() {
-  const firestore = useFirestore();
-  const [suspiciousUsers, setSuspiciousUsers] = useState<UserProfile[]>([]);
-  const [fraudAlerts, setFraudAlerts] = useState<FraudAlert[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
-  const [loadingAlerts, setLoadingAlerts] = useState(true);
-
-  useEffect(() => {
-    if (!firestore) return;
-
-    // Fetch suspicious users (e.g., win rate > 80%)
-    setLoadingUsers(true);
-    const usersRef = collection(firestore, 'users');
-    const suspiciousQuery = query(
-      usersRef,
-      where('winRate', '>=', 80),
-      limit(20)
-    );
-    const unsubscribeUsers = onSnapshot(suspiciousQuery, (snapshot) => {
-      setSuspiciousUsers(
-        snapshot.docs.map((doc) => ({ uid: doc.id, ...doc.data() } as UserProfile))
-      );
-      setLoadingUsers(false);
-    });
-
-    // Fetch fraud alerts using a collectionGroup query
-    setLoadingAlerts(true);
-    const resultsRef = collectionGroup(firestore, 'results');
-    const fraudQuery = query(resultsRef, where('isFlaggedForFraud', '==', true), limit(20));
-    const unsubscribeAlerts = onSnapshot(fraudQuery, (snapshot) => {
-        const alerts = snapshot.docs.map(doc => {
-            const matchId = doc.ref.parent.parent?.id || 'unknown';
-            return {
-                id: doc.id,
-                matchId: matchId,
-                ...doc.data()
-            } as FraudAlert;
-        });
-        setFraudAlerts(alerts);
-        setLoadingAlerts(false);
-    }, (error) => {
-        console.error("Error fetching fraud alerts: ", error);
-        setLoadingAlerts(false);
-    });
-
-    return () => {
-      unsubscribeUsers();
-      unsubscribeAlerts();
-    };
-  }, [firestore]);
-
   return (
     <>
-      <h2 className="text-3xl font-bold tracking-tight mb-4">Admin Dashboard</h2>
-      <Tabs defaultValue="fraud-alerts">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="fraud-alerts">Fraud Alerts</TabsTrigger>
-          <TabsTrigger value="suspicious-users">Suspicious Users</TabsTrigger>
+      <div className="flex items-center justify-between space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+        <div className="flex items-center space-x-2">
+          <Select defaultValue="last_30_days">
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select a date range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="last_7_days">Last 7 days</SelectItem>
+              <SelectItem value="last_30_days">Last 30 days</SelectItem>
+              <SelectItem value="all_time">All time</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="analytics" disabled>
+            Analytics
+          </TabsTrigger>
+          <TabsTrigger value="reports" disabled>
+            Reports
+          </TabsTrigger>
+          <TabsTrigger value="notifications" disabled>
+            Notifications
+          </TabsTrigger>
         </TabsList>
-        <TabsContent value="fraud-alerts">
-          <Card className="shadow-md">
-            <CardHeader>
-              <CardTitle>Automated Fraud Alerts</CardTitle>
-              <CardDescription>
-                Submissions automatically flagged by the system for review (e.g.
-                duplicate screenshots).
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Match ID</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loadingAlerts && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {!loadingAlerts && fraudAlerts.length === 0 && (
-                    <TableRow>
-                      <TableCell
-                        colSpan={5}
-                        className="text-center py-8 text-muted-foreground"
-                      >
-                        No fraud alerts to show.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {!loadingAlerts &&
-                    fraudAlerts.map((alert) => (
-                      <TableRow key={`${alert.matchId}-${alert.id}`} className="hover:bg-muted/50">
-                        <TableCell className="font-medium">
-                          {alert.userName}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="destructive">Duplicate Screenshot</Badge>
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {alert.matchId}
-                        </TableCell>
-                        <TableCell>
-                          {alert.submittedAt?.toDate().toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button asChild variant="outline" size="sm">
-                            <Link href={`/admin/matches?matchId=${alert.matchId}`}>
-                                <Eye className="mr-2 h-4 w-4" /> Review
-                            </Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="suspicious-users">
-          <Card className="shadow-md">
-            <CardHeader>
-              <CardTitle>Suspicious Users</CardTitle>
-              <CardDescription>
-                Users with exceptionally high win rates that may indicate unfair play.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Win Rate</TableHead>
-                    <TableHead>Winnings</TableHead>
-                    <TableHead>KYC Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loadingUsers && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {!loadingUsers && suspiciousUsers.length === 0 && (
-                    <TableRow>
-                      <TableCell
-                        colSpan={5}
-                        className="text-center py-8 text-muted-foreground"
-                      >
-                        No suspicious users found.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {!loadingUsers &&
-                    suspiciousUsers.map((user) => (
-                      <TableRow key={user.uid} className="hover:bg-muted/50">
-                        <TableCell className="font-medium">
-                          {user.displayName}
-                        </TableCell>
-                        <TableCell className="font-semibold text-red-600">{user.winRate}%</TableCell>
-                        <TableCell>₹{(user.winnings || 0).toLocaleString('en-IN')}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              user.kycStatus === 'approved'
-                                ? 'default'
-                                : 'secondary'
-                            }
-                            className={
-                              user.kycStatus === 'approved'
-                                ? 'bg-green-100 text-green-800'
-                                : ''
-                            }
-                          >
-                            {user.kycStatus}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex gap-2 justify-end">
-                            <Button variant="secondary" size="sm">
-                              Suspend
-                            </Button>
-                            <Button variant="destructive" size="sm">
-                              <Ban className="mr-2 h-4 w-4" />
-                              Block
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total Revenue
+                </CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">₹45,231.89</div>
+                <p className="text-xs text-muted-foreground">
+                  +20.1% from last month
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Active Users
+                </CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">+2350</div>
+                <p className="text-xs text-muted-foreground">
+                  +180.1% from last month
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total Deposits
+                </CardTitle>
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">+12,234</div>
+                <p className="text-xs text-muted-foreground">
+                  +19% from last month
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Referral Payouts
+                </CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">+₹573</div>
+                <p className="text-xs text-muted-foreground">
+                  +201 since last hour
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+            <Card className="col-span-4">
+              <CardHeader>
+                <CardTitle>Overview</CardTitle>
+              </CardHeader>
+              <CardContent className="pl-2">
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={data}>
+                    <XAxis
+                      dataKey="name"
+                      stroke="#888888"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      stroke="#888888"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => `₹${value}`}
+                    />
+                    <Bar
+                      dataKey="total"
+                      fill="currentColor"
+                      radius={[4, 4, 0, 0]}
+                      className="fill-primary"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card className="col-span-3">
+              <CardHeader>
+                <CardTitle>Recent Transactions</CardTitle>
+                <CardDescription>
+                  You made 265 transactions this month.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-8">
+                  <div className="flex items-center">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage
+                        src="https://picsum.photos/seed/avatar1/40/40"
+                        alt="Avatar"
+                      />
+                      <AvatarFallback>OM</AvatarFallback>
+                    </Avatar>
+                    <div className="ml-4 space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        Olivia Martin
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        olivia.martin@email.com
+                      </p>
+                    </div>
+                    <div className="ml-auto font-medium flex items-center gap-1 text-green-500">
+                      <ArrowDownLeft className="h-4 w-4" />
+                      +₹1,999.00
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <Avatar className="flex h-9 w-9 items-center justify-center space-y-0 border">
+                      <AvatarImage
+                        src="https://picsum.photos/seed/avatar2/40/40"
+                        alt="Avatar"
+                      />
+                      <AvatarFallback>JL</AvatarFallback>
+                    </Avatar>
+                    <div className="ml-4 space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        Jackson Lee
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        jackson.lee@email.com
+                      </p>
+                    </div>
+                    <div className="ml-auto font-medium flex items-center gap-1 text-red-500">
+                      <ArrowUpRight className="h-4 w-4" />
+                      -₹390.00
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage
+                        src="https://picsum.photos/seed/avatar3/40/40"
+                        alt="Avatar"
+                      />
+                      <AvatarFallback>IN</AvatarFallback>
+                    </Avatar>
+                    <div className="ml-4 space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        Isabella Nguyen
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        isabella.nguyen@email.com
+                      </p>
+                    </div>
+                    <div className="ml-auto font-medium flex items-center gap-1 text-green-500">
+                      <ArrowDownLeft className="h-4 w-4" />
+                      +₹299.00
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage
+                        src="https://picsum.photos/seed/avatar4/40/40"
+                        alt="Avatar"
+                      />
+                      <AvatarFallback>WK</AvatarFallback>
+                    </Avatar>
+                    <div className="ml-4 space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        William Kim
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        will@email.com
+                      </p>
+                    </div>
+                    <div className="ml-auto font-medium flex items-center gap-1 text-green-500">
+                      <ArrowDownLeft className="h-4 w-4" />
+                      +₹99.00
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage
+                        src="https://picsum.photos/seed/avatar5/40/40"
+                        alt="Avatar"
+                      />
+                      <AvatarFallback>SD</AvatarFallback>
+                    </Avatar>
+                    <div className="ml-4 space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        Sofia Davis
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        sofia.davis@email.com
+                      </p>
+                    </div>
+                    <div className="ml-auto font-medium flex items-center gap-1 text-red-500">
+                      <ArrowUpRight className="h-4 w-4" />
+                      -₹500.00
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </>

@@ -22,7 +22,6 @@ exports.setAdminClaim = functions.https.onCall(async (data, context) => {
   }
 });
 
-
 // This function triggers when a result is submitted.
 // It checks for conflicts (e.g., multiple winners) and updates match status.
 exports.onResultSubmit = functions.firestore
@@ -117,43 +116,69 @@ exports.distributeWinnings = functions.https.onRequest(async (req, res) => {
     }
 });
 
-
-// Handles deposit and withdrawal requests.
-exports.handleTransaction = functions.firestore
-  .document('transactions/{transactionId}')
+// This function triggers when a deposit request is approved to handle referral commissions.
+exports.onDepositApproved = functions.firestore
+  .document('depositRequests/{depositId}')
   .onUpdate(async (change, context) => {
-    const before = change.before.data();
     const after = change.after.data();
+    const before = change.before.data();
 
-    // Check if the transaction has been approved.
+    // Check if the deposit status changed from pending to approved
     if (before.status === 'pending' && after.status === 'approved') {
-      const { userId, amount, type } = after;
-      const userRef = db.collection('users').doc(userId);
+      const { userId, amount } = after;
 
-      try {
-        await db.runTransaction(async (t) => {
-          const userDoc = await t.get(userRef);
-          if (!userDoc.exists) {
-            throw new Error('User not found');
-          }
+      const userRef = db.doc(`users/${userId}`);
+      const userDoc = await userRef.get();
 
-          const newBalance = userDoc.data().balance + (type === 'deposit' ? amount : -amount);
-          if (newBalance < 0) {
-            throw new Error('Insufficient balance');
-          }
-
-          t.update(userRef, { balance: newBalance });
-        });
-
-        console.log(`Transaction ${context.params.transactionId} handled successfully.`);
+      if (!userDoc.exists) {
+        console.log(`User ${userId} not found.`);
         return null;
+      }
+      const userData = userDoc.data();
+      const referredBy = userData.referredBy;
 
-      } catch (error) {
-        console.error('Error handling transaction:', error);
-        // Revert the status to pending to allow for a retry or manual intervention.
-        return change.after.ref.update({ status: 'pending', error: error.message });
+      // If the user was referred by someone, calculate and give commission
+      if (referredBy) {
+        try {
+          await db.runTransaction(async (transaction) => {
+            const referrerRef = db.doc(`users/${referredBy}`);
+            const referrerDoc = await transaction.get(referrerRef);
+
+            if (!referrerDoc.exists()) {
+              console.log(`Referrer ${referredBy} not found.`);
+              return;
+            }
+
+            // Get referral commission percentage from settings
+            const configRef = db.doc('referralConfiguration/settings');
+            const configDoc = await transaction.get(configRef);
+            const commissionPercentage = configDoc.exists() ? configDoc.data().commissionPercentage : 5; // Default 5%
+            
+            const commission = (amount * commissionPercentage) / 100;
+            
+            // Update referrer's wallet
+            const referrerData = referrerDoc.data();
+            const newBalance = (referrerData.walletBalance || 0) + commission;
+            transaction.update(referrerRef, { walletBalance: newBalance });
+
+            // Log the commission transaction
+            const commissionTransRef = db.collection('transactions').doc();
+            transaction.set(commissionTransRef, {
+              userId: referredBy,
+              type: 'referral-bonus',
+              amount: commission,
+              status: 'completed',
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              description: `Referral commission from ${userData.displayName}'s deposit.`
+            });
+
+             console.log(`Credited ${commission} to ${referredBy} for referral.`);
+          });
+        } catch (error) {
+          console.error("Error processing referral commission: ", error);
+          // Don't block the main flow if referral fails
+        }
       }
     }
-
     return null;
   });

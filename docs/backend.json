@@ -81,6 +81,14 @@
         "winRate": {
             "type": "number",
             "description": "User's win rate in percentage."
+        },
+        "referralCode": {
+            "type": "string",
+            "description": "The user's unique referral code."
+        },
+        "referredBy": {
+            "type": "string",
+            "description": "The UID of the user who referred this user."
         }
       }
     },
@@ -182,7 +190,7 @@
         "type": "object",
         "properties": {
             "userId": {"type": "string"},
-            "type": {"type": "string", "enum": ["deposit", "withdrawal", "entry-fee", "winnings", "refund", "tournament-fee"]},
+            "type": {"type": "string", "enum": ["deposit", "withdrawal", "entry-fee", "winnings", "refund", "tournament-fee", "referral-bonus"]},
             "amount": {"type": "number", "description": "Positive for credit, negative for debit."},
             "status": {"type": "string", "enum": ["completed", "pending", "rejected"]},
             "createdAt": {"type": "string", "format": "date-time"},
@@ -272,6 +280,16 @@
             "updatedAt": { "type": "string", "format": "date-time" }
         },
         "required": ["activeUpiId"]
+    },
+    "ReferralConfiguration": {
+        "title": "Referral Configuration",
+        "description": "Stores referral system settings.",
+        "type": "object",
+        "properties": {
+            "commissionPercentage": { "type": "number", "description": "The commission percentage for referrals." },
+            "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["commissionPercentage"]
     }
   },
   "auth": {
@@ -351,8 +369,12 @@
             "$ref": "#/backend/entities/UpiConfiguration"
         },
         "description": "Stores the active UPI configuration for deposits."
+    },
+    "/referralConfiguration/settings": {
+        "schema": {
+            "$ref": "#/backend/entities/ReferralConfiguration"
+        },
+        "description": "Stores the global referral settings."
     }
   }
 }
-
-    

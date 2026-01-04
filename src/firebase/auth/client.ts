@@ -12,7 +12,7 @@ import {
   updateProfile,
   type Auth,
 } from 'firebase/auth';
-import { doc, setDoc, getFirestore, serverTimestamp, type Firestore } from 'firebase/firestore';
+import { doc, setDoc, getFirestore, serverTimestamp, type Firestore, getDocs, query, where, collection, limit } from 'firebase/firestore';
 import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app';
 import { firebaseConfig } from '../config';
 
@@ -33,15 +33,35 @@ function getFirebaseFirestore(): Firestore {
     return getFirestore(getFirebaseApp());
 }
 
-export async function signUpWithEmail(email: string, password: string, displayName: string) {
+const generateReferralCode = (name: string) => {
+    const namePart = name.replace(/\s+/g, '').substring(0, 4).toUpperCase();
+    const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `${namePart}${randomPart}`;
+};
+
+
+export async function signUpWithEmail(email: string, password: string, displayName: string, referralCode?: string) {
   const auth = getFirebaseAuth();
+  const firestore = getFirebaseFirestore();
+  let referredBy = '';
+  
+  if (referralCode) {
+    const usersRef = collection(firestore, 'users');
+    const q = query(usersRef, where('referralCode', '==', referralCode.toUpperCase()), limit(1));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+        referredBy = querySnapshot.docs[0].id;
+    } else {
+        throw new Error('Invalid referral code.');
+    }
+  }
+
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
   
   await updateProfile(user, { displayName });
 
   // Create user profile in Firestore
-  const firestore = getFirebaseFirestore();
   const userProfileRef = doc(firestore, 'users', user.uid);
   await setDoc(userProfileRef, {
     uid: user.uid,
@@ -51,6 +71,8 @@ export async function signUpWithEmail(email: string, password: string, displayNa
     walletBalance: 0,
     kycStatus: 'not_submitted',
     createdAt: serverTimestamp(),
+    referralCode: generateReferralCode(displayName),
+    referredBy: referredBy
   }, { merge: true });
 
   return user;
@@ -80,6 +102,7 @@ export async function signInWithGoogle() {
       walletBalance: 0,
       kycStatus: 'not_submitted',
       createdAt: serverTimestamp(),
+      referralCode: generateReferralCode(user.displayName || 'user'),
   }, { merge: true });
 
   return user;
