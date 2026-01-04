@@ -12,6 +12,8 @@ export type UserProfile = {
   winnings?: number;
   ipAddress?: string;
   deviceId?: string;
+  totalMatchesPlayed?: number;
+  totalMatchesWon?: number;
 };
 
 export type PlayerInfo = {
@@ -32,6 +34,7 @@ export type Match = {
   status: 'waiting' | 'in-progress' | 'completed' | 'disputed' | 'cancelled';
   roomCode?: string;
   createdAt: Timestamp;
+  winnerId?: string;
   prizeDistributed?: boolean;
 };
 

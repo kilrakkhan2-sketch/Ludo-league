@@ -62,6 +62,8 @@ export default function MatchPage({ params }: { params: { id: string } }) {
     );
   }
 
+  const showSubmitForm = !match.winnerId || !match.prizeDistributed;
+
   return (
     <>
       <div className="flex items-center justify-between space-y-2">
@@ -93,7 +95,18 @@ export default function MatchPage({ params }: { params: { id: string } }) {
                  </Card>
             )}
            
-            <SubmitResultForm matchId={match.id} />
+            {showSubmitForm ? (
+                <SubmitResultForm matchId={match.id} />
+            ) : (
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Match Concluded</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-muted-foreground">This match has been completed and winnings have been distributed. No further actions can be taken.</p>
+                    </CardContent>
+                 </Card>
+            )}
         </div>
         <div className="space-y-6">
             <Card>

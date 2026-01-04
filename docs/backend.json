@@ -69,6 +69,18 @@
             "type": "array",
             "items": { "type": "string" },
             "description": "List of tournament IDs the user has joined."
+        },
+        "totalMatchesPlayed": {
+            "type": "number",
+            "description": "Total matches played by the user."
+        },
+        "totalMatchesWon": {
+            "type": "number",
+            "description": "Total matches won by the user."
+        },
+        "winRate": {
+            "type": "number",
+            "description": "User's win rate in percentage."
         }
       }
     },
@@ -145,7 +157,8 @@
             "status": {"type": "string", "enum": ["waiting", "in-progress", "completed", "disputed", "cancelled"]},
             "roomCode": {"type": "string", "description": "Ludo King room code provided by the creator."},
             "createdAt": {"type": "string", "format": "date-time"},
-            "winnerId": {"type": "string", "description": "User ID of the declared winner."}
+            "winnerId": {"type": "string", "description": "User ID of the declared winner."},
+            "prizeDistributed": {"type": "boolean", "description": "Whether the prize has been distributed."}
         },
         "required": ["creatorId", "entryFee", "prizePool", "maxPlayers", "playerIds", "status", "createdAt"]
     },
