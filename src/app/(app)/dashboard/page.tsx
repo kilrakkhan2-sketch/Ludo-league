@@ -69,7 +69,7 @@ const ludoPopularImage = PlaceHolderImages.find(img => img.id === 'ludo-popular'
 
 
 const FeatureCard = ({ card }: { card: typeof featureCards[0] }) => (
-    <Card className="w-full shadow-md hover:shadow-lg transition-shadow flex flex-col">
+    <Card className="w-full shadow-md transition-shadow flex flex-col">
         <CardHeader>
             <div className="flex items-center gap-4">
                 <card.icon className={`h-8 w-8 ${card.color}`} />
@@ -86,7 +86,7 @@ const FeatureCard = ({ card }: { card: typeof featureCards[0] }) => (
 );
 
 const GameTypeCard = ({ title, image }: { title: string, image?: { imageUrl: string, imageHint: string, description: string } }) => (
-    <Card className="w-full shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+    <Card className="w-full shadow-md transition-shadow overflow-hidden">
         <CardContent className="p-0">
             <div className="relative aspect-[4/3] w-full">
                 {image && (

@@ -96,10 +96,7 @@
       rgba(255, 255, 255, 0.08),
       transparent
     );
-    transition: left 0.5s ease-in-out;
+    animation: shine 1.5s infinite linear;
   }
 
-  .card:hover::before {
-    animation: shine 1.5s infinite ease-out;
-  }
 }
