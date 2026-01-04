@@ -60,7 +60,7 @@ const featureCards = [
 ];
 
 const bannerImages = Array.from({ length: 8 }, (_, i) => ({
-  src: `/banner-${i + 1}.png`,
+  src: `/banner${i + 1}.png`,
   alt: `Promotional banner ${i + 1}`,
 }));
 
