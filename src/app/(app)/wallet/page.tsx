@@ -57,10 +57,27 @@ export default function WalletPage() {
     return () => unsubscribe();
   }, [firestore, user]);
 
+  const getFileAsDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          resolve(event.target.result as string);
+        } else {
+          reject(new Error("Failed to read file."));
+        }
+      };
+      reader.onerror = (error) => {
+        reject(error);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleDepositSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!user || !firestore || !depositScreenshot) {
-        toast({ title: "Please fill all fields", variant: "destructive" });
+        toast({ title: "Please fill all fields and upload a screenshot.", variant: "destructive" });
         return;
     }
     setIsDepositing(true);
@@ -69,44 +86,42 @@ export default function WalletPage() {
     const amount = Number(formData.get('deposit-amount'));
     
     if(!utr || !amount || amount <= 0) {
-        toast({title: "Invalid UTR or Amount", variant: "destructive"});
+        toast({title: "Invalid UTR or Amount.", variant: "destructive"});
         setIsDepositing(false);
         return;
     }
     
     try {
+        const dataUrl = await getFileAsDataUrl(depositScreenshot);
         const storage = getStorage();
         const storageRef = ref(storage, `deposits/${user.uid}/${Date.now()}`);
-        const reader = new FileReader();
 
-        reader.onload = async (event) => {
-            const dataUrl = event.target?.result as string;
-            await uploadString(storageRef, dataUrl, 'data_url');
-            const screenshotUrl = await getDownloadURL(storageRef);
+        await uploadString(storageRef, dataUrl, 'data_url');
+        const screenshotUrl = await getDownloadURL(storageRef);
 
-            await addDoc(collection(firestore, 'depositRequests'), {
-                userId: user.uid,
-                userName: user.displayName,
-                userAvatar: user.photoURL,
-                amount,
-                utr,
-                screenshotUrl,
-                status: 'pending',
-                createdAt: serverTimestamp(),
-            });
-            
-            toast({ title: "Deposit request submitted successfully." });
-            (e.target as HTMLFormElement).reset();
-            setDepositScreenshot(null);
-            setIsDepositing(false);
-        }
-        reader.readAsDataURL(depositScreenshot);
+        await addDoc(collection(firestore, 'depositRequests'), {
+            userId: user.uid,
+            userName: user.displayName,
+            userAvatar: user.photoURL,
+            amount,
+            utr,
+            screenshotUrl,
+            status: 'pending',
+            createdAt: serverTimestamp(),
+        });
+        
+        toast({ title: "Deposit request submitted successfully." });
+        (e.target as HTMLFormElement).reset();
+        setDepositScreenshot(null);
 
     } catch (error: any) {
-        toast({ title: "Deposit Failed", description: error.message, variant: "destructive" });
+        console.error("Deposit Error:", error);
+        toast({ title: "Deposit Failed", description: error.message || "An unexpected error occurred.", variant: "destructive" });
+    } finally {
         setIsDepositing(false);
     }
   };
+
 
   const handleWithdrawalSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -304,3 +319,5 @@ export default function WalletPage() {
     </div>
   )
 }
+
+    
