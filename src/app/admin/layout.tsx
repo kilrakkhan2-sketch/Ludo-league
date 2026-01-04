@@ -28,12 +28,19 @@ import {
   FolderKanban,
   AtSign,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger, SheetClose } from "@/components/ui/sheet"
 import { UserNav } from "@/components/app/user-nav"
 
 const AdminSidebarNav = () => {
   const pathname = usePathname()
+  const [activePath, setActivePath] = useState<string | null>(null);
+
+  useEffect(() => {
+    setActivePath(pathname);
+  }, [pathname]);
+
+
   const navItems = [
     { href: "/admin/dashboard", label: "Fraud Dashboard", icon: ShieldAlert },
     { href: "/admin/users", label: "User Management", icon: Users },
@@ -51,7 +58,7 @@ const AdminSidebarNav = () => {
         <SidebarMenuItem key={item.href}>
           <Link href={item.href}>
             <SidebarMenuButton
-              isActive={pathname.startsWith(item.href)}
+              isActive={activePath ? activePath.startsWith(item.href) : false}
               className="justify-start"
             >
               <item.icon className="h-4 w-4" />
@@ -153,5 +160,3 @@ export default function AdminLayout({
     </SidebarProvider>
   )
 }
-
-    
