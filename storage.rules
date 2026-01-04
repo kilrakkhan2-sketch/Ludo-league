@@ -1,39 +1,16 @@
+
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-  
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
+    // Admin check using custom claims
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
     }
 
-    // KYC: Users can only write to their own kyc folder.
-    match /kyc/{userId}/{allPaths=**} {
-      allow write: if isOwner(userId);
-    }
-
-    // Deposits: Users can only write to their own deposits folder.
-    match /deposits/{userId}/{allPaths=**} {
-      allow write: if isOwner(userId);
-    }
-
-    // Match Results: A user can only upload a result screenshot for a match if they are a player in that match.
-    // The screenshot must be for themselves.
-    match /match-results/{matchId}/{filename} {
-      allow write: if request.auth != null &&
-                      firestore.exists(/databases/(default)/documents/matches/$(matchId)) &&
-                      request.auth.uid in firestore.get(/databases/(default)/documents/matches/$(matchId)).data.playerIds;
-    }
-    
-    // Only admins can write to the tournaments folder
-    match /tournaments/{allPaths=**} {
-      allow write: if request.auth != null && request.auth.token.isAdmin == true;
-    }
-
-    // All users can read all files. This is okay for public assets like banners.
-    // For sensitive files, more specific read rules would be needed.
+    // Allow admin full access
     match /{allPaths=**} {
-      allow read: if true;
+      allow read, write, delete: if isAdmin();
     }
   }
 }

@@ -35,10 +35,12 @@ const AdminSidebarNav = () => {
   const pathname = usePathname()
   const navItems = [
     { href: "/admin/dashboard", label: "Fraud Dashboard", icon: ShieldAlert },
+    { href: "/admin/users", label: "User Management", icon: Users },
+    { href: "/admin/matches", label: "Matches", icon: Trophy },
+    { href: "/admin/tournaments", label: "Tournaments", icon: Trophy },
     { href: "/admin/deposits", label: "Deposits", icon: WalletCards },
     { href: "/admin/withdrawals", label: "Withdrawals", icon: Download },
-    { href: "/admin/matches", label: "Matches", icon: Trophy },
-    { href: "/admin/kyc-requests", label: "KYC Requests", icon: Users },
+    { href: "/admin/kyc-requests", label: "KYC Requests", icon: ShieldCheck },
     { href: "/admin/storage", label: "Storage", icon: FolderKanban },
   ]
   return (
@@ -47,7 +49,7 @@ const AdminSidebarNav = () => {
         <SidebarMenuItem key={item.href}>
           <Link href={item.href}>
             <SidebarMenuButton
-              isActive={pathname === item.href}
+              isActive={pathname.startsWith(item.href)}
               className="justify-start"
             >
               <item.icon className="h-4 w-4" />
@@ -71,9 +73,11 @@ export default function AdminLayout({
     const navItems = [
         { href: "/dashboard", label: "App Lobby", icon: Swords },
         { href: "/admin/dashboard", label: "Admin Dashboard", icon: LayoutDashboard },
+        { href: "/admin/users", label: "User Management", icon: Users },
+        { href: "/admin/matches", label: "Matches", icon: Trophy },
+        { href: "/admin/tournaments", label: "Tournaments", icon: Trophy },
         { href: "/admin/deposits", label: "Deposits", icon: WalletCards },
         { href: "/admin/withdrawals", label: "Withdrawals", icon: Download },
-        { href: "/admin/matches", label: "Matches", icon: Trophy },
         { href: "/admin/kyc-requests", label: "KYC Requests", icon: ShieldCheck },
         { href: "/admin/storage", label: "Storage", icon: FolderKanban },
     ]
@@ -120,7 +124,7 @@ export default function AdminLayout({
                                     <Link
                                         href={item.href}
                                         className={cn("flex items-center gap-3 rounded-lg px-3 py-2 transition-all",
-                                            pathname === item.href ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/80 hover:text-sidebar-foreground"
+                                            pathname.startsWith(item.href) ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/80 hover:text-sidebar-foreground"
                                         )}
                                     >
                                         <item.icon className="h-4 w-4" />
