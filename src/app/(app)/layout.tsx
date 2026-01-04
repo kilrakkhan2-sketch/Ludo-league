@@ -7,7 +7,7 @@ import Link from "next/link";
 import { BottomNav } from "@/components/app/bottom-nav";
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Home, Swords as LobbyIcon, Trophy, BarChart, Wallet, ShieldCheck, FileText, Landmark, Shield, Gavel, FileBadge, User, Settings } from "lucide-react";
+import { Home, Swords as LobbyIcon, Trophy, BarChart, Wallet, ShieldCheck, FileText, Landmark, Shield, Gavel, FileBadge, User, Settings, LayoutDashboard } from "lucide-react";
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -68,6 +68,16 @@ const AppSidebarNav = () => {
                     </Link>
                     </SidebarMenuItem>
                 ))}
+                 {isAdmin && (
+                  <SidebarMenuItem>
+                      <Link href="/admin/dashboard">
+                          <SidebarMenuButton className="justify-start bg-yellow-400/10 text-yellow-300 hover:bg-yellow-400/20 hover:text-yellow-200">
+                              <LayoutDashboard className="h-4 w-4" />
+                              Admin Panel
+                          </SidebarMenuButton>
+                      </Link>
+                  </SidebarMenuItem>
+                )}
             </SidebarMenu>
             <div className="mt-auto">
                 <div className="p-2">
@@ -84,16 +94,6 @@ const AppSidebarNav = () => {
                         </Link>
                         </SidebarMenuItem>
                     ))}
-                    {isAdmin && (
-                        <SidebarMenuItem>
-                            <Link href="/admin/dashboard">
-                                <SidebarMenuButton className="justify-start text-yellow-300 hover:bg-yellow-400/20 hover:text-yellow-200">
-                                    <FileText className="h-4 w-4" />
-                                    Admin Panel
-                                </SidebarMenuButton>
-                            </Link>
-                        </SidebarMenuItem>
-                    )}
                 </SidebarMenu>
             </div>
         </div>

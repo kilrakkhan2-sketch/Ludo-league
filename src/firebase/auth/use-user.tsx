@@ -39,9 +39,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setUser(user);
       if (user) {
         const tokenResult = await user.getIdTokenResult();
-        setIsAdmin(tokenResult.claims.isAdmin === true);
+        // Check both claims and Firestore profile for admin status
+        const claimsIsAdmin = tokenResult.claims.isAdmin === true;
+        // User profile check will be handled in the other useEffect
+        setIsAdmin(claimsIsAdmin); 
       } else {
         setIsAdmin(false);
+        setUserProfile(null);
       }
       setLoading(false);
     });
@@ -51,20 +55,31 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (user && firestore) {
+      setLoading(true);
       const userProfileRef = doc(firestore, 'users', user.uid);
       const unsubscribe = onSnapshot(userProfileRef, (doc) => {
         if (doc.exists()) {
-          setUserProfile(doc.data());
+          const profileData = doc.data();
+          setUserProfile(profileData);
+          // Also check for admin status from the firestore document
+          if (profileData.isAdmin === true) {
+            setIsAdmin(true);
+          }
         } else {
           setUserProfile(null);
         }
+        setLoading(false);
       }, (error) => {
           console.error("Error listening to user profile:", error);
           setUserProfile(null);
+          setLoading(false);
       });
       return () => unsubscribe();
     } else {
       setUserProfile(null);
+      if (!user) {
+        setLoading(false);
+      }
     }
   }, [user, firestore]);
 
