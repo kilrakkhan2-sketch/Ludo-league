@@ -109,7 +109,8 @@ export default function AdminTournamentsPage() {
             prizePool: (formState.entryFee || 0) * (formState.totalSlots || 0),
             createdBy: user.uid,
             createdAt: serverTimestamp(),
-            startTime: formState.startTime ? new Date(formState.startTime as any) : serverTimestamp(), // Convert to date object
+            startTime: new Date(formState.startTime as any),
+            endTime: new Date(formState.endTime as any),
         });
         toast({ title: 'Tournament Created Successfully', variant: 'default', className: 'bg-green-100 text-green-800'});
         // Reset form if needed
@@ -137,9 +138,9 @@ export default function AdminTournamentsPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Entry Fee</TableHead>
+                  <TableHead>Start Time</TableHead>
+                  <TableHead>End Time</TableHead>
                   <TableHead>Slots</TableHead>
-                  <TableHead>Prize Pool</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -157,9 +158,9 @@ export default function AdminTournamentsPage() {
                                 'bg-gray-500 text-white': t.status === 'cancelled',
                             })}>{t.status}</Badge>
                         </TableCell>
-                        <TableCell>₹{t.entryFee}</TableCell>
+                        <TableCell>{t.startTime?.toDate().toLocaleString()}</TableCell>
+                        <TableCell>{t.endTime?.toDate().toLocaleString()}</TableCell>
                         <TableCell>{t.filledSlots}/{t.totalSlots}</TableCell>
-                        <TableCell>₹{t.prizePool.toLocaleString()}</TableCell>
                         <TableCell className="text-right">
                            <AlertDialog>
                               <AlertDialogTrigger asChild>
@@ -213,6 +214,10 @@ export default function AdminTournamentsPage() {
                 <div className="space-y-2">
                     <Label htmlFor="startTime">Start Time</Label>
                     <Input id="startTime" name="startTime" type="datetime-local" onChange={handleInputChange} required />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="endTime">End Time</Label>
+                    <Input id="endTime" name="endTime" type="datetime-local" onChange={handleInputChange} required />
                 </div>
                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">

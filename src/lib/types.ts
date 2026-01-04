@@ -1,3 +1,4 @@
+
 import type { Timestamp } from "firebase/firestore";
 
 export type UserProfile = {
@@ -117,6 +118,7 @@ export type Tournament = {
   filledSlots: number;
   prizePool: number;
   startTime: Timestamp;
+  endTime: Timestamp;
   status: 'upcoming' | 'live' | 'completed' | 'cancelled';
   commissionType: 'percentage' | 'fixed';
   commissionValue: number;
@@ -125,4 +127,20 @@ export type Tournament = {
   createdBy: string;
 };
 
-    
+export const getTournamentStatus = (tournament: Tournament): Tournament['status'] => {
+    const now = new Date();
+    const startTime = tournament.startTime.toDate();
+    const endTime = tournament.endTime.toDate();
+
+    if (tournament.status === 'cancelled' || tournament.status === 'completed') {
+        return tournament.status;
+    }
+
+    if (now < startTime) {
+        return 'upcoming';
+    } else if (now >= startTime && now < endTime) {
+        return 'live';
+    } else {
+        return 'completed';
+    }
+};
