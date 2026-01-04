@@ -109,7 +109,7 @@ export default function AdminTournamentsPage() {
             prizePool: (formState.entryFee || 0) * (formState.totalSlots || 0),
             createdBy: user.uid,
             createdAt: serverTimestamp(),
-            startTime: new Date(formState.startTime as any), // Convert to date object
+            startTime: formState.startTime ? new Date(formState.startTime as any) : serverTimestamp(), // Convert to date object
         });
         toast({ title: 'Tournament Created Successfully', variant: 'default', className: 'bg-green-100 text-green-800'});
         // Reset form if needed
@@ -257,5 +257,3 @@ export default function AdminTournamentsPage() {
     </div>
   );
 }
-
-    

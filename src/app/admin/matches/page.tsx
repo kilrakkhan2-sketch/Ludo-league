@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from 'next/image';
@@ -410,11 +411,11 @@ function AdminMatchesPageContent() {
     allMatches.filter((match) => match.status === status);
 
   const MatchTable = ({
-    status,
+    matches,
     title,
     description,
   }: {
-    status: Match['status'];
+    matches: Match[],
     title: string;
     description: string;
   }) => (
@@ -448,7 +449,7 @@ function AdminMatchesPageContent() {
               </TableRow>
             )}
             {!loading &&
-              matchesByStatus(status).map((match) => (
+              matches.map((match) => (
                 <TableRow key={match.id}>
                   <TableCell className="font-mono text-xs">{match.id}</TableCell>
                   <TableCell>₹{match.prizePool}</TableCell>
@@ -486,13 +487,13 @@ function AdminMatchesPageContent() {
                   </TableCell>
                 </TableRow>
               ))}
-            {!loading && matchesByStatus(status).length === 0 && (
+            {!loading && matches.length === 0 && (
               <TableRow>
                 <TableCell
                   colSpan={5}
                   className="text-center text-muted-foreground py-8"
                 >
-                  No {status} matches found.
+                  No {matchesByStatus.length > 0 && matches[0].status} matches found.
                 </TableCell>
               </TableRow>
             )}
@@ -525,16 +526,16 @@ function AdminMatchesPageContent() {
           <TabsTrigger value="waiting">Waiting</TabsTrigger>
         </TabsList>
         <TabsContent value="disputed" className="mt-4">
-          <MatchTable status="disputed" title="Disputed Matches" description="Matches where player submissions conflict. Manual review required."/>
+          <MatchTable matches={matchesByStatus('disputed')} title="Disputed Matches" description="Matches where player submissions conflict. Manual review required."/>
         </TabsContent>
         <TabsContent value="in-progress" className="mt-4">
-          <MatchTable status="in-progress" title="In-Progress Matches" description="Matches that have started but results are not yet fully submitted."/>
+          <MatchTable matches={matchesByStatus('in-progress')} title="In-Progress Matches" description="Matches that have started but results are not yet fully submitted."/>
         </TabsContent>
         <TabsContent value="completed" className="mt-4">
-          <MatchTable status="completed" title="Completed Matches" description="Matches that have finished and are awaiting prize distribution or are finalized."/>
+          <MatchTable matches={matchesByStatus('completed')} title="Completed Matches" description="Matches that have finished and are awaiting prize distribution or are finalized."/>
         </TabsContent>
         <TabsContent value="waiting" className="mt-4">
-          <MatchTable status="waiting" title="Waiting Matches" description="Matches waiting for more players to join." />
+          <MatchTable matches={matchesByStatus('waiting')} title="Waiting Matches" description="Matches waiting for more players to join." />
         </TabsContent>
       </Tabs>
     </>

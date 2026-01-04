@@ -9,11 +9,13 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-        return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
 
     match /users/{userId} {
-      allow read;
+      // Allow any authenticated user to read any user's profile
+      allow read: if request.auth != null;
+      // Allow a user to write to their own document, or an admin to write to any
       allow write: if isOwner(userId) || isAdmin();
     }
     

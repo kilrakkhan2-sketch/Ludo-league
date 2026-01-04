@@ -1,3 +1,4 @@
+
 'use client';
 import Image from "next/image";
 import { SubmitResultForm } from "@/components/app/submit-result-form";
@@ -9,14 +10,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useFirestore } from "@/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
-import { useEffect, useState, use } from "react";
+import { useEffect, useState } from "react";
 import type { Match } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
+import { useParams } from "next/navigation";
 
 
-export default function MatchPage({ params }: { params: { id: string } }) {
-  const { id } = use(params);
+export default function MatchPage() {
+  const params = useParams();
+  const id = params.id as string;
   const firestore = useFirestore();
   const [match, setMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(true);

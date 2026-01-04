@@ -3,14 +3,37 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Admin check using custom claims
-    function isAdmin() {
-      return request.auth != null && request.auth.token.admin == true;
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
     }
 
-    // Allow admin full access
+    function isAdmin() {
+      // Check for admin status in Firestore, not custom claims
+      return request.auth != null && get(/databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Admins have full access to all files for management purposes.
     match /{allPaths=**} {
-      allow read, write, delete: if isAdmin();
+      allow read, write: if isAdmin();
+    }
+
+    // KYC Documents: Users can only write to their own KYC folder. Only admins can read.
+    match /kyc/{userId}/{fileName} {
+      allow write: if isOwner(userId);
+      allow read: if isAdmin();
+    }
+    
+    // Deposit Screenshots: Users can only write to their own deposits folder. Only admins can read.
+    match /deposits/{userId}/{fileName} {
+      allow write: if isOwner(userId);
+      allow read: if isAdmin();
+    }
+
+    // Match Result Screenshots: Users can only write their own result screenshots. Authenticated users can read.
+    match /match-results/{matchId}/{userId}_{timestamp}.jpg {
+      allow write: if isOwner(userId);
+      allow read: if request.auth != null;
     }
   }
 }
