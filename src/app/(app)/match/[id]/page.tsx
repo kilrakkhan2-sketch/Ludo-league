@@ -5,24 +5,27 @@ import { SubmitResultForm } from "@/components/app/submit-result-form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Copy, Crown, ShieldCheck, Swords, Users, Wallet, Loader2, Info } from "lucide-react";
+import { Copy, Crown, ShieldCheck, Swords, Users, Wallet, Loader2, Info, Trash2, LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useFirestore } from "@/firebase";
-import { doc, onSnapshot } from "firebase/firestore";
+import { useFirestore, useUser } from "@/firebase";
+import { doc, onSnapshot, runTransaction, collection, writeBatch, Timestamp, arrayRemove, deleteDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import type { Match } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 
 export default function MatchPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
+  const { user } = useUser();
   const firestore = useFirestore();
   const [match, setMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -52,6 +55,85 @@ export default function MatchPage() {
     }
   };
 
+  const handleDeleteMatch = async () => {
+      if (!firestore || !user || !match || user.uid !== match.creatorId || match.status !== 'waiting') return;
+      setIsActionLoading(true);
+      try {
+          const batch = writeBatch(firestore);
+          const matchRef = doc(firestore, 'matches', match.id);
+
+          // Refund all players
+          for (const playerId of match.playerIds) {
+              const userRef = doc(firestore, 'users', playerId);
+              const transactionRef = doc(collection(firestore, 'transactions'));
+              
+              batch.update(userRef, { walletBalance: (match.players.find(p => p.id === playerId) as any)?.walletBalance + match.entryFee });
+              
+              batch.set(transactionRef, {
+                  userId: playerId,
+                  type: "refund",
+                  amount: match.entryFee,
+                  status: "completed",
+                  createdAt: Timestamp.now(),
+                  relatedMatchId: match.id,
+                  description: `Refund for deleted match ${match.id}`
+              });
+          }
+
+          batch.delete(matchRef);
+          await batch.commit();
+          
+          toast({ title: "Match Deleted", description: "All players have been refunded." });
+          router.push('/lobby');
+
+      } catch (error: any) {
+          toast({ title: "Error deleting match", description: error.message, variant: "destructive" });
+          setIsActionLoading(false);
+      }
+  };
+  
+   const handleLeaveMatch = async () => {
+    if (!firestore || !user || !match || user.uid === match.creatorId || match.status !== 'waiting') return;
+    setIsActionLoading(true);
+
+    try {
+        const matchRef = doc(firestore, 'matches', match.id);
+        const userRef = doc(firestore, 'users', user.uid);
+        
+        await runTransaction(firestore, async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists()) throw new Error("User not found");
+
+            const newBalance = (userDoc.data().walletBalance || 0) + match.entryFee;
+            transaction.update(userRef, { walletBalance: newBalance });
+
+            const playerToRemove = match.players.find(p => p.id === user.uid);
+            transaction.update(matchRef, {
+                playerIds: arrayRemove(user.uid),
+                players: arrayRemove(playerToRemove)
+            });
+
+            const transactionRef = doc(collection(firestore, 'transactions'));
+            transaction.set(transactionRef, {
+                userId: user.uid,
+                type: 'refund',
+                amount: match.entryFee,
+                status: 'completed',
+                createdAt: Timestamp.now(),
+                relatedMatchId: match.id,
+                description: `Left match ${match.id}`,
+            });
+        });
+        toast({ title: "You have left the match", description: "Your entry fee has been refunded." });
+        router.push('/lobby');
+
+    } catch (error: any) {
+        toast({ title: "Error leaving match", description: error.message, variant: "destructive" });
+        setIsActionLoading(false);
+    }
+  };
+
+
   if (loading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
   }
@@ -67,6 +149,9 @@ export default function MatchPage() {
   }
 
   const showSubmitForm = !match.winnerId || !match.prizeDistributed;
+  const isCreator = user?.uid === match.creatorId;
+  const isJoiner = user && match.playerIds.includes(user.uid) && !isCreator;
+
 
   return (
     <>
@@ -131,6 +216,22 @@ export default function MatchPage() {
                         <span className="font-semibold">{match.playerIds.length} / {match.maxPlayers}</span>
                     </div>
                 </CardContent>
+                 {match.status === 'waiting' && (
+                    <CardContent>
+                        {isCreator && (
+                            <Button variant="destructive" className="w-full" onClick={handleDeleteMatch} disabled={isActionLoading}>
+                                {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                                Delete Match
+                            </Button>
+                        )}
+                        {isJoiner && (
+                            <Button variant="destructive" className="w-full" onClick={handleLeaveMatch} disabled={isActionLoading}>
+                                 {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+                                Leave Match
+                            </Button>
+                        )}
+                    </CardContent>
+                )}
             </Card>
 
             <Card>

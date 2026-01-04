@@ -26,7 +26,7 @@ import { addDoc, collection, doc, runTransaction, serverTimestamp, Timestamp } f
 import { Loader2, PlusCircle } from "lucide-react"
 import { useState } from "react"
 
-export function CreateMatchDialog() {
+export function CreateMatchDialog({ canCreate }: { canCreate: boolean }) {
     const { user, userProfile } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -36,6 +36,11 @@ export function CreateMatchDialog() {
     const [maxPlayers, setMaxPlayers] = useState("4");
 
     const handleCreateMatch = async () => {
+        if (!canCreate) {
+             toast({ title: "Active match limit reached", description: "You cannot create a new match while you have 3 active matches.", variant: "destructive" });
+             return;
+        }
+
         if (!user || !firestore || !userProfile) {
             toast({ title: "Please login to create a match.", variant: "destructive" });
             return;
@@ -108,7 +113,7 @@ export function CreateMatchDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="h-8 gap-1 bg-accent hover:bg-accent/90 text-accent-foreground">
+        <Button size="sm" className="h-8 gap-1 bg-accent hover:bg-accent/90 text-accent-foreground" disabled={!canCreate}>
           <PlusCircle className="h-3.5 w-3.5" />
           <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
             Create Match
@@ -145,7 +150,7 @@ export function CreateMatchDialog() {
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={handleCreateMatch} variant="accent" disabled={isCreating}>
+          <Button onClick={handleCreateMatch} variant="accent" disabled={isCreating || !canCreate}>
             {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Create Match
           </Button>

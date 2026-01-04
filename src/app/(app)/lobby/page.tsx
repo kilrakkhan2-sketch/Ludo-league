@@ -5,19 +5,20 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Swords, Users, Star, History, Loader2 } from "lucide-react";
+import { Swords, Users, Star, History, Loader2, Info } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore } from "@/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion, runTransaction, Timestamp } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion, runTransaction, Timestamp, arrayRemove } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { CreateMatchDialog } from "@/components/app/create-match-dialog";
 import { useToast } from "@/hooks/use-toast";
 import type { Match } from "@/lib/types";
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-lobby');
 
-const MatchCard = ({ match }: { match: Match }) => {
+const MatchCard = ({ match, canJoinMatch }: { match: Match; canJoinMatch: boolean }) => {
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -96,7 +97,7 @@ const MatchCard = ({ match }: { match: Match }) => {
         }
     };
     
-    const canJoin = match.status === 'waiting' && !match.playerIds.includes(user?.uid || '');
+    const canJoin = match.status === 'waiting' && !match.playerIds.includes(user?.uid || '') && canJoinMatch;
     const canView = match.playerIds.includes(user?.uid || '');
 
     return (
@@ -165,6 +166,7 @@ export default function LobbyPage() {
   const [myMatches, setMyMatches] = useState<Match[]>([]);
   const [openMatches, setOpenMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeMatchCount, setActiveMatchCount] = useState(0);
 
   useEffect(() => {
     if (!firestore || !user) return;
@@ -173,11 +175,16 @@ export default function LobbyPage() {
 
     const matchesRef = collection(firestore, "matches");
     
-    // My Matches
-    const myMatchesQuery = query(matchesRef, where("playerIds", "array-contains", user.uid));
-    const unsubscribeMyMatches = onSnapshot(myMatchesQuery, (snapshot) => {
+    // All matches involving the user to calculate active count
+    const allUserMatchesQuery = query(
+        matchesRef,
+        where("playerIds", "array-contains", user.uid)
+    );
+    const unsubscribeAllUserMatches = onSnapshot(allUserMatchesQuery, (snapshot) => {
         const matchesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
-        setMyMatches(matchesData);
+        const activeMatches = matchesData.filter(m => m.status === 'waiting' || m.status === 'in-progress');
+        setActiveMatchCount(activeMatches.length);
+        setMyMatches(matchesData); // This will include all statuses
         setLoading(false);
     });
 
@@ -192,10 +199,12 @@ export default function LobbyPage() {
     });
 
     return () => {
-        unsubscribeMyMatches();
+        unsubscribeAllUserMatches();
         unsubscribeOpenMatches();
     }
   }, [firestore, user]);
+
+  const canCreateOrJoin = activeMatchCount < 3;
 
 
   return (
@@ -211,8 +220,17 @@ export default function LobbyPage() {
             </div>
         )}
       <div className="flex items-center justify-end space-x-2">
-          <CreateMatchDialog />
+          <CreateMatchDialog canCreate={canCreateOrJoin} />
       </div>
+
+       {!canCreateOrJoin && (
+            <Alert variant="destructive">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Active Match Limit Reached</AlertTitle>
+                <AlertDescription>You can have a maximum of 3 active matches (waiting or in-progress). Complete an existing match to create or join a new one.</AlertDescription>
+            </Alert>
+        )}
+
       <div className="flex flex-col gap-8">
         
         {myMatches.length > 0 && (
@@ -222,7 +240,7 @@ export default function LobbyPage() {
                 </h3>
                 <div className="flex flex-col gap-4">
                     {myMatches.map((match) => (
-                        <MatchCard key={match.id} match={match} />
+                        <MatchCard key={match.id} match={match} canJoinMatch={canCreateOrJoin} />
                     ))}
                 </div>
             </section>
@@ -239,7 +257,7 @@ export default function LobbyPage() {
             ) : openMatches.length > 0 ? (
                 <div className="flex flex-col gap-4">
                     {openMatches.map((match) => (
-                       <MatchCard key={match.id} match={match} />
+                       <MatchCard key={match.id} match={match} canJoinMatch={canCreateOrJoin} />
                     ))}
                 </div>
             ) : (
