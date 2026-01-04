@@ -128,12 +128,12 @@ export default function DashboardPage() {
             <CarouselItem key={index}>
               <Card className="overflow-hidden">
                 <CardContent className="p-0">
-                  <div className="relative aspect-[16/9] w-full">
+                  <div className="relative aspect-[2/1] w-full">
                     <Image
                       src={image.src}
                       alt={image.alt}
                       fill
-                      className="object-contain"
+                      className="object-cover"
                     />
                   </div>
                 </CardContent>
