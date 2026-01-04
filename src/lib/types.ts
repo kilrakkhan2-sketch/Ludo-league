@@ -14,6 +14,10 @@ export type UserProfile = {
   deviceId?: string;
   totalMatchesPlayed?: number;
   totalMatchesWon?: number;
+  isBlocked?: boolean;
+  isSuspended?: boolean;
+  isWalletFrozen?: boolean;
+  isAdmin?: boolean;
 };
 
 export type PlayerInfo = {
@@ -114,4 +118,11 @@ export type Tournament = {
   prizePool: number;
   startTime: Timestamp;
   status: 'upcoming' | 'live' | 'completed' | 'cancelled';
+  commissionType: 'percentage' | 'fixed';
+  commissionValue: number;
+  rules: string;
+  playerIds: string[];
+  createdBy: string;
 };
+
+    
