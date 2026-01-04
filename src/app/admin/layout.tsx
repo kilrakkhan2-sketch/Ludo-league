@@ -28,6 +28,7 @@ import {
   FolderKanban,
   AtSign,
   Gift,
+  Newspaper
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger, SheetClose } from "@/components/ui/sheet"
@@ -52,6 +53,7 @@ const AdminSidebarNav = () => {
     { href: "/admin/kyc-requests", label: "KYC Requests", icon: ShieldCheck },
     { href: "/admin/upi-management", label: "UPI Management", icon: AtSign },
     { href: "/admin/referral-settings", label: "Referral Settings", icon: Gift },
+    { href: "/admin/news-management", label: "News Management", icon: Newspaper },
     { href: "/admin/storage", label: "Storage", icon: FolderKanban },
   ]
   return (
@@ -92,6 +94,7 @@ export default function AdminLayout({
         { href: "/admin/kyc-requests", label: "KYC Requests", icon: ShieldCheck },
         { href: "/admin/upi-management", label: "UPI Management", icon: AtSign },
         { href: "/admin/referral-settings", label: "Referral Settings", icon: Gift },
+        { href: "/admin/news-management", label: "News Management", icon: Newspaper },
         { href: "/admin/storage", label: "Storage", icon: FolderKanban },
     ]
 

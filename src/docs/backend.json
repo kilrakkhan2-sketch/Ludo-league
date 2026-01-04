@@ -1,0 +1,399 @@
+
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the application",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The user's unique ID"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name"
+        },
+        "photoURL": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the user's profile picture"
+        },
+        "phoneNumber": {
+            "type": "string",
+            "description": "The user's phone number"
+        }
+      },
+      "required": ["uid"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Extends the base user with app-specific details",
+      "type": "object-extend",
+      "properties": {
+        "walletBalance": {
+          "type": "number",
+          "description": "The user's wallet balance"
+        },
+        "kycStatus": {
+          "type": "string",
+          "description": "The user's KYC status",
+          "enum": ["not_submitted", "pending", "approved", "rejected"]
+        },
+        "warningCounter": {
+          "type": "number",
+          "description": "Number of warnings issued to the user"
+        },
+        "adminNotes": {
+          "type": "string",
+          "description": "Private notes from admins about the user"
+        },
+        "isBlocked": {
+          "type": "boolean",
+          "description": "Whether the user is permanently banned."
+        },
+        "isSuspended": {
+          "type": "boolean",
+          "description": "Whether the user is temporarily suspended."
+        },
+        "isWalletFrozen": {
+          "type": "boolean",
+          "description": "Whether the user's wallet is frozen for transactions."
+        },
+        "joinedTournamentIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of tournament IDs the user has joined."
+        },
+        "totalMatchesPlayed": {
+            "type": "number",
+            "description": "Total matches played by the user."
+        },
+        "totalMatchesWon": {
+            "type": "number",
+            "description": "Total matches won by the user."
+        },
+        "winRate": {
+            "type": "number",
+            "description": "User's win rate in percentage."
+        },
+        "referralCode": {
+            "type": "string",
+            "description": "The user's unique referral code."
+        },
+        "referredBy": {
+            "type": "string",
+            "description": "The UID of the user who referred this user."
+        }
+      }
+    },
+    "Admin": {
+        "title": "Admin",
+        "description": "An administrator with elevated privileges",
+        "type": "object-extend"
+    },
+    "KycApplication": {
+      "title": "KYC Application",
+      "description": "Stores a user's KYC submission details.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who submitted the application."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected"],
+          "description": "The current status of the KYC application."
+        },
+        "submittedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of when the application was submitted."
+        },
+        "reviewedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of when the application was reviewed."
+        },
+        "rejectionReason": {
+          "type": "string",
+          "description": "Reason for rejection, if applicable."
+        },
+        "aadhaarPanUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the uploaded Aadhaar/PAN card image."
+        },
+        "selfieUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the uploaded selfie image."
+        },
+        "bankDetails": {
+          "type": "string",
+          "description": "User's bank account information (name, account number, IFSC)."
+        },
+        "upiId": {
+            "type": "string",
+            "description": "User's UPI ID."
+        }
+      },
+      "required": [
+        "userId",
+        "status",
+        "submittedAt",
+        "aadhaarPanUrl",
+        "selfieUrl"
+      ]
+    },
+    "Match": {
+        "title": "Match",
+        "description": "Represents a Ludo match instance.",
+        "type": "object",
+        "properties": {
+            "creatorId": {"type": "string", "description": "User ID of the match creator."},
+            "entryFee": {"type": "number", "description": "Entry fee per player."},
+            "prizePool": {"type": "number", "description": "Total prize pool."},
+            "maxPlayers": {"type": "number", "enum": [2, 4]},
+            "playerIds": {"type": "array", "items": {"type": "string"}},
+            "status": {"type": "string", "enum": ["waiting", "in-progress", "completed", "disputed", "cancelled"]},
+            "roomCode": {"type": "string", "description": "Ludo King room code provided by the creator."},
+            "createdAt": {"type": "string", "format": "date-time"},
+            "winnerId": {"type": "string", "description": "User ID of the declared winner."},
+            "prizeDistributed": {"type": "boolean", "description": "Whether the prize has been distributed."}
+        },
+        "required": ["creatorId", "entryFee", "prizePool", "maxPlayers", "playerIds", "status", "createdAt"]
+    },
+    "MatchResult": {
+        "title": "Match Result",
+        "description": "A player's result submission for a match.",
+        "type": "object",
+        "properties": {
+            "userId": {"type": "string"},
+            "position": {"type": "number", "description": "Claimed position (1-4)."},
+            "status": {"type": "string", "enum": ["win", "loss"], "description": "Claimed status."},
+            "screenshotUrl": {"type": "string", "format": "uri"},
+            "screenshotHash": {"type": "string", "description": "Hash of the screenshot to detect duplicates."},
+            "submittedAt": {"type": "string", "format": "date-time"}
+        },
+        "required": ["userId", "position", "status", "screenshotUrl", "submittedAt"]
+    },
+    "Transaction": {
+        "title": "Transaction",
+        "description": "Represents a wallet transaction.",
+        "type": "object",
+        "properties": {
+            "userId": {"type": "string"},
+            "type": {"type": "string", "enum": ["deposit", "withdrawal", "entry-fee", "winnings", "refund", "tournament-fee", "referral-bonus"]},
+            "amount": {"type": "number", "description": "Positive for credit, negative for debit."},
+            "status": {"type": "string", "enum": ["completed", "pending", "rejected"]},
+            "createdAt": {"type": "string", "format": "date-time"},
+            "relatedMatchId": {"type": "string", "description": "ID of the match, if applicable."},
+            "relatedTournamentId": {"type": "string", "description": "ID of the tournament, if applicable."},
+            "description": {"type": "string"}
+        },
+        "required": ["userId", "type", "amount", "status", "createdAt"]
+    },
+    "DepositRequest": {
+        "title": "Deposit Request",
+        "description": "A user's request to deposit funds.",
+        "type": "object",
+        "properties": {
+            "userId": {"type": "string"},
+            "amount": {"type": "number"},
+            "utr": {"type": "string"},
+            "screenshotUrl": {"type": "string", "format": "uri"},
+            "status": {"type": "string", "enum": ["pending", "approved", "rejected"]},
+            "rejectionReason": {"type": "string"},
+            "createdAt": {"type": "string", "format": "date-time"},
+            "reviewedBy": {"type": "string", "description": "Admin user ID."},
+            "reviewedAt": {"type": "string", "format": "date-time"}
+        },
+        "required": ["userId", "amount", "utr", "screenshotUrl", "status", "createdAt"]
+    },
+    "WithdrawalRequest": {
+        "title": "Withdrawal Request",
+        "description": "A user's request to withdraw funds.",
+        "type": "object",
+        "properties": {
+            "userId": {"type": "string"},
+            "amount": {"type": "number"},
+            "status": {"type": "string", "enum": ["pending", "approved", "rejected"]},
+            "rejectionReason": {"type": "string"},
+            "createdAt": {"type": "string", "format": "date-time"},
+            "reviewedBy": {"type": "string", "description": "Admin user ID."},
+            "reviewedAt": {"type": "string", "format": "date-time"},
+            "transactionReference": {"type": "string", "description": "Reference for the completed withdrawal transaction."}
+        },
+        "required": ["userId", "amount", "status", "createdAt"]
+    },
+    "AdminLog": {
+      "title": "Admin Log",
+      "description": "Logs important actions performed by administrators.",
+      "type": "object",
+      "properties": {
+        "adminId": {"type": "string"},
+        "action": {"type": "string", "description": "e.g., 'approve_kyc', 'reject_deposit', 'ban_user'"},
+        "targetUserId": {"type": "string"},
+        "targetEntityId": {"type": "string", "description": "e.g., matchId, depositId"},
+        "timestamp": {"type": "string", "format": "date-time"},
+        "notes": {"type": "string", "description": "Details or reasons for the action."}
+      },
+      "required": ["adminId", "action", "timestamp"]
+    },
+    "Tournament": {
+        "title": "Tournament",
+        "description": "Represents a multi-match tournament event.",
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "bannerImageUrl": {"type": "string", "format": "uri"},
+            "entryFee": {"type": "number"},
+            "totalSlots": {"type": "number"},
+            "filledSlots": {"type": "number"},
+            "playerIds": {"type": "array", "items": {"type": "string"}},
+            "commissionType": {"type": "string", "enum": ["percentage", "fixed"]},
+            "commissionValue": {"type": "number"},
+            "prizePool": {"type": "number"},
+            "prizeDistribution": {"type": "object", "description": "Defines how the prize pool is distributed."},
+            "startTime": {"type": "string", "format": "date-time"},
+            "endTime": {"type": "string", "format": "date-time"},
+            "rules": {"type": "string"},
+            "status": {"type": "string", "enum": ["upcoming", "live", "completed", "cancelled", "paused"]},
+            "adminNotes": {"type": "string", "description": "Internal notes for admins."},
+            "createdBy": {"type": "string", "description": "Admin ID who created the tournament."}
+        },
+        "required": ["name", "entryFee", "totalSlots", "filledSlots", "playerIds", "commissionType", "commissionValue", "startTime", "status", "createdBy"]
+    },
+    "UpiConfiguration": {
+        "title": "UPI Configuration",
+        "description": "Stores UPI details for deposits.",
+        "type": "object",
+        "properties": {
+            "activeUpiId": { "type": "string", "description": "The currently active UPI ID for receiving payments." },
+            "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["activeUpiId"]
+    },
+    "ReferralConfiguration": {
+        "title": "Referral Configuration",
+        "description": "Stores referral system settings.",
+        "type": "object",
+        "properties": {
+            "commissionPercentage": { "type": "number", "description": "The commission percentage for referrals." },
+            "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["commissionPercentage"]
+    },
+    "News": {
+        "title": "News",
+        "description": "Stores news and announcements for the app.",
+        "type": "object",
+        "properties": {
+            "title": { "type": "string", "description": "The title of the news item." },
+            "content": { "type": "string", "description": "The main content of the news item." },
+            "authorId": { "type": "string", "description": "The ID of the admin who created the item." },
+            "authorName": { "type": "string", "description": "The name of the admin who created the item." },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["title", "content", "authorId", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": ["email_password", "google", "phone"],
+    "customClaims": [
+      {
+        "name": "isAdmin",
+        "description": "Determines if a user has admin privileges.",
+        "type": "boolean",
+        "defaultValue": false
+      }
+    ]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/backend/entities/UserProfile"
+      },
+      "description": "Stores public user profile information."
+    },
+    "/kycApplications/{applicationId}": {
+      "schema": {
+        "$ref": "#/backend/entities/KycApplication"
+      },
+      "description": "Stores KYC submission documents and status for admin review."
+    },
+    "/matches/{matchId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Match"
+      },
+      "description": "Stores all individual match data."
+    },
+    "/matches/{matchId}/results/{userId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MatchResult"
+      },
+      "description": "Stores individual player result submissions for a match."
+    },
+    "/transactions/{transactionId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Transaction"
+      },
+      "description": "Logs all wallet transactions for all users."
+    },
+    "/depositRequests/{depositId}": {
+      "schema": {
+        "$ref": "#/backend/entities/DepositRequest"
+      },
+      "description": "Pending and historical deposit requests from users."
+    },
+    "/withdrawalRequests/{withdrawalId}": {
+      "schema": {
+        "$ref": "#/backend/entities/WithdrawalRequest"
+      },
+      "description": "Pending and historical withdrawal requests from users."
+    },
+    "/adminLogs/{logId}": {
+        "schema": {
+            "$ref": "#/backend/entities/AdminLog"
+        },
+        "description": "Logs all significant actions taken by administrators for auditing purposes."
+    },
+    "/tournaments/{tournamentId}": {
+        "schema": {
+            "$ref": "#/backend/entities/Tournament"
+        },
+        "description": "Stores all tournament data and configuration."
+    },
+    "/tournaments/{tournamentId}/matches/{matchId}": {
+        "schema": {
+            "$ref": "#/backend/entities/Match"
+        },
+        "description": "Stores all matches that are part of a specific tournament."
+    },
+    "/upiConfiguration/active": {
+        "schema": {
+            "$ref": "#/backend/entities/UpiConfiguration"
+        },
+        "description": "Stores the active UPI configuration for deposits."
+    },
+    "/referralConfiguration/settings": {
+        "schema": {
+            "$ref": "#/backend/entities/ReferralConfiguration"
+        },
+        "description": "Stores the global referral settings."
+    },
+    "/news/{newsId}": {
+        "schema": {
+            "$ref": "#/backend/entities/News"
+        },
+        "description": "Stores news items for the ticker."
+    }
+  }
+}

@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Swords, Trophy, Wallet, BarChart, ShieldCheck } from "lucide-react";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
+import { NewsTicker } from "@/components/app/news-ticker";
 
 const featureCards = [
     {
@@ -112,6 +113,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <NewsTicker />
       <Carousel
         plugins={[plugin.current]}
         className="w-full"

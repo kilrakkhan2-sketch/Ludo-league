@@ -19,6 +19,8 @@ export type UserProfile = {
   isSuspended?: boolean;
   isWalletFrozen?: boolean;
   isAdmin?: boolean;
+  referralCode?: string;
+  referredBy?: string;
 };
 
 export type PlayerInfo = {
@@ -132,6 +134,15 @@ export type UpiConfiguration = {
     updatedAt: Timestamp;
 };
 
+export type News = {
+    id: string;
+    title: string;
+    content: string;
+    authorId: string;
+    authorName: string;
+    createdAt: Timestamp;
+}
+
 export const getTournamentStatus = (tournament: Tournament): Tournament['status'] => {
     const now = new Date();
     const startTime = tournament.startTime.toDate();
@@ -149,5 +160,3 @@ export const getTournamentStatus = (tournament: Tournament): Tournament['status'
         return 'completed';
     }
 };
-
-    
