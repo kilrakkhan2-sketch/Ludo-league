@@ -9,13 +9,12 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { doc, runTransaction, collection, serverTimestamp, getFirestore, writeBatch, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, runTransaction, collection, serverTimestamp, getFirestore, getDoc } from 'firebase/firestore';
 import { getFirebaseApp } from '@/firebase/server'; // Can use this to get firestore instance on server
 import { calculateWinRate } from './calculate-win-rate';
 
 const DistributeWinningsInputSchema = z.object({
   matchId: z.string().describe('The ID of the match to distribute winnings for.'),
-  winnerId: z.string().describe('The ID of the winning user.'),
 });
 export type DistributeWinningsInput = z.infer<typeof DistributeWinningsInputSchema>;
 
@@ -36,39 +35,38 @@ const distributeWinningsFlow = ai.defineFlow(
     inputSchema: DistributeWinningsInputSchema,
     outputSchema: DistributeWinningsOutputSchema,
   },
-  async ({ matchId, winnerId }) => {
+  async ({ matchId }) => {
     // Initialize Firestore on the server-side.
     const firestore = getFirestore(getFirebaseApp());
-
     const matchRef = doc(firestore, 'matches', matchId);
     
     try {
-      const newBalance = await runTransaction(firestore, async (transaction) => {
-        const matchDoc = await transaction.get(matchRef);
-        
+        const matchDoc = await getDoc(matchRef);
         if (!matchDoc.exists()) {
-          throw new Error('Match not found.');
+            throw new Error('Match not found.');
+        }
+        const matchData = matchDoc.data();
+        const winnerId = matchData.winnerId;
+
+        if (!winnerId) {
+            throw new Error('No winner has been declared for this match.');
         }
         
-        const matchData = matchDoc.data();
+      const newBalance = await runTransaction(firestore, async (transaction) => {
+        // We re-fetch the match doc inside the transaction to ensure atomicity
+        const freshMatchDoc = await transaction.get(matchRef);
+        if (!freshMatchDoc.exists()) throw new Error('Match not found.');
+        
+        const freshMatchData = freshMatchDoc.data();
+        if (freshMatchData.status !== 'completed') throw new Error('Winnings can only be distributed for completed matches.');
+        if (freshMatchData.prizeDistributed) throw new Error('Winnings have already been distributed for this match.');
+
         const winnerRef = doc(firestore, 'users', winnerId);
         const winnerDoc = await transaction.get(winnerRef);
-        
-        if (!winnerDoc.exists()) {
-            throw new Error('Winner not found.');
-        }
+        if (!winnerDoc.exists()) throw new Error('Winner not found.');
 
         const winnerData = winnerDoc.data();
-
-        if (matchData.status !== 'completed') {
-            throw new Error('Winnings can only be distributed for completed matches.');
-        }
-
-        if (matchData.prizeDistributed) {
-            throw new Error('Winnings have already been distributed for this match.');
-        }
-
-        const prizePool = matchData.prizePool;
+        const prizePool = freshMatchData.prizePool;
         const commission = prizePool * 0.05; // 5% commission
         const amountToCredit = prizePool - commission;
         
@@ -97,8 +95,8 @@ const distributeWinningsFlow = ai.defineFlow(
       });
 
       // After winnings are distributed, update stats for all players in the match
-      const matchDoc = await getDoc(matchRef);
-      const playerIds = matchDoc.data()?.playerIds || [];
+      const finalMatchDoc = await getDoc(matchRef); // Re-fetch to get latest player list
+      const playerIds = finalMatchDoc.data()?.playerIds || [];
       for (const playerId of playerIds) {
           await calculateWinRate({ userId: playerId });
       }

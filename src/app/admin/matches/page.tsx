@@ -66,7 +66,7 @@ const MatchDetailDialog = ({
   match: initialMatch,
   onUpdate,
   startOpen = false,
-  onOpenChange
+  onOpenChange,
 }: {
   match: Match;
   onUpdate: (updatedMatch: Match) => void;
@@ -162,7 +162,6 @@ const MatchDetailDialog = ({
     try {
       const result = await distributeWinnings({
         matchId: match.id,
-        winnerId: match.winnerId,
       });
       if (result.success) {
         toast({
@@ -412,7 +411,7 @@ function AdminMatchesPageContent() {
     title,
     description,
   }: {
-    matches: Match[],
+    matches: Match[];
     title: string;
     description: string;
   }) => (
@@ -490,7 +489,7 @@ function AdminMatchesPageContent() {
                   colSpan={5}
                   className="text-center text-muted-foreground py-8"
                 >
-                  No {matches.length > 0 && matches[0].status} matches found.
+                  No {title.toLowerCase()} found.
                 </TableCell>
               </TableRow>
             )}
