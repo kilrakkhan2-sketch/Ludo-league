@@ -59,7 +59,11 @@ const featureCards = [
     },
 ];
 
-const bannerImages = PlaceHolderImages.filter(img => img.id.startsWith('banner-'));
+const bannerImages = Array.from({ length: 8 }, (_, i) => ({
+  src: `/banner-${i + 1}.png`,
+  alt: `Promotional banner ${i + 1}`,
+}));
+
 const ludoClassicImage = PlaceHolderImages.find(img => img.id === 'ludo-classic');
 const ludoPopularImage = PlaceHolderImages.find(img => img.id === 'ludo-popular');
 
@@ -126,11 +130,10 @@ export default function DashboardPage() {
                 <CardContent className="p-0">
                   <div className="relative aspect-[16/9] w-full">
                     <Image
-                      src={image.imageUrl}
-                      alt={image.description}
+                      src={image.src}
+                      alt={image.alt}
                       fill
                       className="object-cover"
-                      data-ai-hint={image.imageHint}
                     />
                   </div>
                 </CardContent>
