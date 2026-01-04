@@ -26,6 +26,11 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmail(email, password);
+      toast({
+        variant: "success",
+        title: "Login Successful",
+        description: "Welcome back! Get ready to play.",
+      });
       router.push('/dashboard');
     } catch (error: any) {
       toast({
@@ -41,6 +46,11 @@ export default function LoginPage() {
     setIsGoogleLoading(true);
     try {
       await signInWithGoogle();
+       toast({
+        variant: "success",
+        title: "Login Successful",
+        description: "Welcome! Get ready to play.",
+      });
       router.push('/dashboard');
     } catch (error: any) {
       toast({

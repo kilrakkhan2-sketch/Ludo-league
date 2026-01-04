@@ -27,6 +27,11 @@ export default function RegisterPage() {
     setIsLoading(true);
     try {
       await signUpWithEmail(email, password, name);
+      toast({
+        variant: "success",
+        title: "Account Created Successfully",
+        description: "Welcome to Ludo League! You are now logged in.",
+      });
       router.push('/dashboard');
     } catch (error: any) {
       toast({
@@ -42,6 +47,11 @@ export default function RegisterPage() {
     setIsGoogleLoading(true);
     try {
       await signInWithGoogle();
+      toast({
+        variant: "success",
+        title: "Account Created Successfully",
+        description: "Welcome to Ludo League! You are now logged in.",
+      });
       router.push('/dashboard');
     } catch (error: any) {
       toast({

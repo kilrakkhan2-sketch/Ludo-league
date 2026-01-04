@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -88,7 +89,11 @@ export function CreateMatchDialog() {
                 });
             });
 
-            toast({ title: "Match created successfully!" });
+            toast({ 
+                variant: "success",
+                title: "Match Created Successfully!",
+                description: "Your match is now live in the lobby for others to join."
+            });
             setOpen(false);
 
         } catch (error: any) {
