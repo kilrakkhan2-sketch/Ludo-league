@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table"
 import { CheckCircle2, Eye, XCircle, Loader2 } from "lucide-react"
 import { useFirestore } from "@/firebase"
-import { collection, onSnapshot, query, where, doc, runTransaction, writeBatch, Timestamp, serverTimestamp } from "firebase/firestore"
+import { collection, onSnapshot, query, where, doc, runTransaction, writeBatch, Timestamp, serverTimestamp, orderBy } from "firebase/firestore"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import type { DepositRequest } from "@/lib/types";
