@@ -127,6 +127,11 @@ export type Tournament = {
   createdBy: string;
 };
 
+export type UpiConfiguration = {
+    activeUpiId: string;
+    updatedAt: Timestamp;
+};
+
 export const getTournamentStatus = (tournament: Tournament): Tournament['status'] => {
     const now = new Date();
     const startTime = tournament.startTime.toDate();
@@ -144,3 +149,5 @@ export const getTournamentStatus = (tournament: Tournament): Tournament['status'
         return 'completed';
     }
 };
+
+    

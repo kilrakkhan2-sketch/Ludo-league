@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   Download,
   FolderKanban,
+  AtSign,
 } from "lucide-react"
 import { useState } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger, SheetClose } from "@/components/ui/sheet"
@@ -41,6 +42,7 @@ const AdminSidebarNav = () => {
     { href: "/admin/deposits", label: "Deposits", icon: WalletCards },
     { href: "/admin/withdrawals", label: "Withdrawals", icon: Download },
     { href: "/admin/kyc-requests", label: "KYC Requests", icon: ShieldCheck },
+    { href: "/admin/upi-management", label: "UPI Management", icon: AtSign },
     { href: "/admin/storage", label: "Storage", icon: FolderKanban },
   ]
   return (
@@ -79,6 +81,7 @@ export default function AdminLayout({
         { href: "/admin/deposits", label: "Deposits", icon: WalletCards },
         { href: "/admin/withdrawals", label: "Withdrawals", icon: Download },
         { href: "/admin/kyc-requests", label: "KYC Requests", icon: ShieldCheck },
+        { href: "/admin/upi-management", label: "UPI Management", icon: AtSign },
         { href: "/admin/storage", label: "Storage", icon: FolderKanban },
     ]
 
@@ -150,3 +153,5 @@ export default function AdminLayout({
     </SidebarProvider>
   )
 }
+
+    

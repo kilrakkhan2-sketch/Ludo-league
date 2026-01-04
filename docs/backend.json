@@ -262,6 +262,16 @@
             "createdBy": {"type": "string", "description": "Admin ID who created the tournament."}
         },
         "required": ["name", "entryFee", "totalSlots", "filledSlots", "playerIds", "commissionType", "commissionValue", "startTime", "status", "createdBy"]
+    },
+    "UpiConfiguration": {
+        "title": "UPI Configuration",
+        "description": "Stores UPI details for deposits.",
+        "type": "object",
+        "properties": {
+            "activeUpiId": { "type": "string", "description": "The currently active UPI ID for receiving payments." },
+            "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["activeUpiId"]
     }
   },
   "auth": {
@@ -335,6 +345,14 @@
             "$ref": "#/backend/entities/Match"
         },
         "description": "Stores all matches that are part of a specific tournament."
+    },
+    "/upiConfiguration/active": {
+        "schema": {
+            "$ref": "#/backend/entities/UpiConfiguration"
+        },
+        "description": "Stores the active UPI configuration for deposits."
     }
   }
 }
+
+    

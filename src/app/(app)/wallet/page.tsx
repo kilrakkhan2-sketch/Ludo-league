@@ -18,14 +18,36 @@ import { cn } from "@/lib/utils"
 import { ArrowDownLeft, ArrowUpRight, UploadCloud, DownloadCloud, Landmark, Wallet as WalletIcon, AlertCircle, Loader2 } from "lucide-react"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { useUser, useFirestore } from "@/firebase"
-import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp } from "firebase/firestore"
+import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp, doc } from "firebase/firestore"
 import { useEffect, useState } from "react"
-import type { Transaction } from "@/lib/types"
+import type { Transaction, UpiConfiguration } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage"
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-wallet');
+
+const DynamicQrCode = ({ upiId }: { upiId: string | null }) => {
+  if (!upiId) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 p-4 bg-muted/50 rounded-lg h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+        <p className="text-sm text-center text-muted-foreground">Loading QR Code...</p>
+      </div>
+    );
+  }
+
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=${upiId}&pn=LudoLeague`;
+
+  return (
+    <div className="flex flex-col items-center gap-4 p-4 bg-muted/50 rounded-lg">
+        <p className="text-sm text-center text-muted-foreground">Scan the QR code with your payment app and enter the details below.</p>
+        <Image src={qrUrl} alt="QR Code for payment" width={200} height={200} className="rounded-lg border-2 shadow-md bg-white" data-ai-hint="qr code" />
+        <p className="font-bold text-center text-sm">UPI ID: {upiId}</p>
+    </div>
+  );
+};
+
 
 export default function WalletPage() {
   const { user, userProfile } = useUser();
@@ -37,10 +59,26 @@ export default function WalletPage() {
   const [isDepositing, setIsDepositing] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [depositScreenshot, setDepositScreenshot] = useState<File | null>(null);
-
-  const qrCodeImage = PlaceHolderImages.find(img => img.id === 'qr-code');
+  const [activeUpiId, setActiveUpiId] = useState<string | null>(null);
   
   const balance = userProfile?.walletBalance ?? 0;
+
+  useEffect(() => {
+    if (!firestore) return;
+    const upiConfigRef = doc(firestore, 'upiConfiguration', 'active');
+    const unsubscribeUpi = onSnapshot(upiConfigRef, (doc) => {
+      if (doc.exists()) {
+        const data = doc.data() as UpiConfiguration;
+        setActiveUpiId(data.activeUpiId);
+      } else {
+        console.log("No active UPI configuration found!");
+        setActiveUpiId(null);
+      }
+    });
+
+    return () => unsubscribeUpi();
+  }, [firestore]);
+
 
   useEffect(() => {
     if (!firestore || !user) return;
@@ -80,10 +118,17 @@ export default function WalletPage() {
         toast({ title: "Please fill all fields and upload a screenshot.", variant: "destructive" });
         return;
     }
-    setIsDepositing(true);
+
     const formData = new FormData(e.currentTarget);
-    const utr = formData.get('utr') as string;
     const amount = Number(formData.get('deposit-amount'));
+    
+    if (amount < 100) {
+        toast({ title: "Invalid Amount", description: "Minimum deposit amount is ₹100.", variant: "destructive"});
+        return;
+    }
+
+    setIsDepositing(true);
+    const utr = formData.get('utr') as string;
     
     if(!utr || !amount || amount <= 0) {
         toast({title: "Invalid UTR or Amount.", variant: "destructive"});
@@ -211,13 +256,10 @@ export default function WalletPage() {
                                 Please deposit from a bank account or UPI ID where the name matches your KYC documents. Mismatched names will result in rejection of the deposit.
                             </AlertDescription>
                         </Alert>
-                        <div className="flex flex-col items-center gap-4 p-4 bg-muted/50 rounded-lg">
-                            <p className="text-sm text-center text-muted-foreground">Scan the QR code with your payment app and enter the details below.</p>
-                            {qrCodeImage && <Image src={qrCodeImage.imageUrl} alt="QR Code" width={200} height={200} className="rounded-lg border-2 shadow-md" data-ai-hint={qrCodeImage.imageHint} />}
-                        </div>
+                        <DynamicQrCode upiId={activeUpiId} />
                          <div className="grid gap-2">
-                            <Label htmlFor="deposit-amount">Amount</Label>
-                            <Input id="deposit-amount" name="deposit-amount" type="number" placeholder="Enter deposit amount" required />
+                            <Label htmlFor="deposit-amount">Amount (Min. ₹100)</Label>
+                            <Input id="deposit-amount" name="deposit-amount" type="number" placeholder="Enter deposit amount" required min="100"/>
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="utr">UTR / Transaction ID</Label>
@@ -227,7 +269,7 @@ export default function WalletPage() {
                             <Label htmlFor="screenshot">Payment Screenshot</Label>
                             <Input id="screenshot" name="screenshot" type="file" required className="text-muted-foreground file:text-primary" onChange={(e) => setDepositScreenshot(e.target.files ? e.target.files[0] : null)} />
                         </div>
-                        <Button type="submit" className="w-full" variant="accent" disabled={isDepositing}>
+                        <Button type="submit" className="w-full" variant="accent" disabled={isDepositing || !activeUpiId}>
                             {isDepositing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
                             Submit Deposit
                         </Button>
