@@ -4,130 +4,71 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId;
     }
 
-    function isAdmin() {
-      return request.auth.token.isAdmin == true;
-    }
-    
-    // Checks if the requesting user is a player in the given match document
-    function isPlayer(matchDoc) {
-      return request.auth.uid in matchDoc.data.players;
-    }
-
-    // Matches /users/{userId}
+    // Users can read their own profile, and only update their own profile.
     match /users/{userId} {
-      // Create: Any signed-in user can create their own profile.
-      allow create: if isSignedIn() && isOwner(userId);
-      // Read, Update: Only the owner or an admin can read/update the profile.
-      allow read, update: if isSignedIn() && (isOwner(userId) || isAdmin());
-      // Delete: Disallow client-side deletion.
-      allow delete: if false;
+      allow read;
+      allow write: if isOwner(userId);
     }
-
-    // Matches /kycApplications/{applicationId}
+    
+    // KYC applications can only be read by the user who submitted them or an admin.
+    // Only the user can create their own application.
     match /kycApplications/{applicationId} {
-        // Create, Read, Update: User can manage their own application. applicationId is the same as userId.
-        allow create, read, update: if isSignedIn() && isOwner(applicationId);
-        // Admins can read and write any application for review.
-        allow read, write: if isSignedIn() && isAdmin();
-        // Delete: Disallow client-side deletion.
-        allow delete: if false;
+      allow read: if isOwner(applicationId) || request.auth.token.isAdmin == true;
+      allow create: if isOwner(request.resource.data.userId);
+      allow update: if request.auth.token.isAdmin == true;
     }
     
-    // Matches /matches/{matchId}
     match /matches/{matchId} {
-        // List: All signed-in users can see the list of matches in the lobby.
-        allow list: if isSignedIn();
-        
-        // Get: A user can read a specific match if they are a player in it, or if they are an admin.
-        allow get: if isSignedIn() && (isPlayer(resource) || isAdmin());
-
-        // Create: A user can create a match if they are authenticated and the submitted data is valid.
-        allow create: if isSignedIn()
-                      && request.resource.data.createdBy == request.auth.uid
-                      && request.auth.uid in request.resource.data.players
-                      && request.resource.data.players[request.auth.uid].isCreator == true
-                      && request.resource.data.players.size() == 1
-                      && request.resource.data.status == 'pending';
-
-        // Update: A user can update a match under specific conditions (e.g., joining a match).
-        allow update: if isSignedIn() && (isPlayer(resource) || isAdmin());
-
-        // Delete: Only admins can delete matches.
-        allow delete: if isSignedIn() && isAdmin();
+      // Any authenticated user can view matches.
+      allow read: if request.auth != null;
+      // Anyone can create a match, as long as they are the creator.
+      allow create: if isOwner(request.resource.data.creatorId);
+      // Any authenticated user can join (update) a match. Admins can also update.
+      allow update: if request.auth != null || request.auth.token.isAdmin == true;
     }
 
-    // Matches /matches/{matchId}/results/{userId}
     match /matches/{matchId}/results/{userId} {
-        // Create: A user can submit their own result for a match they are part of.
-        allow create: if isSignedIn() && isOwner(userId) && isPlayer(get(/databases/$(database)/documents/matches/$(matchId)));
-        
-        // Read: Players in the match and admins can read the results.
-        allow read: if isSignedIn() && (isPlayer(get(/databases/$(database)/documents/matches/$(matchId))) || isAdmin());
-
-        // Update, Delete: Admins can manage results if needed for corrections.
-        allow update, delete: if isSignedIn() && isAdmin();
+      // Anyone can read results.
+      allow read: if request.auth != null;
+      // Only the authenticated user can submit their own result.
+      allow create, update: if isOwner(userId);
     }
 
-    // Matches /transactions/{transactionId}
+    // Transactions can be read by the user they belong to or an admin.
+    // Users can only create transactions for themselves.
     match /transactions/{transactionId} {
-        // Read: A user can only read their own transactions. Admins can read all.
-        allow read: if isSignedIn() && (isOwner(resource.data.userId) || isAdmin());
-        // Create: A user can create their own transaction log (e.g. for an entry fee).
-        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-        // Update, Delete: Deny client-side updates/deletes. Should be server-managed.
-        allow update, delete: if false;
+      allow read: if isOwner(get(/databases/$(database)/documents/transactions/$(transactionId)).data.userId) || request.auth.token.isAdmin == true;
+      allow create: if isOwner(request.resource.data.userId);
     }
 
-    // Matches /depositRequests/{depositId}
+    // Users can create their own deposit/withdrawal requests. Admins can update them.
     match /depositRequests/{depositId} {
-        // Create: A user can create their own deposit request.
-        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-        // Read: A user can read their own requests. Admins can read all for review.
-        allow read: if isSignedIn() && (isOwner(resource.data.userId) || isAdmin());
-        // Update, Delete: Only admins can update (approve/reject) or delete requests.
-        allow update, delete: if isSignedIn() && isAdmin();
+      allow create: if isOwner(request.resource.data.userId);
+      allow read, update: if request.auth.token.isAdmin == true;
     }
     
-    // Matches /withdrawalRequests/{withdrawalId}
     match /withdrawalRequests/{withdrawalId} {
-        // Create: A user can create their own withdrawal request.
-        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-        // Read: A user can read their own requests. Admins can read all for review.
-        allow read: if isSignedIn() && (isOwner(resource.data.userId) || isAdmin());
-        // Update, Delete: Only admins can update (approve/reject) or delete requests.
-        allow update, delete: if isSignedIn() && isAdmin();
+       allow create: if isOwner(request.resource.data.userId);
+       allow read, update: if request.auth.token.isAdmin == true;
     }
 
-    // Matches /adminLogs/{logId}
     match /adminLogs/{logId} {
-        // Only admins can read or create logs. No updates/deletes from client.
-        allow read, create: if isSignedIn() && isAdmin();
-        allow update, delete: if false;
+      allow read, create, write: if request.auth.token.isAdmin == true;
+    }
+
+    match /tournaments/{tournamentId} {
+      allow read: if request.auth != null;
+      allow create, write: if request.auth.token.isAdmin == true;
     }
     
-    // Matches /tournaments/{tournamentId}
-    match /tournaments/{tournamentId} {
-        // Read: Any signed-in user can read tournament details.
-        allow read: if isSignedIn();
-        // Create, Update, Delete: Only admins can manage tournaments.
-        allow create, update, delete: if isSignedIn() && isAdmin();
+    match /tournaments/{tournamentId}/matches/{matchId} {
+       allow read: if request.auth != null;
+       allow create, write: if request.auth.token.isAdmin == true;
     }
 
-    // Matches /tournaments/{tournamentId}/matches/{matchId}
-    match /tournaments/{tournamentId}/matches/{matchId} {
-        // Read: Any signed-in user can read tournament match details.
-        allow read: if isSignedIn();
-        // Create, Update, Delete: Only admins can manage tournament matches.
-        allow create, update, delete: if isSignedIn() && isAdmin();
-    }
   }
 }
