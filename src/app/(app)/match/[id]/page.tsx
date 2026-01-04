@@ -9,22 +9,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useFirestore } from "@/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import type { Match } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 
 
 export default function MatchPage({ params }: { params: { id: string } }) {
+  const { id } = use(params);
   const firestore = useFirestore();
   const [match, setMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!firestore || !params.id) return;
+    if (!firestore || !id) return;
     setLoading(true);
-    const matchRef = doc(firestore, 'matches', params.id);
+    const matchRef = doc(firestore, 'matches', id);
     const unsubscribe = onSnapshot(matchRef, (doc) => {
         if(doc.exists()) {
             setMatch({ id: doc.id, ...doc.data() } as Match);
@@ -39,7 +40,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
     });
 
     return () => unsubscribe();
-  }, [firestore, params.id]);
+  }, [firestore, id]);
 
   const handleCopyRoomCode = () => {
     if (match?.roomCode) {
