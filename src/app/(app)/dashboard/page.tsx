@@ -133,7 +133,7 @@ export default function DashboardPage() {
                       src={image.src}
                       alt={image.alt}
                       fill
-                      className="object-cover"
+                      className="object-contain"
                     />
                   </div>
                 </CardContent>
