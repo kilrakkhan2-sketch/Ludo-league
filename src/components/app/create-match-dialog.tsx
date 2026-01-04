@@ -41,6 +41,11 @@ export function CreateMatchDialog({ canCreate }: { canCreate: boolean }) {
              return;
         }
 
+        if (entryFee < 50) {
+            toast({ title: "Invalid Entry Fee", description: "Minimum entry fee is ₹50.", variant: "destructive" });
+            return;
+        }
+
         if (!user || !firestore || !userProfile) {
             toast({ title: "Please login to create a match.", variant: "destructive" });
             return;
@@ -130,9 +135,9 @@ export function CreateMatchDialog({ canCreate }: { canCreate: boolean }) {
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="entry-fee" className="text-right">
-              Entry Fee
+              Entry Fee (Min. 50)
             </Label>
-            <Input id="entry-fee" type="number" value={entryFee} onChange={(e) => setEntryFee(Number(e.target.value))} className="col-span-3" />
+            <Input id="entry-fee" type="number" value={entryFee} onChange={(e) => setEntryFee(Number(e.target.value))} className="col-span-3" min="50"/>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="players" className="text-right">
