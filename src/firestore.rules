@@ -43,13 +43,13 @@ service cloud.firestore {
     }
 
     match /depositRequests/{depositId} {
-      allow read, write: if isAdmin();
       allow create: if isOwner(request.resource.data.userId);
+      allow read, update, write: if isAdmin();
     }
     
     match /withdrawalRequests/{withdrawalId} {
-       allow read, write: if isAdmin();
        allow create: if isOwner(request.resource.data.userId);
+       allow read, update, write: if isAdmin();
     }
 
     match /adminLogs/{logId} {

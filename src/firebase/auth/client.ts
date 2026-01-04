@@ -10,6 +10,7 @@ import {
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   updateProfile,
+  sendPasswordResetEmail,
   type Auth,
 } from 'firebase/auth';
 import { doc, setDoc, getFirestore, serverTimestamp, type Firestore, getDocs, query, where, collection, limit } from 'firebase/firestore';
@@ -106,6 +107,11 @@ export async function signInWithGoogle() {
   }, { merge: true });
 
   return user;
+}
+
+export async function sendPasswordReset(email: string) {
+  const auth = getFirebaseAuth();
+  return sendPasswordResetEmail(auth, email);
 }
 
 

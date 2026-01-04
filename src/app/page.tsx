@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Swords, Loader2, Zap, ShieldCheck, LifeBuoy } from "lucide-react";
+import { Swords, Loader2, Zap, ShieldCheck, LifeBuoy, Mail } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { signInWithEmail, signInWithGoogle } from "@/firebase/auth/client";
+import { signInWithEmail, signInWithGoogle, sendPasswordReset } from "@/firebase/auth/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 
 
 export default function LoginPage() {
@@ -20,6 +21,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isResetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +65,24 @@ export default function LoginPage() {
       setIsGoogleLoading(false);
     }
   };
+
+  const handlePasswordReset = async () => {
+    if (!resetEmail) {
+      toast({ title: 'Please enter your email.', variant: 'destructive'});
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await sendPasswordReset(resetEmail);
+      toast({ title: 'Password Reset Email Sent', description: 'Please check your inbox to reset your password.'});
+      setResetDialogOpen(false);
+      setResetEmail('');
+    } catch(error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive'});
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   const marketingFeatures = [
     {
@@ -124,9 +146,9 @@ export default function LoginPage() {
                   <div className="space-y-2">
                     <div className="flex items-center">
                       <Label htmlFor="password">Password</Label>
-                      <Link href="#" className="ml-auto inline-block text-sm underline">
+                      <button type="button" onClick={() => setResetDialogOpen(true)} className="ml-auto inline-block text-sm underline">
                         Forgot your password?
-                      </Link>
+                      </button>
                     </div>
                     <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
                   </div>
@@ -150,6 +172,40 @@ export default function LoginPage() {
           </form>
         </div>
       </div>
+       <Dialog open={isResetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              Enter your email address and we will send you a link to reset your password.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="reset-email" className="text-right">
+                Email
+              </Label>
+              <Input
+                id="reset-email"
+                type="email"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                className="col-span-3"
+                placeholder="you@example.com"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+                <Button type="button" variant="secondary">Cancel</Button>
+            </DialogClose>
+            <Button type="button" onClick={handlePasswordReset} disabled={isLoading}>
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+                Send Reset Link
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

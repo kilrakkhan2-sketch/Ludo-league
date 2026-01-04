@@ -108,10 +108,7 @@ const MatchDetailDialog = ({
     onOpenChange?.(open);
   }
 
-  const winnerResult = results.find((r) => r.status === 'win');
-  const winnerPlayer = winnerResult
-    ? match.players.find((p) => p.id === winnerResult.userId)
-    : null;
+  const winnerPlayer = match.winnerId ? match.players.find((p) => p.id === match.winnerId) : null;
 
   const handleDeclareWinner = async (winnerId: string) => {
     if (!firestore) return;
@@ -224,8 +221,8 @@ const MatchDetailDialog = ({
             >
               {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
             </span>
-            {match.winnerId &&
-              ` | Winner: ${match.players.find(p => p.id === match.winnerId)?.name}`}
+            {winnerPlayer &&
+              ` | Winner: ${winnerPlayer.name}`}
           </DialogDescription>
         </DialogHeader>
         <div className="mt-4 max-h-[70vh] overflow-y-auto p-1">
@@ -331,7 +328,7 @@ const MatchDetailDialog = ({
                 ) : (
                   <HandCoins className="mr-2 h-4 w-4" />
                 )}{' '}
-                Distribute Prize to {match.players.find(p => p.id === match.winnerId)?.name}
+                Distribute Prize to {winnerPlayer?.name}
               </Button>
             )}
           {match.prizeDistributed && (
@@ -493,7 +490,7 @@ function AdminMatchesPageContent() {
                   colSpan={5}
                   className="text-center text-muted-foreground py-8"
                 >
-                  No {matchesByStatus.length > 0 && matches[0].status} matches found.
+                  No {matches.length > 0 && matches[0].status} matches found.
                 </TableCell>
               </TableRow>
             )}
