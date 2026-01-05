@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Home, Swords, Trophy, Wallet, User as UserIcon, Menu, Bell, Settings, LogOut, ShieldCheck, Loader2, Gavel, Shield, Landmark, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUser } from '@/firebase';
 import { signOut } from '@/firebase/auth/client';
@@ -133,6 +133,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="flex flex-col p-0 w-[280px]">
+              <SheetHeader className="p-4 border-b">
+                 <SheetTitle>
+                    <SheetClose asChild>
+                      <Link href="/" className="flex items-center gap-2 font-semibold">
+                          <Swords className="h-6 w-6 text-primary" />
+                          <span className="">Ludo League</span>
+                      </Link>
+                    </SheetClose>
+                 </SheetTitle>
+              </SheetHeader>
               <SidebarContent />
             </SheetContent>
           </Sheet>
