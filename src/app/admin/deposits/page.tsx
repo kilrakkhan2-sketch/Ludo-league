@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table"
 import { CheckCircle2, Eye, XCircle, Loader2 } from "lucide-react"
 import { useFirestore, useUser } from "@/firebase"
-import { collection, onSnapshot, query, where, doc, updateDoc, writeBatch, serverTimestamp, orderBy } from "firebase/firestore"
+import { collection, onSnapshot, query, where, doc, updateDoc, writeBatch, serverTimestamp, orderBy, getDoc } from "firebase/firestore"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import type { Transaction } from "@/lib/types";
@@ -52,7 +52,7 @@ export default function AdminDepositsPage() {
             // Fetch user data for each transaction to display name and avatar
             if (data.userId) {
                 const userRef = doc(firestore, 'users', data.userId);
-                const userSnap = await userRef.firestore.collection('users').doc(data.userId).get();
+                const userSnap = await getDoc(userRef);
                 if(userSnap.exists()) {
                     const userData = userSnap.data();
                     data.user = {
@@ -168,5 +168,3 @@ export default function AdminDepositsPage() {
     </>
   )
 }
-
-    

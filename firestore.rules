@@ -1,90 +1,68 @@
 
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
+    // ========= Helper Functions =========
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
-    
+
     function isAdmin() {
-      // Check for the custom claim `isAdmin` on the user's auth token.
-      // This is more secure and efficient than reading a document.
+      // Check for the 'isAdmin' custom claim. This is the most secure and efficient method.
       return request.auth != null && request.auth.token.isAdmin == true;
     }
 
-    // Users can read their own profile, and any authenticated user can read public profiles.
-    // Only the user themselves or an admin can update their profile.
+    // ========= ADMIN RULE: Global Access =========
+    // Admins have unrestricted read/write access to the entire database.
+    // This rule is checked first and grants access if true, preventing any further restrictive rules from blocking admins.
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // ========= User Profiles =========
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if isOwner(userId) || isAdmin();
-    }
-    
-    // KYC applications can only be created by the user they belong to.
-    // They can be read by their owner or an admin.
-    // Only admins can update/delete them.
-    match /kycApplications/{applicationId} {
-      allow read: if isOwner(get(/databases/$(database)/documents/kycApplications/$(applicationId)).data.userId) || isAdmin();
-      allow create: if isOwner(request.resource.data.userId);
-      allow update, delete: if isAdmin();
-    }
-    
-    // All authenticated users can read matches.
-    // Matches can be created by any authenticated user.
-    // Updates can only be done by admins (e.g. to cancel a match).
-    match /matches/{matchId} {
-      allow read: if request.auth != null;
-      allow create: if isOwner(request.resource.data.creatorId);
-      allow update, delete: if isAdmin();
-    }
-
-    // Match results can be read by anyone, but only created/updated by the player themselves.
-    match /matches/{matchId}/results/{userId} {
-      allow read: if request.auth != null;
+      // Users can read their own profile, and other users can read non-sensitive public info.
+      allow get: if request.auth != null;
+      // Users can only create and update their own profile.
       allow create, update: if isOwner(userId);
-      allow delete: if isAdmin();
+      // Deletion of user accounts should be handled by a backend process or admin action.
+      allow delete: if isAdmin(); 
     }
 
-    // Users can create their own transactions (deposits, withdrawals).
-    // Users can only read transactions that belong to them.
-    // Admins can read/write any transaction for moderation.
+    // ========= Transactions (Deposits/Withdrawals) =========
     match /transactions/{transactionId} {
-      allow create: if isOwner(request.resource.data.userId);
-      allow read: if isOwner(get(/databases/$(database)/documents/transactions/$(transactionId)).data.userId) || isAdmin();
-      allow update, delete: if isAdmin();
+        // Users can create their own transactions.
+        allow create: if isOwner(request.resource.data.userId);
+        // Users can read their own transactions. Admins can read all.
+        allow get: if isOwner(get(/databases/$(database)/documents/transactions/$(transactionId)).data.userId) || isAdmin();
+        // The status of a transaction is updated by admins or backend functions.
+        // Users should not be able to update their own transaction status.
+        allow update: if isAdmin();
     }
 
-    // Admin logs are only accessible by admins.
+    // ========= KYC Applications =========
+    match /kycApplications/{kycId} {
+      // Users can create their own KYC application.
+      allow create: if isOwner(request.resource.data.userId);
+      // Users can read their own KYC status. Admins can read all.
+      allow get: if isOwner(get(/databases/$(database)/documents/kycApplications/$(kycId)).data.userId) || isAdmin();
+      // KYC status is updated by admins.
+      allow update: if isAdmin();
+    }
+
+    // ========= Admin Logs =========
+    // Only admins can write to or read admin logs for security auditing.
     match /adminLogs/{logId} {
       allow read, write: if isAdmin();
     }
 
-    // Tournaments can be read by any authenticated user.
-    // Only admins can create or modify tournaments.
-    match /tournaments/{tournamentId} {
-      allow read: if request.auth != null;
+    // ========= App Settings (e.g., UPI ID for payments) =========
+    match /settings/{settingId} {
+      // All authenticated users can read general settings.
+      allow get: if request.auth != null;
+      // Only admins can change the settings.
       allow write: if isAdmin();
     }
-    
-    match /tournaments/{tournamentId}/matches/{matchId} {
-       allow read: if request.auth != null;
-       allow write: if isAdmin();
-    }
-    
-    // UPI configuration can be read by any user (to make payments).
-    // Only admins can change the active UPI ID.
-    match /upiConfiguration/active {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
-    }
-    
-    // News can be read by anyone, but only written by admins.
-    match /news/{newsId} {
-        allow read: if request.auth != null;
-        allow write: if isAdmin();
-    }
-
   }
 }
