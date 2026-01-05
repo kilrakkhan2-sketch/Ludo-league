@@ -8,84 +8,107 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
+    // Correctly checks for an isAdmin field in the user's document.
+    // This is more reliable if custom claims are not perfectly in sync.
     function isAdmin() {
-      return request.auth != null && request.auth.token.isAdmin == true;
-    }
-
-    // ========= User Profiles =========
-    match /users/{userId} {
-      // Any authenticated user can view a user's public profile.
-      allow get: if request.auth != null;
-      // Users can only list their own data (though this is not a common use case).
-      allow list: if request.auth != null && request.query.resource.data.userId == request.auth.uid;
-      // Users can only create and update their own profile.
-      allow create, update: if isOwner(userId);
-      // Only admins can delete user accounts.
-      allow delete: if isAdmin(); 
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
-    // ========= Matches Collection =========
-    match /matches/{matchId} {
-      // A user can get a specific match if they are a player in it, or if they are an admin.
-      allow get: if isAdmin() || (request.auth.uid in resource.data.players);
-      // Any authenticated user can query the matches collection.
-      // Security is enforced by the client-side query (e.g., where('players', 'array-contains', uid)).
-      allow list: if request.auth != null;
-      
-      // A user can create a match, and their ID is stored as the creator.
-      allow create: if isOwner(request.resource.data.creatorId);
-      
-      // A player in the match can update it, or an admin can.
-      allow update: if isAdmin() || (request.auth.uid in resource.data.players);
-      
-      // Only admins can delete a match.
-      allow delete: if isAdmin();
+    function isPlayer(matchId) {
+        return request.auth != null &&
+               exists(/databases/$(database)/documents/matches/$(matchId)) &&
+               request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.playerIds;
     }
 
-    // ========= Tournaments Collection =========
-    match /tournaments/{tournamentId} {
-      // ANY user, authenticated or not, can view tournaments.
-      allow get, list: if true;
-      // Only admins can create, update, or delete tournaments.
-      allow write: if isAdmin();
-    }
-
-    // ========= Transactions (Deposits/Withdrawals) =========
-    match /transactions/{transactionId} {
-        allow create: if isOwner(request.resource.data.userId);
-        // A user can get their own transaction. Admins can get any.
-        allow get: if isAdmin() || isOwner(get(/databases/$(database)/documents/transactions/$(transactionId)).data.userId);
-        // Users should only be able to list their own transactions.
-        allow list: if isAdmin() || (request.auth != null && request.query.resource.data.userId == request.auth.uid);
-        allow update: if isAdmin();
-    }
-
-    // ========= KYC Applications =========
-    match /kycApplications/{kycId} {
-      allow create: if isOwner(request.resource.data.userId);
-      allow get: if isAdmin() || isOwner(get(/databases/$(database)/documents/kycApplications/$(kycId)).data.userId);
-      allow list: if isAdmin() || (request.auth != null && request.query.resource.data.userId == request.auth.uid);
-      allow update: if isAdmin();
-    }
-
-    // ========= Admin-Only Collections =========
-    match /adminLogs/{logId} {
+    // --- Global Admin Rule ---
+    // This rule gives admins read/write access to the entire database.
+    // It's a powerful catch-all that simplifies other rules.
+    match /{path=**} {
       allow read, write: if isAdmin();
     }
 
+    // ========= User-Specific Rules (Applied if user is NOT admin) =========
+
+    // User Profiles
+    match /users/{userId} {
+      // A user can read their own profile.
+      allow get: if isOwner(userId);
+      // Allow any authenticated user to view a public profile (read-only for certain fields).
+      // Let's allow full read for now for simplicity, can be tightened later if needed.
+      allow list: if request.auth != null;
+      // A user can create and update their own profile.
+      allow create, update: if isOwner(userId);
+      // Deletes are admin-only (covered by global rule).
+    }
+    
+    // KYC Applications
+    match /kycApplications/{kycId} {
+      // User can create their own application.
+      allow create: if isOwner(request.resource.data.userId);
+      // User can read their own application.
+      allow get: if isOwner(get(/databases/$(database)/documents/kycApplications/$(kycId)).data.userId);
+      // No list/update for non-admins.
+    }
+
+    // Matches Collection
+    match /matches/{matchId} {
+      // Any authenticated user can query/read match data.
+      allow get, list: if request.auth != null;
+      // A user can create a match.
+      allow create: if isOwner(request.resource.data.creatorId);
+      // A player in the match can update it (e.g., to join, or submit result updates).
+      allow update: if isPlayer(matchId);
+      // No deletes for non-admins.
+    }
+    
+    // Match Results Sub-collection
+    match /matches/{matchId}/results/{userId} {
+      // Any authenticated player can read results.
+      allow read: if request.auth != null;
+      // Only the specific user can submit/update their own result.
+      allow write: if isOwner(userId);
+    }
+
+    // Tournaments Collection
+    match /tournaments/{tournamentId} {
+      // Any user, authenticated or not, can view tournaments.
+      allow get, list: if true;
+      // No writes for non-admins.
+    }
+    
+    match /tournaments/{tournamentId}/matches/{matchId} {
+        // Any user can view matches within a tournament
+        allow get, list: if true;
+    }
+
+    // Transactions Collection
+    match /transactions/{transactionId} {
+        // A user can get their own transaction.
+        allow get: if isOwner(get(/databases/$(database)/documents/transactions/$(transactionId)).data.userId);
+        // Users can list ONLY their own transactions (enforced by client query).
+        allow list: if request.auth != null && request.query.resource.data.userId == request.auth.uid;
+        // Users can create certain types of transactions for themselves.
+        allow create: if isOwner(request.resource.data.userId);
+    }
+    
+    // Configuration collections are readable by any authenticated user.
+    match /upiConfiguration/active {
+      allow get: if request.auth != null;
+    }
+
+    match /referralConfiguration/settings {
+      allow get: if request.auth != null;
+    }
+
     match /news/{newsId} {
-      allow get, list: if true;
-      allow write: if isAdmin();
+        allow get, list: if true;
     }
 
-    match /banners/{bannerId} {
-      allow get, list: if true;
-      allow write: if isAdmin();
-    }
-
-    match /settings/{settingId} {
-      allow get: if true;
-      allow write: if isAdmin();
+    // Admin-only collections (implicitly handled by global admin rule, no other access needed).
+    match /adminLogs/{logId} {
+        allow read, write: if false; // Only admins can access
     }
   }
 }
