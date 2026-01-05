@@ -1,71 +1,30 @@
-
 'use client';
 
-import { ReactNode, useEffect, useState } from 'react';
-import { useAuth, useUser, useFirestore } from '@/firebase';
-import { onSnapshot, doc } from 'firebase/firestore';
+import { ReactNode, useEffect } from 'react';
+import { useUser } from '@/firebase/auth/use-user';
 import { useRouter, usePathname } from 'next/navigation';
 import { Toaster } from '@/components/ui/toaster';
 import AppHeader from '@/components/AppHeader';
-import { useBalance } from '@/hooks/useBalance';
 import { Loader2 } from 'lucide-react';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
-  const { setUserProfile } = useUser();
-  const { setBalance } = useBalance();
-  const firestore = useFirestore();
+  const { user, loading } = useUser();
   const router = useRouter();
   const pathname = usePathname();
 
-  const [isDataLoading, setIsDataLoading] = useState(true);
-
   useEffect(() => {
-    if (authLoading) {
-      return; // Wait for Firebase Auth to initialize
-    }
-
-    const allowedPaths = ['/terms-and-conditions', '/privacy-policy', '/gst-policy', '/refund-policy'];
-    if (!user) {
+    // If loading is finished and there is no user, redirect to login page.
+    // We allow some public pages to be accessible even without a user.
+    if (!loading && !user) {
+      const allowedPaths = ['/terms-and-conditions', '/privacy-policy', '/gst-policy', '/refund-policy'];
       if (!allowedPaths.includes(pathname)) {
-        router.push('/');
-      } else {
-        setIsDataLoading(false);
+        router.push('/'); // Assuming '/' is your login/landing page.
       }
-      return;
     }
+  }, [user, loading, pathname, router]);
 
-    // User is authenticated, proceed to fetch profile data
-    setIsDataLoading(true);
-    const userRef = doc(firestore, 'users', user.uid);
-    const unsubscribe = onSnapshot(userRef, (doc) => {
-      if (doc.exists()) {
-        const data = doc.data();
-        setUserProfile({ uid: doc.id, ...data });
-        if (typeof data.walletBalance === 'number') {
-          setBalance(data.walletBalance);
-        }
-      } else {
-        console.log("User document not found!");
-      }
-      setIsDataLoading(false); // Data loading finished
-    }, (error) => {
-      console.error("Error in user snapshot listener:", error);
-      setIsDataLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [user, authLoading, firestore, pathname, router, setUserProfile, setBalance]);
-
-  const totalLoading = authLoading || isDataLoading;
-
-  // For public pages accessible to non-logged-in users
-  const allowedPaths = ['/terms-and-conditions', '/privacy-policy', '/gst-policy', '/refund-policy'];
-  if (!user && allowedPaths.includes(pathname)) {
-    return <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">{children}</main>;
-  }
-
-  if (totalLoading) {
+  // While the auth state is loading, show a global loader.
+  if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -74,15 +33,23 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     );
   }
 
+  // If loading is done and there is still no user, we are likely in the process
+  // of redirecting. Show a minimal loading state.
   if (!user) {
-      // This case handles the brief moment during redirection.
-      return (
-         <div className="flex h-screen items-center justify-center bg-background">
-            <p className="text-lg">Redirecting to login...</p>
-         </div>
-      )
+    // For public pages accessible to non-logged-in users, show the content.
+    const allowedPaths = ['/terms-and-conditions', '/privacy-policy', '/gst-policy', '/refund-policy'];
+    if (allowedPaths.includes(pathname)) {
+      return <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">{children}</main>;
+    }
+
+    return (
+       <div className="flex h-screen items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+       </div>
+    )
   }
   
+  // If we have a user, show the full app layout.
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
       <AppHeader />
@@ -93,4 +60,3 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
