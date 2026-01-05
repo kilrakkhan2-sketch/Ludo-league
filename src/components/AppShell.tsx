@@ -51,7 +51,7 @@ function NavLink({ href, icon: Icon, label }: { href: string; icon: React.Elemen
 }
 
 function SidebarContent() {
-  const { user } = useUser();
+  const { user, isAdmin } = useUser();
 
   return (
     <div className="flex h-full max-h-screen flex-col gap-2 bg-background">
@@ -90,9 +90,9 @@ function SidebarContent() {
           )}
         <nav className="grid gap-1">
            {userNavItems.map((item) => <NavLink key={item.href} {...item} />)}
-           {user?.isAdmin && <NavLink href="/admin/dashboard" icon={ShieldCheck} label="Admin Panel" />}
+           {isAdmin && <NavLink href="/admin/dashboard" icon={ShieldCheck} label="Admin Panel" />}
         </nav>
-        <Button variant="ghost" className="w-full justify-start mt-4" onClick={signOut}>
+        <Button variant="ghost" className="w-full justify-start mt-4" onClick={() => signOut()}>
             <LogOut className="mr-2 h-4 w-4"/>
             Logout
         </Button>
@@ -133,14 +133,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="flex flex-col p-0 w-[280px]">
-                <SheetHeader className="p-4 border-b">
-                    <SheetTitle>
-                        <Link href="/" className="flex items-center gap-2 font-semibold">
-                            <Swords className="h-6 w-6 text-primary" />
-                            <span className="">Ludo League</span>
-                        </Link>
-                    </SheetTitle>
-                </SheetHeader>
               <SidebarContent />
             </SheetContent>
           </Sheet>
