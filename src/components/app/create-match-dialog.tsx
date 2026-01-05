@@ -1,7 +1,8 @@
 
-"use client"
+'use client';
 
-import { Button } from "@/components/ui/button"
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -10,157 +11,114 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { useUser, useFirestore } from "@/firebase"
-import { useToast } from "@/hooks/use-toast"
-import { addDoc, collection, doc, runTransaction, serverTimestamp, Timestamp } from "firebase/firestore"
-import { Loader2, PlusCircle } from "lucide-react"
-import { useState } from "react"
+  DialogClose,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useUser, useFirestore } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { Loader2, PlusCircle, Swords } from 'lucide-react';
 
 export function CreateMatchDialog({ canCreate }: { canCreate: boolean }) {
-    const { user, userProfile } = useUser();
-    const firestore = useFirestore();
-    const { toast } = useToast();
-    const [open, setOpen] = useState(false);
-    const [isCreating, setIsCreating] = useState(false);
-    const [entryFee, setEntryFee] = useState(100);
-    const [maxPlayers, setMaxPlayers] = useState("4");
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [entryFee, setEntryFee] = useState(50);
 
-    const handleCreateMatch = async () => {
-        if (!canCreate) {
-             toast({ title: "Active match limit reached", description: "You cannot create a new match while you have 3 active matches.", variant: "destructive" });
-             return;
-        }
+  const handleCreateMatch = async () => {
+    if (!user || !firestore) {
+      toast({ title: 'You must be logged in to create a match.', variant: 'destructive' });
+      return;
+    }
 
-        if (entryFee < 50) {
-            toast({ title: "Invalid Entry Fee", description: "Minimum entry fee is ₹50.", variant: "destructive" });
-            return;
-        }
+    if (entryFee < 50) {
+        toast({ title: 'Entry fee must be at least ₹50.', variant: 'destructive'});
+        return;
+    }
 
-        if (!user || !firestore || !userProfile) {
-            toast({ title: "Please login to create a match.", variant: "destructive" });
-            return;
-        }
-
-        if (userProfile.walletBalance < entryFee) {
-            toast({ title: "Insufficient wallet balance", description: "Please deposit funds to create a match.", variant: "destructive" });
-            return;
-        }
-        
-        setIsCreating(true);
-        try {
-            const userRef = doc(firestore, 'users', user.uid);
-            
-            // Use a transaction to ensure atomicity
-            await runTransaction(firestore, async (transaction) => {
-                const userDoc = await transaction.get(userRef);
-                if (!userDoc.exists() || (userDoc.data().walletBalance || 0) < entryFee) {
-                    throw new Error("Insufficient funds or user not found.");
+    setIsCreating(true);
+    try {
+        await addDoc(collection(firestore, 'matches'), {
+            creatorId: user.uid,
+            status: 'waiting',
+            entryFee: entryFee,
+            prizePool: entryFee * 1.8, // Assuming a 10% commission
+            maxPlayers: 2,
+            playerIds: [user.uid],
+            players: [
+                {
+                    id: user.uid,
+                    name: user.displayName || 'Anonymous',
+                    avatarUrl: user.photoURL || '',
                 }
+            ],
+            createdAt: serverTimestamp(),
+        });
 
-                const newBalance = userDoc.data().walletBalance - entryFee;
-                transaction.update(userRef, { walletBalance: newBalance });
+        toast({ title: 'Match Created!', description: 'Your match is now waiting for an opponent.'});
+        setOpen(false);
 
-                // Create the new match document
-                const commission = 0.05; // 5% commission
-                const prizePool = (entryFee * Number(maxPlayers)) * (1 - commission);
-                
-                const newMatchRef = doc(collection(firestore, 'matches'));
-                transaction.set(newMatchRef, {
-                    creatorId: user.uid,
-                    entryFee,
-                    prizePool,
-                    maxPlayers: Number(maxPlayers),
-                    playerIds: [user.uid],
-                    players: [{ id: user.uid, name: user.displayName, avatarUrl: user.photoURL, winRate: userProfile.winRate || 0 }],
-                    status: "waiting",
-                    createdAt: serverTimestamp(),
-                });
-
-                // Create a transaction log
-                const transactionRef = doc(collection(firestore, 'transactions'));
-                transaction.set(transactionRef, {
-                    userId: user.uid,
-                    type: "entry-fee",
-                    amount: -entryFee,
-                    status: "completed",
-                    createdAt: Timestamp.now(),
-                    relatedMatchId: newMatchRef.id,
-                    description: `Created match ${newMatchRef.id}`
-                });
-            });
-
-            toast({ 
-                variant: "success",
-                title: "Match Created Successfully!",
-                description: "Your match is now live in the lobby for others to join."
-            });
-            setOpen(false);
-
-        } catch (error: any) {
-            console.error("Error creating match: ", error);
-            toast({ title: "Failed to create match", description: error.message, variant: "destructive" });
-        } finally {
-            setIsCreating(false);
-        }
-    };
-
+    } catch (error: any) {
+        console.error("Error creating match:", error);
+        toast({ title: 'Failed to create match', description: error.message, variant: 'destructive' });
+    } finally {
+        setIsCreating(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="h-8 gap-1 bg-accent hover:bg-accent/90 text-accent-foreground" disabled={!canCreate}>
-          <PlusCircle className="h-3.5 w-3.5" />
-          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-            Create Match
-          </span>
+        <Button disabled={!canCreate}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Create Match
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New Match</DialogTitle>
+          <DialogTitle className='flex items-center gap-2'>
+             <Swords className='h-6 w-6 text-primary'/>
+            Create a New Match
+            </DialogTitle>
           <DialogDescription>
-            Set the details for your new Ludo match. The entry fee will be locked from your wallet.
+            Set the entry fee for your match. The prize will be calculated automatically.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="entry-fee" className="text-right">
-              Entry Fee (Min. 50)
+              Entry Fee (₹)
             </Label>
-            <Input id="entry-fee" type="number" value={entryFee} onChange={(e) => setEntryFee(Number(e.target.value))} className="col-span-3" min="50"/>
+            <Input
+              id="entry-fee"
+              type="number"
+              value={entryFee}
+              onChange={(e) => setEntryFee(Number(e.target.value))}
+              className="col-span-3"
+              min="50"
+              step="10"
+            />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="players" className="text-right">
-              Players
-            </Label>
-            <Select value={maxPlayers} onValueChange={setMaxPlayers}>
-                <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select number of players" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="2">2 Players</SelectItem>
-                    <SelectItem value="4">4 Players</SelectItem>
-                </SelectContent>
-            </Select>
-          </div>
+           <div className="grid grid-cols-4 items-center gap-4">
+             <Label className="text-right">Prize Pool</Label>
+             <div className="col-span-3 font-bold text-lg text-green-600">
+                ₹{(entryFee * 1.8).toFixed(2)}
+             </div>
+           </div>
         </div>
         <DialogFooter>
-          <Button onClick={handleCreateMatch} variant="accent" disabled={isCreating || !canCreate}>
-            {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Create Match
+            <DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+            </DialogClose>
+          <Button onClick={handleCreateMatch} disabled={isCreating}>
+            {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+            Confirm & Create
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

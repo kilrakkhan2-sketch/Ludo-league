@@ -44,8 +44,8 @@ service cloud.firestore {
 
     // ========= Tournaments Collection =========
     match /tournaments/{tournamentId} {
-      // Any authenticated user can get or list tournaments.
-      allow get, list: if request.auth != null;
+      // ANY user, authenticated or not, can view tournaments.
+      allow get, list: if true;
       // Only admins can create, update, or delete tournaments.
       allow write: if isAdmin();
     }
@@ -73,8 +73,18 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    match /news/{newsId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    match /banners/{bannerId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
     match /settings/{settingId} {
-      allow get: if request.auth != null;
+      allow get: if true;
       allow write: if isAdmin();
     }
   }

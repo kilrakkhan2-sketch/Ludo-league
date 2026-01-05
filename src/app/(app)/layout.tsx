@@ -1,62 +1,65 @@
+
 'use client';
 
-import { ReactNode, useEffect } from 'react';
-import { useUser } from '@/firebase/auth/use-user';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Toaster } from '@/components/ui/toaster';
-import AppHeader from '@/components/AppHeader';
-import { Loader2 } from 'lucide-react';
+import { useUser } from '@/firebase/auth/use-user';
+import AppShell from '@/components/AppShell';
+import CustomLoader from '@/components/CustomLoader'; // Import the new loader
 
-export default function AppLayout({ children }: { children: ReactNode }) {
-  const { user, loading } = useUser();
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const { user, loading: authLoading, error } = useUser();
   const router = useRouter();
   const pathname = usePathname();
+  const [isAuthenticating, setIsAuthenticating] = useState(true);
 
   useEffect(() => {
-    // If loading is finished and there is no user, redirect to login page.
-    // We allow some public pages to be accessible even without a user.
-    if (!loading && !user) {
-      const allowedPaths = ['/terms-and-conditions', '/privacy-policy', '/gst-policy', '/refund-policy'];
-      if (!allowedPaths.includes(pathname)) {
-        router.push('/'); // Assuming '/' is your login/landing page.
-      }
-    }
-  }, [user, loading, pathname, router]);
+    const isAuthPage = pathname === '/login' || pathname === '/signup';
 
-  // While the auth state is loading, show a global loader.
-  if (loading) {
+    // If loading is finished
+    if (!authLoading) {
+      // If there is no user and we are not on an auth page, redirect to login
+      if (!user && !isAuthPage) {
+        router.replace('/login');
+      } 
+      // If there IS a user and we ARE on an auth page, redirect to dashboard
+      else if (user && isAuthPage) {
+        router.replace('/dashboard');
+      } 
+      // Otherwise, authentication is complete
+      else {
+        setIsAuthenticating(false);
+      }
+    } 
+    // Also handle error state
+    if (error && !isAuthPage) {
+        router.replace('/login');
+    }
+
+  }, [user, authLoading, error, router, pathname]);
+
+  // While checking auth state, show the custom loader
+  if (isAuthenticating) {
+    return <CustomLoader />;
+  }
+
+  const isAuthPage = pathname === '/login' || pathname === '/signup';
+
+  // For login/signup pages, don't use the AppShell
+  if (isAuthPage) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="ml-4 text-lg">Loading your experience...</p>
-      </div>
+        <Suspense fallback={<CustomLoader/>}>
+            {children}
+        </Suspense>
     );
   }
 
-  // If loading is done and there is still no user, we are likely in the process
-  // of redirecting. Show a minimal loading state.
-  if (!user) {
-    // For public pages accessible to non-logged-in users, show the content.
-    const allowedPaths = ['/terms-and-conditions', '/privacy-policy', '/gst-policy', '/refund-policy'];
-    if (allowedPaths.includes(pathname)) {
-      return <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">{children}</main>;
-    }
-
-    return (
-       <div className="flex h-screen items-center justify-center bg-background">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-       </div>
-    )
-  }
-  
-  // If we have a user, show the full app layout.
+  // For all other app pages, wrap them in the AppShell
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40">
-      <AppHeader />
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        {children}
-      </main>
-      <Toaster />
-    </div>
+    <AppShell>
+        <Suspense fallback={<CustomLoader/>}>
+            {children}
+        </Suspense>
+    </AppShell>
   );
 }
