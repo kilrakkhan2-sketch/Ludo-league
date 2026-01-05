@@ -114,7 +114,7 @@ const MatchCard = ({ match, canJoinMatch }: { match: Match; canJoinMatch: boolea
                 <CardContent className="p-0 pt-4">
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center -space-x-3">
-                             {match.players.slice(0, 2).map((player) => (
+                             {match.players.slice(0, 2).map((player: any) => (
                             <Avatar key={player.id} className={`h-8 w-8 border-2 border-background`}>
                                 <AvatarImage src={player.avatarUrl} alt={player.name} />
                                 <AvatarFallback>{player.name.charAt(0)}</AvatarFallback>

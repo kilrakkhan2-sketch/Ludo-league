@@ -9,7 +9,7 @@ service firebase.storage {
       return request.auth != null && request.auth.uid == userId;
     }
 
-    // Correctly checks for an isAdmin field in the user's Firestore document.
+    // Checks for an isAdmin field in the user's Firestore document.
     function isAdmin() {
       return request.auth != null &&
              exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
@@ -30,24 +30,29 @@ service firebase.storage {
       allow write: if isOwner(userId);
     }
 
-    // KYC Documents: Users can only read and write to their own KYC folder.
+    // KYC Documents: Users can only write to their own KYC folder.
+    // Reading is restricted to the user. Admins can read via the global rule.
     match /kyc/{userId}/{fileName} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
     }
     
-    // Deposit Screenshots: Users can only read and write to their own deposits folder.
+    // Deposit Screenshots: Users can only write to their own deposits folder.
+    // Reading is restricted to the user. Admins can read via the global rule.
     match /deposits/{userId}/{fileName} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
     }
 
-    // Match Result Screenshots: Any authenticated user can read them to verify results, 
-    // but only the player who submitted it can write it.
-    match /match-results/{matchId}/{userId}_{timestamp}.jpg {
+    // Match Result Screenshots: Users can only write their own result screenshots.
+    // File name must start with the user's UID.
+    // Any authenticated user can read them to verify results or for dispute resolution.
+    match /match-results/{matchId}/{screenshotFile} {
         allow read: if request.auth != null;
-        allow write: if isOwner(userId);
+        allow write: if request.auth != null && screenshotFile.startsWith(request.auth.uid);
     }
     
-    // Public content (e.g., tournament banners) can be read by anyone.
+    // Public content (e.g., news images, tournament banners) can be read by anyone.
     // Write access is admin-only via the global rule.
     match /public/{allPaths=**} {
         allow read: if true;
