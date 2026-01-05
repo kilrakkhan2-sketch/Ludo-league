@@ -1,89 +1,96 @@
 
 'use client';
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useAuth, useUser, useFirestore } from '@/firebase';
-import { doc, onSnapshot }from 'firebase/firestore';
+import { onSnapshot, doc } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
 import { Toaster } from '@/components/ui/toaster';
 import AppHeader from '@/components/AppHeader';
 import { useBalance } from '@/hooks/useBalance';
+import { Loader2 } from 'lucide-react';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth();
-  const { userProfile, setUserProfile } = useUser();
-  const { balance, setBalance } = useBalance();
+  const { user, loading: authLoading } = useAuth();
+  const { setUserProfile } = useUser();
+  const { setBalance } = useBalance();
   const firestore = useFirestore();
   const router = useRouter();
   const pathname = usePathname();
 
-  useEffect(() => {
-    if (!loading && !user) {
-        // If loading is finished and there's no user, redirect to login.
-        // We allow access to certain pages like terms and privacy policy for all users.
-        const allowedPaths = ['/terms-and-conditions', '/privacy-policy', '/gst-policy', '/refund-policy'];
-        if (!allowedPaths.includes(pathname)) {
-            router.push('/'); // Redirect to the main landing/login page
-        }
-    }
-  }, [user, loading, pathname]);
+  const [isDataLoading, setIsDataLoading] = useState(true);
 
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-
-    // Only set up the listener if we have a user and firestore instance.
-    if (user && firestore) {
-      const userRef = doc(firestore, 'users', user.uid);
-      unsubscribe = onSnapshot(userRef, (doc) => {
-        if (doc.exists()) {
-          const data = doc.data();
-          setUserProfile({ uid: doc.id, ...data });
-          // Let's assume the user document has a 'balance' field.
-          if (typeof data.walletBalance === 'number') {
-            setBalance(data.walletBalance);
-          }
-        } else {
-          console.log("User document not found!");
-        }
-      }, (error) => {
-        console.error("Error in user snapshot listener:", error);
-      });
+    if (authLoading) {
+      return; // Wait for Firebase Auth to initialize
     }
 
-    // Cleanup listener on component unmount or if user/firestore changes.
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
+    const allowedPaths = ['/terms-and-conditions', '/privacy-policy', '/gst-policy', '/refund-policy'];
+    if (!user) {
+      if (!allowedPaths.includes(pathname)) {
+        router.push('/');
+      } else {
+        setIsDataLoading(false);
       }
-    };
-  }, [user, firestore, setUserProfile, setBalance]);
+      return;
+    }
 
-  if (loading) {
+    // User is authenticated, proceed to fetch profile data
+    setIsDataLoading(true);
+    const userRef = doc(firestore, 'users', user.uid);
+    const unsubscribe = onSnapshot(userRef, (doc) => {
+      if (doc.exists()) {
+        const data = doc.data();
+        setUserProfile({ uid: doc.id, ...data });
+        if (typeof data.walletBalance === 'number') {
+          setBalance(data.walletBalance);
+        }
+      } else {
+        console.log("User document not found!");
+      }
+      setIsDataLoading(false); // Data loading finished
+    }, (error) => {
+      console.error("Error in user snapshot listener:", error);
+      setIsDataLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, authLoading, firestore, pathname, router, setUserProfile, setBalance]);
+
+  const totalLoading = authLoading || isDataLoading;
+
+  // For public pages accessible to non-logged-in users
+  const allowedPaths = ['/terms-and-conditions', '/privacy-policy', '/gst-policy', '/refund-policy'];
+  if (!user && allowedPaths.includes(pathname)) {
+    return <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">{children}</main>;
+  }
+
+  if (totalLoading) {
     return (
-        <div className="flex h-screen items-center justify-center">
-            <div className="text-lg">Loading...</div>
-        </div>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="ml-4 text-lg">Loading your experience...</p>
+      </div>
     );
   }
 
   if (!user) {
-    // While redirecting, or for allowed paths, you might want to show a loader or nothing.
-    // Or a generic landing page header if they are on an allowed path.
-     const allowedPaths = ['/terms-and-conditions', '/privacy-policy', '/gst-policy', '/refund-policy'];
-     if (allowedPaths.includes(pathname)) {
-         return <>{children}</>; // Render policy pages without the full app layout
-     }
-    if (loading) return null; // Don't render anything while loading and no user
-    return null; // Or a loading spinner while redirecting
+      // This case handles the brief moment during redirection.
+      return (
+         <div className="flex h-screen items-center justify-center bg-background">
+            <p className="text-lg">Redirecting to login...</p>
+         </div>
+      )
   }
-
+  
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
-        <AppHeader />
-        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-            {children}
-        </main>
-        <Toaster />
+      <AppHeader />
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        {children}
+      </main>
+      <Toaster />
     </div>
   );
 }
+
