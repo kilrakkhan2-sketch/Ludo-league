@@ -5,18 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { GraduationCap, Newspaper, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 import { ImageSlider } from "@/components/app/ImageSlider"; // Import the new slider
+import { PlaceHolderImages } from "@/lib/placeholder-images";
+import NewsTicker from "@/components/NewsTicker";
 
-// Define the banner images
-const bannerImages = [
-    '/banner1.png',
-    '/banner2.png',
-    '/banner3.png',
-    '/banner4.png',
-    '/banner5.png',
-    '/banner6.png',
-    '/banner7.png',
-    '/banner8.png',
-];
+// Define the banner images from placeholders
+const bannerImages = PlaceHolderImages.filter(img => img.id.startsWith('banner-')).map(img => img.imageUrl);
+
 
 const ActionCard = ({ title, description, href, icon: Icon }: { title: string, description: string, href: string, icon: React.ElementType }) => (
     <Card className="shadow-md hover:shadow-lg transition-shadow hover:bg-muted/50">
@@ -39,6 +33,8 @@ const ActionCard = ({ title, description, href, icon: Icon }: { title: string, d
 export default function DashboardPage() {
   return (
     <div className="space-y-8">
+        {/* === News Ticker Section === */}
+        <NewsTicker />
 
         {/* === Image Slider Section === */}
         <ImageSlider images={bannerImages} />
