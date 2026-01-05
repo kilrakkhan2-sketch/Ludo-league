@@ -33,7 +33,9 @@ function initializeFirebase(config: FirebaseOptions): { app: FirebaseApp; auth: 
   return { app, auth, firestore };
 }
 
+const { app, auth, firestore: db } = initializeFirebase(firebaseConfig);
+
 // export the useUser hook
 export { useUser };
 export { FirebaseProvider, useFirebase, useFirebaseApp, useAuth, useFirestore, FirebaseClientProvider };
-export { initializeFirebase };
+export { initializeFirebase, db };
