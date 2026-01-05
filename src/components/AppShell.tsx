@@ -35,6 +35,14 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
                       </Button>
                   </SheetTrigger>
                   <SheetContent side="left" className="sm:hidden w-64 p-0">
+                    <SheetHeader>
+                      <SheetTitle>
+                        <Link href="/dashboard" className="flex items-center gap-2">
+                          <Swords className="h-6 w-6 text-primary" />
+                          <span className="font-bold text-lg">Ludo League</span>
+                        </Link>
+                      </SheetTitle>
+                    </SheetHeader>
                     <Sidebar />
                   </SheetContent>
               </Sheet>
