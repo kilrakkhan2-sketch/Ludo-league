@@ -6,10 +6,11 @@ import { useUser } from '@/firebase/auth/use-user';
 import { usePathname } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
 import { BottomNav } from '@/components/app/bottom-nav';
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Menu } from "lucide-react";
+import { Menu, Swords } from "lucide-react";
 import { Sidebar, SidebarProvider } from '@/components/ui/sidebar';
+import Link from 'next/link';
 
 const AppShell = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
