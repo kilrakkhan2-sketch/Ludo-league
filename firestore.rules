@@ -8,6 +8,7 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
+    // Correctly checks for an isAdmin field in the user's Firestore document.
     function isAdmin() {
       return request.auth != null && 
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
@@ -19,60 +20,68 @@ service cloud.firestore {
                exists(/databases/$(database)/documents/matches/$(matchId)) &&
                request.auth.uid in get(/databases/$(database)/documents/matches/$(matchId)).data.playerIds;
     }
-
+    
     // --- Global Admin Rule ---
+    // Admins have full read/write access to the entire database.
     match /{path=**} {
       allow read, write: if isAdmin();
     }
 
-    // ========= User-Specific Rules (Applied if user is NOT admin) =========
+    // ========= User-Specific Rules (Applied ONLY if the user is NOT an admin) =========
 
     // User Profiles
     match /users/{userId} {
+      // Users can see their own profile, and list all users (for leaderboards etc.)
       allow get: if isOwner(userId);
       allow list: if request.auth != null;
+      // Users can only create or update their own profile.
       allow create, update: if isOwner(userId);
     }
     
     // KYC Applications
     match /kycApplications/{kycId} {
+      // Users can only create a KYC application for themselves.
       allow create: if isOwner(request.resource.data.userId);
-      allow get: if isOwner(get(/databases/$(database)/documents/kycApplications/$(kycId)).data.userId);
+      // Users can only view their own KYC application.
+      allow get: if isOwner(resource.data.userId);
     }
 
     // Matches Collection
     match /matches/{matchId} {
+      // Any authenticated user can view matches (for the lobby).
       allow get, list: if request.auth != null;
+      // Only the creator can create a match.
       allow create: if isOwner(request.resource.data.creatorId);
+      // Only players in the match can update it (e.g., submit results, change status).
       allow update: if isPlayer(matchId);
     }
     
     // Match Results Sub-collection
     match /matches/{matchId}/results/{userId} {
+      // Anyone can read results (for dispute resolution).
       allow read: if request.auth != null;
+      // A user can only write their own result.
       allow write: if isOwner(userId);
     }
 
     // Tournaments Collection
     match /tournaments/{tournamentId} {
+      // Tournaments are public to all.
       allow get, list: if true;
     }
     
     match /tournaments/{tournamentId}/matches/{matchId} {
+        // Tournament matches are also public.
         allow get, list: if true;
     }
 
     // Transactions Collection
     match /transactions/{transactionId} {
-        // This rule allows a user to read (get or list) their own transactions.
-        // IMPORTANT: For 'list' operations (queries), this rule requires that the
-        // client-side query includes a `where('userId', '==', request.auth.uid)` clause.
-        // Firestore checks if the query's constraints are strict enough to ONLY
-        // return documents that would satisfy this rule.
-        allow read: if request.auth != null && request.auth.uid == resource.data.userId;
-
-        // Users can create transactions for themselves.
-        allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // A user can ONLY read their own transactions.
+      // IMPORTANT: This requires a client-side query with `where('userId', '==', request.auth.uid)`.
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      // A user can only create a transaction for themselves.
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
     
     // Configuration collections are readable by any authenticated user.
@@ -83,14 +92,21 @@ service cloud.firestore {
     match /referralConfiguration/settings {
       allow get: if request.auth != null;
     }
-
+    
+    // News is public.
     match /news/{newsId} {
         allow get, list: if true;
     }
 
-    // Admin-only collections
+    // Admin-only collections (read/write is false for non-admins).
     match /adminLogs/{logId} {
         allow read, write: if false;
+    }
+     match /depositRequests/{depositId} {
+      allow read, write: if false;
+    }
+     match /withdrawalRequests/{withdrawalId} {
+      allow read, write: if false;
     }
   }
 }
