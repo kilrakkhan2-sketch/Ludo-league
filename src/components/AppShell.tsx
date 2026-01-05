@@ -8,10 +8,10 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useUser, useAuth } from '@/firebase';
+import { useUser } from '@/firebase';
+import { signOut } from '@/firebase/auth/client';
 import MobileNav from './MobileNav';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useBalance } from '@/hooks/useBalance';
 
 const mainNavItems = [
   { href: '/dashboard', icon: Home, label: 'Dashboard' },
@@ -44,7 +44,6 @@ function NavLink({ href, icon: Icon, label }: { href: string; icon: React.Elemen
 
 function SidebarContent() {
   const { user } = useUser();
-  const { signOut } = useAuth();
 
   return (
     <div className="flex h-full max-h-screen flex-col gap-2 bg-background">
@@ -78,7 +77,7 @@ function SidebarContent() {
           )}
         <nav className="grid gap-1">
            {userNavItems.map((item) => <NavLink key={item.href} {...item} />)}
-           {user?.isAdmin && <NavLink href="/admin" icon={ShieldCheck} label="Admin Panel" />}
+           {user?.isAdmin && <NavLink href="/admin/dashboard" icon={ShieldCheck} label="Admin Panel" />}
         </nav>
         <Button variant="ghost" className="w-full justify-start mt-4" onClick={signOut}>
             <LogOut className="mr-2 h-4 w-4"/>
@@ -90,11 +89,11 @@ function SidebarContent() {
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useUser();
-  const { balance } = useBalance();
+  const { user, userProfile, loading } = useUser();
 
-  if (loading) {
-    // This loader will be updated later
+  const balance = userProfile?.walletBalance ?? 0;
+
+  if (loading && !user) {
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-background">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />

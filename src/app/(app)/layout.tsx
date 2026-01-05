@@ -5,45 +5,48 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useUser } from '@/firebase/auth/use-user';
 import AppShell from '@/components/AppShell';
-import CustomLoader from '@/components/CustomLoader'; // Import the new loader
+import CustomLoader from '@/components/CustomLoader';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading, error } = useUser();
+  const { user, loading: authLoading, isAdmin } = useUser();
   const router = useRouter();
   const pathname = usePathname();
   const [isAuthenticating, setIsAuthenticating] = useState(true);
 
   useEffect(() => {
-    const isAuthPage = pathname === '/login' || pathname === '/signup';
+    // Let the loading screen show while we wait for auth state
+    if (authLoading) {
+      setIsAuthenticating(true);
+      return;
+    }
+    
+    const isAuthPage = pathname === '/' || pathname === '/register';
+    const isAdminPage = pathname.startsWith('/admin');
 
     // If loading is finished
-    if (!authLoading) {
-      // If there is no user and we are not on an auth page, redirect to login
-      if (!user && !isAuthPage) {
-        router.replace('/login');
-      } 
-      // If there IS a user and we ARE on an auth page, redirect to dashboard
-      else if (user && isAuthPage) {
+    if (!user && !isAuthPage) {
+        // Not logged in and not on an auth page, redirect to login.
+        router.replace('/');
+    } else if (user && isAuthPage) {
+        // Logged in and on an auth page, redirect to dashboard.
         router.replace('/dashboard');
-      } 
-      // Otherwise, authentication is complete
-      else {
-        setIsAuthenticating(false);
-      }
-    } 
-    // Also handle error state
-    if (error && !isAuthPage) {
-        router.replace('/login');
+    } else if (user && isAdminPage && !isAdmin) {
+        // Logged in, trying to access admin page, but is not an admin.
+        router.replace('/dashboard');
     }
-
-  }, [user, authLoading, error, router, pathname]);
+    else {
+        // In all other valid cases, stop showing the loader.
+        setIsAuthenticating(false);
+    }
+    
+  }, [user, authLoading, router, pathname, isAdmin]);
 
   // While checking auth state, show the custom loader
   if (isAuthenticating) {
     return <CustomLoader />;
   }
-
-  const isAuthPage = pathname === '/login' || pathname === '/signup';
+  
+  const isAuthPage = pathname === '/' || pathname === '/register';
 
   // For login/signup pages, don't use the AppShell
   if (isAuthPage) {

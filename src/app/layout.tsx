@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   title: 'Ludo League',
   description: 'A platform for competitive Ludo matches.',
   manifest: '/manifest.json',
+  metadataBase: new URL('https://' + process.env.HOSTNAME),
 };
 
 export default function RootLayout({
@@ -29,7 +30,7 @@ export default function RootLayout({
         <meta name="msapplication-config" content="/icons/browserconfig.xml" />
         <meta name="msapplication-TileColor" content="#E53E3E" />
         <meta name="msapplication-tap-highlight" content="no" />
-        <meta name="theme-color" content="#E53E3E" />
+        <meta name="theme-color" content="#1F6F54" />
         
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
