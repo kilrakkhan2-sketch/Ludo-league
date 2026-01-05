@@ -3,7 +3,7 @@
 
 import { ReactNode, useEffect } from 'react';
 import { useAuth, useUser, useFirestore } from '@/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot }from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
 import { Toaster } from '@/components/ui/toaster';
 import AppHeader from '@/components/AppHeader';
@@ -26,7 +26,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             router.push('/'); // Redirect to the main landing/login page
         }
     }
-  }, [user, loading, router, pathname]);
+  }, [user, loading, pathname]);
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
@@ -39,8 +39,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           const data = doc.data();
           setUserProfile({ uid: doc.id, ...data });
           // Let's assume the user document has a 'balance' field.
-          if (typeof data.balance === 'number') {
-            setBalance(data.balance);
+          if (typeof data.walletBalance === 'number') {
+            setBalance(data.walletBalance);
           }
         } else {
           console.log("User document not found!");
@@ -73,6 +73,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
      if (allowedPaths.includes(pathname)) {
          return <>{children}</>; // Render policy pages without the full app layout
      }
+    if (loading) return null; // Don't render anything while loading and no user
     return null; // Or a loading spinner while redirecting
   }
 
