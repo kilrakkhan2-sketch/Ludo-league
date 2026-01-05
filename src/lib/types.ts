@@ -60,35 +60,16 @@ export type MatchResult = {
 export type Transaction = {
   id: string;
   userId: string;
-  type: 'deposit' | 'withdrawal' | 'entry-fee' | 'winnings' | 'refund' | 'tournament-fee';
+  type: 'deposit' | 'withdrawal' | 'entry-fee' | 'winnings' | 'refund' | 'tournament-fee' | 'referral-bonus';
   amount: number;
   createdAt: Timestamp;
   status: 'completed' | 'pending' | 'rejected';
   relatedMatchId?: string;
+  relatedTournamentId?: string;
   description: string;
-};
-
-export type DepositRequest = {
-  id: string;
-  userId: string;
-  userName: string;
-  userAvatar: string;
-  amount: number;
-  utr: string;
-  screenshotUrl: string;
-  createdAt: Timestamp;
-  status: 'pending' | 'approved' | 'rejected';
-};
-
-export type WithdrawalRequest = {
-  id: string;
-  userId: string;
-  userName: string;
-  userAvatar: string;
-  amount: number;
-  status: 'pending' | 'approved' | 'rejected';
+  utr?: string;
+  screenshotUrl?: string;
   rejectionReason?: string;
-  createdAt: Timestamp;
   reviewedAt?: Timestamp;
   upiId?: string;
   bankDetails?: string;
@@ -160,3 +141,5 @@ export const getTournamentStatus = (tournament: Tournament): Tournament['status'
         return 'completed';
     }
 };
+
+    

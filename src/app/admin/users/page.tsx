@@ -43,6 +43,7 @@ import {
   UserCheck,
   ShieldCheck,
   ShieldOff,
+  History
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -53,10 +54,10 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogTrigger,
   DialogClose,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import Link from 'next/link';
 
 const UserDetailModal = ({
   user,
@@ -130,18 +131,46 @@ const UserDetailModal = ({
     }
   };
 
+  const handleStatusChange = async (newStatus: boolean) => {
+    if (!firestore || !adminUser) return;
+    const userRef = doc(firestore, 'users', user.uid);
+    const batch = writeBatch(firestore);
+
+    batch.update(userRef, { isBlocked: newStatus });
+
+    const logRef = doc(collection(firestore, 'adminLogs'));
+    batch.set(logRef, {
+        adminId: adminUser.uid,
+        action: newStatus ? 'user_banned' : 'user_unbanned',
+        targetUserId: user.uid,
+        timestamp: serverTimestamp(),
+        notes: `User ${user.displayName} was ${newStatus ? 'banned' : 'unbanned'}.`
+    });
+
+    try {
+        await batch.commit();
+        toast({
+            title: `User ${newStatus ? 'Banned' : 'Unbanned'}`,
+            className: newStatus ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800',
+        });
+        onOpenChange(false);
+    } catch (e: any) {
+        toast({ title: 'Failed to update user status', description: e.message, variant: 'destructive' });
+    }
+};
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>User Details</DialogTitle>
+          <DialogTitle>Manage User</DialogTitle>
           <DialogDescription>{user.displayName} - {user.email}</DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
             {/* User details */}
             <p><strong>User ID:</strong> {user.uid}</p>
             <p><strong>Wallet Balance:</strong> ₹{user.walletBalance?.toFixed(2)}</p>
-            <p><strong>KYC Status:</strong> <Badge>{user.kycStatus}</Badge></p>
+            <div><strong>KYC Status:</strong> <Badge>{user.kycStatus}</Badge></div>
             
             <div className='space-y-2 pt-4 border-t'>
                 <h4 className='font-semibold'>Adjust Wallet</h4>
@@ -158,6 +187,19 @@ const UserDetailModal = ({
                   {(user as any).isAdmin ? 'Demote from Admin' : 'Promote to Admin'}
                 </Button>
             </div>
+            <div className='space-y-2 pt-4 border-t'>
+                <h4 className='font-semibold'>Account Status</h4>
+                <div className="text-sm text-muted-foreground">
+                    Current status: {(user as any).isBlocked ? <Badge variant="destructive">Banned</Badge> : <Badge className="bg-green-100 text-green-800">Active</Badge>}
+                </div>
+                <Button 
+                    onClick={() => handleStatusChange(!(user as any).isBlocked)} 
+                    variant={(user as any).isBlocked ? "outline" : "destructive"}
+                >
+                    {(user as any).isBlocked ? <UserCheck className='mr-2 h-4 w-4'/> : <Ban className='mr-2 h-4 w-4'/>}
+                    {(user as any).isBlocked ? 'Unban User' : 'Ban User'}
+                </Button>
+            </div>
         </div>
         <DialogFooter>
           <DialogClose asChild>
@@ -172,7 +214,6 @@ const UserDetailModal = ({
 export default function AdminUsersPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { user: adminUser } = useUser();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -217,35 +258,6 @@ export default function AdminUsersPage() {
     );
     return () => unsubscribe();
   }, [firestore, toast, searchTerm]);
-  
-  const handleAction = async (userId: string, action: 'block' | 'suspend' | 'freezeWallet') => {
-      if(!firestore || !adminUser) return;
-      const userRef = doc(firestore, 'users', userId);
-      const batch = writeBatch(firestore);
-
-      let fieldToUpdate = '';
-      if(action === 'block') fieldToUpdate = 'isBlocked';
-      if(action === 'suspend') fieldToUpdate = 'isSuspended';
-      if(action === 'freezeWallet') fieldToUpdate = 'isWalletFrozen';
-
-      batch.update(userRef, { [fieldToUpdate]: true });
-      
-      const logRef = doc(collection(firestore, 'adminLogs'));
-      batch.set(logRef, {
-        adminId: adminUser.uid,
-        action: action,
-        targetUserId: userId,
-        timestamp: serverTimestamp(),
-        notes: `User ${userId} was ${action}ed.`
-      });
-
-      try {
-        await batch.commit();
-        toast({ title: `User ${action}ed successfully`, variant: 'destructive'});
-      } catch(e: any) {
-        toast({ title: 'Action failed', description: e.message, variant: 'destructive'});
-      }
-  };
 
   return (
     <>
@@ -276,13 +288,14 @@ export default function AdminUsersPage() {
                 <TableHead>Email</TableHead>
                 <TableHead>Wallet</TableHead>
                 <TableHead>KYC</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8">
+                  <TableCell colSpan={6} className="text-center py-8">
                     <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
                   </TableCell>
                 </TableRow>
@@ -290,7 +303,7 @@ export default function AdminUsersPage() {
               {!loading && users.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={6}
                     className="text-center py-8 text-muted-foreground"
                   >
                     No users found.
@@ -323,9 +336,20 @@ export default function AdminUsersPage() {
                         {user.kycStatus}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      {(user as any).isBlocked ? (
+                        <Badge variant="destructive">Banned</Badge>
+                       ) : (
+                        <Badge className="bg-green-100 text-green-800">Active</Badge>
+                       )}
+                    </TableCell>
                     <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => setSelectedUser(user)}><Eye className="h-4 w-4 mr-2"/>View</Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleAction(user.uid, 'block')}><Ban className="h-4 w-4 mr-2"/>Block</Button>
+                        <Button variant="outline" size="sm" onClick={() => setSelectedUser(user)}><Eye className="h-4 w-4 mr-2"/>Manage</Button>
+                        <Button variant="outline" size="sm" asChild>
+                            <Link href={`/admin/users/${user.uid}`}>
+                                <History className="h-4 w-4 mr-2"/> History
+                            </Link>
+                        </Button>
                     </TableCell>
                   </TableRow>
                 ))}

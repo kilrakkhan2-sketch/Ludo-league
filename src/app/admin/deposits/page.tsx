@@ -1,5 +1,5 @@
+
 'use client';
-import Image from "next/image"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,15 +12,23 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { CheckCircle2, Eye, XCircle, Loader2 } from "lucide-react"
-import { useFirestore } from "@/firebase"
-import { collection, onSnapshot, query, where, doc, runTransaction, writeBatch, Timestamp, serverTimestamp, orderBy } from "firebase/firestore"
+import { useFirestore, useUser } from "@/firebase"
+import { collection, onSnapshot, query, where, doc, updateDoc, writeBatch, serverTimestamp, orderBy } from "firebase/firestore"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
-import type { DepositRequest } from "@/lib/types";
+import type { Transaction } from "@/lib/types";
+
+// We need to fetch user data for each transaction, so a combined type is useful
+interface DepositTransaction extends Transaction {
+    user?: { displayName: string; photoURL: string; };
+    utr?: string;
+    screenshotUrl?: string;
+}
 
 export default function AdminDepositsPage() {
   const firestore = useFirestore();
-  const [requests, setRequests] = useState<DepositRequest[]>([]);
+  const { user: adminUser } = useUser();
+  const [requests, setRequests] = useState<DepositTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -28,50 +36,64 @@ export default function AdminDepositsPage() {
   useEffect(() => {
     if (!firestore) return;
     setLoading(true);
-    const reqRef = collection(firestore, 'depositRequests');
-    const q = query(reqRef, where('status', '==', 'pending'), orderBy('createdAt', 'asc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DepositRequest));
-        setRequests(data);
+
+    const transRef = collection(firestore, 'transactions');
+    const q = query(
+        transRef, 
+        where('type', '==', 'deposit'), 
+        where('status', '==', 'pending'), 
+        orderBy('createdAt', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+        const dataPromises = snapshot.docs.map(async (docSnap) => {
+            const data = { id: docSnap.id, ...docSnap.data() } as DepositTransaction;
+            
+            // Fetch user data for each transaction to display name and avatar
+            if (data.userId) {
+                const userRef = doc(firestore, 'users', data.userId);
+                const userSnap = await userRef.firestore.collection('users').doc(data.userId).get();
+                if(userSnap.exists()) {
+                    const userData = userSnap.data();
+                    data.user = {
+                        displayName: userData.displayName,
+                        photoURL: userData.photoURL,
+                    };
+                }
+            }
+            return data;
+        });
+
+        const resolvedData = await Promise.all(dataPromises);
+        setRequests(resolvedData);
+        setLoading(false);
+    }, (error) => {
+        console.error("Error fetching deposit requests: ", error);
+        toast({ title: 'Error fetching data', description: error.message, variant: 'destructive' });
         setLoading(false);
     });
-    return () => unsubscribe();
-  }, [firestore]);
 
-  const handleAction = async (request: DepositRequest, action: 'approve' | 'reject') => {
-    if (!firestore) return;
+    return () => unsubscribe();
+  }, [firestore, toast]);
+
+  const handleAction = async (request: DepositTransaction, action: 'approve' | 'reject') => {
+    if (!firestore || !adminUser) return;
     setProcessingId(request.id);
     
+    const requestRef = doc(firestore, 'transactions', request.id);
+    
     try {
-        const requestRef = doc(firestore, 'depositRequests', request.id);
-        const userRef = doc(firestore, 'users', request.userId);
+        const newStatus = action === 'approve' ? 'approved' : 'rejected';
+        
+        await updateDoc(requestRef, { status: newStatus, reviewedAt: serverTimestamp(), reviewedBy: adminUser.uid });
 
-        if (action === 'approve') {
-            await runTransaction(firestore, async (transaction) => {
-                const userDoc = await transaction.get(userRef);
-                if (!userDoc.exists()) {
-                    throw new Error("User not found!");
-                }
-                const newBalance = (userDoc.data().walletBalance || 0) + request.amount;
-                transaction.update(userRef, { walletBalance: newBalance });
-                transaction.update(requestRef, { status: 'approved', reviewedAt: serverTimestamp() });
-
-                const transactionRef = doc(collection(firestore, "transactions"));
-                transaction.set(transactionRef, {
-                    userId: request.userId,
-                    type: "deposit",
-                    amount: request.amount,
-                    status: "completed",
-                    createdAt: Timestamp.now(),
-                    relatedMatchId: '',
-                    description: `Deposit approved: ${request.utr}`
-                });
-            });
-            toast({ title: `Request approved for ${request.userName}`, className: 'bg-green-100 text-green-800' });
-        } else { // Reject
-            await writeBatch(firestore).update(requestRef, { status: 'rejected', reviewedAt: serverTimestamp() }).commit();
-            toast({ title: `Request rejected for ${request.userName}`, variant: 'destructive'});
-        }
+        // The balance update is now handled by the `handleTransaction` cloud function.
+        
+        toast({
+            title: `Request ${newStatus}`,
+            description: `Deposit for ${request.user?.displayName} has been ${newStatus}.`,
+            className: action === 'approve' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+        });
 
     } catch (error: any) {
         console.error(`Error ${action}ing deposit:`, error);
@@ -88,7 +110,7 @@ export default function AdminDepositsPage() {
         <CardHeader>
           <CardTitle>Pending Deposits</CardTitle>
           <CardDescription>
-            Review and approve or reject user deposit requests. Ensure the sender&apos;s name matches the user&apos;s KYC name before approving.
+            Review and approve or reject user deposit requests. The user's balance will be updated automatically on approval.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -111,10 +133,10 @@ export default function AdminDepositsPage() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="border">
-                        <AvatarImage src={request.userAvatar} />
-                        <AvatarFallback>{request.userName?.charAt(0)}</AvatarFallback>
+                        <AvatarImage src={request.user?.photoURL} />
+                        <AvatarFallback>{request.user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
                       </Avatar>
-                      <span className="font-medium">{request.userName}</span>
+                      <span className="font-medium">{request.user?.displayName || 'Unknown User'}</span>
                     </div>
                   </TableCell>
                   <TableCell className="font-semibold">₹{request.amount.toLocaleString('en-IN')}</TableCell>
@@ -146,3 +168,5 @@ export default function AdminDepositsPage() {
     </>
   )
 }
+
+    

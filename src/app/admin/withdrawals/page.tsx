@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
@@ -32,9 +33,13 @@ import { CheckCircle2, Download, Eye, Loader2, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useFirestore } from '@/firebase';
-import { collection, query, where, onSnapshot, doc, writeBatch, Timestamp, runTransaction, orderBy } from 'firebase/firestore';
-import type { WithdrawalRequest } from '@/lib/types';
+import { useFirestore, useUser } from '@/firebase';
+import { collection, query, where, onSnapshot, doc, writeBatch, serverTimestamp, orderBy } from 'firebase/firestore';
+import type { Transaction } from '@/lib/types';
+
+interface WithdrawalTransaction extends Transaction {
+    user?: { displayName: string; photoURL: string; };
+}
 
 const UpiQrCode = ({ upiId, amount, name }: { upiId: string; amount: number; name: string }) => {
   const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(name)}&am=${amount.toFixed(
@@ -67,29 +72,52 @@ const UpiQrCode = ({ upiId, amount, name }: { upiId: string; amount: number; nam
 
 export default function AdminWithdrawalsPage() {
   const firestore = useFirestore();
-  const [requests, setRequests] = useState<WithdrawalRequest[]>([]);
+  const { user: adminUser } = useUser();
+  const [requests, setRequests] = useState<WithdrawalTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const { toast } = useToast();
 
-   useEffect(() => {
+  useEffect(() => {
     if (!firestore) return;
     setLoading(true);
-    const reqRef = collection(firestore, 'withdrawalRequests');
-    const q = query(reqRef, where('status', '==', 'pending'), orderBy('createdAt', 'asc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WithdrawalRequest));
-        setRequests(data);
-        setLoading(false);
+    const transRef = collection(firestore, 'transactions');
+    const q = query(
+      transRef,
+      where('type', '==', 'withdrawal'),
+      where('status', '==', 'pending'),
+      orderBy('createdAt', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const dataPromises = snapshot.docs.map(async (docSnap) => {
+        const data = { id: docSnap.id, ...docSnap.data() } as WithdrawalTransaction;
+        const userSnap = await docSnap.ref.firestore.collection('users').doc(data.userId).get();
+        if (userSnap.exists()) {
+          data.user = {
+            displayName: userSnap.data().displayName,
+            photoURL: userSnap.data().photoURL,
+          };
+        }
+        return data;
+      });
+
+      const resolvedData = await Promise.all(dataPromises);
+      setRequests(resolvedData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching withdrawal requests: ", error);
+      toast({ title: 'Error fetching data', description: error.message, variant: 'destructive' });
+      setLoading(false);
     });
+
     return () => unsubscribe();
-  }, [firestore]);
+  }, [firestore, toast]);
 
+  const handleAction = async (request: WithdrawalTransaction, action: 'approve' | 'reject') => {
+    if (!firestore || !adminUser) return;
 
-  const handleAction = async (request: WithdrawalRequest, action: 'approve' | 'reject') => {
-    if(!firestore) return;
-    
     if (action === 'reject' && !rejectionReason) {
       toast({
         title: 'Reason Required',
@@ -98,50 +126,42 @@ export default function AdminWithdrawalsPage() {
       });
       return;
     }
-    
+
     setProcessingId(request.id);
+    const requestRef = doc(firestore, 'transactions', request.id);
 
     try {
-        const requestRef = doc(firestore, 'withdrawalRequests', request.id);
-        const userRef = doc(firestore, 'users', request.userId);
+      const newStatus = action === 'approve' ? 'approved' : 'rejected';
+      const batch = writeBatch(firestore);
+      
+      const updateData: any = {
+        status: newStatus,
+        reviewedAt: serverTimestamp(),
+        reviewedBy: adminUser.uid
+      };
 
-        if (action === 'approve') {
-             await runTransaction(firestore, async (transaction) => {
-                const userDoc = await transaction.get(userRef);
-                if (!userDoc.exists()) {
-                    throw new Error("User not found!");
-                }
-                const currentBalance = userDoc.data().walletBalance || 0;
-                if (currentBalance < request.amount) {
-                    throw new Error("User has insufficient balance for this withdrawal.");
-                }
-                const newBalance = currentBalance - request.amount;
-                transaction.update(userRef, { walletBalance: newBalance });
-                transaction.update(requestRef, { status: 'approved', reviewedAt: Timestamp.now() });
+      if(action === 'reject') {
+        updateData.rejectionReason = rejectionReason;
+      }
 
-                const transactionRef = doc(collection(firestore, "transactions"));
-                transaction.set(transactionRef, {
-                    userId: request.userId,
-                    type: "withdrawal",
-                    amount: -request.amount,
-                    status: "completed",
-                    createdAt: Timestamp.now(),
-                    description: `Withdrawal approved`
-                });
-            });
-            toast({ title: 'Request Approved', description: `Payment of ₹${request.amount} for ${request.userName} marked as complete.`, className: 'bg-green-100 text-green-800' });
-        } else { // Reject
-            await writeBatch(firestore)
-                .update(requestRef, { status: 'rejected', rejectionReason: rejectionReason, reviewedAt: Timestamp.now() })
-                .commit();
-            toast({ title: 'Request Rejected', variant: 'destructive' });
-        }
-        setRejectionReason('');
+      batch.update(requestRef, updateData);
+      
+      // Note: The cloud function `handleTransaction` will trigger on this status change 
+      // and will decrease the user's balance if the request is approved.
+      await batch.commit();
 
+      toast({
+        title: `Request ${newStatus}`,
+        description: `Withdrawal for ${request.user?.displayName} has been ${newStatus}.`,
+        className: action === 'approve' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+      });
+
+      setRejectionReason('');
     } catch (error: any) {
-        toast({ title: `Failed to ${action} request`, description: error.message, variant: 'destructive' });
+      console.error(`Error ${action}ing withdrawal:`, error);
+      toast({ title: `Failed to ${action} request`, description: error.message, variant: 'destructive' });
     } finally {
-        setProcessingId(null);
+      setProcessingId(null);
     }
   };
 
@@ -155,7 +175,7 @@ export default function AdminWithdrawalsPage() {
         <CardHeader>
           <CardTitle>Pending Withdrawals</CardTitle>
           <CardDescription>
-            Review and process user withdrawal requests. Ensure the recipient&apos;s name matches their KYC details before payment.
+            Review and process user withdrawal requests. The user's balance will be updated automatically on approval.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -183,12 +203,12 @@ export default function AdminWithdrawalsPage() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="border">
-                        <AvatarImage src={request.userAvatar} />
+                        <AvatarImage src={request.user?.photoURL} />
                         <AvatarFallback>
-                          {request.userName?.charAt(0)}
+                          {request.user?.displayName?.charAt(0) || 'U'}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="font-medium">{request.userName}</span>
+                      <span className="font-medium">{request.user?.displayName || 'Unknown User'}</span>
                     </div>
                   </TableCell>
                   <TableCell className="font-semibold">
@@ -208,7 +228,7 @@ export default function AdminWithdrawalsPage() {
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>
-                            Withdrawal for {request.userName}
+                            Withdrawal for {request.user?.displayName}
                           </DialogTitle>
                           <DialogDescription>
                             Scan the QR code to complete the payment via UPI, or use bank details. Verify name match before proceeding.
@@ -219,7 +239,7 @@ export default function AdminWithdrawalsPage() {
                             <UpiQrCode
                                 upiId={request.upiId}
                                 amount={request.amount}
-                                name={request.userName}
+                                name={request.user?.displayName || 'User'}
                             />
                           ) : (
                             <div className="p-4 bg-muted rounded-md border">

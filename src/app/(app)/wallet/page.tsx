@@ -144,15 +144,15 @@ export default function WalletPage() {
         await uploadString(storageRef, dataUrl, 'data_url');
         const screenshotUrl = await getDownloadURL(storageRef);
 
-        await addDoc(collection(firestore, 'depositRequests'), {
+        await addDoc(collection(firestore, 'transactions'), {
             userId: user.uid,
-            userName: user.displayName,
-            userAvatar: user.photoURL,
+            type: 'deposit',
             amount,
             utr,
             screenshotUrl,
             status: 'pending',
             createdAt: serverTimestamp(),
+            description: 'Deposit via UPI'
         });
         
         toast({ title: "Deposit request submitted successfully." });
@@ -194,15 +194,15 @@ export default function WalletPage() {
     }
 
     try {
-        await addDoc(collection(firestore, 'withdrawalRequests'), {
+        await addDoc(collection(firestore, 'transactions'), {
             userId: user.uid,
-            userName: user.displayName,
-            userAvatar: user.photoURL,
+            type: 'withdrawal',
             amount,
             status: 'pending',
             createdAt: serverTimestamp(),
             upiId: userProfile?.upiId || '',
             bankDetails: userProfile?.bankDetails || '',
+            description: 'Withdrawal request'
         });
         toast({ title: "Withdrawal request submitted successfully." });
         (e.target as HTMLFormElement).reset();
@@ -257,103 +257,93 @@ export default function WalletPage() {
                             </AlertDescription>
                         </Alert>
                         <DynamicQrCode upiId={activeUpiId} />
-                         <div className="grid gap-2">
+
+                        <div className="grid gap-2">
                             <Label htmlFor="deposit-amount">Amount (Min. ₹100)</Label>
-                            <Input id="deposit-amount" name="deposit-amount" type="number" placeholder="Enter deposit amount" required min="100"/>
+                            <Input name="deposit-amount" id="deposit-amount" placeholder="e.g., 500" type="number" required />
                         </div>
-                        <div className="grid gap-2">
+                         <div className="grid gap-2">
                             <Label htmlFor="utr">UTR / Transaction ID</Label>
-                            <Input id="utr" name="utr" placeholder="Enter the 12-digit UTR/Transaction ID" required/>
+                            <Input name="utr" id="utr" placeholder="Enter the 12-digit UTR number" required />
                         </div>
-                        <div className="grid gap-2">
+                         <div className="grid gap-2">
                             <Label htmlFor="screenshot">Payment Screenshot</Label>
-                            <Input id="screenshot" name="screenshot" type="file" required className="text-muted-foreground file:text-primary" onChange={(e) => setDepositScreenshot(e.target.files ? e.target.files[0] : null)} />
+                            <Input name="screenshot" id="screenshot" type="file" required onChange={(e) => setDepositScreenshot(e.target.files?.[0] || null)} className="file:text-primary"/>
                         </div>
-                        <Button type="submit" className="w-full" variant="accent" disabled={isDepositing || !activeUpiId}>
-                            {isDepositing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
+                        <Button type="submit" disabled={isDepositing} className="w-full">
+                            {isDepositing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                             Submit Deposit
                         </Button>
                     </CardContent>
                 </form>
             </Card>
-            <Card className="shadow-md">
-                <form onSubmit={handleWithdrawalSubmit}>
+             <Card className="shadow-md">
+                 <form onSubmit={handleWithdrawalSubmit}>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><DownloadCloud className="h-6 w-6 text-blue-500" />Withdraw Funds</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><DownloadCloud className="h-6 w-6 text-red-500"/>Withdraw Funds</CardTitle>
                         <CardDescription>Request a withdrawal to your bank account.</CardDescription>
                     </CardHeader>
                     <CardContent className="grid gap-6">
-                        <Alert variant='default' className="bg-blue-50 border-blue-200 text-blue-800">
-                            <Landmark className="h-4 w-4 !text-blue-600" />
+                         <Alert>
+                            <Landmark className="h-4 w-4" />
                             <AlertTitle>Withdrawal Policy</AlertTitle>
                             <AlertDescription>
-                                Withdrawals are sent to the bank account/UPI ID verified via KYC. Approval may take up to 24 hours.
+                                KYC must be approved for withdrawals. Minimum withdrawal is ₹300. Approval may take up to 24 hours.
                             </AlertDescription>
                         </Alert>
                         <div className="grid gap-2">
                             <Label htmlFor="withdraw-amount">Amount (Min. ₹300)</Label>
-                            <Input id="withdraw-amount" name="withdraw-amount" type="number" placeholder="e.g., 500" required min="300" />
+                            <Input name="withdraw-amount" id="withdraw-amount" placeholder="e.g., 1000" type="number" required />
                         </div>
-
-                        <Button type="submit" className="w-full" disabled={isWithdrawing || userProfile?.kycStatus !== 'approved'}>
-                            {isWithdrawing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <DownloadCloud className="mr-2 h-4 w-4" />}
+                        <Button type="submit" variant="destructive" className="w-full" disabled={isWithdrawing || userProfile?.kycStatus !== 'approved'}>
+                             {isWithdrawing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                             Request Withdrawal
                         </Button>
-                        {userProfile?.kycStatus !== 'approved' && <p className="text-xs text-center text-red-500">KYC must be approved for withdrawals.</p>}
+                        {userProfile?.kycStatus !== 'approved' && (
+                             <p className="text-sm text-center text-red-500">KYC must be approved for withdrawals.</p>
+                        )}
                     </CardContent>
-                </form>
+                 </form>
             </Card>
         </div>
-
 
         <Card className="shadow-md">
             <CardHeader>
                 <CardTitle>Recent Transactions</CardTitle>
-                <CardDescription>A list of your recent wallet activity.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Details</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {loading && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Loading transactions...</TableCell></TableRow>}
-                    {!loading && transactions.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No transactions yet.</TableCell></TableRow>}
-
-                    {!loading && transactions.map((transaction) => (
-                    <TableRow key={transaction.id} className="font-medium">
-                        <TableCell>
-                        <div className="font-semibold flex items-center gap-2">
-                            {transaction.amount > 0 ? <ArrowDownLeft className="h-4 w-4 text-green-500" /> : <ArrowUpRight className="h-4 w-4 text-red-500" />}
-                            {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1).replace('-', ' ')}
-                        </div>
-                        <div className="text-xs text-muted-foreground md:inline">
-                           ID: {transaction.id}
-                        </div>
-                        </TableCell>
-                         <TableCell className="text-center">
-                        <Badge variant={transaction.status === 'completed' ? 'default' : transaction.status === 'pending' ? 'secondary' : 'destructive'} className={cn("text-xs", {
-                            "bg-green-100 text-green-800 border-green-200 hover:bg-green-100": transaction.status === "completed",
-                            "bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100": transaction.status === "pending",
-                            "bg-red-100 text-red-800 border-red-200 hover:bg-red-100": transaction.status === "rejected",
-                        })}>
-                            {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
-                        </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-xs">
-                            {transaction.createdAt?.toDate().toLocaleString()}
-                        </TableCell>
-                        <TableCell className={cn("text-right font-bold text-lg", transaction.amount > 0 ? 'text-green-600' : 'text-red-600')}>
-                        {transaction.amount > 0 ? '+' : '-'}₹{Math.abs(transaction.amount).toFixed(2)}
-                        </TableCell>
-                    </TableRow>
-                    ))}
-                </TableBody>
+                 <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Date</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading && <TableRow><TableCell colSpan={4} className="text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto"/></TableCell></TableRow>}
+                        {!loading && transactions.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No transactions yet.</TableCell></TableRow>}
+                        {!loading && transactions.slice(0,5).map((t) => (
+                            <TableRow key={t.id}>
+                                <TableCell>
+                                <div className="font-medium flex items-center gap-2">
+                                     {t.type === 'deposit' || t.type === 'winnings' || t.type === 'refund' ? <ArrowUpRight className="h-4 w-4 text-green-500"/> : <ArrowDownLeft className="h-4 w-4 text-red-500"/>}
+                                    {t.description}
+                                </div>
+                                </TableCell>
+                                <TableCell>
+                                <Badge variant={t.status === 'completed' ? 'default' : t.status === 'pending' ? 'secondary' : 'destructive'}>
+                                    {t.status}
+                                </Badge>
+                                </TableCell>
+                                <TableCell className={cn("font-semibold", t.amount > 0 ? "text-green-500" : "text-red-500")}>
+                                    {t.amount > 0 ? '+' : ''}₹{t.amount.toFixed(2)}
+                                </TableCell>
+                                <TableCell>{t.createdAt?.toDate().toLocaleString()}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
                 </Table>
             </CardContent>
         </Card>
@@ -361,3 +351,5 @@ export default function WalletPage() {
     </div>
   )
 }
+
+    
