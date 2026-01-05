@@ -17,12 +17,13 @@ service firebase.storage {
     }
 
     // ========= ADMIN RULE: Global Access =========
-    // This rule grants admins unrestricted read/write access across all storage paths.
+    // This rule MUST come first. It grants admins unrestricted read/write access 
+    // across all storage paths. If a user is an admin, no other rules below this will be checked.
     match /{allPaths=**} {
       allow read, write: if isAdmin();
     }
 
-    // ========= User-Specific Rules (Applied if user is NOT admin) =========
+    // ========= User-Specific Rules (These are only evaluated if the user is NOT an admin) =========
 
     // Profile Pictures: Users can read anyone's profile picture, but only write their own.
     match /profile-pictures/{userId}/{fileName} {
@@ -31,17 +32,15 @@ service firebase.storage {
     }
 
     // KYC Documents: Users can only write to their own KYC folder.
-    // Reading is restricted to the user. Admins can read via the global rule.
+    // Reading is also restricted to the user.
     match /kyc/{userId}/{fileName} {
-      allow read: if isOwner(userId);
-      allow write: if isOwner(userId);
+      allow read, write: if isOwner(userId);
     }
     
     // Deposit Screenshots: Users can only write to their own deposits folder.
-    // Reading is restricted to the user. Admins can read via the global rule.
+    // Reading is also restricted to the user.
     match /deposits/{userId}/{fileName} {
-      allow read: if isOwner(userId);
-      allow write: if isOwner(userId);
+      allow read, write: if isOwner(userId);
     }
 
     // Match Result Screenshots: Users can only write their own result screenshots.
@@ -53,7 +52,7 @@ service firebase.storage {
     }
     
     // Public content (e.g., news images, tournament banners) can be read by anyone.
-    // Write access is admin-only via the global rule.
+    // Write access is admin-only via the global rule above.
     match /public/{allPaths=**} {
         allow read: if true;
     }
