@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, Swords, Home, Trophy, BarChart, Wallet, ShieldCheck, Gavel, Shield, FileText, Landmark, CircleHelp, LifeBuoy, Settings, LogOut } from "lucide-react"
+import { PanelLeft, Swords, Home, Trophy, BarChart, Wallet, ShieldCheck, Gavel, Shield, FileText, Landmark, CircleHelp, LifeBuoy, Settings, LogOut, Gift } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -176,7 +176,6 @@ const SidebarNav = () => {
       { href: "/terms-and-conditions", label: "Terms & Conditions", icon: Gavel },
       { href: "/privacy-policy", label: "Privacy Policy", icon: Shield },
       { href: "/refund-policy", label: "Refund Policy", icon: Landmark },
-      { href: "/gst-policy", label: "GST Policy", icon: FileText },
     ]
     const helpItems = [
       { href: "/tutorials", label: "Tutorials", icon: CircleHelp },
@@ -199,12 +198,47 @@ const SidebarNav = () => {
       </SidebarMenu>
 
       <SidebarSeparator />
+      
+      <SidebarGroup>
+          <SidebarMenu>
+              <SidebarMenuItem>
+                  <Link href="/referrals" className="w-full">
+                      <SidebarMenuButton isActive={pathname.startsWith('/referrals')}>
+                          <Gift className="h-4 w-4" />
+                          Referrals
+                      </SidebarMenuButton>
+                  </Link>
+              </SidebarMenuItem>
+          </SidebarMenu>
+      </SidebarGroup>
+
+      <SidebarSeparator />
 
       <SidebarGroup>
         <SidebarGroupLabel>Legal</SidebarGroupLabel>
         <SidebarGroupContent>
             <SidebarMenu>
                  {legalItems.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                        <Link href={item.href} className="w-full">
+                        <SidebarMenuButton isActive={pathname === item.href}>
+                            <item.icon className="h-4 w-4" />
+                            {item.label}
+                        </SidebarMenuButton>
+                        </Link>
+                    </SidebarMenuItem>
+                ))}
+            </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+
+       <SidebarSeparator />
+
+      <SidebarGroup>
+        <SidebarGroupLabel>Help</SidebarGroupLabel>
+        <SidebarGroupContent>
+            <SidebarMenu>
+                 {helpItems.map((item) => (
                     <SidebarMenuItem key={item.href}>
                         <Link href={item.href} className="w-full">
                         <SidebarMenuButton isActive={pathname === item.href}>
