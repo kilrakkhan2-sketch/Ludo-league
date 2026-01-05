@@ -1,7 +1,7 @@
 
 import { getApps, initializeApp, type FirebaseApp, type FirebaseOptions } from 'firebase/app';
-import { getAuth, connectAuthEmulator, type Auth } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator, type Firestore } from 'firebase/firestore';
+import { getAuth, type Auth } from 'firebase/auth';
+import { getFirestore, type Firestore } from 'firebase/firestore';
 
 import { firebaseConfig } from './config';
 import { useUser } from './auth/use-user';
@@ -14,21 +14,6 @@ function initializeFirebase(config: FirebaseOptions): { app: FirebaseApp; auth: 
   const app = apps.length > 0 ? apps[0] : initializeApp(config);
   const auth = getAuth(app);
   const firestore = getFirestore(app);
-
-  if (process.env.NEXT_PUBLIC_EMULATOR_HOST) {
-    const host = process.env.NEXT_PUBLIC_EMULATOR_HOST;
-    // Important: Re-route emulator traffic to the correct host
-    // for server-side rendering and client-side rendering.
-    // by default the host is localhost, but in a cloud workstation
-    // it needs to be re-routed.
-    try {
-        // These will throw if the emulator is already connected.
-        connectFirestoreEmulator(firestore, host, 8080);
-        connectAuthEmulator(auth, `http://${host}:9099`, { disableWarnings: true });
-    } catch (e) {
-        // ignore errors
-    }
-  }
 
   return { app, auth, firestore };
 }
