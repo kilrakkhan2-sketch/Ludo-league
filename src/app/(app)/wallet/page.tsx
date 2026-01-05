@@ -26,7 +26,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { useUser, useFirestore } from "@/firebase"
 import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp, doc } from "firebase/firestore"
 import { useEffect, useState } from "react"
-import type { Transaction, UpiConfiguration } from "@/lib/types"
+import type { Transaction, UpiConfiguration, DepositRequest, WithdrawalRequest } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage"
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -154,18 +154,17 @@ export default function WalletPage() {
         await uploadString(storageRef, dataUrl, 'data_url');
         const screenshotUrl = await getDownloadURL(storageRef);
 
-        await addDoc(collection(firestore, 'transactions'), {
+        await addDoc(collection(firestore, 'depositRequests'), {
             userId: user.uid,
-            type: 'deposit',
             amount: depositAmount,
             utr,
             screenshotUrl,
             status: 'pending',
             createdAt: serverTimestamp(),
-            description: 'Deposit via UPI'
-        });
+            userName: user.displayName, // For easier review in admin panel
+        } as Omit<DepositRequest, 'id'>);
         
-        toast({ title: "Deposit request submitted successfully." });
+        toast({ title: "Deposit request submitted successfully.", description: "Your request is under review and will be processed shortly." });
         (e.target as HTMLFormElement).reset();
         setDepositScreenshot(null);
         setDepositAmount(100);
@@ -204,16 +203,15 @@ export default function WalletPage() {
     }
 
     try {
-        await addDoc(collection(firestore, 'transactions'), {
+        await addDoc(collection(firestore, 'withdrawalRequests'), {
             userId: user.uid,
-            type: 'withdrawal',
             amount,
             status: 'pending',
             createdAt: serverTimestamp(),
             upiId: userProfile?.upiId || '',
             bankDetails: userProfile?.bankDetails || '',
-            description: 'Withdrawal request'
-        });
+            userName: user.displayName, // For admin panel
+        } as Omit<WithdrawalRequest, 'id'>);
         toast({ title: "Withdrawal request submitted successfully." });
         (e.target as HTMLFormElement).reset();
     } catch(error: any) {
@@ -227,7 +225,7 @@ export default function WalletPage() {
     <div className="space-y-6">
         {bannerImage && (
             <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden">
-                <Image src={bannerImage.imageUrl} alt="Wallet Banner" fill className="object-contain" data-ai-hint={bannerImage.imageHint} />
+                <Image src={bannerImage.imageUrl} alt="Wallet Banner" fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                     <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
                         <WalletIcon className="h-8 w-8" /> My Wallet
@@ -361,7 +359,7 @@ export default function WalletPage() {
                             <TableRow key={t.id}>
                                 <TableCell>
                                 <div className="font-medium flex items-center gap-2">
-                                     {t.type === 'deposit' || t.type === 'winnings' || t.type === 'refund' ? <ArrowUpRight className="h-4 w-4 text-green-500"/> : <ArrowDownLeft className="h-4 w-4 text-red-500"/>}
+                                     {t.amount >= 0 ? <ArrowUpRight className="h-4 w-4 text-green-500"/> : <ArrowDownLeft className="h-4 w-4 text-red-500"/>}
                                     {t.description}
                                 </div>
                                 </TableCell>
@@ -383,5 +381,3 @@ export default function WalletPage() {
     </div>
   )
 }
-
-    

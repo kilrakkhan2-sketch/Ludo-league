@@ -7,17 +7,25 @@ export type UserProfile = {
     displayName: string | null;
     photoURL: string | null;
     isAdmin?: boolean;
-    balance?: number;
+    walletBalance?: number;
+    kycStatus?: 'not_submitted' | 'pending' | 'approved' | 'rejected';
+    upiId?: string;
+    bankDetails?: any;
     // Any other user-specific fields
   };
   
   export type Match = {
     id: string;
-    players: string[]; // UIDs of players
-    status: 'pending' | 'ongoing' | 'completed' | 'cancelled';
+    creatorId: string;
+    players: any[]; 
+    playerIds: string[];
+    status: 'waiting' | 'in-progress' | 'completed' | 'disputed' | 'cancelled';
     entryFee: number;
-    winner?: string | null;
-    gameData?: any; // To store game state, e.g., Ludo board positions
+    prizePool: number;
+    maxPlayers: number;
+    winnerId?: string | null;
+    roomCode?: string;
+    prizeDistributed?: boolean;
     createdAt: Timestamp;
     updatedAt: Timestamp;
   };
@@ -25,12 +33,14 @@ export type UserProfile = {
   export type Transaction = {
     id: string;
     userId: string;
-    type: 'deposit' | 'withdrawal' | 'entry-fee' | 'winnings';
+    type: 'deposit' | 'withdrawal' | 'entry-fee' | 'winnings' | 'refund';
     amount: number;
-    status: 'pending' | 'completed' | 'failed';
+    status: 'pending' | 'completed' | 'rejected' | 'approved';
     createdAt: Timestamp;
-    updatedAt: Timestamp;
-    details?: Record<string, any>; // e.g., { matchId: 'xyz' } or { upiId: 'abc' }
+    description?: string;
+    utr?: string;
+    screenshotUrl?: string;
+    relatedMatchId?: string;
   };
 
   export type Wallet = {
@@ -39,20 +49,16 @@ export type UserProfile = {
     updatedAt: Timestamp;
   };
 
-  export type LobbyBanner = {
-    imageUrl: string;
-    imageHint: string;
-    active: boolean;
+  export type DepositRequest = {
+    id: string;
+    userId: string;
+    amount: number;
+    utr: string;
+    screenshotUrl: string;
+    status: 'pending' | 'approved' | 'rejected';
     createdAt: Timestamp;
-  };
-
-  export type UpiDetails = {
-    id: string; // The UPI ID itself, e.g., user@okhdfcbank
-    name: string; // Account holder's name
-    isPrimary: boolean;
-    userId: string; // Foreign key to the user
-    createdAt: Timestamp;
-    verified: boolean;
+    reviewedAt?: Timestamp;
+    reviewedBy?: string; // Admin UID
   }
 
   export type WithdrawalRequest = {
@@ -122,3 +128,30 @@ export type UserProfile = {
         return 'completed';
     }
 };
+
+export interface KycApplication {
+    id: string;
+    userId: string;
+    status: 'pending' | 'approved' | 'rejected';
+    submittedAt: Timestamp;
+    reviewedAt?: Timestamp;
+    rejectionReason?: string;
+    fullName: string;
+    dateOfBirth: string;
+    aadhaarNumber: string;
+    panNumber: string;
+    aadhaarImage: string;
+    panImage: string;
+    bankDetails?: string;
+    upiId?: string;
+  }
+  
+  export interface MatchResult {
+      id: string;
+      userId: string;
+      position: number;
+      status: 'win' | 'loss';
+      screenshotUrl: string;
+      submittedAt: Timestamp;
+      isFlaggedForFraud?: boolean;
+  }

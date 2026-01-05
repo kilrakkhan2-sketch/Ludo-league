@@ -17,11 +17,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, doc, runTransaction, Timestamp } from 'firebase/firestore';
 import { Loader2, PlusCircle, Swords } from 'lucide-react';
 
 export function CreateMatchDialog({ canCreate }: { canCreate: boolean }) {
-  const { user } = useUser();
+  const { user, userProfile } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -29,7 +29,7 @@ export function CreateMatchDialog({ canCreate }: { canCreate: boolean }) {
   const [entryFee, setEntryFee] = useState(50);
 
   const handleCreateMatch = async () => {
-    if (!user || !firestore) {
+    if (!user || !firestore || !userProfile) {
       toast({ title: 'You must be logged in to create a match.', variant: 'destructive' });
       return;
     }
@@ -39,23 +39,58 @@ export function CreateMatchDialog({ canCreate }: { canCreate: boolean }) {
         return;
     }
 
+    if (userProfile.walletBalance < entryFee) {
+        toast({ title: 'Insufficient wallet balance.', variant: 'destructive' });
+        return;
+    }
+
     setIsCreating(true);
     try {
-        await addDoc(collection(firestore, 'matches'), {
-            creatorId: user.uid,
-            status: 'waiting',
-            entryFee: entryFee,
-            prizePool: entryFee * 1.8, // Assuming a 10% commission
-            maxPlayers: 2,
-            playerIds: [user.uid],
-            players: [
-                {
-                    id: user.uid,
-                    name: user.displayName || 'Anonymous',
-                    avatarUrl: user.photoURL || '',
-                }
-            ],
-            createdAt: serverTimestamp(),
+        const userRef = doc(firestore, 'users', user.uid);
+        const matchRef = doc(collection(firestore, 'matches'));
+        const transactionRef = doc(collection(firestore, 'transactions'));
+        
+        await runTransaction(firestore, async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists()) {
+                throw new Error("User not found!");
+            }
+            const newBalance = userDoc.data().walletBalance - entryFee;
+            if (newBalance < 0) {
+                throw new Error("Insufficient funds.");
+            }
+
+            // 1. Deduct fee from user's wallet
+            transaction.update(userRef, { walletBalance: newBalance });
+
+            // 2. Log the transaction
+            transaction.set(transactionRef, {
+                userId: user.uid,
+                type: 'entry-fee',
+                amount: -entryFee,
+                status: 'completed',
+                createdAt: Timestamp.now(),
+                relatedMatchId: matchRef.id,
+                description: `Created match ${matchRef.id}`
+            });
+
+            // 3. Create the match
+            transaction.set(matchRef, {
+                creatorId: user.uid,
+                status: 'waiting',
+                entryFee: entryFee,
+                prizePool: entryFee * 1.8, // Assuming a 10% commission
+                maxPlayers: 2,
+                playerIds: [user.uid],
+                players: [
+                    {
+                        id: user.uid,
+                        name: user.displayName || 'Anonymous',
+                        avatarUrl: user.photoURL || '',
+                    }
+                ],
+                createdAt: serverTimestamp(),
+            });
         });
 
         toast({ title: 'Match Created!', description: 'Your match is now waiting for an opponent.'});
@@ -84,7 +119,7 @@ export function CreateMatchDialog({ canCreate }: { canCreate: boolean }) {
             Create a New Match
             </DialogTitle>
           <DialogDescription>
-            Set the entry fee for your match. The prize will be calculated automatically.
+            The entry fee will be deducted from your wallet immediately.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
