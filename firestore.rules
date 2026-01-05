@@ -8,8 +8,6 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
-    // Correctly checks for an isAdmin field in the user's document.
-    // This is more reliable if custom claims are not perfectly in sync.
     function isAdmin() {
       return request.auth != null && 
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
@@ -23,8 +21,6 @@ service cloud.firestore {
     }
 
     // --- Global Admin Rule ---
-    // This rule gives admins read/write access to the entire database.
-    // It's a powerful catch-all that simplifies other rules.
     match /{path=**} {
       allow read, write: if isAdmin();
     }
@@ -33,64 +29,50 @@ service cloud.firestore {
 
     // User Profiles
     match /users/{userId} {
-      // A user can read their own profile.
       allow get: if isOwner(userId);
-      // Allow any authenticated user to view a public profile (read-only for certain fields).
-      // Let's allow full read for now for simplicity, can be tightened later if needed.
       allow list: if request.auth != null;
-      // A user can create and update their own profile.
       allow create, update: if isOwner(userId);
-      // Deletes are admin-only (covered by global rule).
     }
     
     // KYC Applications
     match /kycApplications/{kycId} {
-      // User can create their own application.
       allow create: if isOwner(request.resource.data.userId);
-      // User can read their own application.
       allow get: if isOwner(get(/databases/$(database)/documents/kycApplications/$(kycId)).data.userId);
-      // No list/update for non-admins.
     }
 
     // Matches Collection
     match /matches/{matchId} {
-      // Any authenticated user can query/read match data.
       allow get, list: if request.auth != null;
-      // A user can create a match.
       allow create: if isOwner(request.resource.data.creatorId);
-      // A player in the match can update it (e.g., to join, or submit result updates).
       allow update: if isPlayer(matchId);
-      // No deletes for non-admins.
     }
     
     // Match Results Sub-collection
     match /matches/{matchId}/results/{userId} {
-      // Any authenticated player can read results.
       allow read: if request.auth != null;
-      // Only the specific user can submit/update their own result.
       allow write: if isOwner(userId);
     }
 
     // Tournaments Collection
     match /tournaments/{tournamentId} {
-      // Any user, authenticated or not, can view tournaments.
       allow get, list: if true;
-      // No writes for non-admins.
     }
     
     match /tournaments/{tournamentId}/matches/{matchId} {
-        // Any user can view matches within a tournament
         allow get, list: if true;
     }
 
     // Transactions Collection
     match /transactions/{transactionId} {
-        // A user can get their own transaction.
-        allow get: if isOwner(get(/databases/$(database)/documents/transactions/$(transactionId)).data.userId);
-        // Users can list ONLY their own transactions (enforced by client query).
-        allow list: if request.auth != null && request.query.resource.data.userId == request.auth.uid;
-        // Users can create certain types of transactions for themselves.
-        allow create: if isOwner(request.resource.data.userId);
+        // This rule allows a user to read (get or list) their own transactions.
+        // IMPORTANT: For 'list' operations (queries), this rule requires that the
+        // client-side query includes a `where('userId', '==', request.auth.uid)` clause.
+        // Firestore checks if the query's constraints are strict enough to ONLY
+        // return documents that would satisfy this rule.
+        allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+
+        // Users can create transactions for themselves.
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
     
     // Configuration collections are readable by any authenticated user.
@@ -106,9 +88,9 @@ service cloud.firestore {
         allow get, list: if true;
     }
 
-    // Admin-only collections (implicitly handled by global admin rule, no other access needed).
+    // Admin-only collections
     match /adminLogs/{logId} {
-        allow read, write: if false; // Only admins can access
+        allow read, write: if false;
     }
   }
 }

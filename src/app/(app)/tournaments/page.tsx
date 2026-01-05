@@ -52,12 +52,18 @@ const TournamentCard = ({ tournament }: { tournament: Tournament }) => {
     return (
         <Card className="flex flex-col overflow-hidden">
             <div className="relative h-40 w-full">
-                <Image
-                    src={tournament.bannerImageUrl}
-                    alt={`${tournament.name} banner`}
-                    fill
-                    className="object-cover"
-                />
+                {tournament.bannerImageUrl ? (
+                    <Image
+                        src={tournament.bannerImageUrl}
+                        alt={`${tournament.name} banner`}
+                        fill
+                        className="object-cover"
+                    />
+                ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-muted">
+                        <Trophy className="h-16 w-16 text-muted-foreground" />
+                    </div>
+                )}
                 <Badge 
                     className={cn("absolute top-2 right-2 text-xs font-bold", {
                         "bg-yellow-500 text-white": status === 'upcoming',
