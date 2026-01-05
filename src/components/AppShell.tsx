@@ -3,10 +3,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Swords, Trophy, Wallet, User as UserIcon, Menu, Bell, Settings, LogOut, ShieldCheck } from 'lucide-react';
+import { Home, Swords, Trophy, Wallet, User as UserIcon, Menu, Bell, Settings, LogOut, ShieldCheck, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUser, useAuth } from '@/firebase';
 import MobileNav from './MobileNav';
@@ -121,6 +121,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="flex flex-col p-0 w-[280px]">
+                <SheetHeader className="p-4 border-b">
+                    <SheetTitle>
+                        <Link href="/" className="flex items-center gap-2 font-semibold">
+                            <Swords className="h-6 w-6 text-primary" />
+                            <span className="">Ludo League</span>
+                        </Link>
+                    </SheetTitle>
+                </SheetHeader>
               <SidebarContent />
             </SheetContent>
           </Sheet>
@@ -154,8 +162,3 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
-// We need to get a reference to the Loader2 component to replace it.
-// Since it's imported from lucide-react, we can't directly modify it.
-// So we will create a new custom loader and replace all instances.
-import { Loader2 } from 'lucide-react';
