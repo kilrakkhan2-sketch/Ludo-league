@@ -4,55 +4,97 @@
 import React, { useEffect } from 'react';
 import { useUser } from '@/firebase/auth/use-user';
 import { usePathname } from 'next/navigation';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { useBalance } from '@/hooks/useBalance';
 import AppHeader from '@/components/AppHeader';
 import { BottomNav } from '@/components/app/bottom-nav';
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
+import { Toaster } from '@/components/ui/toaster';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { useFirestore } from '@/firebase';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Menu, Swords } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Sidebar, SidebarProvider } from '@/components/ui/sidebar';
-import Link from 'next/link';
 
 const AppShell = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useUser();
+  const { setBalance } = useBalance();
   const pathname = usePathname();
+  const firestore = useFirestore();
 
+  useEffect(() => {
+    if (user && firestore) {
+      const db = firestore;
+      const transactionsRef = query(
+        collection(db, 'transactions'),
+        where('userId', '==', user.uid)
+      );
+
+      const unsubscribe = onSnapshot(transactionsRef, 
+        (snapshot) => {
+          let total = 0;
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.type === 'deposit' || data.type === 'withdrawal') {
+              total += data.status === 'completed' ? (data.type === 'deposit' ? data.amount : -data.amount) : 0;
+            }
+            if (data.type === 'match_win' || data.type === 'match_fee') {
+                total += data.type === 'match_win' ? data.amount : -data.amount
+            }
+          });
+          setBalance(total);
+        },
+        (err) => {
+            // Forward the original Firestore error
+            if (err.code === 'permission-denied') {
+                 errorEmitter.emit('permission-error', err);
+            } else {
+                console.error("Error fetching transactions:", err)
+            }
+        }
+      );
+
+      return () => unsubscribe();
+    }
+  }, [user, setBalance, firestore]);
+
+  // Render AppShell only on non-admin pages
   if (pathname.startsWith('/admin')) {
     return <>{children}</>;
   }
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full flex-col bg-muted/40">
-        <aside className="fixed inset-y-0 left-0 z-10 hidden w-64 flex-col border-r bg-background sm:flex">
-          <Sidebar />
-        </aside>
-        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-64">
-           <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+      <div className="relative flex flex-col min-h-screen w-full bg-muted/20 overflow-x-hidden">
+          <FirebaseErrorListener/>
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
               <Sheet>
                   <SheetTrigger asChild>
-                      <Button size="icon" variant="outline" className="sm:hidden">
+                      <Button size="icon" variant="outline" className="md:hidden">
                           <Menu className="h-5 w-5" />
                           <span className="sr-only">Toggle Menu</span>
                       </Button>
                   </SheetTrigger>
-                  <SheetContent side="left" className="sm:hidden w-64 p-0">
-                    <SheetHeader>
-                      <SheetTitle>
-                        <Link href="/dashboard" className="flex items-center gap-2">
-                          <Swords className="h-6 w-6 text-primary" />
-                          <span className="font-bold text-lg">Ludo League</span>
-                        </Link>
-                      </SheetTitle>
+                  <SheetContent side="left" className="md:hidden w-64 p-0">
+                    <SheetHeader className="p-4">
+                        <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                     </SheetHeader>
                     <Sidebar />
                   </SheetContent>
               </Sheet>
               <AppHeader />
           </header>
-          <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-              {children}
-          </main>
-        </div>
-        <BottomNav />
+          <div className="flex flex-1">
+            <aside className="hidden md:block md:w-64">
+              <Sidebar />
+            </aside>
+            <main className="flex-1 p-4 md:p-6">
+                {children}
+            </main>
+          </div>
+          <Toaster/>
+          <BottomNav />
       </div>
     </SidebarProvider>
   );
