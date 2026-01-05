@@ -83,7 +83,7 @@ export const ImageSlider = ({ images }: { images: string[] }) => {
               src={images[imageIndex]} 
               alt={`Banner image ${imageIndex + 1}`}
               fill
-              className="object-cover"
+              className="object-contain"
               priority={imageIndex === 0} // Prioritize loading the first image
             />
         </motion.div>

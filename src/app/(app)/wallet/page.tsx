@@ -3,7 +3,7 @@
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -227,7 +227,7 @@ export default function WalletPage() {
     <div className="space-y-6">
         {bannerImage && (
             <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden">
-                <Image src={bannerImage.imageUrl} alt="Wallet Banner" fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
+                <Image src={bannerImage.imageUrl} alt="Wallet Banner" fill className="object-contain" data-ai-hint={bannerImage.imageHint} />
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                     <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
                         <WalletIcon className="h-8 w-8" /> My Wallet
@@ -361,7 +361,7 @@ export default function WalletPage() {
                             <TableRow key={t.id}>
                                 <TableCell>
                                 <div className="font-medium flex items-center gap-2">
-                                     {t.type === 'deposit' || t.type === 'winnings' ? <ArrowUpRight className="h-4 w-4 text-green-500"/> : <ArrowDownLeft className="h-4 w-4 text-red-500"/>}
+                                     {t.type === 'deposit' || t.type === 'winnings' || t.type === 'refund' ? <ArrowUpRight className="h-4 w-4 text-green-500"/> : <ArrowDownLeft className="h-4 w-4 text-red-500"/>}
                                     {t.description}
                                 </div>
                                 </TableCell>
@@ -380,7 +380,8 @@ export default function WalletPage() {
                 </Table>
             </CardContent>
         </Card>
-      </div>
     </div>
   )
 }
+
+    
