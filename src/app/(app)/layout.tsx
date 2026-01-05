@@ -1,200 +1,88 @@
 
 'use client';
-import { usePathname, useRouter } from "next/navigation";
-import { UserNav } from "@/components/app/user-nav";
-import { Swords, PanelLeft } from "lucide-react";
-import Link from "next/link";
-import { BottomNav } from "@/components/app/bottom-nav";
-import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { Home, Swords as LobbyIcon, Trophy, BarChart, Wallet, ShieldCheck, FileText, Landmark, Shield, Gavel, FileBadge, User, Settings, LayoutDashboard } from "lucide-react";
-import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
-import { useState, useEffect } from "react";
-import { cn } from "@/lib/utils";
-import { useUser } from "@/firebase";
-import { Loader2 } from "lucide-react";
 
-const pageTitles: { [key: string]: string } = {
-  "/dashboard": "Home",
-  "/lobby": "Match Lobby",
-  "/tournaments": "Tournaments",
-  "/leaderboard": "Leaderboard",
-  "/wallet": "My Wallet",
-  "/kyc": "KYC Verification",
-  "/profile": "My Profile",
-  "/settings": "Settings",
-  "/privacy-policy": "Privacy Policy",
-  "/terms-and-conditions": "Terms & Conditions",
-  "/refund-policy": "Refund Policy",
-  "/gst-policy": "GST Policy",
-};
+import { ReactNode, useEffect } from 'react';
+import { useAuth, useUser, useFirestore } from '@/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { useRouter, usePathname } from 'next/navigation';
+import { Toaster } from '@/components/ui/toaster';
+import AppHeader from '@/components/AppHeader';
+import { useBalance } from '@/hooks/useBalance';
 
-const getTitle = (path: string) => {
-  if (path.startsWith('/match/')) return 'Match Room';
-  if (path.startsWith('/tournaments/')) return 'Tournament Details';
-  return pageTitles[path] || "Ludo League";
-};
-
-const AppSidebarNav = () => {
-    const pathname = usePathname();
-    const { isAdmin } = useUser();
-    const navItems = [
-      { href: "/dashboard", label: "Home", icon: Home, active: pathname === "/dashboard" },
-      { href: "/lobby", label: "Lobby", icon: LobbyIcon, active: pathname.startsWith('/lobby') || pathname.startsWith('/match') },
-      { href: "/tournaments", label: "Tournaments", icon: Trophy, active: pathname.startsWith('/tournaments') },
-      { href: "/leaderboard", label: "Leaderboard", icon: BarChart, active: pathname === "/leaderboard" },
-      { href: "/wallet", label: "Wallet", icon: Wallet, active: pathname === "/wallet" },
-      { href: "/kyc", label: "KYC", icon: ShieldCheck, active: pathname === "/kyc" },
-      { href: "/profile", label: "Profile", icon: User, active: pathname === "/profile" },
-      { href: "/settings", label: "Settings", icon: Settings, active: pathname === "/settings" },
-    ];
-     const legalItems = [
-        { href: "/privacy-policy", label: "Privacy Policy", icon: Shield },
-        { href: "/terms-and-conditions", label: "Terms & Conditions", icon: Gavel },
-        { href: "/refund-policy", label: "Refund Policy", icon: Landmark },
-        { href: "/gst-policy", label: "GST Policy", icon: FileBadge },
-    ];
-
-    return (
-        <div className="flex flex-col h-full">
-            <SidebarMenu className="flex-1">
-                {navItems.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                    <Link href={item.href}>
-                        <SidebarMenuButton isActive={item.active} className="justify-start">
-                        <item.icon className="h-4 w-4" />
-                        {item.label}
-                        </SidebarMenuButton>
-                    </Link>
-                    </SidebarMenuItem>
-                ))}
-                 {isAdmin && (
-                  <SidebarMenuItem>
-                      <Link href="/admin/dashboard">
-                          <SidebarMenuButton className="justify-start bg-yellow-400/10 text-yellow-300 hover:bg-yellow-400/20 hover:text-yellow-200">
-                              <LayoutDashboard className="h-4 w-4" />
-                              Admin Panel
-                          </SidebarMenuButton>
-                      </Link>
-                  </SidebarMenuItem>
-                )}
-            </SidebarMenu>
-            <div className="mt-auto">
-                <div className="p-2">
-                    <p className="text-xs text-sidebar-foreground/70 px-2 font-medium">Legal & Policies</p>
-                </div>
-                <SidebarMenu>
-                     {legalItems.map((item) => (
-                        <SidebarMenuItem key={item.href}>
-                        <Link href={item.href}>
-                            <SidebarMenuButton isActive={pathname === item.href} className="justify-start">
-                            <item.icon className="h-4 w-4" />
-                            {item.label}
-                            </SidebarMenuButton>
-                        </Link>
-                        </SidebarMenuItem>
-                    ))}
-                </SidebarMenu>
-            </div>
-        </div>
-    )
-}
-
-
-export default function AppLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const pathname = usePathname();
-  const title = getTitle(pathname);
-  const { user, loading } = useUser();
+export default function AppLayout({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  const { userProfile, setUserProfile } = useUser();
+  const { balance, setBalance } = useBalance();
+  const firestore = useFirestore();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/');
+        // If loading is finished and there's no user, redirect to login.
+        // We allow access to certain pages like terms and privacy policy for all users.
+        const allowedPaths = ['/terms-and-conditions', '/privacy-policy', '/gst-policy', '/refund-policy'];
+        if (!allowedPaths.includes(pathname)) {
+            router.push('/'); // Redirect to the main landing/login page
+        }
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, pathname]);
 
-  if (loading || !user) {
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+
+    // Only set up the listener if we have a user and firestore instance.
+    if (user && firestore) {
+      const userRef = doc(firestore, 'users', user.uid);
+      unsubscribe = onSnapshot(userRef, (doc) => {
+        if (doc.exists()) {
+          const data = doc.data();
+          setUserProfile({ uid: doc.id, ...data });
+          // Let's assume the user document has a 'balance' field.
+          if (typeof data.balance === 'number') {
+            setBalance(data.balance);
+          }
+        } else {
+          console.log("User document not found!");
+        }
+      }, (error) => {
+        console.error("Error in user snapshot listener:", error);
+      });
+    }
+
+    // Cleanup listener on component unmount or if user/firestore changes.
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [user, firestore, setUserProfile, setBalance]);
+
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
+        <div className="flex h-screen items-center justify-center">
+            <div className="text-lg">Loading...</div>
+        </div>
     );
   }
 
+  if (!user) {
+    // While redirecting, or for allowed paths, you might want to show a loader or nothing.
+    // Or a generic landing page header if they are on an allowed path.
+     const allowedPaths = ['/terms-and-conditions', '/privacy-policy', '/gst-policy', '/refund-policy'];
+     if (allowedPaths.includes(pathname)) {
+         return <>{children}</>; // Render policy pages without the full app layout
+     }
+    return null; // Or a loading spinner while redirecting
+  }
+
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen bg-muted/20">
-        <Sidebar>
-            <SidebarHeader>
-                 <Link href="/dashboard" className="flex items-center gap-2 text-sidebar-primary">
-                    <Swords className="h-6 w-6" />
-                    <h1 className="text-xl font-bold tracking-tight">Ludo League</h1>
-                </Link>
-            </SidebarHeader>
-            <SidebarContent>
-                <AppSidebarNav />
-            </SidebarContent>
-        </Sidebar>
-
-        <div className="flex flex-col flex-1 w-full">
-            <header className="sticky top-0 z-40 w-full border-b border-sidebar-border bg-sidebar text-sidebar-foreground shadow-md">
-                <div className="container flex h-16 items-center">
-                     <Sheet>
-                        <SheetTrigger asChild>
-                            <Button size="icon" variant="ghost" className="md:hidden">
-                                <PanelLeft className="h-6 w-6" />
-                                <span className="sr-only">Toggle Menu</span>
-                            </Button>
-                        </SheetTrigger>
-                        <SheetContent side="left" className="p-0 bg-sidebar text-sidebar-foreground w-3/4">
-                            <SheetHeader className="p-4 border-b border-sidebar-border">
-                                <SheetTitle>
-                                     <SheetClose asChild>
-                                        <Link href="/dashboard" className="flex items-center gap-2 text-sidebar-primary">
-                                            <Swords className="h-6 w-6" />
-                                            <span className="font-bold text-lg">Ludo League</span>
-                                        </Link>
-                                    </SheetClose>
-                                </SheetTitle>
-                            </SheetHeader>
-                            <div className="p-2">
-                              <AppSidebarNav />
-                            </div>
-                        </SheetContent>
-                    </Sheet>
-                    <div className="flex-1 flex items-center justify-center md:justify-start">
-                         <Link href="/dashboard" className="hidden items-center gap-2 md:flex">
-                            <Swords className="h-6 w-6" />
-                            <span className="font-bold text-lg">Ludo League</span>
-                        </Link>
-                        <h2 className="text-xl font-bold tracking-tight md:hidden">
-                            Ludo League
-                        </h2>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <UserNav />
-                    </div>
-                </div>
-            </header>
-
-            <div className="bg-card shadow-inner hidden md:block">
-                <div className="container py-4">
-                    <h2 className="text-2xl font-bold tracking-tight text-foreground">
-                        {title}
-                    </h2>
-                </div>
-            </div>
-            
-            <main className="flex-1 p-4 md:p-6 pb-24 md:pb-8">
-                {children}
-            </main>
-        </div>
-      </div>
-      <BottomNav />
-    </SidebarProvider>
-  )
+    <div className="flex min-h-screen w-full flex-col bg-muted/40">
+        <AppHeader />
+        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+            {children}
+        </main>
+        <Toaster />
+    </div>
+  );
 }

@@ -141,22 +141,22 @@ export default function LoginPage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" placeholder="m@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                    <Input id="email" type="email" placeholder="m@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} suppressHydrationWarning />
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center">
                       <Label htmlFor="password">Password</Label>
-                      <button type="button" onClick={() => setResetDialogOpen(true)} className="ml-auto inline-block text-sm underline">
+                      <button type="button" onClick={() => setResetDialogOpen(true)} className="ml-auto inline-block text-sm underline" suppressHydrationWarning>
                         Forgot your password?
                       </button>
                     </div>
-                    <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                    <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} suppressHydrationWarning />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
+                  <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading} suppressHydrationWarning>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Login
                   </Button>
-                  <Button variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={isLoading || isGoogleLoading} type="button">
+                  <Button variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={isLoading || isGoogleLoading} type="button" suppressHydrationWarning>
                     {isGoogleLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Login with Google
                   </Button>
