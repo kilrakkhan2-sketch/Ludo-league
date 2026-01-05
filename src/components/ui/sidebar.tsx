@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft, Swords, Home, Trophy, BarChart, Wallet, ShieldCheck, Gavel, Shield, FileText, Landmark, CircleHelp, LifeBuoy, Settings, LogOut } from "lucide-react"
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetClose } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -21,6 +21,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useUser } from "@/firebase"
+import { signOut } from "@/firebase/auth/client"
+
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -155,6 +157,12 @@ SidebarProvider.displayName = "SidebarProvider"
 const SidebarNav = () => {
     const pathname = usePathname();
     const { isAdmin } = useUser();
+    const router = useRouter();
+
+    const handleSignOut = async () => {
+        await signOut();
+        router.push('/');
+    };
     
     const navItems = [
       { href: "/dashboard", label: "Home", icon: Home },
@@ -238,45 +246,53 @@ const SidebarNav = () => {
 const Sidebar = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div">
->(({ className, ...props }, ref) => (
-    <div
-    ref={ref}
-    data-sidebar="sidebar"
-    className={cn(
-      "flex h-full flex-col bg-sidebar text-sidebar-foreground",
-      className
-    )}
-    {...props}
-  >
-    <SidebarHeader>
-        <Link href="/dashboard" className="flex items-center gap-2">
-            <Swords className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg">Ludo League</span>
-        </Link>
-    </SidebarHeader>
-    <SidebarContent>
-        <SidebarNav/>
-    </SidebarContent>
-    <SidebarFooter>
-        <SidebarMenu>
-            <SidebarMenuItem>
-                <Link href="/settings" className="w-full">
-                    <SidebarMenuButton>
-                        <Settings className="h-4 w-4"/>
-                        Settings
+>(({ className, ...props }, ref) => {
+    const router = useRouter();
+    const handleSignOut = async () => {
+        await signOut();
+        router.push('/');
+    };
+
+    return (
+        <div
+        ref={ref}
+        data-sidebar="sidebar"
+        className={cn(
+        "flex h-full flex-col bg-sidebar text-sidebar-foreground",
+        className
+        )}
+        {...props}
+    >
+        <SidebarHeader>
+            <Link href="/dashboard" className="flex items-center gap-2">
+                <Swords className="h-6 w-6 text-primary" />
+                <span className="font-bold text-lg">Ludo League</span>
+            </Link>
+        </SidebarHeader>
+        <SidebarContent>
+            <SidebarNav/>
+        </SidebarContent>
+        <SidebarFooter>
+            <SidebarMenu>
+                <SidebarMenuItem>
+                    <Link href="/settings" className="w-full">
+                        <SidebarMenuButton>
+                            <Settings className="h-4 w-4"/>
+                            Settings
+                        </SidebarMenuButton>
+                    </Link>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton onClick={handleSignOut}>
+                        <LogOut className="h-4 w-4"/>
+                        Logout
                     </SidebarMenuButton>
-                </Link>
-            </SidebarMenuItem>
-             <SidebarMenuItem>
-                <SidebarMenuButton>
-                    <LogOut className="h-4 w-4"/>
-                    Logout
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-        </SidebarMenu>
-    </SidebarFooter>
-  </div>
-));
+                </SidebarMenuItem>
+            </SidebarMenu>
+        </SidebarFooter>
+    </div>
+    )
+});
 Sidebar.displayName = "Sidebar";
 
 

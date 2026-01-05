@@ -9,7 +9,7 @@ import { Copy, Crown, ShieldCheck, Swords, Users, Wallet, Loader2, Info, Trash2,
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useFirestore, useUser } from "@/firebase";
-import { doc, onSnapshot, runTransaction, collection, writeBatch, Timestamp, arrayRemove, deleteDoc } from "firebase/firestore";
+import { doc, onSnapshot, runTransaction, collection, writeBatch, Timestamp, arrayRemove, deleteDoc, getDoc, updateDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import type { Match } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -21,7 +21,7 @@ export default function MatchPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
-  const { user } = useUser();
+  const { user, userProfile } = useUser();
   const firestore = useFirestore();
   const [match, setMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,41 +56,53 @@ export default function MatchPage() {
   };
 
   const handleDeleteMatch = async () => {
-      if (!firestore || !user || !match || user.uid !== match.creatorId || match.status !== 'waiting') return;
-      setIsActionLoading(true);
-      try {
-          const batch = writeBatch(firestore);
-          const matchRef = doc(firestore, 'matches', match.id);
+    if (!firestore || !user || !match || user.uid !== match.creatorId || match.status !== 'waiting') return;
+    setIsActionLoading(true);
 
-          // Refund all players
-          for (const playerId of match.playerIds) {
-              const userRef = doc(firestore, 'users', playerId);
-              const transactionRef = doc(collection(firestore, 'transactions'));
-              
-              batch.update(userRef, { walletBalance: (match.players.find(p => p.id === playerId) as any)?.walletBalance + match.entryFee });
-              
-              batch.set(transactionRef, {
-                  userId: playerId,
-                  type: "refund",
-                  amount: match.entryFee,
-                  status: "completed",
-                  createdAt: Timestamp.now(),
-                  relatedMatchId: match.id,
-                  description: `Refund for deleted match ${match.id}`
-              });
-          }
+    try {
+        await runTransaction(firestore, async (transaction) => {
+            const matchRef = doc(firestore, 'matches', match.id);
+            const matchDoc = await transaction.get(matchRef);
 
-          batch.delete(matchRef);
-          await batch.commit();
-          
-          toast({ title: "Match Deleted", description: "All players have been refunded." });
-          router.push('/lobby');
+            if (!matchDoc.exists()) {
+                throw new Error("Match does not exist anymore.");
+            }
+            
+            const currentMatchData = matchDoc.data();
 
-      } catch (error: any) {
-          toast({ title: "Error deleting match", description: error.message, variant: "destructive" });
-          setIsActionLoading(false);
-      }
-  };
+            // Refund all players
+            for (const player of currentMatchData.players) {
+                const playerRef = doc(firestore, 'users', player.id);
+                const playerDoc = await transaction.get(playerRef);
+                if (playerDoc.exists()) {
+                    const newBalance = (playerDoc.data().walletBalance || 0) + currentMatchData.entryFee;
+                    transaction.update(playerRef, { walletBalance: newBalance });
+
+                    const transactionRef = doc(collection(firestore, 'transactions'));
+                    transaction.set(transactionRef, {
+                        userId: player.id,
+                        type: "refund",
+                        amount: currentMatchData.entryFee,
+                        status: "completed",
+                        createdAt: Timestamp.now(),
+                        relatedMatchId: match.id,
+                        description: `Refund for deleted match ${match.id}`
+                    });
+                }
+            }
+
+            transaction.delete(matchRef);
+        });
+        
+        toast({ title: "Match Deleted", description: "All players have been refunded." });
+        router.push('/lobby');
+
+    } catch (error: any) {
+        toast({ title: "Error deleting match", description: error.message, variant: "destructive" });
+        setIsActionLoading(false);
+    }
+};
+
   
    const handleLeaveMatch = async () => {
     if (!firestore || !user || !match || user.uid === match.creatorId || match.status !== 'waiting') return;
@@ -106,8 +118,13 @@ export default function MatchPage() {
 
             const newBalance = (userDoc.data().walletBalance || 0) + match.entryFee;
             transaction.update(userRef, { walletBalance: newBalance });
+            
+            const matchDoc = await transaction.get(matchRef);
+            if (!matchDoc.exists()) throw new Error("Match not found");
+            const matchData = matchDoc.data();
 
-            const playerToRemove = match.players.find(p => p.id === user.uid);
+            const playerToRemove = matchData.players.find((p: any) => p.id === user.uid);
+
             transaction.update(matchRef, {
                 playerIds: arrayRemove(user.uid),
                 players: arrayRemove(playerToRemove)
@@ -262,7 +279,7 @@ export default function MatchPage() {
                     <CardTitle>Players</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {match.players.map(player => (
+                    {match.players.map((player: any) => (
                         <div key={player.id} className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <Avatar className="h-10 w-10">
