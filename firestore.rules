@@ -9,59 +9,72 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // Check for the 'isAdmin' custom claim. This is the most secure and efficient method.
       return request.auth != null && request.auth.token.isAdmin == true;
-    }
-
-    // ========= ADMIN RULE: Global Access =========
-    // Admins have unrestricted read/write access to the entire database.
-    // This rule is checked first and grants access if true, preventing any further restrictive rules from blocking admins.
-    match /{document=**} {
-      allow read, write: if isAdmin();
     }
 
     // ========= User Profiles =========
     match /users/{userId} {
-      // Users can read their own profile, and other users can read non-sensitive public info.
+      // Any authenticated user can view a user's public profile.
       allow get: if request.auth != null;
+      // Users can only list their own data (though this is not a common use case).
+      allow list: if request.auth != null && request.query.resource.data.userId == request.auth.uid;
       // Users can only create and update their own profile.
       allow create, update: if isOwner(userId);
-      // Deletion of user accounts should be handled by a backend process or admin action.
+      // Only admins can delete user accounts.
       allow delete: if isAdmin(); 
+    }
+    
+    // ========= Matches Collection =========
+    match /matches/{matchId} {
+      // A user can get a specific match if they are a player in it, or if they are an admin.
+      allow get: if isAdmin() || (request.auth.uid in resource.data.players);
+      // Any authenticated user can query the matches collection.
+      // Security is enforced by the client-side query (e.g., where('players', 'array-contains', uid)).
+      allow list: if request.auth != null;
+      
+      // A user can create a match, and their ID is stored as the creator.
+      allow create: if isOwner(request.resource.data.creatorId);
+      
+      // A player in the match can update it, or an admin can.
+      allow update: if isAdmin() || (request.auth.uid in resource.data.players);
+      
+      // Only admins can delete a match.
+      allow delete: if isAdmin();
+    }
+
+    // ========= Tournaments Collection =========
+    match /tournaments/{tournamentId} {
+      // Any authenticated user can get or list tournaments.
+      allow get, list: if request.auth != null;
+      // Only admins can create, update, or delete tournaments.
+      allow write: if isAdmin();
     }
 
     // ========= Transactions (Deposits/Withdrawals) =========
     match /transactions/{transactionId} {
-        // Users can create their own transactions.
         allow create: if isOwner(request.resource.data.userId);
-        // Users can read their own transactions. Admins can read all.
-        allow get: if isOwner(get(/databases/$(database)/documents/transactions/$(transactionId)).data.userId) || isAdmin();
-        // The status of a transaction is updated by admins or backend functions.
-        // Users should not be able to update their own transaction status.
+        // A user can get their own transaction. Admins can get any.
+        allow get: if isAdmin() || isOwner(get(/databases/$(database)/documents/transactions/$(transactionId)).data.userId);
+        // Users should only be able to list their own transactions.
+        allow list: if isAdmin() || (request.auth != null && request.query.resource.data.userId == request.auth.uid);
         allow update: if isAdmin();
     }
 
     // ========= KYC Applications =========
     match /kycApplications/{kycId} {
-      // Users can create their own KYC application.
       allow create: if isOwner(request.resource.data.userId);
-      // Users can read their own KYC status. Admins can read all.
-      allow get: if isOwner(get(/databases/$(database)/documents/kycApplications/$(kycId)).data.userId) || isAdmin();
-      // KYC status is updated by admins.
+      allow get: if isAdmin() || isOwner(get(/databases/$(database)/documents/kycApplications/$(kycId)).data.userId);
+      allow list: if isAdmin() || (request.auth != null && request.query.resource.data.userId == request.auth.uid);
       allow update: if isAdmin();
     }
 
-    // ========= Admin Logs =========
-    // Only admins can write to or read admin logs for security auditing.
+    // ========= Admin-Only Collections =========
     match /adminLogs/{logId} {
       allow read, write: if isAdmin();
     }
 
-    // ========= App Settings (e.g., UPI ID for payments) =========
     match /settings/{settingId} {
-      // All authenticated users can read general settings.
       allow get: if request.auth != null;
-      // Only admins can change the settings.
       allow write: if isAdmin();
     }
   }
