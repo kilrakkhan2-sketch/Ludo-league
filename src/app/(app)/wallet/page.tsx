@@ -409,7 +409,7 @@ export default function WalletPage() {
                             <TableRow key={t.id}>
                                 <TableCell>
                                 <div className="font-medium flex items-center gap-2">
-                                     {t.amount >= 0 ? <ArrowUpright className="h-4 w-4 text-green-500"/> : <ArrowDownLeft className="h-4 w-4 text-red-500"/>}
+                                     {t.amount >= 0 ? <ArrowUpRight className="h-4 w-4 text-green-500"/> : <ArrowDownLeft className="h-4 w-4 text-red-500"/>}
                                     {t.description || t.type.replace('-', ' ')}
                                 </div>
                                 </TableCell>
