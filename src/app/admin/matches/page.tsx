@@ -116,7 +116,7 @@ const MatchDetailDialog = ({
     const winnerPlayerInfo = match.players.find((p) => p.id === winnerId);
     toast({
       title: 'Processing...',
-      description: `Declaring ${winnerPlayerInfo?.name} as the winner.`,
+      description: `Declaring ${winnerPlayerInfo?.name || 'player'} as the winner.`,
     });
 
     try {
@@ -131,7 +131,7 @@ const MatchDetailDialog = ({
 
       toast({
         title: 'Winner Declared!',
-        description: `${winnerPlayerInfo?.name} is now the winner. You can now distribute the prize.`,
+        description: `${winnerPlayerInfo?.name || 'Player'} is now the winner. You can now distribute the prize.`,
         variant: 'default',
         className: 'bg-green-100 text-green-800',
       });
@@ -157,7 +157,7 @@ const MatchDetailDialog = ({
     const winnerPlayerInfo = match.players.find(p => p.id === match.winnerId);
     
     setIsDistributing(true);
-    toast({ title: "Distributing winnings...", description: `Processing payment for ${winnerPlayerInfo?.name}`});
+    toast({ title: "Distributing winnings...", description: `Processing payment for ${winnerPlayerInfo?.name || 'the winner'}`});
 
     try {
       const result = await distributeWinnings({

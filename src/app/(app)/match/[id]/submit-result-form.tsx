@@ -110,6 +110,16 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
       return;
     }
 
+    if (position === 1 && status === 'loss') {
+        toast({ title: "Invalid Selection", description: "You cannot claim 1st position with a 'Loss' status.", variant: "destructive"});
+        return;
+    }
+
+    if (position > 1 && status === 'win') {
+        toast({ title: "Invalid Selection", description: "You can only claim 'Win' status if you are in 1st position.", variant: "destructive"});
+        return;
+    }
+
     setIsSubmitting(true);
     setFormState(null);
 

@@ -1,22 +1,19 @@
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const { CloudTasksClient } = require('@google-cloud/tasks');
 
 admin.initializeApp();
+
 const db = admin.firestore();
+const tasksClient = new CloudTasksClient();
 
 // Function to set admin claims and also update the user's document in Firestore.
 exports.setAdminClaim = functions.https.onCall(async (data, context) => {
-  // Check if the caller is authenticated.
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
-  }
-
   // Ensure the caller is an admin.
-  if (context.auth.token.admin !== true) {
+  if (!context.auth.token.admin) {
     throw new functions.https.HttpsError('permission-denied', 'Only admins can set admin claims.');
   }
-
 
   const { uid, isAdmin } = data;
   try {
@@ -33,7 +30,7 @@ exports.setAdminClaim = functions.https.onCall(async (data, context) => {
 });
 
 
-// New, advanced onResultSubmit function that detects fraud and decides match outcome.
+// Function triggered on result submission
 exports.onResultSubmit = functions.firestore
   .document('matches/{matchId}/results/{userId}')
   .onCreate(async (snap, context) => {
@@ -48,60 +45,107 @@ exports.onResultSubmit = functions.firestore
       }
 
       const matchData = matchDoc.data();
+      const totalPlayers = matchData.players.length;
 
-      // Don't process if match is already concluded
-      if (['completed', 'disputed', 'cancelled'].includes(matchData.status)) {
-        console.log(`Match ${matchId} already concluded. Skipping fraud check.`);
-        return null;
-      }
-      
-      const resultsCollectionRef = matchRef.collection('results');
-      const resultsSnapshot = await resultsCollectionRef.get();
-      
-      // If not all players have submitted, do nothing yet.
-      if (resultsSnapshot.size < matchData.playerIds.length) {
-        console.log(`Waiting for all players to submit results for match ${matchId}.`);
-        return null;
-      }
-      
-      // All players have submitted, now run fraud detection
-      const results = resultsSnapshot.docs.map(doc => doc.data());
-      
-      // 1. Check for multiple win claims
-      const winClaims = results.filter(r => r.status === 'win');
-      if (winClaims.length > 1) {
-        await matchRef.update({ status: 'disputed', reviewReason: 'Multiple players claimed victory.' });
-        console.log(`Match ${matchId} flagged for dispute: Multiple winners.`);
-        return null;
-      }
-      
-      // 2. Check for duplicate screenshots
-      const screenshotUrls = results.map(r => r.screenshotUrl);
-      const uniqueUrls = new Set(screenshotUrls);
-      if (screenshotUrls.length !== uniqueUrls.size) {
-        await matchRef.update({ status: 'disputed', reviewReason: 'Duplicate screenshots submitted.' });
-        console.log(`Match ${matchId} flagged for dispute: Duplicate screenshots.`);
-        return null;
-      }
+      const resultsSnapshot = await matchRef.collection('results').get();
+      const resultsCount = resultsSnapshot.size;
 
-      // If no fraud detected, complete the match
-      if (winClaims.length === 1) {
-        // Clear winner, complete the match. The `distributeWinnings` trigger will handle the payout.
-        await matchRef.update({ status: 'completed', winnerId: winClaims[0].userId });
-        console.log(`Match ${matchId} completed. Winner: ${winClaims[0].userId}`);
-      } else {
-        // No one claimed win, or some other edge case
-        await matchRef.update({ status: 'disputed', reviewReason: 'No clear winner claimed.' });
-        console.log(`Match ${matchId} flagged for dispute: No clear winner.`);
+      if (resultsCount >= totalPlayers) {
+        const tenMinutesFromNow = new Date();
+        tenMinutesFromNow.setMinutes(tenMinutesFromNow.getMinutes() + 10);
+
+        const queue = 'distribute-winnings-queue';
+        const project = JSON.parse(process.env.FIREBASE_CONFIG).projectId;
+        const location = 'us-central1'; 
+        const queuePath = tasksClient.queuePath(project, location, queue);
+
+        const url = `https://us-central1-${project}.cloudfunctions.net/distributeWinnings`;
+
+        const task = {
+          httpRequest: {
+            httpMethod: 'POST',
+            url,
+            body: Buffer.from(JSON.stringify({ matchId })).toString('base64'),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          },
+          scheduleTime: {
+            seconds: Math.floor(tenMinutesFromNow.getTime() / 1000),
+          },
+        };
+        
+        await tasksClient.createTask({ parent: queuePath, task });
+        console.log(`Scheduled winning distribution for match ${matchId}`);
       }
 
       return null;
     } catch (error) {
-      console.error(`Error in onResultSubmit for match ${matchId}:`, error);
-      await matchRef.update({ status: 'disputed', reviewReason: `System error: ${error.message}` }).catch(e => console.error("Failed to update match status to disputed on error:", e));
+      console.error('Error in onResultSubmit:', error);
+       if (error.code === 7) { 
+          console.error("PERMISSION DENIED: Ensure the service account has 'Cloud Tasks Enqueuer' role and Cloud Tasks API is enabled.");
+          await matchRef.update({ status: 'error', errorReason: 'Failed to schedule winnings distribution.' });
+      }
       return null;
     }
   });
+
+// HTTP-triggered function to distribute winnings
+exports.distributeWinnings = functions.https.onRequest(async (req, res) => {
+  const { matchId } = req.body;
+
+  if (!matchId) {
+    return res.status(400).send('Missing matchId in request body');
+  }
+
+  const matchRef = db.collection('matches').doc(matchId);
+
+  try {
+    const matchDoc = await matchRef.get();
+    if (!matchDoc.exists) {
+      return res.status(404).send('Match not found');
+    }
+
+    const matchData = matchDoc.data();
+    if (['completed', 'failed', 'review'].includes(matchData.status)) {
+        console.log(`Match ${matchId} already processed. Status: ${matchData.status}`);
+        return res.status(200).send(`Match already processed.`);
+    }
+
+    const resultsSnapshot = await matchRef.collection('results').get();
+    const results = resultsSnapshot.docs.map(doc => doc.data());
+
+    const winningResults = results.filter(r => r.result === 'win');
+    const screenshotUrls = results.map(r => r.screenshotUrl).filter(url => !!url); 
+    const uniqueUrls = new Set(screenshotUrls);
+
+    if ((matchData.maxPlayers === 2 && winningResults.length > 1) || screenshotUrls.length !== uniqueUrls.size) {
+      await matchRef.update({ status: 'review', reviewReason: 'Fraud or conflict detected.' });
+      return res.status(200).send('Fraud detected. Match flagged for review.');
+    }
+
+    if (winningResults.length === 1) {
+      const winnerId = winningResults[0].userId;
+      const winningAmount = matchData.prizePool;
+      const winnerRef = db.collection('users').doc(winnerId);
+      
+      const batch = db.batch();
+      batch.update(winnerRef, { balance: admin.firestore.FieldValue.increment(winningAmount) });
+      batch.update(matchRef, { status: 'completed', winner: winnerId });
+
+      await batch.commit();
+      return res.status(200).send('Winnings distributed successfully');
+    }
+
+    await matchRef.update({ status: 'completed', winner: null, reviewReason: 'No clear winner.' });
+    return res.status(200).send('Match completed with no winner.');
+
+  } catch (error) {
+    console.error('Error in distributeWinnings:', error);
+    await matchRef.update({ status: 'failed', error: error.message });
+    return res.status(500).send('Internal Server Error');
+  }
+});
 
 
 // Securely handles wallet balance updates when a transaction is created.
@@ -111,137 +155,112 @@ exports.onTransactionCreate = functions.firestore
     const transaction = snap.data();
     const { userId, type, amount, status } = transaction;
 
+    // Only process completed transactions that affect balance.
     if (status !== 'completed') {
-        console.log(`Transaction ${context.params.transactionId} not completed. Skipping.`);
+        console.log(`Transaction ${context.params.transactionId} is not completed. Skipping balance update.`);
         return null;
     }
 
+    const validTypes = ['deposit', 'withdrawal', 'entry-fee', 'winnings', 'refund', 'admin-credit', 'admin-debit', 'referral-bonus'];
+    if (!validTypes.includes(type)) {
+        console.log(`Invalid transaction type: ${type}. Skipping balance update.`);
+        return null;
+    }
+    
     const userRef = db.collection('users').doc(userId);
 
     try {
         await db.runTransaction(async (t) => {
             const userDoc = await t.get(userRef);
-            if (!userDoc.exists) throw new Error(`User ${userId} not found`);
+            if (!userDoc.exists) {
+                throw new Error(`User ${userId} not found`);
+            }
 
             const currentBalance = userDoc.data().walletBalance || 0;
-            const newBalance = currentBalance + amount;
+            const newBalance = currentBalance + amount; // Amount is positive for credits, negative for debits.
 
             if (newBalance < 0) {
-                throw new Error(`Insufficient balance for user ${userId}.`);
+                // This should ideally be prevented by client-side checks, but it's a server-side safeguard.
+                throw new Error(`Insufficient balance for user ${userId}. Transaction would result in negative balance.`);
             }
 
             t.update(userRef, { walletBalance: newBalance });
         });
 
-        // If this was a deposit, check for referral commission
-        if (type === 'deposit') {
-            await handleReferralCommission(userId, amount);
-        }
+        console.log(`Transaction ${context.params.transactionId} for user ${userId} handled successfully. New balance updated.`);
+        return null;
 
-        console.log(`Transaction ${context.params.transactionId} handled for ${userId}.`);
     } catch (error) {
-        console.error('Error in onTransactionCreate:', error);
+        console.error('Error handling transaction:', error);
+        // Mark the transaction as failed to prevent re-processing and for auditing.
         return snap.ref.update({ status: 'failed', error: error.message });
     }
   });
 
 
-async function handleReferralCommission(userId, depositAmount) {
+  // This function triggers when a deposit request is approved to handle referral commissions.
+exports.onDepositApproved = functions.firestore
+.document('depositRequests/{depositId}') 
+.onUpdate(async (change, context) => {
+  const after = change.after.data();
+  const before = change.before.data();
+
+  // Check if the transaction is a deposit and just got approved
+  if (after.status === 'approved' && before.status === 'pending') {
+    const { userId, amount } = after;
+
     const userRef = db.doc(`users/${userId}`);
     const userDoc = await userRef.get();
-    
+
     if (!userDoc.exists()) {
-        console.log(`User ${userId} not found for referral check.`);
-        return;
+      console.log(`User ${userId} not found.`);
+      return null;
     }
-    
     const userData = userDoc.data();
     const referredBy = userData.referredBy;
-    
-    // Check if user was referred and doesn't have referralBonusPaid flag
+
+    // If the user was referred by someone, calculate and give commission
     if (referredBy && !userData.referralBonusPaid) {
-        const referrerRef = db.doc(`users/${referredBy}`);
-        const configRef = db.doc('referralConfiguration/settings');
-        
-        const [referrerDoc, configDoc] = await Promise.all([
-            referrerRef.get(),
-            configRef.get()
-        ]);
-        
-        if (!referrerDoc.exists()) {
+      try {
+        await db.runTransaction(async (transaction) => {
+          const referrerRef = db.doc(`users/${referredBy}`);
+          const referrerDoc = await transaction.get(referrerRef);
+
+          if (!referrerDoc.exists()) {
             console.log(`Referrer ${referredBy} not found.`);
             return;
-        }
-        
-        const commissionPercentage = configDoc.exists() ? configDoc.data().commissionPercentage : 5; // Default 5%
-        const commission = (depositAmount * commissionPercentage) / 100;
-        
-        const commissionTransRef = db.collection('transactions').doc();
-        
-        // Create batch to ensure atomicity
-        const batch = db.batch();
-        
-        // 1. Create the commission transaction for the referrer. `onTransactionCreate` will update the balance.
-        batch.set(commissionTransRef, {
+          }
+
+          const configRef = db.doc('referralConfiguration/settings');
+          const configDoc = await transaction.get(configRef);
+          const commissionPercentage = configDoc.exists() ? configDoc.data().commissionPercentage : 5; // Default 5%
+          
+          const commission = (amount * commissionPercentage) / 100;
+          
+          // Create a transaction document for the commission.
+          // The onTransactionCreate function will handle updating the referrer's balance.
+          const commissionTransRef = db.collection('transactions').doc();
+          transaction.set(commissionTransRef, {
             userId: referredBy,
             type: 'referral-bonus',
             amount: commission,
             status: 'completed',
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            description: `Referral bonus from ${userData.displayName || userId}'s deposit`
+            description: `Referral commission from ${userData.displayName || userId}'s deposit.`
+          });
+
+           // Mark the new user so they don't trigger this again on future deposits
+           transaction.update(userRef, { referralBonusPaid: true });
+
+           console.log(`Created referral transaction of ${commission} for ${referredBy}.`);
         });
-        
-        // 2. Mark the new user so they don't trigger this again on future deposits
-        batch.update(userRef, { referralBonusPaid: true });
-        
-        await batch.commit();
-        console.log(`Referral commission of ${commission} paid to ${referredBy}.`);
+      } catch (error) {
+        console.error("Error processing referral commission: ", error);
+      }
     }
-}
-
-
-// Automated prize distribution on match completion. This is the only function that distributes prizes.
-exports.distributeWinnings = functions.firestore
-  .document('matches/{matchId}')
-  .onUpdate(async (change, context) => {
-    const before = change.before.data();
-    const after = change.after.data();
-
-    // Check if match just got marked as 'completed', has a winner, and prize hasn't been distributed.
-    if (after.status === 'completed' && before.status !== 'completed' && after.winnerId && !after.prizeDistributed) {
-        const { matchId } = context.params;
-        const { winnerId, prizePool } = after;
-
-        const commission = prizePool * 0.10; // 10% commission
-        const amountToCredit = prizePool - commission;
-
-        const batch = db.batch();
-        
-        const matchRef = db.doc(`matches/${matchId}`);
-        const transactionRef = db.collection('transactions').doc();
-
-        // 1. Create a winnings transaction. The onTransactionCreate function will handle the balance update.
-        batch.set(transactionRef, {
-            userId: winnerId,
-            type: 'winnings',
-            amount: amountToCredit,
-            status: 'completed',
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            relatedMatchId: matchId,
-            description: `Winnings for match ${matchId}`,
-        });
-
-        // 2. Mark prize as distributed in the match document to prevent this from running again.
-        batch.update(matchRef, { prizeDistributed: true });
-        
-        try {
-            await batch.commit();
-            console.log(`Winnings transaction created for match ${matchId}, winner ${winnerId}. Balance will be updated by onTransactionCreate.`);
-        } catch(error) {
-            console.error(`Failed to create winnings transaction for match ${matchId}:`, error);
-        }
-    }
-  });
+  }
+  return null;
+});
 
 
 exports.onMatchCreate = functions.firestore

@@ -84,14 +84,14 @@ export default function AdminDashboardPage() {
 
         transactionsSnapshot.forEach(doc => {
           const t = doc.data();
-          if (t.status === 'approved') {
+          if (t.status === 'completed') {
             if (t.type === 'deposit') {
                 totalDeposits += t.amount;
                 // Assuming revenue is generated from deposits (e.g. fees)
                 // This logic might need to be more complex based on the business model
                 totalRevenue += t.amount * 0.1; // Example: 10% revenue on deposits
             } else if (t.type === 'withdrawal') {
-                totalWithdrawals += t.amount;
+                totalWithdrawals += Math.abs(t.amount);
             }
           }
           
@@ -100,7 +100,7 @@ export default function AdminDashboardPage() {
           if (date.getFullYear() === now.getFullYear()) {
               const month = date.toLocaleString('default', { month: 'short' });
               if(!monthlyRevenue[month]) monthlyRevenue[month] = 0;
-              if(t.type === 'deposit' && t.status === 'approved') monthlyRevenue[month] += t.amount;
+              if(t.type === 'deposit' && t.status === 'completed') monthlyRevenue[month] += t.amount;
           }
         });
         
@@ -118,8 +118,8 @@ export default function AdminDashboardPage() {
         const recentTransSnapshot = await getDocs(recentTransQuery);
         const transData = await Promise.all(recentTransSnapshot.docs.map(async (doc) => {
             const data = doc.data();
-            const userDoc = await getDocs(query(collection(firestore, 'users'), where('uid', '==', data.userId)));
-            const user = userDoc.docs.length > 0 ? userDoc.docs[0].data() : {};
+            const userDocSnapshot = await getDocs(query(collection(firestore, 'users'), where('uid', '==', data.userId), limit(1)));
+            const user = userDocSnapshot.docs.length > 0 ? userDocSnapshot.docs[0].data() : {};
             return { ...data, id: doc.id, user };
         }));
         setRecentTransactions(transData);
@@ -192,10 +192,10 @@ export default function AdminDashboardPage() {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant={t.type === 'deposit' ? 'default': 'secondary'} className={t.type === 'deposit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>{t.type}</Badge>
+                                        <Badge variant={t.type === 'deposit' ? 'default': 'secondary'} className={t.amount > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>{t.type}</Badge>
                                     </TableCell>
                                     <TableCell className="text-right font-medium">
-                                        {t.type === 'deposit' ? '+' : '-'}₹{t.amount.toFixed(2)}
+                                        {t.amount > 0 ? '+' : ''}₹{t.amount.toFixed(2)}
                                     </TableCell>
                                 </TableRow>
                             ))}

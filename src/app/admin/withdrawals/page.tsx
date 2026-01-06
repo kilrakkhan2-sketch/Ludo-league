@@ -98,7 +98,7 @@ export default function AdminWithdrawalsPage() {
         
         toast({
             title: `Request ${action}d`,
-            description: `Withdrawal for ${(request as any).userName} has been ${action}d.`,
+            description: `Withdrawal for ${request.userName} has been ${action}d.`,
             className: action === 'approve' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
         });
 
@@ -140,9 +140,9 @@ export default function AdminWithdrawalsPage() {
                         <div className="flex items-center gap-3">
                         <Avatar className="border">
                             <AvatarImage src={(request as any).user?.photoURL} />
-                            <AvatarFallback>{(request as any).userName?.charAt(0) || 'U'}</AvatarFallback>
+                            <AvatarFallback>{request.userName?.charAt(0) || 'U'}</AvatarFallback>
                         </Avatar>
-                        <span className="font-medium">{(request as any).userName || 'Unknown User'}</span>
+                        <span className="font-medium">{request.userName || 'Unknown User'}</span>
                         </div>
                     </TableCell>
                     <TableCell className="font-semibold">₹{request.amount.toLocaleString('en-IN')}</TableCell>
@@ -152,12 +152,12 @@ export default function AdminWithdrawalsPage() {
                                 <p className="font-semibold">UPI</p>
                                 <p>{request.upiId}</p>
                             </div>
-                        ) : (request as any).bankDetails ? (
+                        ) : request.bankDetails ? (
                             <div className="text-xs">
                                 <p className="font-semibold">Bank Transfer</p>
-                                <p className="whitespace-pre-wrap">{(request as any).bankDetails}</p>
+                                <p className="whitespace-pre-wrap">{request.bankDetails}</p>
                             </div>
-                        ) : <p className="text-xs text-muted-foreground">No details</p>}
+                        ) : <p className="text-xs text-muted-foreground">Not provided</p>}
                     </TableCell>
                     <TableCell>{request.createdAt?.toDate().toLocaleString()}</TableCell>
                     <TableCell className="text-right">
