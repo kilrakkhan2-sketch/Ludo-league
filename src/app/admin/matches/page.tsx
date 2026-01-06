@@ -61,6 +61,7 @@ import {
 } from 'firebase/firestore';
 import { distributeWinnings } from '@/ai/flows/distribute-winnings';
 import { useSearchParams } from 'next/navigation';
+import NoSsr from '@/components/NoSsr';
 
 const MatchDetailDialog = ({
   match: initialMatch,
@@ -198,166 +199,168 @@ const MatchDetailDialog = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Eye className="h-4 w-4 mr-2" />
-          Review Match
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>Review Match: {match.id}</DialogTitle>
-          <DialogDescription>
-            Prize Pool: ₹{match.prizePool} | Status:{' '}
-            <span
-              className={cn('font-semibold', {
-                'text-green-600': match.status === 'completed',
-                'text-blue-600': match.status === 'in-progress',
-                'text-yellow-600': match.status === 'waiting',
-                'text-red-600': match.status === 'disputed',
-              })}
-            >
-              {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
-            </span>
-            {winnerPlayer &&
-              ` | Winner: ${winnerPlayer.name}`}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="mt-4 max-h-[70vh] overflow-y-auto p-1">
-          <div className="space-y-4">
-            <h4 className="font-semibold text-lg">Player Submissions</h4>
-            {results && results.length > 0 ? (
-              results.map((result, index) => {
-                const player = match.players.find(
-                  (p) => p.id === result.userId
-                );
-                return (
-                  <div
-                    key={index}
-                    className="grid md:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/30"
-                  >
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-12 w-12 border">
-                          <AvatarImage src={player?.avatarUrl} />
-                          <AvatarFallback>
-                            {player?.name.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-semibold text-base">
-                            {player?.name}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            User ID: {player?.id.substring(0, 10)}...
-                          </p>
+    <NoSsr>
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm">
+            <Eye className="h-4 w-4 mr-2" />
+            Review Match
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Review Match: {match.id}</DialogTitle>
+            <DialogDescription>
+              Prize Pool: ₹{match.prizePool} | Status:{' '}
+              <span
+                className={cn('font-semibold', {
+                  'text-green-600': match.status === 'completed',
+                  'text-blue-600': match.status === 'in-progress',
+                  'text-yellow-600': match.status === 'waiting',
+                  'text-red-600': match.status === 'disputed',
+                })}
+              >
+                {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
+              </span>
+              {winnerPlayer &&
+                ` | Winner: ${winnerPlayer.name}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 max-h-[70vh] overflow-y-auto p-1">
+            <div className="space-y-4">
+              <h4 className="font-semibold text-lg">Player Submissions</h4>
+              {results && results.length > 0 ? (
+                results.map((result, index) => {
+                  const player = match.players.find(
+                    (p) => p.id === result.userId
+                  );
+                  return (
+                    <div
+                      key={index}
+                      className="grid md:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/30"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-12 w-12 border">
+                            <AvatarImage src={player?.avatarUrl} />
+                            <AvatarFallback>
+                              {player?.name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-semibold text-base">
+                              {player?.name}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              User ID: {player?.id.substring(0, 10)}...
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 text-lg font-bold">
-                          <Trophy
-                            className={cn(
-                              'h-5 w-5',
-                              result.position === 1
-                                ? 'text-yellow-500'
-                                : 'text-muted-foreground'
-                            )}
-                          />
-                          Position: {result.position}
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2 text-lg font-bold">
+                            <Trophy
+                              className={cn(
+                                'h-5 w-5',
+                                result.position === 1
+                                  ? 'text-yellow-500'
+                                  : 'text-muted-foreground'
+                              )}
+                            />
+                            Position: {result.position}
+                          </div>
+                           {result.isFlaggedForFraud && <Badge variant="destructive">Flagged</Badge>}
                         </div>
-                         {result.isFlaggedForFraud && <Badge variant="destructive">Flagged</Badge>}
+                        {match.status === 'disputed' && (
+                          <Button
+                            size="sm"
+                            className="w-full text-green-50 bg-green-600 hover:bg-green-700"
+                            onClick={() => handleDeclareWinner(result.userId)}
+                            disabled={isProcessing}
+                          >
+                            {isProcessing ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="h-4 w-4 mr-2" />
+                            )}{' '}
+                            Declare {player?.name} as Winner
+                          </Button>
+                        )}
                       </div>
-                      {match.status === 'disputed' && (
-                        <Button
-                          size="sm"
-                          className="w-full text-green-50 bg-green-600 hover:bg-green-700"
-                          onClick={() => handleDeclareWinner(result.userId)}
-                          disabled={isProcessing}
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <p className="text-sm font-medium self-start">
+                          Submitted Screenshot
+                        </p>
+                        <a
+                          href={result.screenshotUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block w-full"
                         >
-                          {isProcessing ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <CheckCircle2 className="h-4 w-4 mr-2" />
-                          )}{' '}
-                          Declare {player?.name} as Winner
-                        </Button>
-                      )}
+                          <Image
+                            src={result.screenshotUrl}
+                            alt={`Screenshot from ${player?.name}`}
+                            width={300}
+                            height={200}
+                            className="rounded-md object-contain border-2 w-full h-auto"
+                          />
+                        </a>
+                      </div>
                     </div>
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <p className="text-sm font-medium self-start">
-                        Submitted Screenshot
-                      </p>
-                      <a
-                        href={result.screenshotUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block w-full"
-                      >
-                        <Image
-                          src={result.screenshotUrl}
-                          alt={`Screenshot from ${player?.name}`}
-                          width={300}
-                          height={200}
-                          className="rounded-md object-contain border-2 w-full h-auto"
-                        />
-                      </a>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-muted-foreground text-center py-4">
-                No results have been submitted for this match yet.
+                  );
+                })
+              ) : (
+                <p className="text-muted-foreground text-center py-4">
+                  No results have been submitted for this match yet.
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap justify-end gap-2 pt-4 border-t">
+            {match.status === 'completed' &&
+              !match.prizeDistributed &&
+              match.winnerId && (
+                <Button
+                  variant="accent"
+                  onClick={handleDistributeWinnings}
+                  disabled={isDistributing}
+                >
+                  {isDistributing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <HandCoins className="mr-2 h-4 w-4" />
+                  )}{' '}
+                  Distribute Prize to {winnerPlayer?.name}
+                </Button>
+              )}
+            {match.prizeDistributed && (
+              <p className="text-sm text-green-600 font-medium flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" /> Winnings already distributed.
               </p>
             )}
-          </div>
-        </div>
-        <div className="flex flex-wrap justify-end gap-2 pt-4 border-t">
-          {match.status === 'completed' &&
-            !match.prizeDistributed &&
-            match.winnerId && (
-              <Button
-                variant="accent"
-                onClick={handleDistributeWinnings}
-                disabled={isDistributing}
-              >
-                {isDistributing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <HandCoins className="mr-2 h-4 w-4" />
-                )}{' '}
-                Distribute Prize to {winnerPlayer?.name}
-              </Button>
+            {match.status === 'disputed' && (
+               <DialogClose asChild>
+                  <Button
+                  variant="outline"
+                  className="text-orange-500 border-orange-500 hover:bg-orange-100 hover:text-orange-600"
+                  onClick={() => handleAction('Resolve Dispute')}
+                  >
+                  <AlertTriangle className="mr-2 h-4 w-4" /> Manually Resolved
+                  </Button>
+              </DialogClose>
             )}
-          {match.prizeDistributed && (
-            <p className="text-sm text-green-600 font-medium flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4" /> Winnings already distributed.
-            </p>
-          )}
-          {match.status === 'disputed' && (
-             <DialogClose asChild>
-                <Button
-                variant="outline"
-                className="text-orange-500 border-orange-500 hover:bg-orange-100 hover:text-orange-600"
-                onClick={() => handleAction('Resolve Dispute')}
-                >
-                <AlertTriangle className="mr-2 h-4 w-4" /> Manually Resolved
-                </Button>
+            <Button variant="outline" onClick={() => handleAction('View Fraud Report')}>
+              <Shield className="mr-2 h-4 w-4" /> View Fraud Report
+            </Button>
+            <Button variant="destructive" onClick={() => handleAction('Cancel Match')}>
+              <XCircle className="mr-2 h-4 w-4" /> Cancel Match
+            </Button>
+            <DialogClose asChild>
+              <Button variant="ghost">Close</Button>
             </DialogClose>
-          )}
-          <Button variant="outline" onClick={() => handleAction('View Fraud Report')}>
-            <Shield className="mr-2 h-4 w-4" /> View Fraud Report
-          </Button>
-          <Button variant="destructive" onClick={() => handleAction('Cancel Match')}>
-            <XCircle className="mr-2 h-4 w-4" /> Cancel Match
-          </Button>
-          <DialogClose asChild>
-            <Button variant="ghost">Close</Button>
-          </DialogClose>
-        </div>
-      </DialogContent>
-    </Dialog>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </NoSsr>
   );
 };
 

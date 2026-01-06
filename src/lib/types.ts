@@ -11,7 +11,8 @@ export type UserProfile = {
     kycStatus?: 'not_submitted' | 'pending' | 'approved' | 'rejected';
     upiId?: string;
     bankDetails?: any;
-    // Any other user-specific fields
+    isBlocked?: boolean;
+    referralCode?: string;
   };
   
   export type Match = {
@@ -33,7 +34,7 @@ export type UserProfile = {
   export type Transaction = {
     id: string;
     userId: string;
-    type: 'deposit' | 'withdrawal' | 'entry-fee' | 'winnings' | 'refund';
+    type: 'deposit' | 'withdrawal' | 'entry-fee' | 'winnings' | 'refund' | 'admin-credit' | 'admin-debit';
     amount: number;
     status: 'pending' | 'completed' | 'rejected' | 'approved';
     createdAt: Timestamp;
@@ -52,6 +53,7 @@ export type UserProfile = {
   export type DepositRequest = {
     id: string;
     userId: string;
+    userName?: string;
     amount: number;
     utr: string;
     screenshotUrl: string;
@@ -64,10 +66,12 @@ export type UserProfile = {
   export type WithdrawalRequest = {
     id: string;
     userId: string;
+    userName?: string;
     amount: number;
     upiId: string;
+    bankDetails?: string;
     status: 'pending' | 'approved' | 'rejected';
-    requestedAt: Timestamp;
+    createdAt: Timestamp;
     processedAt?: Timestamp;
     rejectionReason?: string;
     processedBy?: string; // Admin UID

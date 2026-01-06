@@ -27,6 +27,7 @@ import {
     DialogFooter,
     DialogClose,
   } from '@/components/ui/dialog';
+import NoSsr from "@/components/NoSsr";
 
 
 interface KycRequest extends KycApplication {
@@ -51,6 +52,7 @@ const KycDetailModal = ({
     const [rejectionReason, setRejectionReason] = useState('');
 
     return (
+    <NoSsr>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
@@ -117,6 +119,7 @@ const KycDetailModal = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </NoSsr>
     );
   };
 

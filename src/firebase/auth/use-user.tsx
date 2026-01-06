@@ -11,10 +11,12 @@ import {
 import type { User } from 'firebase/auth';
 import { useAuth, useFirestore } from '../provider';
 import { doc, onSnapshot } from 'firebase/firestore';
+import type { UserProfile } from '@/lib/types';
+
 
 type UserContextValue = {
   user: User | null;
-  userProfile: any | null; // Replace 'any' with your UserProfile type
+  userProfile: UserProfile | null; 
   isAdmin: boolean;
   loading: boolean;
 };
@@ -25,7 +27,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const firestore = useFirestore();
   const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<any | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true); // Start with loading true
 
@@ -40,11 +42,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setUser(user);
       if (user) {
         const tokenResult = await user.getIdTokenResult();
+        // Set admin status from custom claim first for responsiveness
         setIsAdmin(tokenResult.claims.isAdmin === true);
-        // Firestore profile will be loaded in the other effect, 
-        // but we don't set loading to false until that is also checked.
       } else {
-        // If there's no user, we are not loading anymore.
         setIsAdmin(false);
         setUserProfile(null);
         setLoading(false);
@@ -56,31 +56,28 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (user && firestore) {
-      // Now that we have a user, we start loading the profile.
       setLoading(true);
       const userProfileRef = doc(firestore, 'users', user.uid);
       const unsubscribe = onSnapshot(userProfileRef, (doc) => {
         if (doc.exists()) {
-          const profileData = doc.data();
-          setUserProfile(profileData);
-          // Check for admin status from Firestore profile, potentially overriding the claim
-          if (profileData.isAdmin === true) {
-            setIsAdmin(true);
-          }
+          const profileData = doc.data() as UserProfile;
+          setUserProfile({ uid: doc.id, ...profileData });
+          // Overwrite admin status with the one from Firestore doc as the source of truth
+          setIsAdmin(profileData.isAdmin === true);
         } else {
           setUserProfile(null);
+          setIsAdmin(false);
         }
-        // Once profile is fetched (or not found), we are done loading.
         setLoading(false);
       }, (error) => {
           console.error("Error listening to user profile:", error);
           setUserProfile(null);
-          setLoading(false); // Also stop loading on error.
+          setIsAdmin(false);
+          setLoading(false);
       });
       return () => unsubscribe();
     } else if (!user) {
-        // If there's no user, we're not loading user profile data.
-        // The onAuthStateChanged effect handles the main loading state.
+        setLoading(false);
     }
   }, [user, firestore]);
 

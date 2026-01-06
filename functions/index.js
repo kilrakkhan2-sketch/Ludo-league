@@ -1,4 +1,5 @@
 
+
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const { CloudTasksClient } = require('@google-cloud/tasks');
@@ -8,17 +9,27 @@ admin.initializeApp();
 const db = admin.firestore();
 const tasksClient = new CloudTasksClient();
 
-// Function to set admin claims
+// Function to set admin claims and also update the user's document in Firestore.
 exports.setAdminClaim = functions.https.onCall(async (data, context) => {
+  // Ensure the caller is an admin.
   if (!context.auth.token.admin) {
     throw new functions.https.HttpsError('permission-denied', 'Only admins can set admin claims.');
   }
 
   const { uid, isAdmin } = data;
-  await admin.auth().setCustomUserClaims(uid, { admin: isAdmin });
+  try {
+    // Set the custom claim on the user's auth token.
+    await admin.auth().setCustomUserClaims(uid, { admin: isAdmin });
+    // Also update the `isAdmin` field in the user's Firestore document.
+    await db.collection('users').doc(uid).update({ isAdmin: isAdmin });
 
-  return { message: `Success! User ${uid} has been ${isAdmin ? 'made an admin' : 'removed as an admin'}.` };
+    return { message: `Success! User ${uid} has been ${isAdmin ? 'made an admin' : 'removed as an admin'}.` };
+  } catch (error) {
+    console.error("Error setting admin claim:", error);
+    throw new functions.https.HttpsError('internal', 'An error occurred while setting the admin claim.');
+  }
 });
+
 
 // Function triggered on result submission
 exports.onResultSubmit = functions.firestore
@@ -137,63 +148,72 @@ exports.distributeWinnings = functions.https.onRequest(async (req, res) => {
   }
 });
 
-// Handles deposit and withdrawal request approvals
-exports.handleTransaction = functions.firestore
+
+// Securely handles wallet balance updates when a transaction is created.
+exports.onTransactionCreate = functions.firestore
   .document('transactions/{transactionId}')
-  .onUpdate(async (change, context) => {
-    const before = change.before.data();
-    const after = change.after.data();
+  .onCreate(async (snap, context) => {
+    const transaction = snap.data();
+    const { userId, type, amount, status } = transaction;
 
-    if (before.status === 'pending' && after.status === 'approved') {
-      const { userId, amount, type } = after;
-      const userRef = db.collection('users').doc(userId);
-
-      const modificationAmount = type === 'deposit' ? amount : -amount;
-
-      try {
-        await db.runTransaction(async (t) => {
-          const userDoc = await t.get(userRef);
-          if (!userDoc.exists) {
-            throw new Error(`User ${userId} not found`);
-          }
-
-          const currentBalance = userDoc.data().balance || 0;
-          const newBalance = currentBalance + modificationAmount;
-
-          if (newBalance < 0) {
-            throw new Error('Insufficient balance for withdrawal.');
-          }
-
-          t.update(userRef, { balance: newBalance });
-        });
-
-        console.log(`Transaction ${context.params.transactionId} for user ${userId} handled successfully.`);
+    // Only process completed transactions that affect balance.
+    if (status !== 'completed') {
+        console.log(`Transaction ${context.params.transactionId} is not completed. Skipping balance update.`);
         return null;
-
-      } catch (error) {
-        console.error('Error handling transaction:', error);
-        return change.after.ref.update({ status: 'failed', error: error.message });
-      }
     }
 
-    return null;
+    const validTypes = ['deposit', 'withdrawal', 'entry-fee', 'winnings', 'refund', 'admin-credit', 'admin-debit', 'referral-bonus'];
+    if (!validTypes.includes(type)) {
+        console.log(`Invalid transaction type: ${type}. Skipping balance update.`);
+        return null;
+    }
+    
+    const userRef = db.collection('users').doc(userId);
+
+    try {
+        await db.runTransaction(async (t) => {
+            const userDoc = await t.get(userRef);
+            if (!userDoc.exists) {
+                throw new Error(`User ${userId} not found`);
+            }
+
+            const currentBalance = userDoc.data().walletBalance || 0;
+            const newBalance = currentBalance + amount; // Amount is positive for credits, negative for debits.
+
+            if (newBalance < 0) {
+                // This should ideally be prevented by client-side checks, but it's a server-side safeguard.
+                throw new Error(`Insufficient balance for user ${userId}. Transaction would result in negative balance.`);
+            }
+
+            t.update(userRef, { walletBalance: newBalance });
+        });
+
+        console.log(`Transaction ${context.params.transactionId} for user ${userId} handled successfully. New balance updated.`);
+        return null;
+
+    } catch (error) {
+        console.error('Error handling transaction:', error);
+        // Mark the transaction as failed to prevent re-processing and for auditing.
+        return snap.ref.update({ status: 'failed', error: error.message });
+    }
   });
+
 
   // This function triggers when a deposit request is approved to handle referral commissions.
 exports.onDepositApproved = functions.firestore
-.document('transactions/{transactionId}') // Listening to the same transactions collection
+.document('depositRequests/{depositId}') 
 .onUpdate(async (change, context) => {
   const after = change.after.data();
   const before = change.before.data();
 
   // Check if the transaction is a deposit and just got approved
-  if (after.type === 'deposit' && before.status === 'pending' && after.status === 'approved') {
+  if (after.status === 'approved' && before.status === 'pending') {
     const { userId, amount } = after;
 
     const userRef = db.doc(`users/${userId}`);
     const userDoc = await userRef.get();
 
-    if (!userDoc.exists) {
+    if (!userDoc.exists()) {
       console.log(`User ${userId} not found.`);
       return null;
     }
@@ -218,10 +238,8 @@ exports.onDepositApproved = functions.firestore
           
           const commission = (amount * commissionPercentage) / 100;
           
-          const referrerData = referrerDoc.data();
-          const newBalance = (referrerData.balance || 0) + commission;
-          transaction.update(referrerRef, { balance: newBalance });
-
+          // Create a transaction document for the commission.
+          // The onTransactionCreate function will handle updating the referrer's balance.
           const commissionTransRef = db.collection('transactions').doc();
           transaction.set(commissionTransRef, {
             userId: referredBy,
@@ -232,7 +250,7 @@ exports.onDepositApproved = functions.firestore
             description: `Referral commission from ${userData.displayName || userId}'s deposit.`
           });
 
-           console.log(`Credited ${commission} to ${referredBy} for referral.`);
+           console.log(`Created referral transaction of ${commission} for ${referredBy}.`);
         });
       } catch (error) {
         console.error("Error processing referral commission: ", error);
@@ -241,4 +259,3 @@ exports.onDepositApproved = functions.firestore
   }
   return null;
 });
-

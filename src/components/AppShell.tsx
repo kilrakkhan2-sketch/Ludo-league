@@ -16,6 +16,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 import { Sidebar, SidebarProvider } from '@/components/ui/sidebar';
+import NoSsr from '@/components/NoSsr';
 
 const AppShell = ({ children }: { children: React.ReactNode }) => {
   const { user } = useUser();
@@ -69,6 +70,7 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
       <div className="relative flex flex-col min-h-screen w-full bg-muted/20 overflow-x-hidden">
           <FirebaseErrorListener/>
           <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+            <NoSsr>
               <Sheet>
                   <SheetTrigger asChild>
                       <Button size="icon" variant="outline" className="md:hidden">
@@ -83,6 +85,7 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
                     <Sidebar />
                   </SheetContent>
               </Sheet>
+            </NoSsr>
               <AppHeader />
           </header>
           <div className="flex flex-1">

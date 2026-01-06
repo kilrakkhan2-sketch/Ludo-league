@@ -8,51 +8,50 @@ service firebase.storage {
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
-
-    // Checks for an isAdmin field in the user's Firestore document.
+    
     function isAdmin() {
-      return request.auth != null &&
-             exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
-             get(/databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      return request.auth != null && (
+        request.auth.token.admin == true ||
+        (exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+         get(/databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin == true)
+      );
     }
 
     // ========= ADMIN RULE: Global Access =========
-    // This rule MUST come first. It grants admins unrestricted read/write access 
-    // across all storage paths. If a user is an admin, no other rules below this will be checked.
+    // This rule MUST come first. It grants admins unrestricted read/write access.
     match /{allPaths=**} {
       allow read, write: if isAdmin();
     }
 
-    // ========= User-Specific Rules (These are only evaluated if the user is NOT an admin) =========
-
-    // Profile Pictures: Users can read anyone's profile picture, but only write their own.
+    // ========= Rules for Non-Admin Users =========
+    // These rules are evaluated only if the user is NOT an admin.
+    
+    // Profile Pictures: Users can read anyone's (if public), but only write their own.
     match /profile-pictures/{userId}/{fileName} {
       allow read: if request.auth != null;
       allow write: if isOwner(userId);
     }
 
-    // KYC Documents: Users can only write to their own KYC folder.
-    // Reading is also restricted to the user.
+    // KYC Documents: Users can only write to their own KYC folder. No one else can read.
     match /kyc/{userId}/{fileName} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
     }
     
     // Deposit Screenshots: Users can only write to their own deposits folder.
-    // Reading is also restricted to the user.
     match /deposits/{userId}/{fileName} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
     }
 
-    // Match Result Screenshots: Users can only write their own result screenshots.
-    // File name must start with the user's UID.
-    // Any authenticated user can read them to verify results or for dispute resolution.
-    match /match-results/{matchId}/{screenshotFile} {
+    // Match Result Screenshots: Authenticated users can read.
+    // Users can only write if the filename starts with their UID (ensures they can't overwrite).
+    match /match-results/{matchId}/{fileName} {
         allow read: if request.auth != null;
-        allow write: if request.auth != null && screenshotFile.startsWith(request.auth.uid);
+        allow write: if request.auth != null && fileName.startsWith(request.auth.uid);
     }
     
-    // Public content (e.g., news images, tournament banners) can be read by anyone.
-    // Write access is admin-only via the global rule above.
+    // Public content is readable by anyone (even unauthenticated).
     match /public/{allPaths=**} {
         allow read: if true;
     }

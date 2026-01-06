@@ -73,49 +73,59 @@ const UserDetailModal = ({
   const { toast } = useToast();
   const [walletAdjustment, setWalletAdjustment] = useState(0);
   const [adjustmentReason, setAdjustmentReason] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleWalletUpdate = async () => {
       if (!firestore || !adminUser || !walletAdjustment || !adjustmentReason) {
         toast({ title: 'Amount and reason are required', variant: 'destructive'});
         return;
       }
-      const userRef = doc(firestore, 'users', user.uid);
-      const newBalance = (user.walletBalance || 0) + walletAdjustment;
-
-      const batch = writeBatch(firestore);
-      batch.update(userRef, { walletBalance: newBalance });
-      
-      const logRef = doc(collection(firestore, 'adminLogs'));
-      batch.set(logRef, {
-        adminId: adminUser.uid,
-        action: 'manual_wallet_adjustment',
-        targetUserId: user.uid,
-        timestamp: serverTimestamp(),
-        notes: `Adjusted by ${walletAdjustment}. New balance: ${newBalance}. Reason: ${adjustmentReason}`
-      });
+      setIsProcessing(true);
 
       try {
-        await batch.commit();
-        toast({ title: 'Wallet updated successfully', className: 'bg-green-100 text-green-800' });
+        const transType = walletAdjustment > 0 ? 'admin-credit' : 'admin-debit';
+        const transAmount = Math.abs(walletAdjustment);
+
+        // Create a transaction document which will be handled by a cloud function
+        await addDoc(collection(firestore, 'transactions'), {
+            userId: user.uid,
+            type: transType,
+            amount: walletAdjustment,
+            status: 'completed', // Admin actions are auto-completed
+            createdAt: serverTimestamp(),
+            description: `Admin adjustment: ${adjustmentReason}`
+        });
+
+        const logRef = doc(collection(firestore, 'adminLogs'));
+        await setDoc(logRef, {
+            adminId: adminUser.uid,
+            action: 'manual_wallet_adjustment',
+            targetUserId: user.uid,
+            timestamp: serverTimestamp(),
+            notes: `Adjusted by ${walletAdjustment}. Reason: ${adjustmentReason}`
+        });
+
+        toast({ title: 'Wallet adjustment requested', description: 'The user\'s balance will update shortly.', className: 'bg-green-100 text-green-800' });
         onOpenChange(false); // Close dialog
       } catch (e: any) {
         toast({ title: 'Failed to update wallet', description: e.message, variant: 'destructive' });
+      } finally {
+          setIsProcessing(false);
+          setWalletAdjustment(0);
+          setAdjustmentReason('');
       }
   };
   
   const handleAdminToggle = async () => {
     if (!adminUser) return;
+    setIsProcessing(true);
     const functions = getFunctions();
     const setAdminClaim = httpsCallable(functions, 'setAdminClaim');
     const newIsAdmin = !(user as any).isAdmin;
 
     try {
       await setAdminClaim({ uid: user.uid, isAdmin: newIsAdmin });
-      // Also update the local user document to reflect the change immediately
-      if(firestore) {
-        const userRef = doc(firestore, 'users', user.uid);
-        await updateDoc(userRef, { isAdmin: newIsAdmin });
-      }
+      // The user's firestore doc will be updated via the cloud function for consistency.
       toast({
         title: `User ${newIsAdmin ? 'promoted to' : 'demoted from'} admin`,
         className: 'bg-green-100 text-green-800',
@@ -128,11 +138,14 @@ const UserDetailModal = ({
         description: e.message,
         variant: 'destructive',
       });
+    } finally {
+        setIsProcessing(false);
     }
   };
 
   const handleStatusChange = async (newStatus: boolean) => {
     if (!firestore || !adminUser) return;
+    setIsProcessing(true);
     const userRef = doc(firestore, 'users', user.uid);
     const batch = writeBatch(firestore);
 
@@ -156,6 +169,8 @@ const UserDetailModal = ({
         onOpenChange(false);
     } catch (e: any) {
         toast({ title: 'Failed to update user status', description: e.message, variant: 'destructive' });
+    } finally {
+        setIsProcessing(false);
     }
 };
 
@@ -169,7 +184,7 @@ const UserDetailModal = ({
         <div className="py-4 space-y-4">
             {/* User details */}
             <p><strong>User ID:</strong> {user.uid}</p>
-            <p><strong>Wallet Balance:</strong> ₹{user.walletBalance?.toFixed(2)}</p>
+            <p><strong>Wallet Balance:</strong> ₹{(user.walletBalance || 0).toFixed(2)}</p>
             <div><strong>KYC Status:</strong> <Badge>{user.kycStatus}</Badge></div>
             
             <div className='space-y-2 pt-4 border-t'>
@@ -178,11 +193,15 @@ const UserDetailModal = ({
                     <Input type="number" placeholder="e.g., 100 or -50" value={walletAdjustment} onChange={e => setWalletAdjustment(Number(e.target.value))}/>
                     <Input placeholder="Reason for adjustment" value={adjustmentReason} onChange={e => setAdjustmentReason(e.target.value)}/>
                 </div>
-                <Button onClick={handleWalletUpdate} disabled={!walletAdjustment || !adjustmentReason}>Apply Adjustment</Button>
+                <Button onClick={handleWalletUpdate} disabled={!walletAdjustment || !adjustmentReason || isProcessing}>
+                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                    Apply Adjustment
+                </Button>
             </div>
              <div className='space-y-2 pt-4 border-t'>
                 <h4 className='font-semibold'>Admin Status</h4>
-                <Button onClick={handleAdminToggle} variant="secondary">
+                <Button onClick={handleAdminToggle} variant="secondary" disabled={isProcessing}>
+                  {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                   {(user as any).isAdmin ? <ShieldOff className='mr-2 h-4 w-4'/> : <ShieldCheck className='mr-2 h-4 w-4'/>}
                   {(user as any).isAdmin ? 'Demote from Admin' : 'Promote to Admin'}
                 </Button>
@@ -195,7 +214,9 @@ const UserDetailModal = ({
                 <Button 
                     onClick={() => handleStatusChange(!(user as any).isBlocked)} 
                     variant={(user as any).isBlocked ? "outline" : "destructive"}
+                    disabled={isProcessing}
                 >
+                    {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                     {(user as any).isBlocked ? <UserCheck className='mr-2 h-4 w-4'/> : <Ban className='mr-2 h-4 w-4'/>}
                     {(user as any).isBlocked ? 'Unban User' : 'Ban User'}
                 </Button>
@@ -316,7 +337,7 @@ export default function AdminUsersPage() {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar>
-                          <AvatarImage src={user.photoURL} />
+                          <AvatarImage src={user.photoURL || undefined} />
                           <AvatarFallback>
                             {user.displayName?.charAt(0)}
                           </AvatarFallback>
@@ -325,7 +346,7 @@ export default function AdminUsersPage() {
                       </div>
                     </TableCell>
                     <TableCell>{user.email}</TableCell>
-                    <TableCell>₹{user.walletBalance?.toFixed(2)}</TableCell>
+                    <TableCell>₹{(user.walletBalance || 0).toFixed(2)}</TableCell>
                     <TableCell>
                       <Badge
                         variant={
