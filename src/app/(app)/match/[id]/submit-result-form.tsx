@@ -29,8 +29,6 @@ import {
   collection,
   serverTimestamp,
   doc,
-  runTransaction,
-  getDocs,
   setDoc,
   onSnapshot,
 } from 'firebase/firestore';
@@ -49,6 +47,8 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
   } | null>(null);
   const [submittedPositions, setSubmittedPositions] = useState<number[]>([]);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [position, setPosition] = useState<number | null>(null);
+  const [status, setStatus] = useState<'win' | 'loss' | null>(null);
 
   useEffect(() => {
     if (!firestore || !matchId) return;
@@ -69,6 +69,16 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
 
     return () => unsubscribe();
   }, [firestore, matchId, user?.uid]);
+
+  const handlePositionChange = (value: string) => {
+    const pos = Number(value);
+    setPosition(pos);
+    if (pos === 1) {
+        setStatus('win');
+    } else {
+        setStatus('loss');
+    }
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -91,39 +101,19 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
       });
       return;
     }
+    
+    if (!position || !status) {
+      toast({
+        title: 'Please select your position.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     setFormState(null);
 
-    const formData = new FormData(e.currentTarget);
-    const position = Number(formData.get('position'));
-    const status = formData.get('status') as 'win' | 'loss';
-
-    if (!position || !status) {
-      toast({
-        title: 'Please select your position and status.',
-        variant: 'destructive',
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (position === 1 && status === 'loss') {
-        toast({ title: "Invalid Selection", description: "You cannot claim 1st position with a 'Loss' status.", variant: "destructive"});
-        setIsSubmitting(false);
-        return;
-    }
-
-    if (position > 1 && status === 'win') {
-        toast({ title: "Invalid Selection", description: "You can only claim 'Win' status if you are in 1st position.", variant: "destructive"});
-        setIsSubmitting(false);
-        return;
-    }
-
     try {
-      const isFlaggedForFraud = false;
-
-      // Step 1: Upload screenshot to Firebase Storage
       const storage = getStorage();
       const storageRef = ref(
         storage,
@@ -132,8 +122,6 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
       await uploadString(storageRef, dataUri, 'data_url');
       const screenshotUrl = await getDownloadURL(storageRef);
 
-      // Step 2: Save result to Firestore subcollection using the user's UID as the doc ID
-      const matchRef = doc(firestore, 'matches', matchId);
       const resultDocRef = doc(
         firestore,
         `matches/${matchId}/results`,
@@ -148,46 +136,15 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
         status,
         screenshotUrl,
         submittedAt: serverTimestamp(),
-        isFlaggedForFraud,
+      });
+      
+      // The onResultSubmit cloud function will now handle all logic.
+
+      setFormState({
+        message: 'Result submitted successfully! Your submission is now under review.',
+        isError: false,
       });
 
-      // Step 3: Check for conflicts and update match status
-      await runTransaction(firestore, async (transaction) => {
-        const matchDoc = await transaction.get(matchRef);
-        if (!matchDoc.exists()) throw new Error('Match not found');
-
-        // Fetch all results for this match to check status
-        const resultsRef = collection(firestore, `matches/${matchId}/results`);
-        const allResultsSnapshot = await getDocs(resultsRef);
-        const allResults = allResultsSnapshot.docs.map((d) => d.data());
-        
-        const winClaims = allResults.filter((r) => r.status === 'win');
-        const matchData = matchDoc.data();
-
-        if (winClaims.length > 1) {
-          transaction.update(matchRef, { status: 'disputed' });
-        } else if (
-          matchDoc.data().status === 'in-progress' &&
-          allResults.length === matchData.playerIds.length
-        ) {
-          // If match is in-progress and everyone has submitted
-          if (winClaims.length === 1) {
-            // All submitted, only one winner, no dispute. Mark as completed.
-            transaction.update(matchRef, { status: 'completed', winnerId: winClaims[0].userId });
-          } else {
-            // All submitted, but multiple or zero winners claimed. Dispute.
-            transaction.update(matchRef, { status: 'disputed' });
-          }
-        }
-      });
-
-      if (!isFlaggedForFraud) {
-        setFormState({
-          message:
-            'Result submitted successfully! Your submission is now under review.',
-          isError: false,
-        });
-      }
     } catch (error: any) {
       console.error('Error submitting result:', error);
       setFormState({
@@ -204,7 +161,7 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
         <Alert variant="default" className="bg-green-50 border-green-200 text-green-800">
             <CheckCircle2 className="h-4 w-4 !text-green-500"/>
             <AlertTitle>Result Submitted</AlertTitle>
-            <AlertDescription>You have already submitted your result for this match. Please wait for the admin to verify.</AlertDescription>
+            <AlertDescription>You have already submitted your result for this match. Please wait for the other players and admin verification.</AlertDescription>
         </Alert>
     )
   }
@@ -214,8 +171,7 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
       <CardHeader>
         <CardTitle>Submit Match Result</CardTitle>
         <CardDescription>
-          Upload your result screenshot, select your position, and choose your
-          status. All submissions are manually verified by an admin.
+          Upload your result screenshot and select your final position in the game.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -244,7 +200,7 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
 
           <div className="space-y-2">
             <Label>Your Position</Label>
-            <RadioGroup name="position" required className="flex gap-4">
+            <RadioGroup name="position" required onValueChange={handlePositionChange} className="flex gap-4">
               {[1, 2, 3, 4].map((pos) => (
                 <div key={pos} className="flex items-center space-x-2">
                   <RadioGroupItem
@@ -273,14 +229,11 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
 
           <div className="space-y-2">
             <Label>Your Claimed Status</Label>
-            <RadioGroup
-              name="status"
-              required
-              defaultValue="win"
+            <div
               className="flex gap-4"
             >
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="win" id="win" />
+                <RadioGroupItem value="win" id="win" checked={status === 'win'} disabled />
                 <Label
                   htmlFor="win"
                   className="flex items-center gap-1.5 cursor-pointer text-green-600"
@@ -290,7 +243,7 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="loss" id="loss" />
+                <RadioGroupItem value="loss" id="loss" checked={status === 'loss'} disabled/>
                 <Label
                   htmlFor="loss"
                   className="flex items-center gap-1.5 cursor-pointer text-red-600"
@@ -298,7 +251,7 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
                   <XCircle className="h-4 w-4" />I Lost
                 </Label>
               </div>
-            </RadioGroup>
+            </div>
           </div>
 
           {formState && (
@@ -323,7 +276,7 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
           <Button
             type="submit"
             className="w-full"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !position}
             variant="accent"
           >
             {isSubmitting ? (
