@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Suspense, useEffect } from 'react';
@@ -12,27 +13,31 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
+    // Wait until the authentication check is complete
     if (!isAuthenticating) {
       const isAdminPage = pathname.startsWith('/admin');
 
+      // If there is no user and the page is not a public auth page, redirect to login.
       if (!user && !isAuthPage) {
-        // Not logged in and not on an auth page, redirect to login
         router.replace('/');
-      } else if (user && isAuthPage) {
-        // Logged in and on an auth page, redirect to dashboard
+      } 
+      // If the user is logged in and trying to access an auth page, redirect to dashboard.
+      else if (user && isAuthPage) {
         router.replace('/dashboard');
-      } else if (user && isAdminPage && !isAdmin) {
-        // Logged in, on an admin page, but not an admin, redirect to dashboard
+      } 
+      // If the user is logged in, on an admin page, but is not an admin, redirect to dashboard.
+      else if (user && isAdminPage && !isAdmin) {
         router.replace('/dashboard');
       }
     }
   }, [user, isAuthenticating, isAdmin, isAuthPage, pathname, router]);
 
+  // While authentication is in progress, show a loader.
   if (isAuthenticating) {
     return <CustomLoader />;
   }
 
-  // If user is authenticated and not on an auth page, render the app shell.
+  // If a user exists and they are not on an auth page, render the main app shell.
   if (user && !isAuthPage) {
     return (
       <AppShell>
@@ -43,11 +48,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If user is not authenticated and on an auth page, render the auth page.
+  // If there's no user and they are on a public auth page, render that page.
   if (!user && isAuthPage) {
     return <>{children}</>;
   }
 
-  // In other cases (like a redirect is happening), show a loader.
+  // In all other cases (e.g., waiting for a redirect to complete), show a loader.
   return <CustomLoader />;
 }
