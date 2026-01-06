@@ -4,36 +4,36 @@
 
 @layer base {
   :root {
-    --background: 222 47% 11%; /* Dark Slate Blue: #111827 */
-    --foreground: 210 40% 98%; /* Almost White: #F9FAFB */
-    --card: 222 47% 16%; /* Darker Slate Blue: #1F2937 */
-    --card-foreground: 210 40% 98%; /* Almost White: #F9FAFB */
-    --popover: 222 47% 11%; /* Dark Slate Blue: #111827 */
-    --popover-foreground: 210 40% 98%; /* Almost White: #F9FAFB */
-    --primary: 169 64% 53%; /* Teal: #2DD4BF */
-    --primary-foreground: 222 47% 11%; /* Dark Slate Blue for text on teal */
-    --secondary: 215 28% 17%; /* Muted Blue-Gray: #202A3A */
-    --secondary-foreground: 210 40% 98%; /* Almost White: #F9FAFB */
-    --muted: 215 28% 17%; /* Muted Blue-Gray: #202A3A */
-    --muted-foreground: 215 20% 65%; /* Lighter Gray: #9CA3AF */
-    --accent: 169 64% 53%; /* Teal: #2DD4BF */
-    --accent-foreground: 222 47% 11%; /* Dark Slate Blue for text on teal */
-    --destructive: 0 63% 40%; /* Soft Red: #D32F2F */
+    --background: 210 40% 98%; /* Light Gray: #F9FAFB */
+    --foreground: 222 47% 11%; /* Dark Slate Blue: #111827 */
+    --card: 0 0% 100%; /* White: #FFFFFF */
+    --card-foreground: 222 47% 11%; /* Dark Slate Blue: #111827 */
+    --popover: 0 0% 100%; /* White: #FFFFFF */
+    --popover-foreground: 222 47% 11%; /* Dark Slate Blue: #111827 */
+    --primary: 221 83% 53%; /* Royal Blue: #3B82F6 */
+    --primary-foreground: 210 40% 98%; /* Almost White: #F9FAFB */
+    --secondary: 210 40% 96%; /* Lighter Gray: #F3F4F6 */
+    --secondary-foreground: 222 47% 11%; /* Dark Slate Blue: #111827 */
+    --muted: 210 40% 96%; /* Lighter Gray: #F3F4F6 */
+    --muted-foreground: 215 20% 65%; /* Medium Gray: #9CA3AF */
+    --accent: 210 40% 96%; /* Lighter Gray: #F3F4F6 */
+    --accent-foreground: 222 47% 11%; /* Dark Slate Blue: #111827 */
+    --destructive: 0 84% 60%; /* Red: #EF4444 */
     --destructive-foreground: 210 40% 98%; /* Almost White: #F9FAFB */
-    --border: 215 28% 22%; /* Slightly lighter than card: #2B3A4C */
-    --input: 215 28% 17%; /* Muted Blue-Gray: #202A3A */
-    --ring: 169 64% 53%; /* Teal: #2DD4BF */
+    --border: 214 32% 91%; /* Light Gray Border: #E5E7EB */
+    --input: 214 32% 91%; /* Light Gray Border: #E5E7EB */
+    --ring: 221 83% 53%; /* Royal Blue: #3B82F6 */
     --radius: 0.75rem;
     
-    /* Custom Sidebar Colors */
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 169 64% 53%;
-    --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 222 47% 16%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 215 28% 22%;
-    --sidebar-ring: 169 64% 53%;
+    /* Custom Sidebar Colors for Light Theme */
+    --sidebar-background: 210 40% 98%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 210 40% 91%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 221 83% 53%;
   }
 
   .dark {
@@ -57,7 +57,7 @@
     --input: 215 28% 17%; /* Muted Blue-Gray: #202A3A */
     --ring: 169 64% 53%; /* Teal: #2DD4BF */
     
-    /* Custom Sidebar Colors */
+    /* Custom Sidebar Colors for Dark Theme */
     --sidebar-background: 222 47% 11%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 169 64% 53%;
