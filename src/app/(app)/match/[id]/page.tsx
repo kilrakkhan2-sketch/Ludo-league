@@ -283,7 +283,7 @@ export default function MatchPage() {
         description: 'Your entry fee has been refunded.',
       });
       router.push('/lobby');
-    } catch (error: any) => {
+    } catch (error: any) {
       toast({
         title: 'Error leaving match',
         description: error.message,
