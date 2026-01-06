@@ -73,7 +73,8 @@ export async function signUpWithEmail(email: string, password: string, displayNa
     kycStatus: 'not_submitted',
     createdAt: serverTimestamp(),
     referralCode: generateReferralCode(displayName),
-    referredBy: referredBy
+    referredBy: referredBy,
+    isAdmin: false, // Ensure isAdmin is set on creation
   }, { merge: true });
 
   return user;
@@ -104,6 +105,7 @@ export async function signInWithGoogle() {
       kycStatus: 'not_submitted',
       createdAt: serverTimestamp(),
       referralCode: generateReferralCode(user.displayName || 'user'),
+      isAdmin: false, // Ensure isAdmin is set on creation/merge
   }, { merge: true });
 
   return user;
