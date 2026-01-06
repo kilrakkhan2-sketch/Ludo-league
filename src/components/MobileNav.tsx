@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Swords, Trophy, Wallet, User as UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
+
 
 const navItems = [
   { href: '/dashboard', icon: Home, label: 'Home' },
@@ -26,27 +26,16 @@ export default function MobileNav() {
           return (
             <Link href={item.href} key={item.label} className="relative z-10 flex flex-col items-center justify-center gap-1 w-full h-full text-muted-foreground transition-colors duration-300 hover:text-primary">
 
-              <motion.div 
-                animate={{ y: isActive ? -4 : 0 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-              >
+              <div>
                 <item.icon className={cn('h-6 w-6', isActive ? 'text-primary' : '')} />
-              </motion.div>
+              </div>
               <span className={cn(
                 'text-xs font-medium transition-opacity duration-300',
                 { 'text-primary': isActive, 'opacity-70': !isActive }
               )}>
                 {item.label}
               </span>
-              {isActive && (
-               <motion.div
-                 layoutId="active-pill"
-                 className="absolute -bottom-1 h-1 w-8 bg-primary rounded-full"
-                 initial={false}
-                 animate={{ opacity: 1 }}
-                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-               />
-             )}
+             
 
             </Link>
           );

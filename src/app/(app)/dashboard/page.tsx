@@ -2,11 +2,11 @@
 'use client';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GraduationCap, Newspaper, Trophy, Users, Loader2, Star, Swords } from "lucide-react";
+import { GraduationCap, Newspaper, Trophy, Users, Loader2, Star } from "lucide-react";
 import Link from "next/link";
 import { ImageSlider } from "@/components/app/ImageSlider";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import NewsTicker from "@/components/NewsTicker";
+import { NewsTicker } from "@/components/app/news-ticker";
 import { useUser, useFirestore } from "@/firebase";
 import { useEffect, useState } from "react";
 import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";

@@ -7,12 +7,15 @@ export type UserProfile = {
     displayName: string | null;
     photoURL: string | null;
     isAdmin?: boolean;
-    walletBalance?: number;
-    kycStatus?: 'not_submitted' | 'pending' | 'approved' | 'rejected';
+    walletBalance: number;
+    kycStatus: 'not_submitted' | 'pending' | 'approved' | 'rejected';
+    kycRejectionReason?: string;
     upiId?: string;
-    bankDetails?: any;
+    bankDetails?: string;
     isBlocked?: boolean;
     referralCode?: string;
+    winnings?: number;
+    winRate?: number;
   };
   
   export type Match = {
@@ -140,14 +143,12 @@ export interface KycApplication {
     submittedAt: Timestamp;
     reviewedAt?: Timestamp;
     rejectionReason?: string;
-    fullName: string;
-    dateOfBirth: string;
-    aadhaarNumber: string;
-    panNumber: string;
-    aadhaarImage: string;
-    panImage: string;
+    aadhaarPanUrl: string;
+    selfieUrl: string;
     bankDetails?: string;
     upiId?: string;
+    userName?: string;
+    userAvatar?: string;
   }
   
   export interface MatchResult {

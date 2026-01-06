@@ -32,10 +32,8 @@ import NoSsr from "@/components/NoSsr";
 
 interface KycRequest extends KycApplication {
     id: string;
-    user?: { 
-        displayName: string; 
-        photoURL: string; 
-    };
+    userName?: string;
+    userAvatar?: string;
 }
 
 const KycDetailModal = ({
@@ -62,39 +60,20 @@ const KycDetailModal = ({
           <div className="py-4 space-y-4">
             <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16 border">
-                    <AvatarImage src={request.user?.photoURL} />
-                    <AvatarFallback>{request.user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                    <AvatarImage src={request.userAvatar} />
+                    <AvatarFallback>{request.userName?.charAt(0) || 'U'}</AvatarFallback>
                 </Avatar>
                 <div>
-                    <p className="font-bold text-lg">{request.user?.displayName}</p>
+                    <p className="font-bold text-lg">{request.userName}</p>
                     <p className="text-sm text-muted-foreground">User ID: {request.userId}</p>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                <div>
-                    <p className="font-medium text-muted-foreground">Full Name:</p>
-                    <p>{request.fullName}</p>
-                </div>
-                <div>
-                    <p className="font-medium text-muted-foreground">Date of Birth:</p>
-                    <p>{new Date(request.dateOfBirth).toLocaleDateString()}</p>
-                </div>
-                <div>
-                    <p className="font-medium text-muted-foreground">Aadhaar Number:</p>
-                    <p>{request.aadhaarNumber}</p>
-                </div>
-                <div>
-                    <p className="font-medium text-muted-foreground">PAN Number:</p>
-                    <p>{request.panNumber}</p>
                 </div>
             </div>
 
             <div className="pt-4 border-t">
                 <p className="font-medium text-muted-foreground">Document Images:</p>
                 <div className="flex gap-4 mt-2">
-                    <a href={request.aadhaarImage} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">View Aadhaar</a>
-                    <a href={request.panImage} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">View PAN</a>
+                    <a href={request.aadhaarPanUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">View ID Proof</a>
+                    <a href={request.selfieUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">View Selfie</a>
                 </div>
             </div>
 
@@ -140,24 +119,8 @@ export default function AdminKycPage() {
     const q = query(kycRef, where('status', '==', 'pending'), orderBy('submittedAt', 'asc'));
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-        const dataPromises = snapshot.docs.map(async (docSnap) => {
-            const data = { id: docSnap.id, ...docSnap.data() } as KycRequest;
-            
-            if (data.userId) {
-                const userRef = doc(firestore, 'users', data.userId);
-                const userSnap = await getDoc(userRef);
-                if(userSnap.exists()) {
-                    data.user = {
-                        displayName: userSnap.data().displayName,
-                        photoURL: userSnap.data().photoURL,
-                    };
-                }
-            }
-            return data;
-        });
-
-        const resolvedData = await Promise.all(dataPromises);
-        setRequests(resolvedData);
+        const data = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as KycRequest));
+        setRequests(data);
         setLoading(false);
     }, (error) => {
         console.error("Error fetching KYC requests: ", error);
@@ -188,7 +151,6 @@ export default function AdminKycPage() {
         rejectionReason: action === 'reject' ? reason : null
     });
 
-    // On approval, update the user's main profile with KYC status and payment details
     if (action === 'approve') {
         batch.update(userRef, {
             kycStatus: 'approved',
@@ -197,7 +159,8 @@ export default function AdminKycPage() {
         });
     } else {
         batch.update(userRef, {
-            kycStatus: 'rejected'
+            kycStatus: 'rejected',
+            kycRejectionReason: reason || 'Your KYC application was rejected. Please contact support.',
         });
     }
 
@@ -228,27 +191,25 @@ export default function AdminKycPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>User</TableHead>
-                <TableHead>Full Name</TableHead>
                 <TableHead>Date Submitted</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-                {loading && <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary"/></TableCell></TableRow>}
-                {!loading && requests.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No pending KYC requests.</TableCell></TableRow>}
+                {loading && <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary"/></TableCell></TableRow>}
+                {!loading && requests.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No pending KYC requests.</TableCell></TableRow>}
                 {!loading && requests.map((request) => (
                     <TableRow key={request.id} className="hover:bg-muted/50">
                     <TableCell>
                         <div className="flex items-center gap-3">
                             <Avatar className="border">
-                                <AvatarImage src={request.user?.photoURL} />
-                                <AvatarFallback>{request.user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                                <AvatarImage src={request.userAvatar} />
+                                <AvatarFallback>{request.userName?.charAt(0) || 'U'}</AvatarFallback>
                             </Avatar>
-                            <span className="font-medium">{request.user?.displayName || 'Unknown User'}</span>
+                            <span className="font-medium">{request.userName || 'Unknown User'}</span>
                         </div>
                     </TableCell>
-                    <TableCell>{request.fullName}</TableCell>
                     <TableCell>{request.submittedAt?.toDate().toLocaleString()}</TableCell>
                     <TableCell><Badge variant="secondary">{request.status}</Badge></TableCell>
                     <TableCell className="text-right">

@@ -9,7 +9,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import Autoplay from 'embla-carousel-autoplay';
 import { Megaphone } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 export function NewsTicker() {
   const firestore = useFirestore();
