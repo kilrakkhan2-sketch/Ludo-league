@@ -1,4 +1,3 @@
-
 // This file is meant to be used on the client-side
 'use client';
 
@@ -75,6 +74,9 @@ export async function signUpWithEmail(email: string, password: string, displayNa
     referralCode: generateReferralCode(displayName),
     referredBy: referredBy,
     isAdmin: false, // Ensure isAdmin is set on creation
+    rank: 0, // Beginner rank
+    maxUnlockedAmount: 100, // Max amount for beginners
+    totalWinnings: 0,
   }, { merge: true });
 
   return user;
@@ -105,7 +107,10 @@ export async function signInWithGoogle() {
       kycStatus: 'not_submitted',
       createdAt: serverTimestamp(),
       referralCode: generateReferralCode(user.displayName || 'user'),
-      isAdmin: false, // Ensure isAdmin is set on creation/merge
+      isAdmin: false,
+      rank: 0,
+      maxUnlockedAmount: 100,
+      totalWinnings: 0,
   }, { merge: true });
 
   return user;

@@ -2,7 +2,7 @@
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Swords, Loader2, Info } from "lucide-react";
+import { Swords, Loader2, Info, Lock } from "lucide-react";
 import { useUser, useFirestore } from "@/firebase";
 import { useEffect, useState } from "react";
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
@@ -22,30 +22,69 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useRouter } from 'next/navigation';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-lobby');
 
-const EntryFeeCard = ({ fee, onPlay }: { fee: number; onPlay: (fee: number) => void }) => {
-  return (
-    <motion.div whileHover={{ y: -5 }} className="h-full">
-      <Card className="flex flex-col h-full text-center bg-card/80 backdrop-blur-sm border-primary/20 hover:border-primary transition-all duration-300">
-        <CardHeader className="p-4">
-          <CardTitle className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-start to-primary-end">
+const EntryFeeCard = ({ 
+    fee, 
+    onPlay,
+    isLocked = false,
+    userRank,
+    requiredRank
+}: { 
+    fee: number; 
+    onPlay: (fee: number) => void;
+    isLocked: boolean;
+    userRank: number;
+    requiredRank: number;
+}) => {
+    
+    const cardContent = (
+      <Card className={cn(
+          "flex flex-col h-full text-center bg-card/80 backdrop-blur-sm border-primary/20 transition-all duration-300",
+          isLocked 
+          ? "bg-muted/50 border-muted-foreground/20 cursor-not-allowed"
+          : "hover:border-primary hover:-translate-y-1"
+      )}>
+        <CardHeader className="p-4 relative">
+          {isLocked && <Lock className="absolute top-2 right-2 h-4 w-4 text-muted-foreground" />}
+          <CardTitle className={cn(
+              "text-2xl font-bold",
+              isLocked ? "text-muted-foreground/50" : "text-transparent bg-clip-text bg-gradient-to-r from-primary-start to-primary-end"
+          )}>
             ₹{fee}
           </CardTitle>
-          <CardDescription>Entry Fee</CardDescription>
+          <CardDescription className={cn(isLocked && "text-muted-foreground/50")}>Entry Fee</CardDescription>
         </CardHeader>
         <CardContent className="flex-grow p-4">
-          <p className="text-md font-semibold">Prize: <span className="text-green-500">₹{(fee * 1.8).toFixed(2)}</span></p>
+          <p className={cn("text-md font-semibold", isLocked ? "text-muted-foreground/50" : "")}>
+            Prize: <span className={cn(isLocked ? "text-muted-foreground/50" : "text-green-500")}>₹{(fee * 1.8).toFixed(2)}</span>
+          </p>
         </CardContent>
         <CardFooter className="p-4">
-          <Button className="w-full h-9 text-sm" onClick={() => onPlay(fee)}>
-            <Swords className="mr-2 h-4 w-4" /> Play
+          <Button className="w-full h-9 text-sm" onClick={() => onPlay(fee)} disabled={isLocked}>
+            {isLocked ? "Locked" : <><Swords className="mr-2 h-4 w-4" /> Play</>}
           </Button>
         </CardFooter>
       </Card>
-    </motion.div>
-  );
+    );
+
+  if (isLocked) {
+    return (
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>{cardContent}</TooltipTrigger>
+                <TooltipContent>
+                    <p>Unlock this tier by reaching a higher rank.</p>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    )
+  }
+
+  return cardContent;
 };
 
 const SearchingOverlay = ({ onCancel }: { onCancel: () => void }) => (
@@ -121,6 +160,7 @@ export default function LobbyPage() {
             userName: user.displayName,
             userAvatar: user.photoURL,
             winRate: userProfile.winRate || 0,
+            rank: (userProfile as any).rank || 0,
             createdAt: new Date(),
         });
         toast({ title: "Searching for a match..." });
@@ -144,15 +184,47 @@ export default function LobbyPage() {
     }
   };
 
+  const rankConfig = [
+      { rank: 0, maxAmount: 100 },
+      { rank: 1, maxAmount: 300 },
+      { rank: 2, maxAmount: 1000 },
+      { rank: 3, maxAmount: 3000 },
+      { rank: 4, maxAmount: 10000 },
+      { rank: 5, maxAmount: 50000 },
+  ];
+
+  const getRequiredRankForFee = (fee: number): number => {
+    for (const config of rankConfig) {
+        if (fee <= config.maxAmount) {
+            return config.rank;
+        }
+    }
+    return 99; // Should not be reached if fee is within 50k
+  }
+
   const lowStakes = Array.from({ length: 10 }, (_, i) => 50 + i * 50);
   const mediumStakes = Array.from({ length: 9 }, (_, i) => 1000 + i * 500);
   const highStakes = Array.from({ length: 9 }, (_, i) => 10000 + i * 5000);
 
+  const currentUserRank = (userProfile as any)?.rank ?? 0;
+  const maxUnlockedAmount = (userProfile as any)?.maxUnlockedAmount ?? 100;
+
   const FeeTier = ({ fees }: { fees: number[] }) => (
-    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-        {fees.map(fee => (
-            <EntryFeeCard key={fee} fee={fee} onPlay={handlePlayClick} />
-        ))}
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+      {fees.map(fee => {
+        const isLocked = fee > maxUnlockedAmount;
+        const requiredRank = getRequiredRankForFee(fee);
+        return (
+          <EntryFeeCard 
+            key={fee} 
+            fee={fee} 
+            onPlay={handlePlayClick} 
+            isLocked={isLocked}
+            userRank={currentUserRank}
+            requiredRank={requiredRank}
+          />
+        )
+      })}
     </div>
   );
 
@@ -218,7 +290,7 @@ export default function LobbyPage() {
         </CardHeader>
         <CardContent className="prose prose-sm dark:prose-invert">
           <ol>
-            <li>Select an entry fee and click `Play Now`.</li>
+            <li>Select an entry fee and click `Play`.</li>
             <li>We'll find an opponent for you.</li>
             <li>Once a match is found, you'll be redirected to the match room.</li>
             <li>Use the room code from the match room to play in your Ludo King app.</li>

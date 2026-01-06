@@ -14,10 +14,15 @@ export type UserProfile = {
     bankDetails?: string;
     isBlocked?: boolean;
     referralCode?: string;
-    winnings?: number;
-    winRate?: number;
     fcmToken?: string;
-    activeMatchId?: string | null; // Added for new matchmaking logic
+    activeMatchId?: string | null;
+    // Rank and progression
+    rank: number; // 0 for Beginner, 1 for Learner, etc.
+    totalWinnings: number; // Cumulative net winnings
+    maxUnlockedAmount: number; // The highest entry fee this user can join
+    // Loss prevention
+    dailyLoss: number;
+    lossStreak: number;
   };
   
   export type Match = {
