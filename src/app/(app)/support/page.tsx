@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -147,7 +148,7 @@ export default function SupportPage() {
                     <CardDescription>Reach out to us on your favorite platform.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                     <Link href="https://wa.me/910000000000" target="_blank" rel="noopener noreferrer">
+                     <Link href="https://wa.me/919351993756" target="_blank" rel="noopener noreferrer">
                         <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
                             <div className="flex items-center gap-4">
                                 <WhatsAppIcon className="h-10 w-10"/>
