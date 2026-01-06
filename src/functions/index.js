@@ -33,7 +33,7 @@ exports.setAdminClaim = functions.https.onCall(async (data, context) => {
 });
 
 
-// New, advanced onResultSubmit function
+// New, advanced onResultSubmit function that detects fraud and decides match outcome.
 exports.onResultSubmit = functions.firestore
   .document('matches/{matchId}/results/{userId}')
   .onCreate(async (snap, context) => {
@@ -86,7 +86,7 @@ exports.onResultSubmit = functions.firestore
 
       // If no fraud detected, complete the match
       if (winClaims.length === 1) {
-        // Clear winner, complete the match
+        // Clear winner, complete the match. The `distributeWinnings` trigger will handle the payout.
         await matchRef.update({ status: 'completed', winnerId: winClaims[0].userId });
         console.log(`Match ${matchId} completed. Winner: ${winClaims[0].userId}`);
       } else {
@@ -133,7 +133,7 @@ exports.onTransactionCreate = functions.firestore
             t.update(userRef, { walletBalance: newBalance });
         });
 
-        // If this was the first deposit, check for referral commission
+        // If this was a deposit, check for referral commission
         if (type === 'deposit') {
             await handleReferralCommission(userId, amount);
         }
@@ -173,7 +173,7 @@ async function handleReferralCommission(userId, depositAmount) {
             return;
         }
         
-        const commissionPercentage = configDoc.exists() ? configDoc.data().commissionPercentage : 5;
+        const commissionPercentage = configDoc.exists() ? configDoc.data().commissionPercentage : 5; // Default 5%
         const commission = (depositAmount * commissionPercentage) / 100;
         
         const commissionTransRef = db.collection('transactions').doc();
@@ -181,17 +181,17 @@ async function handleReferralCommission(userId, depositAmount) {
         // Create batch to ensure atomicity
         const batch = db.batch();
         
-        // 1. Create the commission transaction for the referrer
+        // 1. Create the commission transaction for the referrer. `onTransactionCreate` will update the balance.
         batch.set(commissionTransRef, {
             userId: referredBy,
             type: 'referral-bonus',
             amount: commission,
             status: 'completed',
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            description: `Referral bonus from ${userData.displayName || userId}`
+            description: `Referral bonus from ${userData.displayName || userId}'s deposit`
         });
         
-        // 2. Mark the new user so they don't trigger this again
+        // 2. Mark the new user so they don't trigger this again on future deposits
         batch.update(userRef, { referralBonusPaid: true });
         
         await batch.commit();
@@ -200,14 +200,14 @@ async function handleReferralCommission(userId, depositAmount) {
 }
 
 
-// Automated prize distribution on match completion
+// Automated prize distribution on match completion. This is the only function that distributes prizes.
 exports.distributeWinnings = functions.firestore
   .document('matches/{matchId}')
   .onUpdate(async (change, context) => {
     const before = change.before.data();
     const after = change.after.data();
 
-    // Check if match just got completed and has a winner
+    // Check if match just got marked as 'completed', has a winner, and prize hasn't been distributed.
     if (after.status === 'completed' && before.status !== 'completed' && after.winnerId && !after.prizeDistributed) {
         const { matchId } = context.params;
         const { winnerId, prizePool } = after;
@@ -220,7 +220,7 @@ exports.distributeWinnings = functions.firestore
         const matchRef = db.doc(`matches/${matchId}`);
         const transactionRef = db.collection('transactions').doc();
 
-        // 1. Create a winnings transaction
+        // 1. Create a winnings transaction. The onTransactionCreate function will handle the balance update.
         batch.set(transactionRef, {
             userId: winnerId,
             type: 'winnings',
@@ -231,12 +231,12 @@ exports.distributeWinnings = functions.firestore
             description: `Winnings for match ${matchId}`,
         });
 
-        // 2. Mark prize as distributed in the match document
+        // 2. Mark prize as distributed in the match document to prevent this from running again.
         batch.update(matchRef, { prizeDistributed: true });
         
         try {
             await batch.commit();
-            console.log(`Winnings transaction created for match ${matchId}, winner ${winnerId}.`);
+            console.log(`Winnings transaction created for match ${matchId}, winner ${winnerId}. Balance will be updated by onTransactionCreate.`);
         } catch(error) {
             console.error(`Failed to create winnings transaction for match ${matchId}:`, error);
         }
@@ -287,4 +287,3 @@ exports.onMatchCreate = functions.firestore
       return null;
     }
   });
-
