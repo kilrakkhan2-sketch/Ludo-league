@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link"
@@ -17,7 +18,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] h-16 bg-card border shadow-lg rounded-full md:hidden">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm h-16 bg-card border shadow-lg rounded-full md:hidden">
       <div className="grid h-full grid-cols-5 mx-auto">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href === '/lobby' && pathname.startsWith('/match'));

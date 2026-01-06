@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -154,7 +155,7 @@ const SidebarProvider = React.forwardRef<
 SidebarProvider.displayName = "SidebarProvider"
 
 
-const SidebarNav = () => {
+const SidebarNav = ({ inSheet = false }: { inSheet?: boolean }) => {
     const pathname = usePathname();
     const { isAdmin } = useUser();
     const router = useRouter();
@@ -182,17 +183,27 @@ const SidebarNav = () => {
       { href: "/support", label: "Support", icon: LifeBuoy },
     ]
   
+    const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => 
+    inSheet ? (
+      <SheetClose asChild>
+        <Link href={href} className="w-full">{children}</Link>
+      </SheetClose>
+    ) : (
+      <Link href={href} className="w-full">{children}</Link>
+    );
+
+
     return (
       <>
       <SidebarMenu>
         {navItems.map((item) => (
           <SidebarMenuItem key={item.href}>
-            <Link href={item.href} className="w-full">
+            <NavLink href={item.href}>
               <SidebarMenuButton isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}>
                   <item.icon className="h-4 w-4" />
                   {item.label}
               </SidebarMenuButton>
-            </Link>
+            </NavLink>
           </SidebarMenuItem>
         ))}
       </SidebarMenu>
@@ -202,12 +213,12 @@ const SidebarNav = () => {
       <SidebarGroup>
           <SidebarMenu>
               <SidebarMenuItem>
-                  <Link href="/referrals" className="w-full">
+                  <NavLink href="/referrals">
                       <SidebarMenuButton isActive={pathname.startsWith('/referrals')}>
                           <Gift className="h-4 w-4" />
                           Referrals
                       </SidebarMenuButton>
-                  </Link>
+                  </NavLink>
               </SidebarMenuItem>
           </SidebarMenu>
       </SidebarGroup>
@@ -220,12 +231,12 @@ const SidebarNav = () => {
             <SidebarMenu>
                  {legalItems.map((item) => (
                     <SidebarMenuItem key={item.href}>
-                        <Link href={item.href} className="w-full">
+                        <NavLink href={item.href}>
                         <SidebarMenuButton isActive={pathname === item.href}>
                             <item.icon className="h-4 w-4" />
                             {item.label}
                         </SidebarMenuButton>
-                        </Link>
+                        </NavLink>
                     </SidebarMenuItem>
                 ))}
             </SidebarMenu>
@@ -240,12 +251,12 @@ const SidebarNav = () => {
             <SidebarMenu>
                  {helpItems.map((item) => (
                     <SidebarMenuItem key={item.href}>
-                        <Link href={item.href} className="w-full">
+                        <NavLink href={item.href}>
                         <SidebarMenuButton isActive={pathname === item.href}>
                             <item.icon className="h-4 w-4" />
                             {item.label}
                         </SidebarMenuButton>
-                        </Link>
+                        </NavLink>
                     </SidebarMenuItem>
                 ))}
             </SidebarMenu>
@@ -260,12 +271,12 @@ const SidebarNav = () => {
                 <SidebarGroupContent>
                     <SidebarMenu>
                         <SidebarMenuItem>
-                            <Link href="/admin/dashboard" className="w-full">
+                            <NavLink href="/admin/dashboard">
                                 <SidebarMenuButton isActive={pathname.startsWith('/admin')}>
                                     <ShieldCheck className="h-4 w-4 text-destructive" />
                                     Admin Panel
                                 </SidebarMenuButton>
-                            </Link>
+                            </NavLink>
                         </SidebarMenuItem>
                     </SidebarMenu>
                 </SidebarGroupContent>
@@ -328,6 +339,49 @@ const Sidebar = React.forwardRef<
     )
 });
 Sidebar.displayName = "Sidebar";
+
+const SidebarSheet = ({ children }: { children: React.ReactNode }) => {
+    const { openMobile, setOpenMobile } = useSidebar();
+  
+    return (
+      <Sheet open={openMobile} onOpenChange={setOpenMobile}>
+        <SheetContent side="left" className="w-[--sidebar-width-mobile] p-0">
+          <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
+            <SidebarHeader>
+                <SheetClose asChild>
+                    <Link href="/dashboard" className="flex items-center gap-2">
+                        <Swords className="h-6 w-6 text-primary" />
+                        <span className="font-bold text-lg">Ludo League</span>
+                    </Link>
+                </SheetClose>
+            </SidebarHeader>
+            <SidebarContent>{children}</SidebarContent>
+             <SidebarFooter>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SheetClose asChild>
+                            <Link href="/settings" className="w-full">
+                                <SidebarMenuButton>
+                                    <Settings className="h-4 w-4"/>
+                                    Settings
+                                </SidebarMenuButton>
+                            </Link>
+                        </SheetClose>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton onClick={() => { signOut(); setOpenMobile(false); }}>
+                            <LogOut className="h-4 w-4"/>
+                            Logout
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
+            </SidebarFooter>
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  };
+  SidebarSheet.displayName = 'SidebarSheet';
 
 
 const SidebarTrigger = React.forwardRef<
@@ -429,7 +483,7 @@ const SidebarHeader = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="header"
-      className={cn("flex flex-col gap-2 p-2", className)}
+      className={cn("flex flex-col gap-2 p-4 border-b border-sidebar-border", className)}
       {...props}
     />
   )
@@ -444,7 +498,7 @@ const SidebarFooter = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="footer"
-      className={cn("flex flex-col gap-2 p-2 mt-auto", className)}
+      className={cn("flex flex-col gap-2 p-2 mt-auto border-t border-sidebar-border", className)}
       {...props}
     />
   )
@@ -475,7 +529,7 @@ const SidebarContent = React.forwardRef<
       ref={ref}
       data-sidebar="content"
       className={cn(
-        "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+        "flex min-h-0 flex-1 flex-col gap-2 p-2 overflow-y-auto",
         className
       )}
       {...props}
@@ -492,7 +546,7 @@ const SidebarGroup = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="group"
-      className={cn("relative flex w-full min-w-0 flex-col px-2", className)}
+      className={cn("relative flex w-full min-w-0 flex-col", className)}
       {...props}
     />
   )
@@ -828,4 +882,6 @@ export {
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,
+  SidebarNav,
+  SidebarSheet,
 }

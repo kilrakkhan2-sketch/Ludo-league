@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { BottomNav } from '@/components/app/bottom-nav';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
-import { Sidebar, SidebarProvider } from '@/components/ui/sidebar';
+import { Sidebar, SidebarProvider, SidebarNav, SidebarSheet } from '@/components/ui/sidebar';
 import NoSsr from '@/components/NoSsr';
 import { useFcm } from '@/hooks/useFcm';
 import AppHeader from './AppHeader';
@@ -28,8 +28,11 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
             <aside className="hidden md:block md:w-64 border-r border-border">
               <Sidebar />
             </aside>
+            <SidebarSheet>
+                <SidebarNav />
+            </SidebarSheet>
             <div className="flex flex-col flex-1">
-                <header className="sticky top-0 z-30 flex h-16 items-center justify-end gap-4 border-b border-border bg-background/80 backdrop-blur-sm px-6">
+                <header className="sticky top-0 z-30 flex h-16 items-center justify-end gap-4 bg-gradient-to-r from-primary-start to-primary-end text-primary-foreground px-6">
                     <AppHeader/>
                 </header>
                 <main className="flex-1 p-4 md:p-6 lg:p-8">
