@@ -4,68 +4,68 @@
 
 @layer base {
   :root {
-    --background: 159 56% 22%; /* #1A5A44 - Darker Green */
-    --foreground: 40 43% 93%; /* #F3ECDC - Warm Ivory */
-    --card: 160 70% 11%; /* #0B2F23 - Deep Forest Green */
-    --card-foreground: 40 43% 93%; /* #F3ECDC - Warm Ivory */
-    --popover: 160 70% 11%; /* #0B2F23 - Deep Forest Green */
-    --popover-foreground: 40 43% 93%; /* #F3ECDC - Warm Ivory */
-    --primary: 45 68% 47%; /* #C9A227 - Antique Gold */
-    --primary-foreground: 160 70% 11%; /* #0B2F23 - Deep Forest Green */
-    --secondary: 160 70% 11%; /* #0B2F23 - Deep Forest Green */
-    --secondary-foreground: 40 43% 93%; /* #F3ECDC - Warm Ivory */
-    --muted: 160 70% 11%; /* #0B2F23 - Deep Forest Green */
-    --muted-foreground: 40 43% 83%; /* Lighter Ivory for muted text */
-    --accent: 45 68% 47%; /* #C9A227 - Antique Gold */
-    --accent-foreground: 160 70% 11%; /* #0B2F23 - Deep Forest Green */
-    --destructive: 355 63% 30%; /* #7B1E24 - Royal Maroon */
-    --destructive-foreground: 40 43% 93%; /* #F3ECDC - Warm Ivory */
-    --border: 45 68% 57%; /* Lighter version of Antique Gold */
-    --input: 160 70% 11%; /* #0B2F23 - Deep Forest Green */
-    --ring: 45 68% 47%; /* #C9A227 - Antique Gold */
+    --background: 21 41% 21%; /* Wood Brown: #4A2E1F */
+    --foreground: 35 56% 91%; /* Ivory White: #F5EBDD */
+    --card: 21 49% 28%; /* Polished Wood: #6B4226 */
+    --card-foreground: 35 56% 91%; /* Ivory White: #F5EBDD */
+    --popover: 21 49% 28%; /* Polished Wood: #6B4226 */
+    --popover-foreground: 35 56% 91%; /* Ivory White: #F5EBDD */
+    --primary: 45 68% 47%; /* Antique Gold: #C9A227 */
+    --primary-foreground: 21 41% 15%; /* Darker Wood Brown for text on gold */
+    --secondary: 21 49% 28%; /* Polished Wood: #6B4226 */
+    --secondary-foreground: 35 56% 91%; /* Ivory White: #F5EBDD */
+    --muted: 21 49% 28%; /* Polished Wood: #6B4226 */
+    --muted-foreground: 35 56% 81%; /* Lighter Ivory for muted text */
+    --accent: 45 68% 47%; /* Antique Gold: #C9A227 */
+    --accent-foreground: 21 41% 15%; /* Darker Wood Brown for text on gold */
+    --destructive: 3 61% 38%; /* Soft Red Token Color: #9E2B25 */
+    --destructive-foreground: 35 56% 91%; /* Ivory White: #F5EBDD */
+    --border: 45 68% 57%; /* Lighter Antique Gold for borders */
+    --input: 21 49% 28%; /* Polished Wood: #6B4226 */
+    --ring: 45 68% 47%; /* Antique Gold: #C9A227 */
     --radius: 0.8rem;
     
-    /* Custom Sidebar Colors */
-    --sidebar-background: 160 70% 11%;
-    --sidebar-foreground: 40 43% 93%;
-    --sidebar-primary: 45 68% 47%;
-    --sidebar-primary-foreground: 160 70% 11%;
-    --sidebar-accent: 159 56% 22%;
-    --sidebar-accent-foreground: 40 43% 93%;
-    --sidebar-border: 159 56% 18%;
-    --sidebar-ring: 45 68% 47%;
+    /* Custom Sidebar Colors to match the new theme */
+    --sidebar-background: 21 49% 28%; /* Polished Wood */
+    --sidebar-foreground: 35 56% 91%; /* Ivory White */
+    --sidebar-primary: 45 68% 47%; /* Antique Gold */
+    --sidebar-primary-foreground: 21 41% 15%; /* Darker Wood Brown */
+    --sidebar-accent: 21 41% 21%; /* Wood Brown */
+    --sidebar-accent-foreground: 35 56% 91%; /* Ivory White */
+    --sidebar-border: 21 41% 18%; /* Darker Wood Brown for border */
+    --sidebar-ring: 45 68% 47%; /* Antique Gold */
   }
 
   .dark {
-    --background: 159 56% 22%; /* #1A5A44 - Darker Green */
-    --foreground: 40 43% 93%; /* #F3ECDC - Warm Ivory */
-    --card: 160 70% 11%; /* #0B2F23 - Deep Forest Green */
-    --card-foreground: 40 43% 93%; /* #F3ECDC - Warm Ivory */
-    --popover: 160 70% 11%; /* #0B2F23 - Deep Forest Green */
-    --popover-foreground: 40 43% 93%; /* #F3ECDC - Warm Ivory */
-    --primary: 45 68% 47%; /* #C9A227 - Antique Gold */
-    --primary-foreground: 160 70% 11%; /* #0B2F23 - Deep Forest Green */
-    --secondary: 160 70% 11%; /* #0B2F23 - Deep Forest Green */
-    --secondary-foreground: 40 43% 93%; /* #F3ECDC - Warm Ivory */
-    --muted: 160 70% 11%; /* #0B2F23 - Deep Forest Green */
-    --muted-foreground: 40 43% 83%; /* Lighter Ivory for muted text */
-    --accent: 45 68% 47%; /* #C9A227 - Antique Gold */
-    --accent-foreground: 160 70% 11%; /* #0B2F23 - Deep Forest Green */
-    --destructive: 355 63% 30%; /* #7B1E24 - Royal Maroon */
-    --destructive-foreground: 40 43% 93%; /* #F3ECDC - Warm Ivory */
-    --border: 45 68% 57%; /* Lighter version of Antique Gold */
-    --input: 160 70% 11%; /* #0B2F23 - Deep Forest Green */
-    --ring: 45 68% 47%;
+    --background: 21 41% 21%; /* Wood Brown: #4A2E1F */
+    --foreground: 35 56% 91%; /* Ivory White: #F5EBDD */
+    --card: 21 49% 28%; /* Polished Wood: #6B4226 */
+    --card-foreground: 35 56% 91%; /* Ivory White: #F5EBDD */
+    --popover: 21 49% 28%; /* Polished Wood: #6B4226 */
+    --popover-foreground: 35 56% 91%; /* Ivory White: #F5EBDD */
+    --primary: 45 68% 47%; /* Antique Gold: #C9A227 */
+    --primary-foreground: 21 41% 15%; /* Darker Wood Brown for text on gold */
+    --secondary: 21 49% 28%; /* Polished Wood: #6B4226 */
+    --secondary-foreground: 35 56% 91%; /* Ivory White: #F5EBDD */
+    --muted: 21 49% 28%; /* Polished Wood: #6B4226 */
+    --muted-foreground: 35 56% 81%; /* Lighter Ivory for muted text */
+    --accent: 45 68% 47%; /* Antique Gold: #C9A227 */
+    --accent-foreground: 21 41% 15%; /* Darker Wood Brown for text on gold */
+    --destructive: 3 61% 38%; /* Soft Red Token Color: #9E2B25 */
+    --destructive-foreground: 35 56% 91%; /* Ivory White: #F5EBDD */
+    --border: 45 68% 57%; /* Lighter Antique Gold for borders */
+    --input: 21 49% 28%; /* Polished Wood: #6B4226 */
+    --ring: 45 68% 47%; /* Antique Gold: #C9A227 */
     
-    /* Custom Sidebar Colors */
-    --sidebar-background: 160 70% 11%;
-    --sidebar-foreground: 40 43% 93%;
-    --sidebar-primary: 45 68% 47%;
-    --sidebar-primary-foreground: 160 70% 11%;
-    --sidebar-accent: 159 56% 22%;
-    --sidebar-accent-foreground: 40 43% 93%;
-    --sidebar-border: 159 56% 18%;
-    --sidebar-ring: 45 68% 47%;
+    /* Custom Sidebar Colors to match the new theme */
+    --sidebar-background: 21 49% 28%; /* Polished Wood */
+    --sidebar-foreground: 35 56% 91%; /* Ivory White */
+    --sidebar-primary: 45 68% 47%; /* Antique Gold */
+    --sidebar-primary-foreground: 21 41% 15%; /* Darker Wood Brown */
+    --sidebar-accent: 21 41% 21%; /* Wood Brown */
+    --sidebar-accent-foreground: 35 56% 91%; /* Ivory White */
+    --sidebar-border: 21 41% 18%; /* Darker Wood Brown for border */
+    --sidebar-ring: 45 68% 47%; /* Antique Gold */
   }
 }
 
