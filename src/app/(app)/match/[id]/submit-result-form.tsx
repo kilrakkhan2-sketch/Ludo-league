@@ -121,13 +121,13 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
     }
 
     try {
-      const isFlaggedForFraud = false; 
+      const isFlaggedForFraud = false;
 
       // Step 1: Upload screenshot to Firebase Storage
       const storage = getStorage();
       const storageRef = ref(
         storage,
-        `match-results/${user.uid}/${matchId}_${Date.now()}.jpg`
+        `match-results/${matchId}/${user.uid}_${Date.now()}.jpg`
       );
       await uploadString(storageRef, dataUri, 'data_url');
       const screenshotUrl = await getDownloadURL(storageRef);
