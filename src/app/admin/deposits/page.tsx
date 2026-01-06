@@ -55,12 +55,12 @@ export default function AdminDepositsPage() {
     setProcessingId(request.id);
     
     try {
+        const requestRef = doc(firestore, 'depositRequests', request.id);
+        const batch = writeBatch(firestore);
+
         if (action === 'approve') {
-            const requestRef = doc(firestore, 'depositRequests', request.id);
             const transactionRef = doc(collection(firestore, 'transactions'));
             
-            const batch = writeBatch(firestore);
-
             // 1. Mark request as approved
             batch.update(requestRef, { 
                 status: 'approved', 
@@ -79,17 +79,16 @@ export default function AdminDepositsPage() {
                 description: `Deposit via UTR: ${request.utr}`
             });
 
-            await batch.commit();
-
         } else { // Reject
-             const requestRef = doc(firestore, 'depositRequests', request.id);
-             await updateDoc(requestRef, { 
+             batch.update(requestRef, { 
                 status: 'rejected', 
                 reviewedAt: serverTimestamp(), 
                 reviewedBy: adminUser.uid,
                 // TODO: Add rejection reason input
              });
         }
+        
+        await batch.commit();
         
         toast({
             title: `Request ${action}d`,

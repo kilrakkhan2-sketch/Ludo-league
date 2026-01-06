@@ -90,6 +90,10 @@
             "type": "string",
             "description": "The UID of the user who referred this user."
         },
+        "referralBonusPaid": {
+            "type": "boolean",
+            "description": "Whether the referral bonus for the first deposit has been paid."
+        },
         "fcmToken": {
             "type": "string",
             "description": "The user's Firebase Cloud Messaging token for push notifications."
@@ -215,9 +219,9 @@
         "type": "object",
         "properties": {
             "userId": {"type": "string"},
-            "type": {"type": "string", "enum": ["deposit", "withdrawal", "entry-fee", "winnings", "refund", "tournament-fee", "referral-bonus"]},
+            "type": {"type": "string", "enum": ["deposit", "withdrawal", "entry-fee", "winnings", "refund", "tournament-fee", "referral-bonus", "admin-credit", "admin-debit"]},
             "amount": {"type": "number", "description": "Positive for credit, negative for debit."},
-            "status": {"type": "string", "enum": ["completed", "pending", "rejected"]},
+            "status": {"type": "string", "enum": ["completed", "pending", "rejected", "failed"]},
             "createdAt": {"type": "string", "format": "date-time"},
             "relatedMatchId": {"type": "string", "description": "ID of the match, if applicable."},
             "relatedTournamentId": {"type": "string", "description": "ID of the tournament, if applicable."},

@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A flow to distribute winnings for a completed match.
@@ -37,52 +38,52 @@ const distributeWinningsFlow = ai.defineFlow(
   async ({ matchId }) => {
     // Initialize Firestore on the server-side.
     const firestore = getFirestore(getFirebaseApp());
+    const batch = writeBatch(firestore);
     
     try {
-      await runTransaction(firestore, async (transaction) => {
-        const matchRef = doc(firestore, 'matches', matchId);
-        const freshMatchDoc = await transaction.get(matchRef);
+      const matchRef = doc(firestore, 'matches', matchId);
+      const matchDoc = await getDoc(matchRef);
 
-        if (!freshMatchDoc.exists()) {
-            throw new Error('Match not found.');
-        }
-        
-        const freshMatchData = freshMatchDoc.data();
-        if (freshMatchData.status !== 'completed') {
-            throw new Error('Winnings can only be distributed for completed matches.');
-        }
-        if (freshMatchData.prizeDistributed) {
-            throw new Error('Winnings have already been distributed for this match.');
-        }
-        
-        const winnerId = freshMatchData.winnerId;
-        if (!winnerId) {
-            throw new Error('No winner has been declared for this match.');
-        }
+      if (!matchDoc.exists()) {
+          throw new Error('Match not found.');
+      }
+      
+      const matchData = matchDoc.data();
+      if (matchData.status !== 'completed') {
+          throw new Error('Winnings can only be distributed for completed matches.');
+      }
+      if (matchData.prizeDistributed) {
+          throw new Error('Winnings have already been distributed for this match.');
+      }
+      
+      const winnerId = matchData.winnerId;
+      if (!winnerId) {
+          throw new Error('No winner has been declared for this match.');
+      }
 
-        const prizePool = freshMatchData.prizePool;
-        const commission = prizePool * 0.10; // 10% commission
-        const amountToCredit = prizePool - commission;
-        
-        // Mark match as prize distributed
-        transaction.update(matchRef, { prizeDistributed: true });
-        
-        // Log the winnings transaction. The onTransactionCreate cloud function will handle the balance update.
-        const transactionRef = doc(collection(firestore, 'transactions'));
-        transaction.set(transactionRef, {
-          userId: winnerId,
-          type: 'winnings',
-          amount: amountToCredit,
-          status: 'completed',
-          createdAt: serverTimestamp(),
-          relatedMatchId: matchId,
-          description: `Winnings for match ${matchId}`,
-        });
+      const prizePool = matchData.prizePool;
+      const commission = prizePool * 0.10; // 10% commission
+      const amountToCredit = prizePool - commission;
+      
+      // Mark match as prize distributed
+      batch.update(matchRef, { prizeDistributed: true });
+      
+      // Log the winnings transaction. The onTransactionCreate cloud function will handle the balance update.
+      const transactionRef = doc(collection(firestore, 'transactions'));
+      batch.set(transactionRef, {
+        userId: winnerId,
+        type: 'winnings',
+        amount: amountToCredit,
+        status: 'completed',
+        createdAt: serverTimestamp(),
+        relatedMatchId: matchId,
+        description: `Winnings for match ${matchId}`,
       });
 
+      await batch.commit();
+
       // After winnings transaction is created, update stats for all players in the match
-      const finalMatchDoc = await getDoc(doc(firestore, 'matches', matchId));
-      const playerIds = finalMatchDoc.data()?.playerIds || [];
+      const playerIds = matchData.playerIds || [];
       for (const playerId of playerIds) {
           await calculateWinRate({ userId: playerId });
       }

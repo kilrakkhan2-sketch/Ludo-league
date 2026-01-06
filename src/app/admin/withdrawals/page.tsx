@@ -55,12 +55,11 @@ export default function AdminWithdrawalsPage() {
     setProcessingId(request.id);
     
     try {
-        if (action === 'approve') {
-            await runTransaction(firestore, async (transaction) => {
-                const userRef = doc(firestore, 'users', request.userId);
-                const requestRef = doc(firestore, 'withdrawalRequests', request.id);
-                const transactionRef = doc(collection(firestore, 'transactions'));
+        await runTransaction(firestore, async (transaction) => {
+            const requestRef = doc(firestore, 'withdrawalRequests', request.id);
 
+            if (action === 'approve') {
+                const userRef = doc(firestore, 'users', request.userId);
                 const userDoc = await transaction.get(userRef);
                 if (!userDoc.exists()) throw new Error("User not found");
                 
@@ -68,43 +67,34 @@ export default function AdminWithdrawalsPage() {
                 if (currentBalance < request.amount) {
                     throw new Error('User has insufficient balance for this withdrawal.');
                 }
-                const newBalance = currentBalance - request.amount;
-
-                // 1. Deduct balance from user's wallet
-                transaction.update(userRef, { walletBalance: newBalance });
-
-                // 2. Mark request as approved
+                
+                const transactionRef = doc(collection(firestore, 'transactions'));
+                
+                // Mark request as approved
                 transaction.update(requestRef, { 
                     status: 'approved', 
                     reviewedAt: serverTimestamp(), 
                     reviewedBy: adminUser.uid 
                 });
 
-                // 3. Create a transaction log
+                // Create a transaction log. The onTransactionCreate Cloud Function will handle the balance update.
                 transaction.set(transactionRef, {
                     userId: request.userId,
                     type: 'withdrawal',
                     amount: -request.amount,
                     status: 'completed',
                     createdAt: serverTimestamp(),
-                    description: `Withdrawal to ${request.upiId}`
+                    description: `Withdrawal to ${request.upiId || 'Bank Account'}`
                 });
-            });
-        } else { // Reject
-            await runTransaction(firestore, async (transaction) => {
-                const requestRef = doc(firestore, 'withdrawalRequests', request.id);
-                
-                // No balance change needed, just reject the request.
-                // An optional step would be to create a 'failed' transaction log.
-                
+            } else { // Reject
                 transaction.update(requestRef, { 
                     status: 'rejected', 
                     reviewedAt: serverTimestamp(), 
                     reviewedBy: adminUser.uid,
                     // TODO: Add rejection reason input
                 });
-            });
-        }
+            }
+        });
         
         toast({
             title: `Request ${action}d`,
@@ -165,8 +155,7 @@ export default function AdminWithdrawalsPage() {
                         ) : (request as any).bankDetails ? (
                             <div className="text-xs">
                                 <p className="font-semibold">Bank Transfer</p>
-                                <p><strong>A/C:</strong> {(request as any).bankDetails.accountNumber}</p>
-                                <p><strong>IFSC:</strong> {(request as any).bankDetails.ifsc}</p>
+                                <p className="whitespace-pre-wrap">{(request as any).bankDetails}</p>
                             </div>
                         ) : <p className="text-xs text-muted-foreground">No details</p>}
                     </TableCell>

@@ -1,4 +1,4 @@
-// Triggering deployment at user request
+
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 
@@ -12,25 +12,8 @@ exports.setAdminClaim = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
   }
 
-  // Check for admin status in custom claims first.
-  const isTokenAdmin = context.auth.token.admin === true;
-  let isFirestoreAdmin = false;
-
-  // If not found in token, check Firestore as a fallback.
-  if (!isTokenAdmin) {
-    try {
-      const callerDoc = await db.collection('users').doc(context.auth.uid).get();
-      if (callerDoc.exists && callerDoc.data().isAdmin === true) {
-        isFirestoreAdmin = true;
-      }
-    } catch (e) {
-      console.error("Error checking Firestore for admin status:", e);
-      // Fall through to the final check, which will fail.
-    }
-  }
-
-  // Ensure the caller is an admin from either source.
-  if (!isTokenAdmin && !isFirestoreAdmin) {
+  // Ensure the caller is an admin.
+  if (context.auth.token.admin !== true) {
     throw new functions.https.HttpsError('permission-denied', 'Only admins can set admin claims.');
   }
 
@@ -128,109 +111,137 @@ exports.onTransactionCreate = functions.firestore
     const transaction = snap.data();
     const { userId, type, amount, status } = transaction;
 
-    // Only process completed transactions that affect balance.
     if (status !== 'completed') {
-        console.log(`Transaction ${context.params.transactionId} is not completed. Skipping balance update.`);
+        console.log(`Transaction ${context.params.transactionId} not completed. Skipping.`);
         return null;
     }
 
-    const validTypes = ['deposit', 'withdrawal', 'entry-fee', 'winnings', 'refund', 'admin-credit', 'admin-debit', 'referral-bonus'];
-    if (!validTypes.includes(type)) {
-        console.log(`Invalid transaction type: ${type}. Skipping balance update.`);
-        return null;
-    }
-    
     const userRef = db.collection('users').doc(userId);
 
     try {
         await db.runTransaction(async (t) => {
             const userDoc = await t.get(userRef);
-            if (!userDoc.exists) {
-                throw new Error(`User ${userId} not found`);
-            }
+            if (!userDoc.exists) throw new Error(`User ${userId} not found`);
 
             const currentBalance = userDoc.data().walletBalance || 0;
-            const newBalance = currentBalance + amount; // Amount is positive for credits, negative for debits.
+            const newBalance = currentBalance + amount;
 
             if (newBalance < 0) {
-                // This should ideally be prevented by client-side checks, but it's a server-side safeguard.
-                throw new Error(`Insufficient balance for user ${userId}. Transaction would result in negative balance.`);
+                throw new Error(`Insufficient balance for user ${userId}.`);
             }
 
             t.update(userRef, { walletBalance: newBalance });
         });
 
-        console.log(`Transaction ${context.params.transactionId} for user ${userId} handled successfully. New balance updated.`);
-        return null;
+        // If this was the first deposit, check for referral commission
+        if (type === 'deposit') {
+            await handleReferralCommission(userId, amount);
+        }
 
+        console.log(`Transaction ${context.params.transactionId} handled for ${userId}.`);
     } catch (error) {
-        console.error('Error handling transaction:', error);
-        // Mark the transaction as failed to prevent re-processing and for auditing.
+        console.error('Error in onTransactionCreate:', error);
         return snap.ref.update({ status: 'failed', error: error.message });
     }
   });
 
 
-  // This function triggers when a deposit request is approved to handle referral commissions.
-exports.onDepositApproved = functions.firestore
-.document('depositRequests/{depositId}') 
-.onUpdate(async (change, context) => {
-  const after = change.after.data();
-  const before = change.before.data();
-
-  // Check if the transaction is a deposit and just got approved
-  if (after.status === 'approved' && before.status === 'pending') {
-    const { userId, amount } = after;
-
+async function handleReferralCommission(userId, depositAmount) {
     const userRef = db.doc(`users/${userId}`);
     const userDoc = await userRef.get();
-
+    
     if (!userDoc.exists()) {
-      console.log(`User ${userId} not found.`);
-      return null;
+        console.log(`User ${userId} not found for referral check.`);
+        return;
     }
+    
     const userData = userDoc.data();
     const referredBy = userData.referredBy;
-
-    // If the user was referred by someone, calculate and give commission
-    if (referredBy) {
-      try {
-        await db.runTransaction(async (transaction) => {
-          const referrerRef = db.doc(`users/${referredBy}`);
-          const referrerDoc = await transaction.get(referrerRef);
-
-          if (!referrerDoc.exists()) {
+    
+    // Check if user was referred and doesn't have referralBonusPaid flag
+    if (referredBy && !userData.referralBonusPaid) {
+        const referrerRef = db.doc(`users/${referredBy}`);
+        const configRef = db.doc('referralConfiguration/settings');
+        
+        const [referrerDoc, configDoc] = await Promise.all([
+            referrerRef.get(),
+            configRef.get()
+        ]);
+        
+        if (!referrerDoc.exists()) {
             console.log(`Referrer ${referredBy} not found.`);
             return;
-          }
-
-          const configRef = db.doc('referralConfiguration/settings');
-          const configDoc = await transaction.get(configRef);
-          const commissionPercentage = configDoc.exists() ? configDoc.data().commissionPercentage : 5; // Default 5%
-          
-          const commission = (amount * commissionPercentage) / 100;
-          
-          // Create a transaction document for the commission.
-          // The onTransactionCreate function will handle updating the referrer's balance.
-          const commissionTransRef = db.collection('transactions').doc();
-          transaction.set(commissionTransRef, {
+        }
+        
+        const commissionPercentage = configDoc.exists() ? configDoc.data().commissionPercentage : 5;
+        const commission = (depositAmount * commissionPercentage) / 100;
+        
+        const commissionTransRef = db.collection('transactions').doc();
+        
+        // Create batch to ensure atomicity
+        const batch = db.batch();
+        
+        // 1. Create the commission transaction for the referrer
+        batch.set(commissionTransRef, {
             userId: referredBy,
             type: 'referral-bonus',
             amount: commission,
             status: 'completed',
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            description: `Referral commission from ${userData.displayName || userId}'s deposit.`
-          });
-
-           console.log(`Created referral transaction of ${commission} for ${referredBy}.`);
+            description: `Referral bonus from ${userData.displayName || userId}`
         });
-      } catch (error) {
-        console.error("Error processing referral commission: ", error);
-      }
+        
+        // 2. Mark the new user so they don't trigger this again
+        batch.update(userRef, { referralBonusPaid: true });
+        
+        await batch.commit();
+        console.log(`Referral commission of ${commission} paid to ${referredBy}.`);
     }
-  }
-  return null;
-});
+}
+
+
+// Automated prize distribution on match completion
+exports.distributeWinnings = functions.firestore
+  .document('matches/{matchId}')
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+
+    // Check if match just got completed and has a winner
+    if (after.status === 'completed' && before.status !== 'completed' && after.winnerId && !after.prizeDistributed) {
+        const { matchId } = context.params;
+        const { winnerId, prizePool } = after;
+
+        const commission = prizePool * 0.10; // 10% commission
+        const amountToCredit = prizePool - commission;
+
+        const batch = db.batch();
+        
+        const matchRef = db.doc(`matches/${matchId}`);
+        const transactionRef = db.collection('transactions').doc();
+
+        // 1. Create a winnings transaction
+        batch.set(transactionRef, {
+            userId: winnerId,
+            type: 'winnings',
+            amount: amountToCredit,
+            status: 'completed',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            relatedMatchId: matchId,
+            description: `Winnings for match ${matchId}`,
+        });
+
+        // 2. Mark prize as distributed in the match document
+        batch.update(matchRef, { prizeDistributed: true });
+        
+        try {
+            await batch.commit();
+            console.log(`Winnings transaction created for match ${matchId}, winner ${winnerId}.`);
+        } catch(error) {
+            console.error(`Failed to create winnings transaction for match ${matchId}:`, error);
+        }
+    }
+  });
 
 
 exports.onMatchCreate = functions.firestore
@@ -276,3 +287,4 @@ exports.onMatchCreate = functions.firestore
       return null;
     }
   });
+
