@@ -174,65 +174,71 @@ exports.onMatchmakingQueueWrite = functions.firestore
     const opponentId = opponent.userId;
     console.log(`Opponent found for ${userId}! Matched with ${opponentId}`);
 
-    const batch = db.batch();
-
-    // 1. Lock both players in the queue to prevent them from being matched with others.
     const player1QueueRef = db.doc(`matchmakingQueue/${userId}`);
     const player2QueueRef = db.doc(`matchmakingQueue/${opponentId}`);
-    batch.update(player1QueueRef, { status: 'matched', matchedWith: opponentId });
-    batch.update(player2QueueRef, { status: 'matched', matchedWith: userId });
-
-    // 2. Create the new match document.
-    const newMatchRef = db.collection('matches').doc();
-    const prizePool = entryFee * 1.8; // 10% commission
-    batch.set(newMatchRef, {
-      id: newMatchRef.id,
-      creatorId: userId, // Arbitrarily assign one player as creator
-      status: 'waiting', // Starts as 'waiting' until room code is added
-      entryFee: entryFee,
-      prizePool: prizePool,
-      maxPlayers: 2,
-      playerIds: [userId, opponentId],
-      players: [
-        { id: userId, name: newUserInQueue.userName, avatarUrl: newUserInQueue.userAvatar },
-        { id: opponentId, name: opponent.userName, avatarUrl: opponent.userAvatar },
-      ],
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    // 3. Create entry-fee transactions for both players.
-    const player1TransRef = db.collection('transactions').doc();
-    const player2TransRef = db.collection('transactions').doc();
-    const transactionData = {
-      type: 'entry-fee',
-      amount: -entryFee,
-      status: 'completed',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      relatedMatchId: newMatchRef.id,
-    };
-    batch.set(player1TransRef, { ...transactionData, userId: userId, description: `Entry fee for match ${newMatchRef.id}` });
-    batch.set(player2TransRef, { ...transactionData, userId: opponentId, description: `Entry fee for match ${newMatchRef.id}` });
-
-    // 4. Update both users' profiles with the active match ID.
-    const player1UserRef = db.doc(`users/${userId}`);
-    const player2UserRef = db.doc(`users/${opponentId}`);
-    batch.update(player1UserRef, { activeMatchId: newMatchRef.id });
-    batch.update(player2UserRef, { activeMatchId: newMatchRef.id });
-
-    // 5. Delete players from the matchmaking queue.
-    batch.delete(player1QueueRef);
-    batch.delete(player2QueueRef);
-
-    // Commit all operations as a single batch.
+    
+    // --- ATOMIC TRANSACTION START ---
     try {
-      await batch.commit();
-      console.log(`Successfully created match ${newMatchRef.id} for players ${userId} and ${opponentId}.`);
+      await db.runTransaction(async (transaction) => {
+        // Double-check the opponent is still waiting inside the transaction
+        const opponentDoc = await transaction.get(player2QueueRef);
+        if (!opponentDoc.exists || opponentDoc.data().status !== 'waiting') {
+            // Opponent was snatched by another transaction, so the current user keeps waiting.
+            console.log(`Opponent ${opponentId} was already matched. ${userId} will continue waiting.`);
+            return; // Abort this transaction
+        }
+
+        // 1. Lock both players in the queue to prevent them from being matched with others.
+        transaction.update(player1QueueRef, { status: 'matched', matchedWith: opponentId });
+        transaction.update(player2QueueRef, { status: 'matched', matchedWith: userId });
+
+        // 2. Create the new match document.
+        const newMatchRef = db.collection('matches').doc();
+        const prizePool = entryFee * 1.8; // 10% commission
+        transaction.set(newMatchRef, {
+            id: newMatchRef.id,
+            creatorId: userId, // Arbitrarily assign one player as creator
+            status: 'waiting', // Starts as 'waiting' until room code is added
+            entryFee: entryFee,
+            prizePool: prizePool,
+            maxPlayers: 2,
+            playerIds: [userId, opponentId],
+            players: [
+                { id: userId, name: newUserInQueue.userName, avatarUrl: newUserInQueue.userAvatar, winRate: newUserInQueue.winRate || 0 },
+                { id: opponentId, name: opponent.userName, avatarUrl: opponent.userAvatar, winRate: opponent.winRate || 0 },
+            ],
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // 3. Create entry-fee transactions for both players.
+        const player1TransRef = db.collection('transactions').doc();
+        const player2TransRef = db.collection('transactions').doc();
+        const transactionData = {
+            type: 'entry-fee',
+            amount: -entryFee,
+            status: 'completed',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            relatedMatchId: newMatchRef.id,
+        };
+        transaction.set(player1TransRef, { ...transactionData, userId: userId, description: `Entry fee for match ${newMatchRef.id}` });
+        transaction.set(player2TransRef, { ...transactionData, userId: opponentId, description: `Entry fee for match ${newMatchRef.id}` });
+
+        // 4. Update both users' profiles with the active match ID.
+        const player1UserRef = db.doc(`users/${userId}`);
+        const player2UserRef = db.doc(`users/${opponentId}`);
+        transaction.update(player1UserRef, { activeMatchId: newMatchRef.id });
+        transaction.update(player2UserRef, { activeMatchId: newMatchRef.id });
+
+        // 5. Delete players from the matchmaking queue.
+        transaction.delete(player1QueueRef);
+        transaction.delete(player2QueueRef);
+      });
+
+      console.log(`Successfully created match and transactions for players ${userId} and ${opponentId}.`);
     } catch (error) {
-      console.error("Error committing matchmaking batch: ", error);
-      // Optional: Clean up or revert status if commit fails
-      await player1QueueRef.update({ status: 'waiting', matchedWith: null }).catch();
-      await player2QueueRef.update({ status: 'waiting', matchedWith: null }).catch();
+      console.error("Error in matchmaking transaction: ", error);
     }
+    // --- ATOMIC TRANSACTION END ---
     
     return null;
 });
@@ -307,3 +313,5 @@ exports.onResultSubmit = functions.firestore
       return null;
     }
   });
+
+    

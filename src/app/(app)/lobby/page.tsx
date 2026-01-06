@@ -111,7 +111,7 @@ export default function LobbyPage() {
   };
   
   const handleConfirmPlay = async () => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !userProfile) return;
 
     setShowConfirmDialog(false);
     setIsSearching(true);
@@ -124,6 +124,7 @@ export default function LobbyPage() {
             status: 'waiting',
             userName: user.displayName,
             userAvatar: user.photoURL,
+            winRate: userProfile.winRate || 0,
             createdAt: new Date(),
         });
         toast({ title: "Searching for a match..." });
@@ -211,3 +212,5 @@ export default function LobbyPage() {
     </div>
   );
 }
+
+    

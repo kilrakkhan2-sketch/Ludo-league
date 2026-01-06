@@ -50,7 +50,7 @@ service cloud.firestore {
     match /matches/{matchId}/results/{userId} {
       allow read: if request.auth != null;
       // Allow a user to write to their own result document.
-      allow write: if isOwner(request.resource.data.userId);
+      allow write: if isOwner(userId);
     }
 
     match /transactions/{docId} {
@@ -87,3 +87,5 @@ service cloud.firestore {
     match /adminLogs/{l=**} { allow read, write: if false; }
   }
 }
+
+    
