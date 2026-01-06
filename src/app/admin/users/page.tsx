@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   collection,
   query,
@@ -11,8 +11,11 @@ import {
   serverTimestamp,
   addDoc,
   orderBy,
-  startAt,
-  endAt,
+  startAfter,
+  limit,
+  getDocs,
+  endBefore,
+  limitToLast
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useFirestore, useUser } from '@/firebase';
@@ -43,7 +46,9 @@ import {
   UserCheck,
   ShieldCheck,
   ShieldOff,
-  History
+  History,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -58,6 +63,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
+import { debounce } from 'lodash';
 
 const UserDetailModal = ({
   user,
@@ -84,14 +90,12 @@ const UserDetailModal = ({
 
       try {
         const transType = walletAdjustment > 0 ? 'admin-credit' : 'admin-debit';
-        const transAmount = Math.abs(walletAdjustment);
-
-        // Create a transaction document which will be handled by a cloud function
+        
         await addDoc(collection(firestore, 'transactions'), {
             userId: user.uid,
             type: transType,
             amount: walletAdjustment,
-            status: 'completed', // Admin actions are auto-completed
+            status: 'completed', 
             createdAt: serverTimestamp(),
             description: `Admin adjustment: ${adjustmentReason}`
         });
@@ -105,8 +109,8 @@ const UserDetailModal = ({
             notes: `Adjusted by ${walletAdjustment}. Reason: ${adjustmentReason}`
         });
 
-        toast({ title: 'Wallet adjustment requested', description: 'The user\'s balance will update shortly.', className: 'bg-green-100 text-green-800' });
-        onOpenChange(false); // Close dialog
+        toast({ title: 'Wallet adjustment transaction created', description: 'The user\'s balance will update shortly via cloud function.', className: 'bg-green-100 text-green-800' });
+        onOpenChange(false); 
       } catch (e: any) {
         toast({ title: 'Failed to update wallet', description: e.message, variant: 'destructive' });
       } finally {
@@ -125,7 +129,6 @@ const UserDetailModal = ({
 
     try {
       await setAdminClaim({ uid: user.uid, isAdmin: newIsAdmin });
-      // The user's firestore doc will be updated via the cloud function for consistency.
       toast({
         title: `User ${newIsAdmin ? 'promoted to' : 'demoted from'} admin`,
         className: 'bg-green-100 text-green-800',
@@ -240,45 +243,36 @@ export default function AdminUsersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
 
-  useEffect(() => {
-    if (!firestore) return;
-    setLoading(true);
+  const handleSearch = useCallback(
+    debounce((term) => {
+        setLoading(true);
+        if (!firestore) return;
 
-    let q;
-    const usersRef = collection(firestore, 'users');
+        const usersRef = collection(firestore, 'users');
+        // Simple search on display name for now. For more complex searches, an external service like Algolia would be better.
+        const q = term 
+            ? query(usersRef, orderBy('displayName'), startAt(term), endAt(term + '\uf8ff'))
+            : query(usersRef, orderBy('displayName'));
 
-    if (searchTerm) {
-      q = query(
-        usersRef,
-        orderBy('displayName'),
-        startAt(searchTerm),
-        endAt(searchTerm + '\uf8ff')
-      );
-    } else {
-      q = query(usersRef, orderBy('displayName'), startAt(''), endAt('\uf8ff'));
-    }
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const data = snapshot.docs.map(
-          (doc) => ({ uid: doc.id, ...doc.data() } as UserProfile)
-        );
-        setUsers(data);
-        setLoading(false);
-      },
-      (error) => {
-        console.error('Error fetching users:', error);
-        toast({
-          title: 'Error fetching users',
-          description: error.message,
-          variant: 'destructive',
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile));
+            setUsers(data);
+            setLoading(false);
+        }, (error) => {
+            console.error('Error fetching users:', error);
+            toast({ title: 'Error fetching users', description: error.message, variant: 'destructive' });
+            setLoading(false);
         });
-        setLoading(false);
-      }
-    );
-    return () => unsubscribe();
-  }, [firestore, toast, searchTerm]);
+
+        return () => unsubscribe();
+    }, 500),
+    [firestore, toast]
+  );
+
+  useEffect(() => {
+    handleSearch(searchTerm);
+    return () => handleSearch.cancel();
+  }, [searchTerm, handleSearch]);
 
   return (
     <>
@@ -289,16 +283,15 @@ export default function AdminUsersPage() {
           <CardDescription>
             Search, view, and manage all users on the platform.
           </CardDescription>
-          <div className="flex w-full max-w-sm items-center space-x-2 pt-4">
+          <div className="relative w-full max-w-sm pt-4">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search by name, email, or UID..."
+              placeholder="Search by name..."
+              className="pl-8"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Button type="submit">
-              <Search className="h-4 w-4 mr-2" /> Search
-            </Button>
           </div>
         </CardHeader>
         <CardContent>

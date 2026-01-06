@@ -28,6 +28,8 @@ import {
     DialogClose,
   } from '@/components/ui/dialog';
 import NoSsr from "@/components/NoSsr";
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 
 interface KycRequest extends KycApplication {
@@ -41,13 +43,23 @@ const KycDetailModal = ({
     isOpen,
     onOpenChange,
     onAction,
+    isProcessing,
   }: {
     request: KycRequest;
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     onAction: (id: string, action: 'approve' | 'reject', reason?: string) => void;
+    isProcessing: boolean;
   }) => {
     const [rejectionReason, setRejectionReason] = useState('');
+
+    const handleReject = () => {
+        if (!rejectionReason) {
+            alert("Please provide a reason for rejection.");
+            return;
+        }
+        onAction(request.id, 'reject', rejectionReason);
+    }
 
     return (
     <NoSsr>
@@ -57,7 +69,7 @@ const KycDetailModal = ({
             <DialogTitle>KYC Application Details</DialogTitle>
             <DialogDescription>Review the user's submitted KYC information.</DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-4">
+          <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
             <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16 border">
                     <AvatarImage src={request.userAvatar} />
@@ -79,21 +91,28 @@ const KycDetailModal = ({
 
             <div className="pt-4 border-t">
                 <p className="font-medium text-muted-foreground">Payment Details:</p>
-                {request.bankDetails && <div><p className="font-medium text-muted-foreground">Bank Details:</p><p className="whitespace-pre-wrap">{request.bankDetails}</p></div>}
-                {request.upiId && <div><p className="font-medium text-muted-foreground">UPI ID:</p><p>{request.upiId}</p></div>}
-                {!request.bankDetails && !request.upiId && <p>Not provided.</p>}
+                {request.bankDetails && <div className="text-sm"><p className="font-semibold">Bank Details:</p><p className="whitespace-pre-wrap">{request.bankDetails}</p></div>}
+                {request.upiId && <div className="text-sm"><p className="font-semibold">UPI ID:</p><p>{request.upiId}</p></div>}
+                {!request.bankDetails && !request.upiId && <p className="text-sm text-muted-foreground">Not provided.</p>}
+            </div>
+
+            <div className="pt-4 border-t">
+                <Label htmlFor="rejectionReason">Rejection Reason</Label>
+                <Input id="rejectionReason" value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} placeholder="Provide a clear reason for rejection..."/>
             </div>
 
           </div>
           <DialogFooter className="sm:justify-between">
             <div className="flex-grow">
-                <Button variant="destructive" onClick={() => onAction(request.id, 'reject')}>Reject</Button>
+                <Button variant="destructive" onClick={handleReject} disabled={isProcessing || !rejectionReason}>
+                    {isProcessing ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Reject'}
+                </Button>
             </div>
-            <Button type="button" className="bg-green-600 hover:bg-green-700" onClick={() => onAction(request.id, 'approve')}>
-              Approve
+            <Button type="button" className="bg-green-600 hover:bg-green-700" onClick={() => onAction(request.id, 'approve')} disabled={isProcessing}>
+              {isProcessing ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Approve'}
             </Button>
             <DialogClose asChild>
-                <Button type="button" variant="secondary">Cancel</Button>
+                <Button type="button" variant="secondary" disabled={isProcessing}>Cancel</Button>
             </DialogClose>
           </DialogFooter>
         </DialogContent>
@@ -133,6 +152,10 @@ export default function AdminKycPage() {
 
   const handleAction = async (id: string, action: 'approve' | 'reject', reason: string = '') => {
     if (!firestore || !adminUser) return;
+    if (action === 'reject' && !reason) {
+        toast({ title: 'Rejection reason is required', variant: 'destructive' });
+        return;
+    }
     setProcessingId(id);
 
     const kycRef = doc(firestore, 'kycApplications', id);
@@ -155,18 +178,19 @@ export default function AdminKycPage() {
         batch.update(userRef, {
             kycStatus: 'approved',
             upiId: kycData.upiId || null,
-            bankDetails: kycData.bankDetails || null
+            bankDetails: kycData.bankDetails || null,
+            kycRejectionReason: null, // Clear any previous rejection reason
         });
     } else {
         batch.update(userRef, {
             kycStatus: 'rejected',
-            kycRejectionReason: reason || 'Your KYC application was rejected. Please contact support.',
+            kycRejectionReason: reason || 'Your KYC application was rejected. Please review your documents and resubmit.',
         });
     }
 
     try {
         await batch.commit();
-        toast({ title: `Request ${newStatus}` });
+        toast({ title: `Request ${newStatus}`, className: action === 'approve' ? 'bg-green-100 text-green-800' : ''});
         setSelectedRequest(null); // Close modal on success
     } catch (error: any) {
         console.error(`Error ${action}ing request:`, error);
@@ -229,6 +253,7 @@ export default function AdminKycPage() {
             isOpen={!!selectedRequest} 
             onOpenChange={() => setSelectedRequest(null)} 
             onAction={handleAction} 
+            isProcessing={processingId === selectedRequest.id}
         />
       )}
     </>

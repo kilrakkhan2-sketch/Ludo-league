@@ -11,52 +11,47 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading, isAdmin } = useUser();
   const router = useRouter();
   const pathname = usePathname();
+  const [isAuthenticating, setIsAuthenticating] = useState(true);
 
   useEffect(() => {
-    // While auth state is loading, don't do any redirects
-    if (authLoading) {
+    if (!authLoading) {
+      setIsAuthenticating(false);
+    }
+  }, [authLoading]);
+
+  useEffect(() => {
+    if (isAuthenticating) {
       return;
     }
     
     const isAuthPage = pathname === '/' || pathname === '/register';
     const isAdminPage = pathname.startsWith('/admin');
 
-    // If loading is finished and there is no user
     if (!user) {
-        // If not on an auth page, redirect to login.
         if(!isAuthPage) {
             router.replace('/');
         }
-    } else { // If user exists
-        // If on an auth page, redirect to dashboard.
+    } else {
         if (isAuthPage) {
             router.replace('/dashboard');
         }
-        // If trying to access admin page, but is not an admin, redirect.
         else if (isAdminPage && !isAdmin) {
             router.replace('/dashboard');
         }
     }
     
-  }, [user, authLoading, router, pathname, isAdmin]);
+  }, [user, isAuthenticating, router, pathname, isAdmin]);
 
-  // While checking auth state, show the custom loader
-  if (authLoading) {
+  if (isAuthenticating) {
     return <CustomLoader />;
   }
   
   const isAuthPage = pathname === '/' || pathname === '/register';
   
-  // For users who are not logged in and are on auth pages
   if (!user && isAuthPage) {
-    return (
-        <Suspense fallback={<CustomLoader/>}>
-            {children}
-        </Suspense>
-    );
+    return <>{children}</>;
   }
 
-  // For logged-in users, show the app shell
   if (user) {
     return (
         <AppShell>
@@ -69,6 +64,5 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Fallback for edge cases (e.g. logged out user on a protected route before redirect)
   return <CustomLoader />;
 }

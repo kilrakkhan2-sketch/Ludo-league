@@ -37,7 +37,7 @@ export type UserProfile = {
   export type Transaction = {
     id: string;
     userId: string;
-    type: 'deposit' | 'withdrawal' | 'entry-fee' | 'winnings' | 'refund' | 'admin-credit' | 'admin-debit';
+    type: 'deposit' | 'withdrawal' | 'entry-fee' | 'winnings' | 'refund' | 'admin-credit' | 'admin-debit' | 'referral-bonus';
     amount: number;
     status: 'pending' | 'completed' | 'rejected' | 'approved';
     createdAt: Timestamp;
@@ -64,6 +64,7 @@ export type UserProfile = {
     createdAt: Timestamp;
     reviewedAt?: Timestamp;
     reviewedBy?: string; // Admin UID
+    rejectionReason?: string;
   }
 
   export type WithdrawalRequest = {

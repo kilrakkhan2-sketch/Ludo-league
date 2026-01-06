@@ -21,7 +21,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
-import { ArrowDownLeft, ArrowUpRight, UploadCloud, DownloadCloud, Landmark, Wallet as WalletIcon, AlertCircle, Loader2, ScanQrCode, ExternalLink } from "lucide-react"
+import { ArrowDownLeft, ArrowUpRight, UploadCloud, DownloadCloud, Landmark, Wallet as WalletIcon, AlertCircle, Loader2, ScanQrCode, ExternalLink, History } from "lucide-react"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { useUser, useFirestore } from "@/firebase"
 import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp, doc } from "firebase/firestore"
@@ -68,6 +68,7 @@ export default function WalletPage() {
   const { toast } = useToast();
   
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [depositHistory, setDepositHistory] = useState<DepositRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [depositAmount, setDepositAmount] = useState(100);
@@ -96,16 +97,29 @@ export default function WalletPage() {
   useEffect(() => {
     if (!firestore || !user) return;
 
+    setLoading(true);
+
     const transRef = collection(firestore, 'transactions');
-    const q = query(transRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    const qTrans = query(transRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
     
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribeTrans = onSnapshot(qTrans, (snapshot) => {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
         setTransactions(data);
         setLoading(false);
     });
 
-    return () => unsubscribe();
+    const depositRef = collection(firestore, 'depositRequests');
+    const qDeposits = query(depositRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+
+    const unsubscribeDeposits = onSnapshot(qDeposits, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DepositRequest));
+        setDepositHistory(data);
+    });
+
+    return () => {
+        unsubscribeTrans();
+        unsubscribeDeposits();
+    };
   }, [firestore, user]);
 
   const getFileAsDataUrl = (file: File): Promise<string> => {
@@ -246,9 +260,10 @@ export default function WalletPage() {
         </Card>
 
         <Tabs defaultValue="deposit" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="deposit"><UploadCloud className="mr-2 h-4 w-4"/>Deposit</TabsTrigger>
                 <TabsTrigger value="withdraw"><DownloadCloud className="mr-2 h-4 w-4"/>Withdraw</TabsTrigger>
+                <TabsTrigger value="history"><History className="mr-2 h-4 w-4"/>History</TabsTrigger>
             </TabsList>
             <TabsContent value="deposit">
                 <Card className="shadow-md">
@@ -336,11 +351,48 @@ export default function WalletPage() {
                     )}
                 </Card>
             </TabsContent>
+            <TabsContent value="history">
+                <Card className="shadow-md">
+                    <CardHeader>
+                        <CardTitle>Deposit & Withdrawal History</CardTitle>
+                        <CardDescription>An overview of your recent deposit and withdrawal requests.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead>Amount</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Reason</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {loading && <TableRow><TableCell colSpan={4} className="text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto"/></TableCell></TableRow>}
+                                {!loading && depositHistory.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No deposit history found.</TableCell></TableRow>}
+                                {!loading && depositHistory.map((req) => (
+                                    <TableRow key={req.id}>
+                                        <TableCell>{req.createdAt?.toDate().toLocaleDateString()}</TableCell>
+                                        <TableCell className="font-semibold text-green-500">₹{req.amount.toFixed(2)}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={req.status === 'approved' ? 'default' : req.status === 'pending' ? 'secondary' : 'destructive'} className={cn({'bg-green-100 text-green-800': req.status === 'approved'})}>
+                                                {req.status}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-xs text-muted-foreground">{req.rejectionReason || 'N/A'}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </TabsContent>
         </Tabs>
 
         <Card className="shadow-md">
             <CardHeader>
                 <CardTitle>Recent Transactions</CardTitle>
+                <CardDescription>A log of all movements in your wallet balance.</CardDescription>
             </CardHeader>
             <CardContent>
                  <Table>
@@ -355,16 +407,16 @@ export default function WalletPage() {
                     <TableBody>
                         {loading && <TableRow><TableCell colSpan={4} className="text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto"/></TableCell></TableRow>}
                         {!loading && transactions.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No transactions yet.</TableCell></TableRow>}
-                        {!loading && transactions.slice(0,5).map((t) => (
+                        {!loading && transactions.slice(0,10).map((t) => (
                             <TableRow key={t.id}>
                                 <TableCell>
                                 <div className="font-medium flex items-center gap-2">
                                      {t.amount >= 0 ? <ArrowUpRight className="h-4 w-4 text-green-500"/> : <ArrowDownLeft className="h-4 w-4 text-red-500"/>}
-                                    {t.description}
+                                    {t.description || t.type.replace('-', ' ')}
                                 </div>
                                 </TableCell>
                                 <TableCell>
-                                <Badge variant={t.status === 'completed' ? 'default' : t.status === 'pending' ? 'secondary' : 'destructive'}>
+                                <Badge variant={t.status === 'completed' ? 'default' : t.status === 'pending' ? 'secondary' : 'destructive'} className={cn({'bg-green-100 text-green-800': t.status === 'completed'})}>
                                     {t.status}
                                 </Badge>
                                 </TableCell>
