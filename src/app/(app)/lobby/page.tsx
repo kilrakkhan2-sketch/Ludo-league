@@ -1,229 +1,174 @@
+
 'use client';
 import Image from 'next/image';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Swords, Users, Star, History, Loader2, Info } from "lucide-react";
-import Link from "next/link";
+import { Swords, Loader2, Info, Users, Wallet } from "lucide-react";
 import { useUser, useFirestore } from "@/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion, runTransaction, Timestamp, arrayRemove } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, getDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { CreateMatchDialog } from "@/components/app/create-match-dialog";
 import { useToast } from "@/hooks/use-toast";
 import type { Match } from "@/lib/types";
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { motion } from 'framer-motion';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { useRouter } from 'next/navigation';
 
 const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-lobby');
 
-const VersusLogo = () => (
-    <div className="relative h-8 w-8 flex items-center justify-center">
-        <div className="absolute h-full w-full bg-gradient-to-br from-primary-start to-primary-end rounded-full opacity-30 blur-sm"></div>
-        <span className="relative text-lg font-black text-white" style={{ textShadow: '0 0 5px hsl(var(--primary))' }}>VS</span>
+const EntryFeeCard = ({ fee, onPlay }: { fee: number; onPlay: (fee: number) => void }) => {
+  return (
+    <motion.div whileHover={{ y: -5 }} className="h-full">
+      <Card className="flex flex-col h-full text-center bg-card/80 backdrop-blur-sm border-primary/20 hover:border-primary transition-all duration-300">
+        <CardHeader>
+          <CardTitle className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-start to-primary-end">
+            ₹{fee}
+          </CardTitle>
+          <CardDescription>Entry Fee</CardDescription>
+        </CardHeader>
+        <CardContent className="flex-grow">
+          <p className="text-lg font-semibold">Prize: <span className="text-green-500">₹{(fee * 1.8).toFixed(2)}</span></p>
+        </CardContent>
+        <CardFooter>
+          <Button className="w-full" onClick={() => onPlay(fee)}>
+            <Swords className="mr-2 h-4 w-4" /> Play Now
+          </Button>
+        </CardFooter>
+      </Card>
+    </motion.div>
+  );
+};
+
+const SearchingOverlay = ({ onCancel }: { onCancel: () => void }) => (
+    <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-6">
+        <h2 className="text-3xl font-bold text-primary">Searching for Opponent...</h2>
+        <div className="flex items-center gap-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary"/>
+            <p className="text-lg text-muted-foreground">Please wait while we find a match for you.</p>
+        </div>
+        <Button variant="outline" className="mt-8" onClick={onCancel}>Cancel Search</Button>
     </div>
 );
 
-const MatchCard = ({ match, canJoinMatch }: { match: Match; canJoinMatch: boolean }) => {
-    const { user } = useUser();
-    const firestore = useFirestore();
-    const { toast } = useToast();
-    const [isJoining, setIsJoining] = useState(false);
-
-    const handleJoinMatch = async () => {
-        if (!user || !firestore) {
-            toast({ title: "You must be logged in to join.", variant: "destructive"});
-            return;
-        }
-        setIsJoining(true);
-        try {
-            const matchRef = doc(firestore, "matches", match.id);
-            const userRef = doc(firestore, "users", user.uid);
-            
-            await runTransaction(firestore, async (transaction) => {
-                const matchDoc = await transaction.get(matchRef);
-                const userDoc = await transaction.get(userRef);
-
-                if (!matchDoc.exists() || !userDoc.exists()) {
-                    throw new Error("Match or user not found!");
-                }
-
-                const matchData = matchDoc.data();
-                const userData = userDoc.data();
-                
-                if ((userData.walletBalance || 0) < matchData.entryFee) {
-                    throw new Error("Insufficient wallet balance.");
-                }
-
-                if (matchData.playerIds.length >= matchData.maxPlayers) {
-                    throw new Error("Match is already full.");
-                }
-                
-                if (matchData.playerIds.includes(user.uid)) {
-                    return;
-                }
-                
-                transaction.update(matchRef, { 
-                    playerIds: arrayUnion(user.uid),
-                    players: arrayUnion({
-                        id: user.uid,
-                        name: user.displayName,
-                        avatarUrl: user.photoURL,
-                    })
-                });
-
-                const transactionRef = doc(collection(firestore, "transactions"));
-                transaction.set(transactionRef, {
-                    userId: user.uid,
-                    type: "entry-fee",
-                    amount: -matchData.entryFee,
-                    status: "completed",
-                    createdAt: Timestamp.now(),
-                    relatedMatchId: match.id,
-                    description: `Entry fee for match ${match.id}`
-                });
-
-            });
-
-            toast({ title: "Successfully joined match!" });
-
-        } catch (error: any) {
-            console.error("Error joining match:", error);
-            toast({
-                title: "Failed to join match",
-                description: error.message || "An unexpected error occurred.",
-                variant: "destructive"
-            });
-        } finally {
-            setIsJoining(false);
-        }
-    };
-    
-    const canJoin = match.status === 'waiting' && !match.playerIds.includes(user?.uid || '') && canJoinMatch;
-    const canView = match.playerIds.includes(user?.uid || '');
-
-    const creator = match.players[0];
-    const opponent = match.players.length > 1 ? match.players[1] : null;
-
-    return (
-    <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
-    <Card key={match.id} className="w-full shadow-lg border border-primary/20 bg-card/80 backdrop-blur-sm overflow-hidden transition-all duration-300 hover:shadow-primary/20">
-        <CardHeader className="p-3 bg-gradient-to-b from-muted/50 to-transparent">
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2 text-md">
-                    <Swords className="h-4 w-4 text-primary" />
-                    <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-start to-primary-end">Prize: ₹{match.prizePool}</span>
-                </div>
-                <div className={cn("text-xs font-bold px-2 py-0.5 rounded-full", {
-                    "bg-green-100 text-green-800 border border-green-300": match.status === 'waiting',
-                    "bg-blue-100 text-blue-800 border border-blue-300": match.status === 'in-progress',
-                    "bg-gray-100 text-gray-800 border border-gray-300": match.status === 'completed',
-                    "bg-red-100 text-red-800 border border-red-300": match.status === 'disputed',
-                })}>
-                    {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
-                </div>
-            </div>
-            <CardDescription className="pt-1 !mt-0.5 text-xs">Entry: ₹{match.entryFee}</CardDescription>
-        </CardHeader>
-        <CardContent className="p-3">
-            <div className="flex items-center justify-around">
-                <div className="flex flex-col items-center gap-1 text-center">
-                    <Avatar className={`h-12 w-12 border-4 border-primary/50`}>
-                        <AvatarImage src={creator.avatarUrl} alt={creator.name} />
-                        <AvatarFallback>{creator.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <span className="font-semibold text-xs truncate max-w-[80px]">{creator.name}</span>
-                </div>
-
-                <VersusLogo />
-
-                 <div className="flex flex-col items-center gap-1 text-center">
-                    {opponent ? (
-                        <>
-                        <Avatar className={`h-12 w-12 border-4 border-muted`}>
-                            <AvatarImage src={opponent.avatarUrl} alt={opponent.name} />
-                            <AvatarFallback>{opponent.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-semibold text-xs truncate max-w-[80px]">{opponent.name}</span>
-                        </>
-                    ) : (
-                         <>
-                        <Avatar className={`h-12 w-12 border-4 border-dashed border-muted-foreground/50 flex items-center justify-center bg-muted/50`}>
-                            <p className="text-xl font-bold text-muted-foreground">?</p>
-                        </Avatar>
-                        <span className="font-semibold text-xs text-muted-foreground">Waiting...</span>
-                        </>
-                    )}
-                </div>
-            </div>
-        </CardContent>
-        <CardFooter className='p-3 bg-muted/20'>
-             {canView ? (
-                <Button asChild className="w-full h-9 text-sm" variant="outline">
-                    <Link href={`/match/${match.id}`}>
-                        View Match
-                    </Link>
-                </Button>
-             ) : (
-                <Button onClick={handleJoinMatch} className="w-full h-9 text-sm" variant="default" disabled={!canJoin || isJoining}>
-                    {isJoining ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Join Now'}
-                </Button>
-             )}
-        </CardFooter>
-    </Card>
-    </motion.div>
-    );
-};
-
 
 export default function LobbyPage() {
-  const { user } = useUser();
+  const { user, userProfile } = useUser();
   const firestore = useFirestore();
-  const [myMatches, setMyMatches] = useState<Match[]>([]);
-  const [openMatches, setOpenMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeMatchCount, setActiveMatchCount] = useState(0);
+  const router = useRouter();
+  const { toast } = useToast();
+  
+  const [isSearching, setIsSearching] = useState(false);
+  const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [selectedFee, setSelectedFee] = useState(0);
 
+  // Listen for active match on user profile
   useEffect(() => {
-    if (!firestore || !user) return;
-
-    setLoading(true);
-
-    const matchesRef = collection(firestore, "matches");
-    
-    const allUserMatchesQuery = query(
-        matchesRef,
-        where("playerIds", "array-contains", user.uid)
-    );
-    const unsubscribeAllUserMatches = onSnapshot(allUserMatchesQuery, (snapshot) => {
-        const matchesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
-        const activeMatches = matchesData.filter(m => m.status === 'waiting' || m.status === 'in-progress');
-        setActiveMatchCount(activeMatches.length);
-        setMyMatches(matchesData);
-        setLoading(false);
-    });
-
-    const openMatchesQuery = query(matchesRef, where("status", "==", "waiting"));
-     const unsubscribeOpenMatches = onSnapshot(openMatchesQuery, (snapshot) => {
-        const matchesData = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() } as Match))
-            .filter(match => !match.playerIds.includes(user.uid));
-        setOpenMatches(matchesData);
-        setLoading(false);
-    });
-
-    return () => {
-        unsubscribeAllUserMatches();
-        unsubscribeOpenMatches();
+    if (userProfile && userProfile.activeMatchId) {
+        // If we are searching and an activeMatchId appears, it means we found a match.
+        if (isSearching) {
+            toast({ title: "Match Found!", description: "Redirecting you to the match room..." });
+            router.push(`/match/${userProfile.activeMatchId}`);
+        }
+        setActiveMatchId(userProfile.activeMatchId);
+    } else {
+        setActiveMatchId(null);
     }
-  }, [firestore, user]);
+  }, [userProfile, isSearching, router, toast]);
 
-  const canCreateOrJoin = activeMatchCount < 3;
+  const handlePlayClick = (fee: number) => {
+    // Pre-checks
+    if (!user || !userProfile) {
+        toast({ title: "Please login to play.", variant: "destructive" });
+        return;
+    }
+    if (userProfile.isBlocked) {
+        toast({ title: "Your account is blocked.", variant: "destructive" });
+        return;
+    }
+    if (activeMatchId) {
+        toast({ title: "You are already in an active match.", description: "Complete your current match to play another.", variant: "destructive" });
+        router.push(`/match/${activeMatchId}`);
+        return;
+    }
+     if (userProfile.walletBalance < fee) {
+        toast({ title: "Insufficient Balance", description: `You need at least ₹${fee} to play.`, variant: "destructive" });
+        return;
+    }
+    setSelectedFee(fee);
+    setShowConfirmDialog(true);
+  };
+  
+  const handleConfirmPlay = async () => {
+    if (!user || !firestore) return;
 
+    setShowConfirmDialog(false);
+    setIsSearching(true);
+    
+    try {
+        const queueRef = doc(firestore, 'matchmakingQueue', user.uid);
+        await setDoc(queueRef, {
+            userId: user.uid,
+            entryFee: selectedFee,
+            status: 'waiting',
+            userName: user.displayName,
+            userAvatar: user.photoURL,
+            createdAt: new Date(),
+        });
+        toast({ title: "Searching for a match..." });
+    } catch (error: any) {
+        console.error("Error entering matchmaking queue: ", error);
+        toast({ title: "Could not start search", description: error.message, variant: "destructive" });
+        setIsSearching(false);
+    }
+  };
+
+  const handleCancelSearch = async () => {
+    if (!user || !firestore) return;
+    setIsSearching(false);
+    try {
+        const queueRef = doc(firestore, 'matchmakingQueue', user.uid);
+        await deleteDoc(queueRef);
+        toast({ title: "Search Cancelled", description: "You have been removed from the matchmaking queue." });
+    } catch (error: any) {
+        console.error("Error cancelling search: ", error);
+        toast({ title: "Could not cancel search", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const entryFees = [50, 100, 250, 500];
 
   return (
     <div className="space-y-6">
+        {isSearching && <SearchingOverlay onCancel={handleCancelSearch} />}
+        
+        <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Confirm Entry Fee</DialogTitle>
+                    <DialogDescription>
+                        An amount of ₹{selectedFee} will be deducted from your wallet to join the match. Are you sure you want to proceed?
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                    <Button onClick={handleConfirmPlay}>Confirm & Play</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+
         {bannerImage && (
              <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden">
                 <Image src={bannerImage.imageUrl} alt="Lobby Banner" fill className="object-cover" data-ai-hint={bannerImage.imageHint}/>
@@ -234,57 +179,35 @@ export default function LobbyPage() {
                 </div>
             </div>
         )}
-      <div className="flex items-center justify-end space-x-2">
-          <CreateMatchDialog canCreate={canCreateOrJoin} />
-      </div>
-
-       {!canCreateOrJoin && (
-            <Alert variant="destructive">
+        
+        {activeMatchId && (
+            <Alert variant="destructive" className="cursor-pointer" onClick={() => router.push(`/match/${activeMatchId}`)}>
                 <Info className="h-4 w-4" />
-                <AlertTitle>Active Match Limit Reached</AlertTitle>
-                <AlertDescription>You can have a maximum of 3 active matches (waiting or in-progress). Complete an existing match to create or join a new one.</AlertDescription>
+                <AlertTitle>You have an active match!</AlertTitle>
+                <AlertDescription>Click here to go to your match room and complete the game.</AlertDescription>
             </Alert>
         )}
 
-      <div className="flex flex-col gap-8">
-        
-        {myMatches.length > 0 && (
-            <section>
-                <h3 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
-                    <Star className="h-6 w-6 text-yellow-400"/> My Matches
-                </h3>
-                <div className="grid md:grid-cols-2 gap-6">
-                    {myMatches.map((match) => (
-                        <MatchCard key={match.id} match={match} canJoinMatch={canCreateOrJoin} />
-                    ))}
-                </div>
-            </section>
-        )}
-
-        <section>
-            <h3 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
-                <Swords className="h-6 w-6 text-primary"/> Open Matches
-            </h3>
-            {loading ? (
-                 <div className="flex items-center justify-center p-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary"/>
-                 </div>
-            ) : openMatches.length > 0 ? (
-                <div className="grid md:grid-cols-2 gap-6">
-                    {openMatches.map((match) => (
-                       <MatchCard key={match.id} match={match} canJoinMatch={canCreateOrJoin} />
-                    ))}
-                </div>
-            ) : (
-                <Card className="flex flex-col items-center justify-center p-8 border-dashed shadow-md bg-muted/30">
-                    <p className="text-muted-foreground font-semibold text-lg">No open matches available.</p>
-                    <p className="text-muted-foreground text-sm mt-1">Why not create one and start a new game?</p>
-                </Card>
-            )}
-        </section>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          {entryFees.map(fee => (
+              <EntryFeeCard key={fee} fee={fee} onPlay={handlePlayClick} />
+          ))}
       </div>
+
+       <Card>
+        <CardHeader>
+          <CardTitle>How to Play</CardTitle>
+        </CardHeader>
+        <CardContent className="prose prose-sm dark:prose-invert">
+          <ol>
+            <li>Select an entry fee and click `Play Now`.</li>
+            <li>We'll find an opponent for you.</li>
+            <li>Once a match is found, you'll be redirected to the match room.</li>
+            <li>Use the room code from the match room to play in your Ludo King app.</li>
+            <li>After the game, come back and submit your result with a screenshot.</li>
+          </ol>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-
-    

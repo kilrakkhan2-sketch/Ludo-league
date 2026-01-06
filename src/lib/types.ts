@@ -17,6 +17,7 @@ export type UserProfile = {
     winnings?: number;
     winRate?: number;
     fcmToken?: string;
+    activeMatchId?: string | null; // Added for new matchmaking logic
   };
   
   export type Match = {
@@ -32,7 +33,7 @@ export type UserProfile = {
     roomCode?: string;
     prizeDistributed?: boolean;
     createdAt: Timestamp;
-    updatedAt: Timestamp;
+    updatedAt?: Timestamp;
   };
   
   export type Transaction = {
@@ -168,4 +169,3 @@ export interface KycApplication {
       submittedAt: Timestamp;
       isFlaggedForFraud?: boolean;
   }
-

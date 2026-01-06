@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -96,6 +97,10 @@
         "fcmToken": {
             "type": "string",
             "description": "The user's Firebase Cloud Messaging token for push notifications."
+        },
+        "activeMatchId": {
+            "type": "string",
+            "description": "The ID of the match the user is currently playing or waiting for."
         }
       }
     },
@@ -103,6 +108,20 @@
         "title": "Admin",
         "description": "An administrator with elevated privileges",
         "type": "object-extend"
+    },
+    "MatchmakingQueue": {
+        "title": "Matchmaking Queue",
+        "description": "A user waiting for an opponent.",
+        "type": "object",
+        "properties": {
+            "userId": {"type": "string"},
+            "entryFee": {"type": "number"},
+            "status": {"type": "string", "enum": ["waiting", "matched"]},
+            "userName": {"type": "string"},
+            "userAvatar": {"type": "string", "format": "uri"},
+            "createdAt": {"type": "string", "format": "date-time"}
+        },
+        "required": ["userId", "entryFee", "status", "createdAt"]
     },
     "KycApplication": {
       "title": "KYC Application",
@@ -363,6 +382,12 @@
         "$ref": "#/backend/entities/UserProfile"
       },
       "description": "Stores public user profile information."
+    },
+    "/matchmakingQueue/{userId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MatchmakingQueue"
+      },
+      "description": "Queue for users waiting for a match."
     },
     "/kycApplications/{applicationId}": {
       "schema": {

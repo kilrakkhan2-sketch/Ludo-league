@@ -1,17 +1,15 @@
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const { CloudTasksClient } = require('@google-cloud/tasks');
 
 admin.initializeApp();
 
 const db = admin.firestore();
-const tasksClient = new CloudTasksClient();
 
 // Function to set admin claims and also update the user's document in Firestore.
 exports.setAdminClaim = functions.https.onCall(async (data, context) => {
   // Ensure the caller is an admin.
-  if (!context.auth.token.admin) {
+  if (context.auth?.token?.admin !== true) {
     throw new functions.https.HttpsError('permission-denied', 'Only admins can set admin claims.');
   }
 
@@ -26,124 +24,6 @@ exports.setAdminClaim = functions.https.onCall(async (data, context) => {
   } catch (error) {
     console.error("Error setting admin claim:", error);
     throw new functions.https.HttpsError('internal', 'An error occurred while setting the admin claim.');
-  }
-});
-
-
-// Function triggered on result submission
-exports.onResultSubmit = functions.firestore
-  .document('matches/{matchId}/results/{userId}')
-  .onCreate(async (snap, context) => {
-    const matchId = context.params.matchId;
-    const matchRef = db.collection('matches').doc(matchId);
-
-    try {
-      const matchDoc = await matchRef.get();
-      if (!matchDoc.exists) {
-        console.log(`Match with ID: ${matchId} does not exist.`);
-        return null;
-      }
-
-      const matchData = matchDoc.data();
-      const totalPlayers = matchData.players.length;
-
-      const resultsSnapshot = await matchRef.collection('results').get();
-      const resultsCount = resultsSnapshot.size;
-
-      if (resultsCount >= totalPlayers) {
-        const tenMinutesFromNow = new Date();
-        tenMinutesFromNow.setMinutes(tenMinutesFromNow.getMinutes() + 10);
-
-        const queue = 'distribute-winnings-queue';
-        const project = JSON.parse(process.env.FIREBASE_CONFIG).projectId;
-        const location = 'us-central1'; 
-        const queuePath = tasksClient.queuePath(project, location, queue);
-
-        const url = `https://us-central1-${project}.cloudfunctions.net/distributeWinnings`;
-
-        const task = {
-          httpRequest: {
-            httpMethod: 'POST',
-            url,
-            body: Buffer.from(JSON.stringify({ matchId })).toString('base64'),
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          },
-          scheduleTime: {
-            seconds: Math.floor(tenMinutesFromNow.getTime() / 1000),
-          },
-        };
-        
-        await tasksClient.createTask({ parent: queuePath, task });
-        console.log(`Scheduled winning distribution for match ${matchId}`);
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Error in onResultSubmit:', error);
-       if (error.code === 7) { 
-          console.error("PERMISSION DENIED: Ensure the service account has 'Cloud Tasks Enqueuer' role and Cloud Tasks API is enabled.");
-          await matchRef.update({ status: 'error', errorReason: 'Failed to schedule winnings distribution.' });
-      }
-      return null;
-    }
-  });
-
-// HTTP-triggered function to distribute winnings
-exports.distributeWinnings = functions.https.onRequest(async (req, res) => {
-  const { matchId } = req.body;
-
-  if (!matchId) {
-    return res.status(400).send('Missing matchId in request body');
-  }
-
-  const matchRef = db.collection('matches').doc(matchId);
-
-  try {
-    const matchDoc = await matchRef.get();
-    if (!matchDoc.exists) {
-      return res.status(404).send('Match not found');
-    }
-
-    const matchData = matchDoc.data();
-    if (['completed', 'failed', 'review'].includes(matchData.status)) {
-        console.log(`Match ${matchId} already processed. Status: ${matchData.status}`);
-        return res.status(200).send(`Match already processed.`);
-    }
-
-    const resultsSnapshot = await matchRef.collection('results').get();
-    const results = resultsSnapshot.docs.map(doc => doc.data());
-
-    const winningResults = results.filter(r => r.result === 'win');
-    const screenshotUrls = results.map(r => r.screenshotUrl).filter(url => !!url); 
-    const uniqueUrls = new Set(screenshotUrls);
-
-    if ((matchData.maxPlayers === 2 && winningResults.length > 1) || screenshotUrls.length !== uniqueUrls.size) {
-      await matchRef.update({ status: 'review', reviewReason: 'Fraud or conflict detected.' });
-      return res.status(200).send('Fraud detected. Match flagged for review.');
-    }
-
-    if (winningResults.length === 1) {
-      const winnerId = winningResults[0].userId;
-      const winningAmount = matchData.prizePool;
-      const winnerRef = db.collection('users').doc(winnerId);
-      
-      const batch = db.batch();
-      batch.update(winnerRef, { balance: admin.firestore.FieldValue.increment(winningAmount) });
-      batch.update(matchRef, { status: 'completed', winner: winnerId });
-
-      await batch.commit();
-      return res.status(200).send('Winnings distributed successfully');
-    }
-
-    await matchRef.update({ status: 'completed', winner: null, reviewReason: 'No clear winner.' });
-    return res.status(200).send('Match completed with no winner.');
-
-  } catch (error) {
-    console.error('Error in distributeWinnings:', error);
-    await matchRef.update({ status: 'failed', error: error.message });
-    return res.status(500).send('Internal Server Error');
   }
 });
 
@@ -219,7 +99,7 @@ exports.onDepositApproved = functions.firestore
     const userData = userDoc.data();
     const referredBy = userData.referredBy;
 
-    // If the user was referred by someone, calculate and give commission
+    // If the user was referred by someone and bonus not paid, calculate and give commission
     if (referredBy && !userData.referralBonusPaid) {
       try {
         await db.runTransaction(async (transaction) => {
@@ -238,7 +118,6 @@ exports.onDepositApproved = functions.firestore
           const commission = (amount * commissionPercentage) / 100;
           
           // Create a transaction document for the commission.
-          // The onTransactionCreate function will handle updating the referrer's balance.
           const commissionTransRef = db.collection('transactions').doc();
           transaction.set(commissionTransRef, {
             userId: referredBy,
@@ -248,8 +127,8 @@ exports.onDepositApproved = functions.firestore
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             description: `Referral commission from ${userData.displayName || userId}'s deposit.`
           });
-
-           // Mark the new user so they don't trigger this again on future deposits
+          
+          // Mark the new user so they don't trigger this again on future deposits
            transaction.update(userRef, { referralBonusPaid: true });
 
            console.log(`Created referral transaction of ${commission} for ${referredBy}.`);
@@ -262,47 +141,99 @@ exports.onDepositApproved = functions.firestore
   return null;
 });
 
+exports.onMatchmakingQueueWrite = functions.firestore
+  .document('matchmakingQueue/{userId}')
+  .onWrite(async (change, context) => {
+    // If a user cancels their search, the document is deleted.
+    if (!change.after.exists) {
+      console.log(`User ${context.params.userId} left the queue.`);
+      return null;
+    }
 
-exports.onMatchCreate = functions.firestore
-  .document('matches/{matchId}')
-  .onCreate(async (snap, context) => {
-    const match = snap.data();
-    const creatorId = match.creatorId;
+    const newUserInQueue = change.after.data();
+    const entryFee = newUserInQueue.entryFee;
+    const userId = newUserInQueue.userId;
 
-    // Get all users' FCM tokens except the creator
-    const usersSnapshot = await db.collection('users').get();
-    const tokens = [];
-    usersSnapshot.forEach(doc => {
-      const user = doc.data();
-      if (doc.id !== creatorId && user.fcmToken) {
-        tokens.push(user.fcmToken);
-      }
+    const queueRef = db.collection('matchmakingQueue');
+    // Find another user in the queue with the same entry fee who is not the current user.
+    const q = queueRef
+      .where('entryFee', '==', entryFee)
+      .where('status', '==', 'waiting')
+      .where('userId', '!=', userId)
+      .limit(1);
+
+    const snapshot = await q.get();
+
+    if (snapshot.empty) {
+      console.log(`No opponent found for ${userId} with fee ${entryFee}. Waiting...`);
+      return null;
+    }
+
+    // --- Opponent Found! ---
+    const opponent = snapshot.docs[0].data();
+    const opponentId = opponent.userId;
+    console.log(`Opponent found for ${userId}! Matched with ${opponentId}`);
+
+    const batch = db.batch();
+
+    // 1. Lock both players in the queue to prevent them from being matched with others.
+    const player1QueueRef = db.doc(`matchmakingQueue/${userId}`);
+    const player2QueueRef = db.doc(`matchmakingQueue/${opponentId}`);
+    batch.update(player1QueueRef, { status: 'matched', matchedWith: opponentId });
+    batch.update(player2QueueRef, { status: 'matched', matchedWith: userId });
+
+    // 2. Create the new match document.
+    const newMatchRef = db.collection('matches').doc();
+    const prizePool = entryFee * 1.8; // 10% commission
+    batch.set(newMatchRef, {
+      id: newMatchRef.id,
+      creatorId: userId, // Arbitrarily assign one player as creator
+      status: 'waiting', // Starts as 'waiting' until room code is added
+      entryFee: entryFee,
+      prizePool: prizePool,
+      maxPlayers: 2,
+      playerIds: [userId, opponentId],
+      players: [
+        { id: userId, name: newUserInQueue.userName, avatarUrl: newUserInQueue.userAvatar },
+        { id: opponentId, name: opponent.userName, avatarUrl: opponent.userAvatar },
+      ],
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    if (tokens.length === 0) {
-      console.log('No tokens to send notifications to.');
-      return null;
-    }
-
-    const payload = {
-      notification: {
-        title: 'New Match Available!',
-        body: `A new match for ₹${match.prizePool} has been created. Tap to join now!`,
-        clickAction: `/lobby`,
-      },
+    // 3. Create entry-fee transactions for both players.
+    const player1TransRef = db.collection('transactions').doc();
+    const player2TransRef = db.collection('transactions').doc();
+    const transactionData = {
+      type: 'entry-fee',
+      amount: -entryFee,
+      status: 'completed',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      relatedMatchId: newMatchRef.id,
     };
+    batch.set(player1TransRef, { ...transactionData, userId: userId, description: `Entry fee for match ${newMatchRef.id}` });
+    batch.set(player2TransRef, { ...transactionData, userId: opponentId, description: `Entry fee for match ${newMatchRef.id}` });
 
+    // 4. Update both users' profiles with the active match ID.
+    const player1UserRef = db.doc(`users/${userId}`);
+    const player2UserRef = db.doc(`users/${opponentId}`);
+    batch.update(player1UserRef, { activeMatchId: newMatchRef.id });
+    batch.update(player2UserRef, { activeMatchId: newMatchRef.id });
+
+    // 5. Delete players from the matchmaking queue.
+    batch.delete(player1QueueRef);
+    batch.delete(player2QueueRef);
+
+    // Commit all operations as a single batch.
     try {
-      // Send notifications to all tokens.
-      const response = await admin.messaging().sendEachForMulticast({ tokens, ...payload });
-      console.log('Notifications sent successfully:', response.successCount);
-      // You can also handle failures, e.g., by removing invalid tokens from the database.
-      if (response.failureCount > 0) {
-        console.log('Failed to send notifications to some devices:', response.failureCount);
-      }
-      return response;
+      await batch.commit();
+      console.log(`Successfully created match ${newMatchRef.id} for players ${userId} and ${opponentId}.`);
     } catch (error) {
-      console.error('Error sending notifications:', error);
-      return null;
+      console.error("Error committing matchmaking batch: ", error);
+      // Optional: Clean up or revert status if commit fails
+      await player1QueueRef.update({ status: 'waiting', matchedWith: null }).catch();
+      await player2QueueRef.update({ status: 'waiting', matchedWith: null }).catch();
     }
-  });
+    
+    return null;
+});
+
