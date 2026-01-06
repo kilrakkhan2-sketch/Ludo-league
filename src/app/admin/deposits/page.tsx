@@ -56,36 +56,31 @@ export default function AdminDepositsPage() {
     
     try {
         if (action === 'approve') {
-            await runTransaction(firestore, async (transaction) => {
-                const userRef = doc(firestore, 'users', request.userId);
-                const requestRef = doc(firestore, 'depositRequests', request.id);
-                const transactionRef = doc(collection(firestore, 'transactions'));
-                
-                const userDoc = await transaction.get(userRef);
-                if (!userDoc.exists()) throw new Error("User not found");
-                
-                const newBalance = (userDoc.data().walletBalance || 0) + request.amount;
-                
-                // 1. Update user balance
-                transaction.update(userRef, { walletBalance: newBalance });
-                
-                // 2. Mark request as approved
-                transaction.update(requestRef, { 
-                    status: 'approved', 
-                    reviewedAt: serverTimestamp(), 
-                    reviewedBy: adminUser.uid 
-                });
-                
-                // 3. Create a transaction log
-                transaction.set(transactionRef, {
-                    userId: request.userId,
-                    type: 'deposit',
-                    amount: request.amount,
-                    status: 'completed',
-                    createdAt: serverTimestamp(),
-                    description: `Deposit via UTR: ${request.utr}`
-                });
+            const requestRef = doc(firestore, 'depositRequests', request.id);
+            const transactionRef = doc(collection(firestore, 'transactions'));
+            
+            const batch = writeBatch(firestore);
+
+            // 1. Mark request as approved
+            batch.update(requestRef, { 
+                status: 'approved', 
+                reviewedAt: serverTimestamp(), 
+                reviewedBy: adminUser.uid 
             });
+            
+            // 2. Create a transaction log. 
+            // The onTransactionCreate Cloud Function will handle the balance update.
+            batch.set(transactionRef, {
+                userId: request.userId,
+                type: 'deposit',
+                amount: request.amount,
+                status: 'completed',
+                createdAt: serverTimestamp(),
+                description: `Deposit via UTR: ${request.utr}`
+            });
+
+            await batch.commit();
+
         } else { // Reject
              const requestRef = doc(firestore, 'depositRequests', request.id);
              await updateDoc(requestRef, { 
