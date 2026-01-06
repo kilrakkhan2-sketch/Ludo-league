@@ -79,8 +79,8 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
                       </Button>
                   </SheetTrigger>
                   <SheetContent side="left" className="md:hidden w-64 p-0">
-                    <SheetHeader className="p-4">
-                        <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+                    <SheetHeader className="p-4 border-b">
+                       <SheetTitle>Ludo League</SheetTitle>
                     </SheetHeader>
                     <Sidebar />
                   </SheetContent>
