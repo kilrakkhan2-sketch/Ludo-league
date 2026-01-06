@@ -66,15 +66,15 @@ export default function RegisterPage() {
 
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-      <Card className="mx-auto w-full max-w-sm border-0 sm:border shadow-none sm:shadow-lg">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8">
+      <Card className="mx-auto w-full max-w-sm border-0 sm:border sm:shadow-lg">
         <form onSubmit={handleRegister}>
           <CardHeader className="text-center">
               <div className="flex justify-center items-center gap-2 mb-2">
                   <Swords className="h-8 w-8 text-primary" />
                   <CardTitle className="text-3xl font-bold">Ludo League</CardTitle>
               </div>
-            <CardDescription>Enter your information to create an account</CardDescription>
+            <CardDescription className="pt-2">Enter your information to create an account</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4">

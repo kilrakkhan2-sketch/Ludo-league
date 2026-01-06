@@ -104,16 +104,52 @@ export default function LoginPage() {
 
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 lg:grid lg:grid-cols-2">
-      <div className="hidden lg:flex flex-col items-start justify-center p-12 text-foreground space-y-8 bg-card h-full rounded-l-lg">
-        <div className="flex items-center gap-3">
-          <Swords className="h-10 w-10 text-primary" />
-          <h1 className="text-4xl font-bold">Ludo League</h1>
-        </div>
-        <p className="text-xl text-muted-foreground">
-          India's most trusted platform for competitive Ludo. Join thousands of players and win real cash!
-        </p>
-        <div className="space-y-6 pt-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md">
+        <form onSubmit={handleLogin}>
+          <Card className="mx-auto border-0 sm:border sm:shadow-lg">
+            <CardHeader className="space-y-1 text-center">
+              <div className="flex justify-center items-center gap-2">
+                <Swords className="h-8 w-8 text-primary" />
+                <CardTitle className="text-3xl font-bold">Ludo League</CardTitle>
+              </div>
+              <h2 className="text-2xl font-semibold tracking-tight pt-4">Welcome Back</h2>
+              <CardDescription>Enter your email below to login to your account</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" type="email" placeholder="m@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} suppressHydrationWarning />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center">
+                    <Label htmlFor="password">Password</Label>
+                    <button type="button" onClick={() => setResetDialogOpen(true)} className="ml-auto inline-block text-sm underline text-primary/80 hover:text-primary" suppressHydrationWarning>
+                      Forgot your password?
+                    </button>
+                  </div>
+                  <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} suppressHydrationWarning />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading} suppressHydrationWarning>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Login
+                </Button>
+                <Button variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={isLoading || isGoogleLoading} type="button" suppressHydrationWarning>
+                  {isGoogleLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Login with Google
+                </Button>
+              </div>
+              <div className="mt-4 text-center text-sm">
+                Don&apos;t have an account?{" "}
+                <Link href="/register" className="underline text-primary font-semibold">
+                  Sign up
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </form>
+         <div className="space-y-6 pt-8 mt-8 border-t">
           {marketingFeatures.map(feature => (
             <div key={feature.title} className="flex items-start gap-4">
               <div className="bg-primary/10 p-2 rounded-lg">
@@ -125,53 +161,6 @@ export default function LoginPage() {
               </div>
             </div>
           ))}
-        </div>
-      </div>
-      <div className="flex items-center justify-center w-full bg-background lg:bg-card lg:rounded-r-lg">
-        <div className="w-full max-w-md p-4 sm:p-8">
-          <form onSubmit={handleLogin}>
-            <Card className="mx-auto border-0 shadow-none bg-transparent">
-              <CardHeader className="space-y-1 text-center">
-                <div className="flex justify-center items-center gap-2 lg:hidden">
-                  <Swords className="h-8 w-8 text-primary" />
-                  <CardTitle className="text-3xl font-bold">Ludo League</CardTitle>
-                </div>
-                <h2 className="text-2xl font-semibold tracking-tight">Welcome Back</h2>
-                <CardDescription>Enter your email below to login to your account</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" placeholder="m@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} suppressHydrationWarning />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center">
-                      <Label htmlFor="password">Password</Label>
-                      <button type="button" onClick={() => setResetDialogOpen(true)} className="ml-auto inline-block text-sm underline text-primary/80 hover:text-primary" suppressHydrationWarning>
-                        Forgot your password?
-                      </button>
-                    </div>
-                    <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} suppressHydrationWarning />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading} suppressHydrationWarning>
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Login
-                  </Button>
-                  <Button variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={isLoading || isGoogleLoading} type="button" suppressHydrationWarning>
-                    {isGoogleLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Login with Google
-                  </Button>
-                </div>
-                <div className="mt-4 text-center text-sm">
-                  Don&apos;t have an account?{" "}
-                  <Link href="/register" className="underline text-primary font-semibold">
-                    Sign up
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          </form>
         </div>
       </div>
        <Dialog open={isResetDialogOpen} onOpenChange={setResetDialogOpen}>
