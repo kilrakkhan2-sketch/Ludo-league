@@ -19,9 +19,9 @@ import { motion } from 'framer-motion';
 const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-lobby');
 
 const VersusLogo = () => (
-    <div className="relative h-10 w-10 flex items-center justify-center">
+    <div className="relative h-8 w-8 flex items-center justify-center">
         <div className="absolute h-full w-full bg-gradient-to-br from-primary-start to-primary-end rounded-full opacity-30 blur-sm"></div>
-        <span className="relative text-xl font-black text-white" style={{ textShadow: '0 0 5px hsl(var(--primary))' }}>VS</span>
+        <span className="relative text-lg font-black text-white" style={{ textShadow: '0 0 5px hsl(var(--primary))' }}>VS</span>
     </div>
 );
 
@@ -109,13 +109,13 @@ const MatchCard = ({ match, canJoinMatch }: { match: Match; canJoinMatch: boolea
     return (
     <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
     <Card key={match.id} className="w-full shadow-lg border border-primary/20 bg-card/80 backdrop-blur-sm overflow-hidden transition-all duration-300 hover:shadow-primary/20">
-        <CardHeader className="p-4 bg-gradient-to-b from-muted/50 to-transparent">
+        <CardHeader className="p-3 bg-gradient-to-b from-muted/50 to-transparent">
             <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2 text-lg">
-                    <Swords className="h-5 w-5 text-primary" />
+                <div className="flex items-center gap-2 text-md">
+                    <Swords className="h-4 w-4 text-primary" />
                     <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-start to-primary-end">Prize: ₹{match.prizePool}</span>
                 </div>
-                <div className={cn("text-xs font-bold px-2.5 py-1 rounded-full", {
+                <div className={cn("text-xs font-bold px-2 py-0.5 rounded-full", {
                     "bg-green-100 text-green-800 border border-green-300": match.status === 'waiting',
                     "bg-blue-100 text-blue-800 border border-blue-300": match.status === 'in-progress',
                     "bg-gray-100 text-gray-800 border border-gray-300": match.status === 'completed',
@@ -124,50 +124,50 @@ const MatchCard = ({ match, canJoinMatch }: { match: Match; canJoinMatch: boolea
                     {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
                 </div>
             </div>
-            <CardDescription className="pt-1 !mt-1">Entry: ₹{match.entryFee}</CardDescription>
+            <CardDescription className="pt-1 !mt-0.5 text-xs">Entry: ₹{match.entryFee}</CardDescription>
         </CardHeader>
-        <CardContent className="p-4">
+        <CardContent className="p-3">
             <div className="flex items-center justify-around">
-                <div className="flex flex-col items-center gap-2 text-center">
-                    <Avatar className={`h-16 w-16 border-4 border-primary/50`}>
+                <div className="flex flex-col items-center gap-1 text-center">
+                    <Avatar className={`h-12 w-12 border-4 border-primary/50`}>
                         <AvatarImage src={creator.avatarUrl} alt={creator.name} />
                         <AvatarFallback>{creator.name.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <span className="font-semibold text-sm truncate max-w-[100px]">{creator.name}</span>
+                    <span className="font-semibold text-xs truncate max-w-[80px]">{creator.name}</span>
                 </div>
 
                 <VersusLogo />
 
-                 <div className="flex flex-col items-center gap-2 text-center">
+                 <div className="flex flex-col items-center gap-1 text-center">
                     {opponent ? (
                         <>
-                        <Avatar className={`h-16 w-16 border-4 border-muted`}>
+                        <Avatar className={`h-12 w-12 border-4 border-muted`}>
                             <AvatarImage src={opponent.avatarUrl} alt={opponent.name} />
                             <AvatarFallback>{opponent.name.charAt(0)}</AvatarFallback>
                         </Avatar>
-                        <span className="font-semibold text-sm truncate max-w-[100px]">{opponent.name}</span>
+                        <span className="font-semibold text-xs truncate max-w-[80px]">{opponent.name}</span>
                         </>
                     ) : (
                          <>
-                        <Avatar className={`h-16 w-16 border-4 border-dashed border-muted-foreground/50 flex items-center justify-center bg-muted/50`}>
-                            <p className="text-2xl font-bold text-muted-foreground">?</p>
+                        <Avatar className={`h-12 w-12 border-4 border-dashed border-muted-foreground/50 flex items-center justify-center bg-muted/50`}>
+                            <p className="text-xl font-bold text-muted-foreground">?</p>
                         </Avatar>
-                        <span className="font-semibold text-sm text-muted-foreground">Waiting...</span>
+                        <span className="font-semibold text-xs text-muted-foreground">Waiting...</span>
                         </>
                     )}
                 </div>
             </div>
         </CardContent>
-        <CardFooter className='p-4 bg-muted/20'>
+        <CardFooter className='p-3 bg-muted/20'>
              {canView ? (
-                <Button asChild className="w-full h-10 text-base" variant="outline">
+                <Button asChild className="w-full h-9 text-sm" variant="outline">
                     <Link href={`/match/${match.id}`}>
                         View Match
                     </Link>
                 </Button>
              ) : (
-                <Button onClick={handleJoinMatch} className="w-full h-10 text-base" variant="default" disabled={!canJoin || isJoining}>
-                    {isJoining ? <Loader2 className="h-5 w-5 animate-spin"/> : 'Join Now'}
+                <Button onClick={handleJoinMatch} className="w-full h-9 text-sm" variant="default" disabled={!canJoin || isJoining}>
+                    {isJoining ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Join Now'}
                 </Button>
              )}
         </CardFooter>
@@ -286,3 +286,5 @@ export default function LobbyPage() {
     </div>
   );
 }
+
+    

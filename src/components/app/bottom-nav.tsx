@@ -4,14 +4,14 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Home, Swords, Trophy, BarChart, Wallet } from "lucide-react"
+import { Home, Swords, Trophy, LifeBuoy, Wallet } from "lucide-react"
 
 const navItems = [
   { href: "/dashboard", label: "Home", icon: Home },
   { href: "/lobby", label: "Lobby", icon: Swords },
   { href: "/tournaments", label: "Tournaments", icon: Trophy },
-  { href: "/leaderboard", label: "Ranks", icon: BarChart },
   { href: "/wallet", label: "Wallet", icon: Wallet },
+  { href: "/support", label: "Support", icon: LifeBuoy },
 ];
 
 export function BottomNav() {
@@ -21,7 +21,7 @@ export function BottomNav() {
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm h-16 bg-card border shadow-lg rounded-full md:hidden">
       <div className="grid h-full grid-cols-5 mx-auto">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || (item.href === '/lobby' && pathname.startsWith('/match'));
+          const isActive = pathname === item.href || (item.href === '/lobby' && pathname.startsWith('/match')) || (item.href === '/dashboard' && pathname === '/');
           return (
             <Link 
               key={item.href} 
@@ -43,3 +43,5 @@ export function BottomNav() {
     </div>
   )
 }
+
+    
