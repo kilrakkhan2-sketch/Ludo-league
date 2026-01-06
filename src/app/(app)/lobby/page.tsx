@@ -73,7 +73,7 @@ const EntryFeeCard = ({
             <Tooltip>
                 <TooltipTrigger asChild>{cardContent}</TooltipTrigger>
                 <TooltipContent>
-                    <p>Win more matches to unlock this tier.</p>
+                    <p>Win more to unlock higher stakes matches.</p>
                 </TooltipContent>
             </Tooltip>
         </TooltipProvider>
@@ -184,7 +184,8 @@ export default function LobbyPage() {
   const mediumStakes = Array.from({ length: 9 }, (_, i) => 1000 + i * 500);
   const highStakes = Array.from({ length: 9 }, (_, i) => 10000 + i * 5000);
 
-  const maxUnlockedAmount = userProfile?.maxUnlockedAmount ?? 0;
+  // Ensure new users can play. If maxUnlockedAmount is 0 or undefined, default to 100.
+  const maxUnlockedAmount = userProfile?.maxUnlockedAmount || 100;
 
   const FeeTier = ({ fees }: { fees: number[] }) => (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
