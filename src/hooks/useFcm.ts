@@ -1,22 +1,23 @@
+
 'use client';
 import { useEffect } from 'react';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
-import { useFirebaseApp, useFirestore, useUser } from '@/firebase';
+import { getToken, onMessage } from 'firebase/messaging';
+import { useFirestore, useMessaging, useUser } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from './use-toast';
 import { firebaseConfig } from '@/firebase/config';
 
 export const useFcm = () => {
     const { toast } = useToast();
-    const app = useFirebaseApp();
+    const messaging = useMessaging();
     const { user } = useUser();
     const firestore = useFirestore();
 
     useEffect(() => {
-        if (typeof window === 'undefined' || !app || !user || !firestore) {
+        if (typeof window === 'undefined' || !messaging || !user || !firestore) {
             return;
         }
-        
+
         const vapidKey = firebaseConfig.vapidKey;
         if (!vapidKey) {
             console.error('VAPID key is not configured in firebaseConfig.');
@@ -25,20 +26,26 @@ export const useFcm = () => {
 
         const setupMessaging = async () => {
             try {
-                const messaging = getMessaging(app);
+                // Ensure the service worker is ready
+                const swRegistration = await navigator.serviceWorker.ready;
 
+                // Handle incoming messages
                 onMessage(messaging, (payload) => {
-                    console.log('Message received. ', payload);
+                    console.log('Foreground Message received. ', payload);
                     toast({
                         title: payload.notification?.title,
                         description: payload.notification?.body,
                     });
                 });
 
+                // Request permission and get token
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
                     console.log('Notification permission granted.');
-                    const currentToken = await getToken(messaging, { vapidKey });
+                    const currentToken = await getToken(messaging, { 
+                        vapidKey,
+                        serviceWorkerRegistration: swRegistration
+                    });
 
                     if (currentToken) {
                         console.log('FCM Token:', currentToken);
@@ -62,7 +69,7 @@ export const useFcm = () => {
 
         setupMessaging();
 
-    }, [app, user, firestore, toast]);
+    }, [messaging, user, firestore, toast]);
 
     return null;
 };

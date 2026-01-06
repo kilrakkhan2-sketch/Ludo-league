@@ -5,6 +5,7 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { FirebaseApp } from 'firebase/app';
 import type { Auth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
+import type { Messaging } from 'firebase/messaging';
 
 import { initializeFirebase } from './index';
 import { firebaseConfig } from './config';
@@ -14,6 +15,7 @@ type FirebaseContextValue = {
   app: FirebaseApp;
   auth: Auth;
   firestore: Firestore;
+  messaging: Messaging | null;
 } | null;
 
 const FirebaseContext = createContext<FirebaseContextValue | undefined>(
@@ -61,4 +63,8 @@ export function useAuth() {
 
 export function useFirestore() {
   return useFirebase().firestore;
+}
+
+export function useMessaging() {
+    return useFirebase().messaging;
 }
