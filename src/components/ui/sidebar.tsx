@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent, SheetClose } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetClose, SheetTitle } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -349,10 +349,12 @@ const SidebarSheet = ({ children }: { children: React.ReactNode }) => {
           <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
             <SidebarHeader>
                 <SheetClose asChild>
+                  <SheetTitle>
                     <Link href="/dashboard" className="flex items-center gap-2">
                         <Swords className="h-6 w-6 text-primary" />
                         <span className="font-bold text-lg">Ludo League</span>
                     </Link>
+                  </SheetTitle>
                 </SheetClose>
             </SidebarHeader>
             <SidebarContent>{children}</SidebarContent>
