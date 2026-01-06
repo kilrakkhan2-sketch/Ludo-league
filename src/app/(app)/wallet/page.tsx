@@ -373,17 +373,25 @@ export default function WalletPage() {
                            {loading && <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin mx-auto"/></div>}
                             {!loading && depositHistory.length === 0 && <p className="text-center text-muted-foreground py-8">No deposit history found.</p>}
                             {!loading && depositHistory.map((req) => (
-                                <Card key={req.id} className="p-4">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="font-semibold text-green-600 text-lg">₹{req.amount.toFixed(2)}</p>
-                                            <p className="text-xs text-muted-foreground">{req.createdAt?.toDate().toLocaleString()}</p>
+                                <Card key={req.id} className="p-3">
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-3">
+                                            <div className="bg-green-100 p-2 rounded-full">
+                                                <ArrowUpRight className="h-4 w-4 text-green-600"/>
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold">Deposit Request</p>
+                                                <p className="text-xs text-muted-foreground">{req.createdAt?.toDate().toLocaleString()}</p>
+                                            </div>
                                         </div>
-                                        <Badge variant={req.status === 'approved' ? 'default' : req.status === 'pending' ? 'secondary' : 'destructive'} className={cn({'bg-green-100 text-green-800': req.status === 'approved'})}>
-                                            {req.status}
-                                        </Badge>
+                                        <div className="text-right">
+                                            <p className="font-bold text-lg text-green-600">₹{req.amount.toFixed(2)}</p>
+                                            <Badge variant={req.status === 'approved' ? 'default' : req.status === 'pending' ? 'secondary' : 'destructive'} className={cn('mt-1', {'bg-green-100 text-green-800': req.status === 'approved'})}>
+                                                {req.status}
+                                            </Badge>
+                                        </div>
                                     </div>
-                                    {req.rejectionReason && <p className="text-xs text-destructive mt-2">Reason: {req.rejectionReason}</p>}
+                                    {req.rejectionReason && <p className="text-xs text-destructive mt-2 pt-2 border-t">Reason: {req.rejectionReason}</p>}
                                 </Card>
                             ))}
                         </CardContent>
@@ -398,17 +406,19 @@ export default function WalletPage() {
                             {loading && <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin mx-auto"/></div>}
                             {!loading && transactions.length === 0 && <p className="text-center text-muted-foreground py-8">No transactions yet.</p>}
                             {!loading && transactions.slice(0,10).map((t) => (
-                                <Card key={t.id} className="p-4">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="font-medium flex items-center gap-2">
-                                                {t.amount >= 0 ? <ArrowUpRight className="h-4 w-4 text-green-500"/> : <ArrowDownLeft className="h-4 w-4 text-red-500"/>}
-                                                {t.description || t.type.replace('-', ' ')}
-                                            </p>
-                                             <p className="text-xs text-muted-foreground pl-6">{t.createdAt?.toDate().toLocaleString()}</p>
+                                <Card key={t.id} className="p-3">
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-3">
+                                            <div className={cn("p-2 rounded-full", t.amount >= 0 ? "bg-green-100" : "bg-red-100")}>
+                                                {t.amount >= 0 ? <ArrowUpRight className="h-4 w-4 text-green-600"/> : <ArrowDownLeft className="h-4 w-4 text-red-600"/>}
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold capitalize">{t.description || t.type.replace('-', ' ')}</p>
+                                                <p className="text-xs text-muted-foreground">{t.createdAt?.toDate().toLocaleString()}</p>
+                                            </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className={cn("font-semibold text-lg", t.amount >= 0 ? "text-green-500" : "text-red-500")}>
+                                            <p className={cn("font-bold text-lg", t.amount >= 0 ? "text-green-600" : "text-red-500")}>
                                                 {t.amount >= 0 ? '+' : ''}₹{t.amount.toFixed(2)}
                                             </p>
                                              <Badge variant={t.status === 'completed' ? 'default' : t.status === 'pending' ? 'secondary' : 'destructive'} className={cn('mt-1', {'bg-green-100 text-green-800': t.status === 'completed'})}>
@@ -426,7 +436,3 @@ export default function WalletPage() {
     </div>
   )
 }
-
-    
-
-    
