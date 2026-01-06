@@ -127,7 +127,7 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
       const storage = getStorage();
       const storageRef = ref(
         storage,
-        `match-results/${matchId}/${user.uid}_${Date.now()}.jpg`
+        `match-results/${user.uid}/${matchId}_${Date.now()}.jpg`
       );
       await uploadString(storageRef, dataUri, 'data_url');
       const screenshotUrl = await getDownloadURL(storageRef);
