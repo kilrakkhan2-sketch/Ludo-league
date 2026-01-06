@@ -11,10 +11,10 @@ import {
   serverTimestamp,
   addDoc,
   orderBy,
-  startAfter,
+  startAt,
   limit,
   getDocs,
-  endBefore,
+  endAt,
   limitToLast,
   setDoc,
 } from 'firebase/firestore';
@@ -245,27 +245,25 @@ export default function AdminUsersPage() {
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
 
   const handleSearch = useCallback(
-    debounce((term) => {
-        setLoading(true);
-        if (!firestore) return;
+    debounce(async (term) => {
+      setLoading(true);
+      if (!firestore) return;
 
+      try {
         const usersRef = collection(firestore, 'users');
-        // Simple search on display name for now. For more complex searches, an external service like Algolia would be better.
-        const q = term 
-            ? query(usersRef, orderBy('displayName'), startAt(term), endAt(term + '\uf8ff'))
-            : query(usersRef, orderBy('displayName'));
+        const q = term
+          ? query(usersRef, orderBy('displayName'), startAt(term), endAt(term + '\uf8ff'))
+          : query(usersRef, orderBy('displayName'));
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile));
-            setUsers(data);
-            setLoading(false);
-        }, (error) => {
-            console.error('Error fetching users:', error);
-            toast({ title: 'Error fetching users', description: error.message, variant: 'destructive' });
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile));
+        setUsers(data);
+      } catch (error: any) {
+        console.error('Error fetching users:', error);
+        toast({ title: 'Error fetching users', description: error.message, variant: 'destructive' });
+      } finally {
+        setLoading(false);
+      }
     }, 500),
     [firestore, toast]
   );
