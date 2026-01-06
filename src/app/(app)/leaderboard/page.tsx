@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { cn } from "@/lib/utils";
 import { BarChart, Crown, Medal, Trophy } from "lucide-react";
 import { useFirestore } from "@/firebase";
-import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
@@ -28,27 +28,31 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     if (!firestore) return;
-
-    const usersRef = collection(firestore, 'users');
-    const q = query(usersRef, orderBy('winnings', 'desc'), limit(50));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const usersData = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile));
-      setSortedUsers(usersData);
-      setLoading(false);
-    }, (error) => {
-        console.error("Error fetching leaderboard: ", error);
-        setLoading(false);
-    });
-
-    return () => unsubscribe();
+    
+    const fetchLeaderboard = async () => {
+        setLoading(true);
+        try {
+            const usersRef = collection(firestore, 'users');
+            const q = query(usersRef, orderBy('winnings', 'desc'), limit(50));
+            
+            const snapshot = await getDocs(q);
+            const usersData = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile));
+            setSortedUsers(usersData);
+        } catch (error) {
+            console.error("Error fetching leaderboard: ", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    fetchLeaderboard();
   }, [firestore]);
 
 
   const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Crown className="h-6 w-6 text-[#D4AF37]" />; // Gold
-    if (rank === 2) return <Medal className="h-6 w-6 text-[#C0C0C0]" />; // Silver
-    if (rank === 3) return <Trophy className="h-6 w-6 text-[#CD7F32]" />; // Bronze
+    if (rank === 1) return <Crown className="h-6 w-6 text-yellow-400" />; // Gold using a different gold
+    if (rank === 2) return <Medal className="h-6 w-6 text-slate-400" />; // Silver
+    if (rank === 3) return <Trophy className="h-6 w-6 text-orange-400" />; // Bronze
     return <span className="font-bold text-lg">{rank}</span>;
   }
 
@@ -95,9 +99,9 @@ export default function LeaderboardPage() {
                         const rank = index + 1;
                         return (
                             <TableRow key={user.uid} className={cn({
-                                "bg-[#D4AF37]/10": rank === 1,
-                                "bg-[#C0C0C0]/10": rank === 2,
-                                "bg-[#CD7F32]/10": rank === 3,
+                                "bg-yellow-400/10": rank === 1,
+                                "bg-slate-400/10": rank === 2,
+                                "bg-orange-400/10": rank === 3,
                             })}>
                                 <TableCell className="text-center">
                                     <div className="flex justify-center items-center h-full">
