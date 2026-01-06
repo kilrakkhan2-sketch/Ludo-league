@@ -89,6 +89,10 @@
         "referredBy": {
             "type": "string",
             "description": "The UID of the user who referred this user."
+        },
+        "fcmToken": {
+            "type": "string",
+            "description": "The user's Firebase Cloud Messaging token for push notifications."
         }
       }
     },
@@ -142,6 +146,27 @@
         "upiId": {
             "type": "string",
             "description": "User's UPI ID."
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "dateOfBirth": {
+            "type": "string",
+            "format": "date"
+        },
+        "aadhaarNumber": {
+            "type": "string"
+        },
+        "panNumber": {
+            "type": "string"
+        },
+        "aadhaarImage": {
+            "type": "string",
+            "format": "uri"
+        },
+        "panImage": {
+            "type": "string",
+            "format": "uri"
         }
       },
       "required": [
@@ -290,6 +315,19 @@
             "updatedAt": { "type": "string", "format": "date-time" }
         },
         "required": ["commissionPercentage"]
+    },
+    "News": {
+        "title": "News",
+        "description": "Stores news and announcements for the app.",
+        "type": "object",
+        "properties": {
+            "title": { "type": "string", "description": "The title of the news item." },
+            "content": { "type": "string", "description": "The main content of the news item." },
+            "authorId": { "type": "string", "description": "The ID of the admin who created the item." },
+            "authorName": { "type": "string", "description": "The name of the admin who created the item." },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["title", "content", "authorId", "createdAt"]
     }
   },
   "auth": {
@@ -375,6 +413,12 @@
             "$ref": "#/backend/entities/ReferralConfiguration"
         },
         "description": "Stores the global referral settings."
+    },
+    "/news/{newsId}": {
+        "schema": {
+            "$ref": "#/backend/entities/News"
+        },
+        "description": "Stores news items for the ticker."
     }
   }
 }

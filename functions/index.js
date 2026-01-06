@@ -259,3 +259,48 @@ exports.onDepositApproved = functions.firestore
   }
   return null;
 });
+
+
+exports.onMatchCreate = functions.firestore
+  .document('matches/{matchId}')
+  .onCreate(async (snap, context) => {
+    const match = snap.data();
+    const creatorId = match.creatorId;
+
+    // Get all users' FCM tokens except the creator
+    const usersSnapshot = await db.collection('users').get();
+    const tokens = [];
+    usersSnapshot.forEach(doc => {
+      const user = doc.data();
+      if (doc.id !== creatorId && user.fcmToken) {
+        tokens.push(user.fcmToken);
+      }
+    });
+
+    if (tokens.length === 0) {
+      console.log('No tokens to send notifications to.');
+      return null;
+    }
+
+    const payload = {
+      notification: {
+        title: 'New Match Available!',
+        body: `A new match for ₹${match.prizePool} has been created. Tap to join now!`,
+        clickAction: `/lobby`,
+      },
+    };
+
+    try {
+      // Send notifications to all tokens.
+      const response = await admin.messaging().sendEachForMulticast({ tokens, ...payload });
+      console.log('Notifications sent successfully:', response.successCount);
+      // You can also handle failures, e.g., by removing invalid tokens from the database.
+      if (response.failureCount > 0) {
+        console.log('Failed to send notifications to some devices:', response.failureCount);
+      }
+      return response;
+    } catch (error) {
+      console.error('Error sending notifications:', error);
+      return null;
+    }
+  });

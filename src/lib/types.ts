@@ -16,6 +16,7 @@ export type UserProfile = {
     referralCode?: string;
     winnings?: number;
     winRate?: number;
+    fcmToken?: string;
   };
   
   export type Match = {
@@ -150,6 +151,12 @@ export interface KycApplication {
     upiId?: string;
     userName?: string;
     userAvatar?: string;
+    fullName?: string;
+    dateOfBirth?: string;
+    aadhaarNumber?: string;
+    panNumber?: string;
+    aadhaarImage?: string;
+    panImage?: string;
   }
   
   export interface MatchResult {
