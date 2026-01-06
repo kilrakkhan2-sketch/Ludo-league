@@ -26,40 +26,40 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <SidebarProvider>
-      <div className="relative flex flex-col min-h-screen w-full bg-muted/20 overflow-x-hidden">
-          <FirebaseErrorListener/>
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-            <NoSsr>
-              <Sheet>
-                  <SheetTrigger asChild>
-                      <Button size="icon" variant="outline" className="md:hidden">
-                          <Menu className="h-5 w-5" />
-                          <span className="sr-only">Toggle Menu</span>
-                      </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="md:hidden w-64 p-0">
-                    <SheetHeader className="p-4 border-b">
-                       <SheetTitle>Ludo League</SheetTitle>
-                    </SheetHeader>
-                    <Sidebar />
-                  </SheetContent>
-              </Sheet>
-            </NoSsr>
-              <AppHeader />
-          </header>
-          <div className="flex flex-1">
-            <aside className="hidden md:block md:w-64">
-              <Sidebar />
-            </aside>
-            <main className="flex-1 p-4 md:p-6">
-                {children}
-            </main>
-          </div>
-          <Toaster/>
-          <BottomNav />
-      </div>
-    </SidebarProvider>
+    <NoSsr>
+      <SidebarProvider>
+        <div className="relative flex flex-col min-h-screen w-full bg-muted/20 overflow-x-hidden">
+            <FirebaseErrorListener/>
+            <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+                <Sheet>
+                    <SheetTrigger asChild>
+                        <Button size="icon" variant="outline" className="md:hidden">
+                            <Menu className="h-5 w-5" />
+                            <span className="sr-only">Toggle Menu</span>
+                        </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="md:hidden w-64 p-0">
+                      <SheetHeader className="p-4 border-b">
+                         <SheetTitle>Ludo League</SheetTitle>
+                      </SheetHeader>
+                      <Sidebar />
+                    </SheetContent>
+                </Sheet>
+                <AppHeader />
+            </header>
+            <div className="flex flex-1">
+              <aside className="hidden md:block md:w-64">
+                <Sidebar />
+              </aside>
+              <main className="flex-1 p-4 md:p-6">
+                  {children}
+              </main>
+            </div>
+            <Toaster/>
+            <BottomNav />
+        </div>
+      </SidebarProvider>
+    </NoSsr>
   );
 };
 
