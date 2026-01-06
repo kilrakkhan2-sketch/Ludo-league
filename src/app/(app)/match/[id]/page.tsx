@@ -36,6 +36,8 @@ import {
   Timestamp,
   arrayRemove,
   updateDoc,
+  getDoc,
+  type DocumentReference,
 } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import type { Match } from '@/lib/types';
@@ -190,48 +192,61 @@ export default function MatchPage() {
   const handleDeleteMatch = async () => {
     if (!firestore ||!user || !match || user.uid !== match.creatorId || match.status !== 'waiting') return;
     setIsActionLoading(true);
-
+  
     try {
       await runTransaction(firestore, async (transaction) => {
         const matchRef = doc(firestore, 'matches', match.id);
         const matchDoc = await transaction.get(matchRef);
-
+  
         if (!matchDoc.exists()) {
           throw new Error('Match does not exist anymore.');
         }
-
+  
         const currentMatchData = matchDoc.data();
-
-        // Refund all players
-        for (const player of currentMatchData.players) {
-          const playerRef = doc(firestore, 'users', player.id);
-          const playerDoc = await transaction.get(playerRef);
+        const playersToRefund = currentMatchData.players || [];
+        const refundAmount = currentMatchData.entryFee;
+  
+        // Step 1: READ all player documents first.
+        const playerDocsPromises = playersToRefund.map((player: any) =>
+          transaction.get(doc(firestore, 'users', player.id))
+        );
+        const playerDocs = await Promise.all(playerDocsPromises);
+  
+        // Step 2: Perform all WRITE operations.
+        playerDocs.forEach((playerDoc, index) => {
           if (playerDoc.exists()) {
-            const newBalance = (playerDoc.data().walletBalance || 0) + currentMatchData.entryFee;
+            const playerData = playerDoc.data();
+            const playerRef = playerDoc.ref;
+            const newBalance = (playerData.walletBalance || 0) + refundAmount;
+  
+            // Write 1: Update player balance
             transaction.update(playerRef, { walletBalance: newBalance });
-
-            const transactionRef = doc(collection(firestore, 'transactions'));
-            transaction.set(transactionRef, {
-              userId: player.id,
+  
+            // Write 2: Create refund transaction log
+            const refundTransactionRef = doc(collection(firestore, 'transactions'));
+            transaction.set(refundTransactionRef, {
+              userId: playersToRefund[index].id,
               type: 'refund',
-              amount: currentMatchData.entryFee,
+              amount: refundAmount,
               status: 'completed',
               createdAt: Timestamp.now(),
               relatedMatchId: match.id,
               description: `Refund for deleted match ${match.id}`,
             });
           }
-        }
-
+        });
+  
+        // Final Write: Delete the match document
         transaction.delete(matchRef);
       });
-
+  
       toast({
         title: 'Match Deleted',
         description: 'All players have been refunded.',
       });
       router.push('/lobby');
     } catch (error: any) {
+      console.error('Error deleting match:', error);
       toast({
         title: 'Error deleting match',
         description: error.message,
