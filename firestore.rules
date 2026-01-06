@@ -8,75 +8,115 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return request.auth != null &&
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      // Check for custom admin claim OR a specific field in the user's document.
+      // This provides a fallback if the custom claim hasn't propagated yet.
+      return request.auth != null && (
+        request.auth.token.admin == true ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true)
+      );
     }
 
-    // ========= ADMIN RULE: Global Access =========
+    // ========= ADMIN RULE: Global Read/Write Access =========
+    // Admins have god mode. They can read and write anything, anywhere.
     match /{path=**} {
       allow read, write: if isAdmin();
     }
 
-    // ========= Rules for Non-Admin Users =========
+    // ========= Rules for Non-Admin Authenticated Users =========
 
+    // User Profile Documents
     match /users/{userId} {
-      // User can write to their own doc.
+      // Any authenticated user can read any other user's profile (for leaderboards, match details, etc.).
+      allow read: if request.auth != null;
+      // A user can only create or update their own document.
       allow create, update: if isOwner(userId);
-      // Any authenticated user can read any other user's profile (for leaderboards, etc).
-      allow read: if request.auth != null;
+    }
+    
+    // Matchmaking Queue
+    match /matchmakingQueue/{userId} {
+      // A user can only create, read, or delete their own entry in the queue.
+      allow read, create, delete: if isOwner(userId);
+      // No one can update a queue entry; it's either created or deleted.
+      allow update: if false;
     }
 
+    // KYC Applications
     match /kycApplications/{kycId} {
-      allow create: if isOwner(request.resource.data.userId);
-      allow get: if isOwner(resource.data.userId);
+      // A user can only get or create their own KYC application.
+      allow get, create: if isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+      // No updates or listing by users.
+      allow update, list: if false;
     }
 
+    // Matches Collection
     match /matches/{matchId} {
-      // Non-admins can read a match if they are a player OR if the match is waiting.
-      // This covers both queries on the lobby page.
-      allow read: if request.auth != null && (request.auth.uid in resource.data.playerIds || resource.data.status == 'waiting');
-
-      allow create: if isOwner(request.resource.data.creatorId);
-      
-      // Allow joining a match or updating it if user is a player.
-      allow update: if request.auth != null && (resource.data.status == 'waiting' || request.auth.uid in resource.data.playerIds);
-    }
-
-    match /matches/{matchId}/results/{resultId} {
+      // Any authenticated user can read a match document (for lobby, history, etc.).
       allow read: if request.auth != null;
-      allow write: if isOwner(resultId);
+      // Normal users cannot create matches directly; this is handled by a Cloud Function.
+      allow create: if false;
+      // Only players involved in the match can update it (e.g., submitting room code, etc.).
+      allow update: if request.auth != null && request.auth.uid in resource.data.playerIds;
     }
 
-    // Rules for user-specific data collections
-    match /transactions/{docId} {
+    // Match Results Sub-collection
+    match /matches/{matchId}/results/{userId} {
+      // Any authenticated user can read results (for dispute verification).
+      allow read: if request.auth != null;
+      // A user can only write (create or update) their own result document.
+      allow write: if isOwner(userId);
+    }
+
+    // Transactions Collection (highly restricted)
+    match /transactions/{transactionId} {
+      // A user can read their own transaction documents.
       allow read: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
-      // Allow user to query their own transactions
-      allow list: if request.auth.uid == request.query.filters.userId;
+      // Client-side creation of transactions is forbidden. This must be done via secure Cloud Functions.
+      allow create, update, delete: if false;
+      // A user can list/query their own transactions.
+      allow list: if request.auth.uid == request.query.filters[0].value;
     }
     
-    match /depositRequests/{docId} {
+    // Deposit Requests
+    match /depositRequests/{depositId} {
+        // A user can read their own deposit requests.
         allow read: if isOwner(resource.data.userId);
+        // A user can create their own deposit request.
         allow create: if isOwner(request.resource.data.userId);
-        // Allow user to query their own deposit requests
-        allow list: if request.auth.uid == request.query.filters.userId;
+        // A user can list/query their own deposit requests.
+        allow list: if request.auth.uid == request.query.filters[0].value;
+        // Users cannot update or delete requests. This is for admins only.
+        allow update, delete: if false;
     }
     
-    match /withdrawalRequests/{docId} {
+    // Withdrawal Requests
+    match /withdrawalRequests/{withdrawalId} {
+        // A user can read their own withdrawal requests.
         allow read: if isOwner(resource.data.userId);
+        // A user can create their own withdrawal request.
         allow create: if isOwner(request.resource.data.userId);
-        // Allow user to query their own withdrawal requests
-        allow list: if request.auth.uid == request.query.filters.userId;
+        // A user can list/query their own withdrawal requests.
+        allow list: if request.auth.uid == request.query.filters[0].value;
+        // Users cannot update or delete requests. This is for admins only.
+        allow update, delete: if false;
     }
 
-    // Read-only collections for clients.
+    // Support Chat
+    match /supportChats/{userId}/messages/{messageId} {
+      // A user can only read and write to their own support chat thread.
+      allow read, write: if isOwner(userId);
+    }
+
+    // Read-only collections for all authenticated users.
     match /tournaments/{doc=**} { allow read: if request.auth != null; }
     match /news/{doc=**} { allow read: if request.auth != null; }
     match /upiConfiguration/active { allow read: if request.auth != null; }
     match /referralConfiguration/settings { allow get: if request.auth != null; }
 
-    // Admin-only collections (clients can't read or write).
-    match /adminLogs/{l=**} { allow read, write: if false; }
+    // Admin-only collections (write access is already covered by the global admin rule).
+    // Explicitly deny read access for non-admins.
+    match /adminLogs/{logId} {
+      allow read: if false;
+    }
   }
 }

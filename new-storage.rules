@@ -1,4 +1,6 @@
 rules_version = '2';
+
+// Renamed from new-storage.rules to storage.rules for clarity.
 service firebase.storage {
   match /b/{bucket}/o {
 
@@ -9,6 +11,7 @@ service firebase.storage {
     
     function isAdmin() {
       // Check for custom admin claim OR a specific field in the user's document.
+      // This provides a fallback if the custom claim hasn't propagated yet.
       return request.auth != null && (
         request.auth.token.admin == true ||
         (exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
@@ -16,44 +19,44 @@ service firebase.storage {
       );
     }
 
-    // ========= Specific Path Rules =========
+    // ========= ADMIN RULE: Global Read/Write Access =========
+    // Admins have god mode. They can read and write any file, anywhere.
+    match /{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
     
-    // Profile Pictures: Users can read anyone's, but only write their own. Admins can do anything.
+    // ========= Rules for Non-Admin Authenticated Users =========
+
+    // Profile Pictures: Users can read anyone's, but only write/delete their own.
     match /profile-pictures/{userId}/{fileName} {
-      allow read: if request.auth != null || isAdmin();
-      allow write: if isOwner(userId) || isAdmin();
+      allow read: if request.auth != null;
+      allow write, delete: if isOwner(userId);
     }
 
-    // KYC Documents: Users can only read/write their own. Admins can do anything.
+    // KYC Documents: Users can only read/write/delete their own documents.
+    // The path ensures a user can't access another user's KYC folder.
     match /kyc/{userId}/{fileName} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow write: if isOwner(userId) || isAdmin();
+      allow read, write, delete: if isOwner(userId);
     }
     
-    // Deposit Screenshots: Users can only read/write their own. Admins can do anything.
+    // Deposit Screenshots: Users can only read/write/delete their own deposit screenshots.
     match /deposits/{userId}/{fileName} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow write: if isOwner(userId) || isAdmin();
+      allow read, write, delete: if isOwner(userId);
     }
 
-    // Match Result Screenshots: Authenticated users can read.
-    // Users can write if the filename starts with their UID. Admins can do anything.
-    match /match-results/{matchId}/{fileName} {
-        allow read: if request.auth != null || isAdmin();
-        allow write: if (request.auth != null && fileName.startsWith(request.auth.uid)) || isAdmin();
+    // Match Result Screenshots: 
+    // Any authenticated user can read any screenshot (for dispute resolution).
+    // A user can only write files inside their own subfolder, identified by their UID.
+    match /match-results/{matchId}/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write, delete: if isOwner(userId);
     }
     
-    // Public content is readable by anyone (even unauthenticated).
-    // Write access should be restricted, e.g., only for admins.
+    // Public/Shared content (like tournament banners uploaded by admins).
+    // This folder is readable by anyone, even unauthenticated users if needed, but only writable by admins.
     match /public/{allPaths=**} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if false; // Write access is handled by the global admin rule.
     }
-
-    // Fallback rule: Deny all other access by default for security.
-    // This is implicit, but can be made explicit if needed.
-    // match /{allPaths=**} {
-    //   allow read, write: if false;
-    // }
   }
 }
