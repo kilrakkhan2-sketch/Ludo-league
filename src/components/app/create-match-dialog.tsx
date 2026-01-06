@@ -55,15 +55,13 @@ export function CreateMatchDialog({ canCreate }: { canCreate: boolean }) {
             if (!userDoc.exists()) {
                 throw new Error("User not found!");
             }
-            const newBalance = userDoc.data().walletBalance - entryFee;
-            if (newBalance < 0) {
-                throw new Error("Insufficient funds.");
+            if ((userDoc.data().walletBalance || 0) < entryFee) {
+                throw new Error("Insufficient funds. Your balance might have changed.");
             }
 
-            // 1. Deduct fee from user's wallet
-            transaction.update(userRef, { walletBalance: newBalance });
+            // DO NOT update balance here. The onTransactionCreate function will handle it.
 
-            // 2. Log the transaction
+            // 1. Log the transaction
             transaction.set(transactionRef, {
                 userId: user.uid,
                 type: 'entry-fee',
@@ -74,7 +72,7 @@ export function CreateMatchDialog({ canCreate }: { canCreate: boolean }) {
                 description: `Created match ${matchRef.id}`
             });
 
-            // 3. Create the match
+            // 2. Create the match
             transaction.set(matchRef, {
                 creatorId: user.uid,
                 status: 'waiting',
@@ -98,7 +96,7 @@ export function CreateMatchDialog({ canCreate }: { canCreate: boolean }) {
 
     } catch (error: any) {
         console.error("Error creating match:", error);
-        toast({ title: 'Failed to create match', description: error.message, variant: 'destructive' });
+        toast({ title: 'Failed to create match', description: error.message || "An unexpected error occurred.", variant: 'destructive' });
     } finally {
         setIsCreating(false);
     }
