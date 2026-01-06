@@ -1,4 +1,3 @@
-
 'use client';
 import { useEffect } from 'react';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
@@ -16,12 +15,17 @@ export const useFcm = () => {
         if (typeof window === 'undefined' || !app || !user || !firestore) {
             return;
         }
+        
+        const vapidKey = process.env.NEXT_PUBLIC_VAPID_KEY;
+        if (!vapidKey) {
+            console.error('VAPID key is not configured. Please set NEXT_PUBLIC_VAPID_KEY environment variable.');
+            return;
+        }
 
         const setupMessaging = async () => {
             try {
                 const messaging = getMessaging(app);
 
-                // Handle messages while app is in foreground
                 onMessage(messaging, (payload) => {
                     console.log('Message received. ', payload);
                     toast({
@@ -30,17 +34,13 @@ export const useFcm = () => {
                     });
                 });
 
-                // Request permission and get token
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
                     console.log('Notification permission granted.');
-                    const currentToken = await getToken(messaging, {
-                        vapidKey: 'BGlqV0C7wA93gA8P_G-fB3-m9yYgS_1X-cZg8x8fW1l-kHwQ2tV8nZ7rY-jJ9jX-zJ5k-fXwY-oYx0', // Replace with your VAPID key
-                    });
+                    const currentToken = await getToken(messaging, { vapidKey });
 
                     if (currentToken) {
                         console.log('FCM Token:', currentToken);
-                        // Save the token to Firestore
                         const userProfileRef = doc(firestore, 'users', user.uid);
                         await setDoc(userProfileRef, { fcmToken: currentToken }, { merge: true });
                     } else {
@@ -51,6 +51,11 @@ export const useFcm = () => {
                 }
             } catch (error) {
                 console.error('An error occurred while setting up notifications.', error);
+                 toast({
+                    title: "Could not initialize notifications",
+                    description: error instanceof Error ? error.message : "An unknown error occurred.",
+                    variant: "destructive"
+                });
             }
         };
 
