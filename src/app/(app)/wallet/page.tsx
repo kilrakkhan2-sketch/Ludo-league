@@ -30,6 +30,8 @@ import type { Transaction, UpiConfiguration, DepositRequest, WithdrawalRequest }
 import { useToast } from "@/hooks/use-toast"
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage"
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-wallet');
 
@@ -424,5 +426,7 @@ export default function WalletPage() {
     </div>
   )
 }
+
+    
 
     
