@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent, SheetClose, SheetTitle } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetClose, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -347,16 +347,16 @@ const SidebarSheet = ({ children }: { children: React.ReactNode }) => {
       <Sheet open={openMobile} onOpenChange={setOpenMobile}>
         <SheetContent side="left" className="w-[--sidebar-width-mobile] p-0">
           <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
-            <SidebarHeader>
+            <SheetHeader className="p-4 border-b border-sidebar-border">
+              <SheetTitle>
                 <SheetClose asChild>
-                  <SheetTitle>
                     <Link href="/dashboard" className="flex items-center gap-2">
                         <Swords className="h-6 w-6 text-primary" />
                         <span className="font-bold text-lg">Ludo League</span>
                     </Link>
-                  </SheetTitle>
                 </SheetClose>
-            </SidebarHeader>
+              </SheetTitle>
+            </SheetHeader>
             <SidebarContent>{children}</SidebarContent>
              <SidebarFooter>
                 <SidebarMenu>
