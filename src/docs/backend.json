@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "User": {
@@ -89,6 +88,10 @@
         "referredBy": {
             "type": "string",
             "description": "The UID of the user who referred this user."
+        },
+        "referralBonusPaid": {
+            "type": "boolean",
+            "description": "Whether the referral bonus for the first deposit has been paid."
         },
         "fcmToken": {
             "type": "string",
@@ -215,9 +218,9 @@
         "type": "object",
         "properties": {
             "userId": {"type": "string"},
-            "type": {"type": "string", "enum": ["deposit", "withdrawal", "entry-fee", "winnings", "refund", "tournament-fee", "referral-bonus"]},
+            "type": {"type": "string", "enum": ["deposit", "withdrawal", "entry-fee", "winnings", "refund", "tournament-fee", "referral-bonus", "admin-credit", "admin-debit"]},
             "amount": {"type": "number", "description": "Positive for credit, negative for debit."},
-            "status": {"type": "string", "enum": ["completed", "pending", "rejected"]},
+            "status": {"type": "string", "enum": ["completed", "pending", "rejected", "failed"]},
             "createdAt": {"type": "string", "format": "date-time"},
             "relatedMatchId": {"type": "string", "description": "ID of the match, if applicable."},
             "relatedTournamentId": {"type": "string", "description": "ID of the tournament, if applicable."},
@@ -328,6 +331,19 @@
             "createdAt": { "type": "string", "format": "date-time" }
         },
         "required": ["title", "content", "authorId", "createdAt"]
+    },
+    "SupportMessage": {
+      "title": "Support Message",
+      "description": "A single message in a support chat thread.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderAvatar": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "senderId", "createdAt"]
     }
   },
   "auth": {
@@ -401,6 +417,12 @@
             "$ref": "#/backend/entities/Match"
         },
         "description": "Stores all matches that are part of a specific tournament."
+    },
+    "/supportChats/{userId}/messages/{messageId}": {
+      "schema": {
+        "$ref": "#/backend/entities/SupportMessage"
+      },
+      "description": "Stores messages for a user's support chat."
     },
     "/upiConfiguration/active": {
         "schema": {

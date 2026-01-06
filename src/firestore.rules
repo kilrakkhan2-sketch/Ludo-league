@@ -21,9 +21,7 @@ service cloud.firestore {
     // ========= Rules for Non-Admin Users =========
 
     match /users/{userId} {
-      // User can write to their own doc.
       allow create, update: if isOwner(userId);
-      // Any authenticated user can read any other user's profile (for leaderboards, etc).
       allow read: if request.auth != null;
     }
 
@@ -33,13 +31,8 @@ service cloud.firestore {
     }
 
     match /matches/{matchId} {
-      // Non-admins can read a match if they are a player OR if the match is waiting.
-      // This covers both queries on the lobby page.
       allow read: if request.auth != null && (request.auth.uid in resource.data.playerIds || resource.data.status == 'waiting');
-
       allow create: if isOwner(request.resource.data.creatorId);
-      
-      // Allow joining a match or updating it if user is a player.
       allow update: if request.auth != null && (resource.data.status == 'waiting' || request.auth.uid in resource.data.playerIds);
     }
 
@@ -48,26 +41,27 @@ service cloud.firestore {
       allow write: if isOwner(request.resource.data.userId);
     }
 
-    // Rules for user-specific data collections
     match /transactions/{docId} {
       allow read: if isOwner(resource.data.userId);
       allow create: if isOwner(request.resource.data.userId);
-      // Allow user to query their own transactions
       allow list: if request.auth.uid == request.query.filters.userId;
     }
     
     match /depositRequests/{docId} {
         allow read: if isOwner(resource.data.userId);
         allow create: if isOwner(request.resource.data.userId);
-        // Allow user to query their own deposit requests
         allow list: if request.auth.uid == request.query.filters.userId;
     }
     
     match /withdrawalRequests/{docId} {
         allow read: if isOwner(resource.data.userId);
         allow create: if isOwner(request.resource.data.userId);
-        // Allow user to query their own withdrawal requests
         allow list: if request.auth.uid == request.query.filters.userId;
+    }
+
+    // Rules for Support Chat
+    match /supportChats/{userId}/messages/{messageId} {
+      allow read, write: if isOwner(userId);
     }
 
     // Read-only collections for clients.

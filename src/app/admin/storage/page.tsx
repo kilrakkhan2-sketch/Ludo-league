@@ -1,13 +1,5 @@
-
 'use client';
 import React, { useState, useEffect } from 'react';
-import {
-  getStorage,
-  ref,
-  listAll,
-  deleteObject,
-  type StorageReference,
-} from 'firebase/storage';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -15,15 +7,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,109 +25,41 @@ import {
   FolderKanban,
   Loader2,
   Trash2,
-  Folder,
-  File,
-  Home,
-  ChevronRight,
+  AlertTriangle,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-
-type FileItem = {
-  name: string;
-  fullPath: string;
-  type: 'folder' | 'file';
-  ref: StorageReference;
-};
+import { deleteOldRecords } from '@/ai/flows/delete-old-records';
 
 export default function StorageManagementPage() {
-  const [currentPath, setCurrentPath] = useState('/');
-  const [items, setItems] = useState<FileItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [deletingPath, setDeletingPath] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchItems = async () => {
-      setLoading(true);
-      try {
-        const storage = getStorage();
-        const listRef = ref(storage, currentPath);
-        const res = await listAll(listRef);
-
-        const folders: FileItem[] = res.prefixes.map((folderRef) => ({
-          name: folderRef.name,
-          fullPath: folderRef.fullPath,
-          type: 'folder',
-          ref: folderRef,
-        }));
-
-        const files: FileItem[] = res.items.map((itemRef) => ({
-          name: itemRef.name,
-          fullPath: itemRef.fullPath,
-          type: 'file',
-          ref: itemRef,
-        }));
-
-        setItems([...folders, ...files]);
-      } catch (error: any) {
-        toast({
-          title: 'Error Listing Files',
-          description: error.message,
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchItems();
-  }, [currentPath, toast]);
-
-  const handleDelete = async (itemRef: StorageReference) => {
-    setDeletingPath(itemRef.fullPath);
+  const handleDeleteOldData = async () => {
+    setIsDeleting(true);
+    toast({
+      title: 'Cleanup Initiated',
+      description: 'Deleting records older than 24 months. This may take a while...',
+    });
     try {
-      await deleteObject(itemRef);
-      toast({
-        title: 'File Deleted',
-        description: `Successfully deleted ${itemRef.name}.`,
-      });
-      // Refresh list
-      setItems((prev) => prev.filter((item) => item.fullPath !== itemRef.fullPath));
+      const result = await deleteOldRecords({ months: 24 });
+      if (result.success) {
+        toast({
+          title: 'Cleanup Successful',
+          description: `Deleted ${result.deletedMatchesCount} matches and ${result.deletedTransactionsCount} transactions.`,
+          className: 'bg-green-100 text-green-800',
+        });
+      } else {
+        throw new Error(result.message);
+      }
     } catch (error: any) {
       toast({
-        title: 'Error Deleting File',
-        description: error.message,
+        title: 'Cleanup Failed',
+        description: error.message || 'An unexpected error occurred.',
         variant: 'destructive',
       });
     } finally {
-      setDeletingPath(null);
+      setIsDeleting(false);
     }
   };
-
-  const handleNavigate = (path: string) => {
-    setCurrentPath(path);
-  };
-  
-  const Breadcrumbs = () => {
-      const parts = currentPath.split('/').filter(Boolean);
-      let path = '/';
-      return (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-              <button onClick={() => handleNavigate('/')} className="hover:text-primary"><Home className="h-4 w-4"/></button>
-              {parts.map((part, i) => {
-                  path += `${part}/`;
-                  const currentPath = path;
-                  return (
-                      <React.Fragment key={i}>
-                          <ChevronRight className="h-4 w-4"/>
-                          <button onClick={() => handleNavigate(currentPath)} className="hover:text-primary">{part}</button>
-                      </React.Fragment>
-                  )
-              })}
-          </div>
-      )
-  }
 
   return (
     <>
@@ -152,121 +69,57 @@ export default function StorageManagementPage() {
           Storage Management
         </h2>
       </div>
-      <Card>
+      <Card className="border-destructive">
         <CardHeader>
-          <CardTitle>File Browser</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <AlertTriangle />
+            Danger Zone
+          </CardTitle>
           <CardDescription>
-            Browse and delete files from your Firebase Storage bucket. Deletions
-            are permanent.
+            These actions are permanent and cannot be undone.
           </CardDescription>
         </CardHeader>
         <CardContent>
-            <Breadcrumbs />
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-center py-8">
-                    <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-                  </TableCell>
-                </TableRow>
-              ) : items.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={3}
-                    className="text-center py-8 text-muted-foreground"
-                  >
-                    This folder is empty.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                items.map((item) => (
-                  <TableRow key={item.fullPath}>
-                    <TableCell>
-                      <button
-                        onClick={
-                          item.type === 'folder'
-                            ? () => handleNavigate(item.fullPath)
-                            : undefined
-                        }
-                        className={cn('flex items-center gap-2', {
-                          'hover:underline cursor-pointer': item.type === 'folder',
-                          'cursor-default': item.type === 'file',
-                        })}
-                        disabled={item.type !== 'folder'}
-                      >
-                        {item.type === 'folder' ? (
-                          <Folder className="h-5 w-5 text-yellow-500" />
-                        ) : (
-                          <File className="h-5 w-5 text-muted-foreground" />
-                        )}
-                        <span className="font-medium">{item.name}</span>
-                      </button>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={item.type === 'folder' ? 'secondary' : 'outline'}
-                      >
-                        {item.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {item.type === 'file' && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              disabled={deletingPath === item.fullPath}
-                            >
-                              {deletingPath === item.fullPath ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="mr-2 h-4 w-4" />
-                              )}
-                              Delete
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Are you sure?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. This will
-                                permanently delete the file{' '}
-                                <code className="bg-muted px-1 py-0.5 rounded">
-                                  {item.name}
-                                </code>
-                                .
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDelete(item.ref)}
-                                className="bg-destructive hover:bg-destructive/90"
-                              >
-                                Yes, delete file
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <p className="font-medium">Clean Up Old Database Records</p>
+          <p className="text-sm text-muted-foreground">
+            Permanently delete completed matches and associated transactions
+            that are older than 24 months to free up database storage.
+          </p>
         </CardContent>
+        <CardFooter>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" disabled={isDeleting}>
+                {isDeleting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
+                Delete Records Older Than 24 Months
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete
+                  all completed matches and transactions older than 24 months.
+                  This is intended to free up database space and cannot be
+                  recovered.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteOldData}
+                  className="bg-destructive hover:bg-destructive/90"
+                >
+                  Yes, delete old records
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardFooter>
       </Card>
     </>
   );
