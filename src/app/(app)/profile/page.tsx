@@ -4,13 +4,58 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUser } from "@/firebase";
-import { BarChart, Edit, Mail, Phone, User as UserIcon, Wallet } from "lucide-react";
+import { BarChart, Edit, Mail, Phone, User as UserIcon, Wallet, CheckCircle, XCircle, AlertTriangle, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+
+const KycStatusCard = ({ kycStatus, rejectionReason }: { kycStatus: string, rejectionReason?: string }) => {
+    const statusConfig = {
+        verified: {
+            icon: <CheckCircle className="h-12 w-12 text-green-500" />,
+            title: "KYC Verified",
+            description: "Your account is fully verified. You can now make withdrawals.",
+            button: <Button asChild><Link href="/wallet">Withdraw Funds</Link></Button>
+        },
+        pending: {
+            icon: <AlertTriangle className="h-12 w-12 text-yellow-500" />,
+            title: "KYC Pending",
+            description: "Your KYC documents are under review. This usually takes 24-48 hours.",
+            button: <Button disabled>Verification in Progress</Button>
+        },
+        rejected: {
+            icon: <XCircle className="h-12 w-12 text-red-500" />,
+            title: "KYC Rejected",
+            description: `Your KYC verification was rejected. Reason: ${rejectionReason || 'Not provided'}`,
+            button: <Button asChild><Link href="/kyc">Resubmit KYC</Link></Button>
+        },
+        not_submitted: {
+            icon: <ShieldCheck className="h-12 w-12 text-muted-foreground" />,
+            title: "KYC Verification",
+            description: "Please submit your KYC documents to enable withdrawals.",
+            button: <Button asChild><Link href="/kyc">Submit KYC</Link></Button>
+        }
+    };
+
+    const currentStatus = statusConfig[kycStatus as keyof typeof statusConfig] || statusConfig.not_submitted;
+
+    return (
+        <Card className="shadow-md bg-card">
+            <CardHeader className="text-center">
+                <div className="mx-auto bg-muted/20 p-3 rounded-full">{currentStatus.icon}</div>
+                <CardTitle className="mt-4">{currentStatus.title}</CardTitle>
+                <CardDescription className="mt-2">{currentStatus.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+                {currentStatus.button}
+            </CardContent>
+        </Card>
+    )
+}
 
 export default function ProfilePage() {
   const { user, userProfile } = useUser();
 
   if (!user || !userProfile) {
-    return <div>Loading...</div>;
+    return <div className="flex items-center justify-center h-full"><p>Loading profile...</p></div>;
   }
 
   return (
@@ -61,6 +106,9 @@ export default function ProfilePage() {
             </div>
         </CardContent>
       </Card>
+
+      <KycStatusCard kycStatus={userProfile.kycStatus || 'not_submitted'} rejectionReason={userProfile.kycRejectionReason} />
+      
     </div>
   );
 }

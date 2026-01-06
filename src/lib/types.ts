@@ -17,6 +17,16 @@ export type UserProfile = {
     winnings?: number;
     winRate?: number;
     fcmToken?: string;
+    // New Rank-based fields
+    rank: number;
+    rankPoints: number; // For internal calculation, can be deprecated if totalNetWinning is used
+    totalNetWinning: number;
+    totalWins: number;
+    totalLosses: number;
+    dailyLoss: number;
+    lossStreak: number;
+    maxUnlockedAmount: number;
+    currentMatch?: string | null;
   };
   
   export type Match = {
@@ -168,4 +178,3 @@ export interface KycApplication {
       submittedAt: Timestamp;
       isFlaggedForFraud?: boolean;
   }
-

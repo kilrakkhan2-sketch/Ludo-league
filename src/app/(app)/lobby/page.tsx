@@ -4,223 +4,156 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Swords, Users, Star, History, Loader2, Info } from "lucide-react";
+import { Swords, Users, Star, History, Loader2, Info, Lock } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore } from "@/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion, runTransaction, Timestamp, arrayRemove } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { CreateMatchDialog } from "@/components/app/create-match-dialog";
 import { useToast } from "@/hooks/use-toast";
 import type { Match } from "@/lib/types";
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { motion } from 'framer-motion';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-lobby');
 
-const VersusLogo = () => (
-    <div className="relative h-8 w-8 flex items-center justify-center">
-        <div className="absolute h-full w-full bg-gradient-to-br from-primary-start to-primary-end rounded-full opacity-30 blur-sm"></div>
-        <span className="relative text-lg font-black text-white" style={{ textShadow: '0 0 5px hsl(var(--primary))' }}>VS</span>
-    </div>
-);
+const RANK_THRESHOLDS = [
+    { rank: 0, name: 'Beginner', unlockRange: [50, 100], requiredWinning: 0 },
+    { rank: 1, name: 'Learner', unlockRange: [150, 300], requiredWinning: 300 },
+    { rank: 2, name: 'Skilled', unlockRange: [500, 1000], requiredWinning: 1500 },
+    { rank: 3, name: 'Pro', unlockRange: [1500, 3000], requiredWinning: 5000 },
+    { rank: 4, name: 'Elite', unlockRange: [5000, 10000], requiredWinning: 20000 },
+    { rank: 5, name: 'Champion', unlockRange: [15000, 50000], requiredWinning: 50000 },
+];
 
-const MatchCard = ({ match, canJoinMatch }: { match: Match; canJoinMatch: boolean }) => {
-    const { user } = useUser();
-    const firestore = useFirestore();
-    const { toast } = useToast();
+const getUserRank = (netWinning: number) => {
+    for (let i = RANK_THRESHOLDS.length - 1; i >= 0; i--) {
+        if (netWinning >= RANK_THRESHOLDS[i].requiredWinning) {
+            return RANK_THRESHOLDS[i];
+        }
+    }
+    return RANK_THRESHOLDS[0];
+};
+
+const feeToRankMap = new Map<number, number>();
+RANK_THRESHOLDS.forEach(r => {
+    if(r.unlockRange.length === 2) {
+        for(let fee = r.unlockRange[0]; fee <= r.unlockRange[1]; fee += (fee < 500 ? 50 : (fee < 5000 ? 500 : 5000))) {
+            if(!feeToRankMap.has(fee)) feeToRankMap.set(fee, r.rank);
+        }
+    }
+});
+
+
+const PlayCard = ({ entryFee, onJoin }: { entryFee: number, onJoin: (fee: number) => void }) => {
+    const { userProfile } = useUser();
     const [isJoining, setIsJoining] = useState(false);
-
-    const handleJoinMatch = async () => {
-        if (!user || !firestore) {
-            toast({ title: "You must be logged in to join.", variant: "destructive"});
-            return;
-        }
-        setIsJoining(true);
-        try {
-            const matchRef = doc(firestore, "matches", match.id);
-            const userRef = doc(firestore, "users", user.uid);
-            
-            await runTransaction(firestore, async (transaction) => {
-                const matchDoc = await transaction.get(matchRef);
-                const userDoc = await transaction.get(userRef);
-
-                if (!matchDoc.exists() || !userDoc.exists()) {
-                    throw new Error("Match or user not found!");
-                }
-
-                const matchData = matchDoc.data();
-                const userData = userDoc.data();
-                
-                if ((userData.walletBalance || 0) < matchData.entryFee) {
-                    throw new Error("Insufficient wallet balance.");
-                }
-
-                if (matchData.playerIds.length >= matchData.maxPlayers) {
-                    throw new Error("Match is already full.");
-                }
-                
-                if (matchData.playerIds.includes(user.uid)) {
-                    return;
-                }
-                
-                transaction.update(matchRef, { 
-                    playerIds: arrayUnion(user.uid),
-                    players: arrayUnion({
-                        id: user.uid,
-                        name: user.displayName,
-                        avatarUrl: user.photoURL,
-                    })
-                });
-
-                const transactionRef = doc(collection(firestore, "transactions"));
-                transaction.set(transactionRef, {
-                    userId: user.uid,
-                    type: "entry-fee",
-                    amount: -matchData.entryFee,
-                    status: "completed",
-                    createdAt: Timestamp.now(),
-                    relatedMatchId: match.id,
-                    description: `Entry fee for match ${match.id}`
-                });
-
-            });
-
-            toast({ title: "Successfully joined match!" });
-
-        } catch (error: any) {
-            console.error("Error joining match:", error);
-            toast({
-                title: "Failed to join match",
-                description: error.message || "An unexpected error occurred.",
-                variant: "destructive"
-            });
-        } finally {
-            setIsJoining(false);
-        }
-    };
     
-    const canJoin = match.status === 'waiting' && !match.playerIds.includes(user?.uid || '') && canJoinMatch;
-    const canView = match.playerIds.includes(user?.uid || '');
+    const prizePool = useMemo(() => entryFee * 1.8, [entryFee]);
 
-    const creator = match.players[0];
-    const opponent = match.players.length > 1 ? match.players[1] : null;
+    const userRank = useMemo(() => getUserRank(userProfile?.totalNetWinning || 0), [userProfile?.totalNetWinning]);
+    const maxUnlockedAmount = userRank.unlockRange[1];
+    
+    const requiredRankForCard = useMemo(() => {
+        for (const rank of RANK_THRESHOLDS) {
+            if (entryFee >= rank.unlockRange[0] && entryFee <= rank.unlockRange[1]) {
+                return rank;
+            }
+        }
+        return RANK_THRESHOLDS[0];
+    }, [entryFee]);
 
-    return (
-    <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
-    <Card key={match.id} className="w-full shadow-lg border border-primary/20 bg-card/80 backdrop-blur-sm overflow-hidden transition-all duration-300 hover:shadow-primary/20">
-        <CardHeader className="p-3 bg-gradient-to-b from-muted/50 to-transparent">
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2 text-md">
-                    <Swords className="h-4 w-4 text-primary" />
-                    <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-start to-primary-end">Prize: ₹{match.prizePool}</span>
-                </div>
-                <div className={cn("text-xs font-bold px-2 py-0.5 rounded-full", {
-                    "bg-green-100 text-green-800 border border-green-300": match.status === 'waiting',
-                    "bg-blue-100 text-blue-800 border border-blue-300": match.status === 'in-progress',
-                    "bg-gray-100 text-gray-800 border border-gray-300": match.status === 'completed',
-                    "bg-red-100 text-red-800 border border-red-300": match.status === 'disputed',
-                })}>
-                    {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
-                </div>
-            </div>
-            <CardDescription className="pt-1 !mt-0.5 text-xs">Entry: ₹{match.entryFee}</CardDescription>
-        </CardHeader>
-        <CardContent className="p-3">
-            <div className="flex items-center justify-around">
-                <div className="flex flex-col items-center gap-1 text-center">
-                    <Avatar className={`h-12 w-12 border-4 border-primary/50`}>
-                        <AvatarImage src={creator.avatarUrl} alt={creator.name} />
-                        <AvatarFallback>{creator.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <span className="font-semibold text-xs truncate max-w-[80px]">{creator.name}</span>
-                </div>
+    const isLocked = userRank.rank < requiredRankForCard.rank;
 
-                <VersusLogo />
+    const handleJoin = async () => {
+        setIsJoining(true);
+        await onJoin(entryFee);
+        setIsJoining(false);
+    };
 
-                 <div className="flex flex-col items-center gap-1 text-center">
-                    {opponent ? (
-                        <>
-                        <Avatar className={`h-12 w-12 border-4 border-muted`}>
-                            <AvatarImage src={opponent.avatarUrl} alt={opponent.name} />
-                            <AvatarFallback>{opponent.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-semibold text-xs truncate max-w-[80px]">{opponent.name}</span>
-                        </>
-                    ) : (
-                         <>
-                        <Avatar className={`h-12 w-12 border-4 border-dashed border-muted-foreground/50 flex items-center justify-center bg-muted/50`}>
-                            <p className="text-xl font-bold text-muted-foreground">?</p>
-                        </Avatar>
-                        <span className="font-semibold text-xs text-muted-foreground">Waiting...</span>
-                        </>
+    const getTierColor = (fee: number) => {
+        if (fee <= 300) return 'from-amber-800/20 to-amber-600/20 border-amber-700/50'; // Bronze
+        if (fee <= 1000) return 'from-slate-600/20 to-slate-400/20 border-slate-500/50'; // Silver
+        if (fee <= 10000) return 'from-yellow-600/20 to-yellow-400/20 border-yellow-500/50'; // Gold
+        return 'from-purple-600/20 to-purple-400/20 border-purple-500/50'; // Champion
+    };
+
+    const lockedTooltip = `Win ₹${requiredRankForCard.requiredWinning - (userProfile?.totalNetWinning || 0)} more to unlock this tier.`;
+
+    const cardContent = (
+        <Card className={cn(
+            "w-full shadow-lg border bg-card/80 backdrop-blur-sm overflow-hidden transition-all duration-300",
+            isLocked ? "bg-muted/50 border-dashed" : `bg-gradient-to-br ${getTierColor(entryFee)}`,
+        )}>
+            <CardHeader className="p-4 text-center">
+                <CardDescription className={cn("font-semibold", isLocked ? "text-muted-foreground" : "text-amber-300")}>Prize Pool</CardDescription>
+                <CardTitle className={cn("text-3xl font-bold tracking-tighter", isLocked ? "text-muted-foreground" : "text-white")}>
+                    ₹{prizePool.toLocaleString('en-IN')}
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+                <Button 
+                    className="w-full font-bold text-lg h-12" 
+                    variant={isLocked ? "secondary" : "default"}
+                    disabled={isLocked || isJoining}
+                    onClick={handleJoin}>
+                    {isJoining ? <Loader2 className="h-6 w-6 animate-spin"/> : (
+                        isLocked ? <Lock className="h-5 w-5"/> : `Play for ₹${entryFee}`
                     )}
-                </div>
-            </div>
-        </CardContent>
-        <CardFooter className='p-3 bg-muted/20'>
-             {canView ? (
-                <Button asChild className="w-full h-9 text-sm" variant="outline">
-                    <Link href={`/match/${match.id}`}>
-                        View Match
-                    </Link>
                 </Button>
-             ) : (
-                <Button onClick={handleJoinMatch} className="w-full h-9 text-sm" variant="default" disabled={!canJoin || isJoining}>
-                    {isJoining ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Join Now'}
-                </Button>
-             )}
-        </CardFooter>
-    </Card>
-    </motion.div>
+            </CardContent>
+        </Card>
     );
+
+    if (isLocked) {
+        return (
+             <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                       <div className="relative cursor-not-allowed">{cardContent}</div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>{lockedTooltip}</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        )
+    }
+
+    return cardContent;
 };
 
 
 export default function LobbyPage() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const [myMatches, setMyMatches] = useState<Match[]>([]);
-  const [openMatches, setOpenMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeMatchCount, setActiveMatchCount] = useState(0);
+  const { toast } = useToast();
+  
+  const entryFees = useMemo(() => {
+    const fees = new Set<number>();
+    // Tier 1
+    for (let i = 50; i <= 500; i += 50) fees.add(i);
+    // Tier 2
+    for (let i = 500; i <= 5000; i += 500) fees.add(i);
+    // Tier 3
+    for (let i = 5000; i <= 50000; i += 5000) fees.add(i);
+    return Array.from(fees).sort((a,b) => a-b);
+  }, []);
 
-  useEffect(() => {
-    if (!firestore || !user) return;
+  const handleJoinMatch = async (entryFee: number) => {
+     if (!user || !firestore) {
+         toast({ title: "You must be logged in.", variant: "destructive" });
+         return;
+     }
 
-    setLoading(true);
-
-    const matchesRef = collection(firestore, "matches");
-    
-    const allUserMatchesQuery = query(
-        matchesRef,
-        where("playerIds", "array-contains", user.uid)
-    );
-    const unsubscribeAllUserMatches = onSnapshot(allUserMatchesQuery, (snapshot) => {
-        const matchesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
-        const activeMatches = matchesData.filter(m => m.status === 'waiting' || m.status === 'in-progress');
-        setActiveMatchCount(activeMatches.length);
-        setMyMatches(matchesData);
-        setLoading(false);
-    });
-
-    const openMatchesQuery = query(matchesRef, where("status", "==", "waiting"));
-     const unsubscribeOpenMatches = onSnapshot(openMatchesQuery, (snapshot) => {
-        const matchesData = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() } as Match))
-            .filter(match => !match.playerIds.includes(user.uid));
-        setOpenMatches(matchesData);
-        setLoading(false);
-    });
-
-    return () => {
-        unsubscribeAllUserMatches();
-        unsubscribeOpenMatches();
-    }
-  }, [firestore, user]);
-
-  const canCreateOrJoin = activeMatchCount < 3;
-
+     // Here you would call a cloud function to find an opponent and create/join a match.
+     // For now, we simulate a successful join and link to a placeholder match.
+     toast({ title: `Searching for a ₹${entryFee} match...`});
+     // This is where you would call: const { data } = await functions.findOpponentAndCreateMatch({ entryFee });
+     // And then router.push(`/match/${data.matchId}`);
+  }
 
   return (
     <div className="space-y-6">
@@ -234,57 +167,10 @@ export default function LobbyPage() {
                 </div>
             </div>
         )}
-      <div className="flex items-center justify-end space-x-2">
-          <CreateMatchDialog canCreate={canCreateOrJoin} />
-      </div>
-
-       {!canCreateOrJoin && (
-            <Alert variant="destructive">
-                <Info className="h-4 w-4" />
-                <AlertTitle>Active Match Limit Reached</AlertTitle>
-                <AlertDescription>You can have a maximum of 3 active matches (waiting or in-progress). Complete an existing match to create or join a new one.</AlertDescription>
-            </Alert>
-        )}
-
-      <div className="flex flex-col gap-8">
-        
-        {myMatches.length > 0 && (
-            <section>
-                <h3 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
-                    <Star className="h-6 w-6 text-yellow-400"/> My Matches
-                </h3>
-                <div className="grid md:grid-cols-2 gap-6">
-                    {myMatches.map((match) => (
-                        <MatchCard key={match.id} match={match} canJoinMatch={canCreateOrJoin} />
-                    ))}
-                </div>
-            </section>
-        )}
-
-        <section>
-            <h3 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
-                <Swords className="h-6 w-6 text-primary"/> Open Matches
-            </h3>
-            {loading ? (
-                 <div className="flex items-center justify-center p-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary"/>
-                 </div>
-            ) : openMatches.length > 0 ? (
-                <div className="grid md:grid-cols-2 gap-6">
-                    {openMatches.map((match) => (
-                       <MatchCard key={match.id} match={match} canJoinMatch={canCreateOrJoin} />
-                    ))}
-                </div>
-            ) : (
-                <Card className="flex flex-col items-center justify-center p-8 border-dashed shadow-md bg-muted/30">
-                    <p className="text-muted-foreground font-semibold text-lg">No open matches available.</p>
-                    <p className="text-muted-foreground text-sm mt-1">Why not create one and start a new game?</p>
-                </Card>
-            )}
-        </section>
+      
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {entryFees.map(fee => <PlayCard key={fee} entryFee={fee} onJoin={handleJoinMatch} />)}
       </div>
     </div>
   );
 }
-
-    
