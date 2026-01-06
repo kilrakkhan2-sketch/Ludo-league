@@ -1,4 +1,3 @@
-
 import { Timestamp } from "firebase/firestore";
 
 export type UserProfile = {
@@ -178,3 +177,5 @@ export interface KycApplication {
       submittedAt: Timestamp;
       isFlaggedForFraud?: boolean;
   }
+
+    

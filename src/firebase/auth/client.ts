@@ -80,6 +80,8 @@ export async function signUpWithEmail(email: string, password: string, displayNa
     totalMatchesPlayed: 0,
     totalMatchesWon: 0,
     winRate: 0,
+    dailyLoss: 0,
+    lossStreak: 0,
   }, { merge: true });
 
   return user;
@@ -117,6 +119,8 @@ export async function signInWithGoogle() {
       totalMatchesPlayed: 0,
       totalMatchesWon: 0,
       winRate: 0,
+      dailyLoss: 0,
+      lossStreak: 0,
   }, { merge: true });
 
   return user;
@@ -132,3 +136,5 @@ export async function signOut() {
   const auth = getFirebaseAuth();
   return firebaseSignOut(auth);
 }
+
+    
