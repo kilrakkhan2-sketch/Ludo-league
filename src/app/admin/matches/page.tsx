@@ -1,4 +1,3 @@
-
 'use client';
 
 import Image from 'next/image';
@@ -76,7 +75,7 @@ const MatchDetailDialog = ({
 }) => {
   const [match, setMatch] = useState(initialMatch);
   const [results, setResults] = useState<MatchResult[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState<string | null>(null); // Use string to track which player is being processed
   const [isDistributing, setIsDistributing] = useState(false);
   const [isOpen, setIsOpen] = useState(startOpen);
 
@@ -113,7 +112,7 @@ const MatchDetailDialog = ({
 
   const handleDeclareWinner = async (winnerId: string) => {
     if (!firestore) return;
-    setIsProcessing(true);
+    setIsProcessing(winnerId);
     const winnerPlayerInfo = match.players.find((p) => p.id === winnerId);
     toast({
       title: 'Processing...',
@@ -143,7 +142,7 @@ const MatchDetailDialog = ({
         variant: 'destructive',
       });
     } finally {
-      setIsProcessing(false);
+      setIsProcessing(null);
     }
   };
 
@@ -270,14 +269,14 @@ const MatchDetailDialog = ({
                           </div>
                            {result.isFlaggedForFraud && <Badge variant="destructive">Flagged</Badge>}
                         </div>
-                        {match.status === 'disputed' && (
+                        {['disputed', 'in-progress'].includes(match.status) && (
                           <Button
                             size="sm"
                             className="w-full text-green-50 bg-green-600 hover:bg-green-700"
                             onClick={() => handleDeclareWinner(result.userId)}
-                            disabled={isProcessing}
+                            disabled={!!isProcessing}
                           >
-                            {isProcessing ? (
+                            {isProcessing === result.userId ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <CheckCircle2 className="h-4 w-4 mr-2" />

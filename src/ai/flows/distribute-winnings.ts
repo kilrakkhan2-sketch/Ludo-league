@@ -67,7 +67,7 @@ const distributeWinningsFlow = ai.defineFlow(
 
         const winnerData = winnerDoc.data();
         const prizePool = freshMatchData.prizePool;
-        const commission = prizePool * 0.05; // 5% commission
+        const commission = prizePool * 0.10; // 10% commission
         const amountToCredit = prizePool - commission;
         
         const currentBalance = winnerData.walletBalance || 0;
