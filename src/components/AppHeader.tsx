@@ -4,18 +4,24 @@
 import NoSsr from "@/components/NoSsr";
 import { UserNav } from "@/components/app/user-nav";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Crown } from "lucide-react";
 
 
 export default function AppHeader() {
     return (
         <div className="flex w-full items-center gap-4">
             <SidebarTrigger className="md:hidden text-primary-foreground hover:text-primary-foreground/80 hover:bg-white/20"/>
-            <div className="ml-auto flex-1 sm:flex-initial">
-               {/* Future search bar can go here */}
+            <div className="flex-1 text-center">
+                <div className="flex items-center justify-center gap-2">
+                    <Crown className="h-6 w-6 text-yellow-300"/>
+                    <h1 className="text-xl font-bold text-white tracking-wider">Ludo League</h1>
+                </div>
             </div>
-            <NoSsr>
-                <UserNav />
-            </NoSsr>
+            <div className="flex items-center justify-end w-24">
+                <NoSsr>
+                    <UserNav />
+                </NoSsr>
+            </div>
         </div>
     );
 }

@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import Autoplay from 'embla-carousel-autoplay';
 import { Megaphone } from 'lucide-react';
+import Link from 'next/link';
 
 export function NewsTicker() {
   const firestore = useFirestore();
@@ -38,7 +39,7 @@ export function NewsTicker() {
   }
 
   return (
-    <Card className="bg-primary/10 border-primary/20">
+    <Card className="bg-primary/10 border-primary/20 overflow-hidden">
       <CardContent className="p-0">
         <Carousel
           plugins={[plugin.current]}
@@ -48,14 +49,16 @@ export function NewsTicker() {
         >
           <CarouselContent className="h-14">
             {newsItems.map((item) => (
-              <CarouselItem key={item.id} className="flex items-center pl-4 pr-6">
-                <div className="flex items-center gap-4 w-full">
-                  <Megaphone className="h-6 w-6 text-primary flex-shrink-0" />
-                  <div className="flex-grow overflow-hidden">
-                    <p className="font-bold text-sm truncate">{item.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">{item.content}</p>
-                  </div>
-                </div>
+              <CarouselItem key={item.id}>
+                <Link href="/news" className="flex items-center pl-4 pr-6 h-full w-full group">
+                    <div className="flex items-center gap-4 w-full">
+                        <Megaphone className="h-6 w-6 text-primary flex-shrink-0 group-hover:scale-110 transition-transform" />
+                        <div className="flex-grow overflow-hidden">
+                            <p className="font-bold text-sm truncate group-hover:text-primary transition-colors">{item.title}</p>
+                            <p className="text-xs text-muted-foreground truncate">{item.content}</p>
+                        </div>
+                    </div>
+                </Link>
               </CarouselItem>
             ))}
           </CarouselContent>

@@ -1,4 +1,3 @@
-
 'use client';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,8 +14,16 @@ import { useToast } from "@/hooks/use-toast";
 import type { Match } from "@/lib/types";
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { motion } from 'framer-motion';
 
 const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-lobby');
+
+const VersusLogo = () => (
+    <div className="relative h-10 w-10 flex items-center justify-center">
+        <div className="absolute h-full w-full bg-gradient-to-br from-primary-start to-primary-end rounded-full opacity-30 blur-sm"></div>
+        <span className="relative text-xl font-black text-white" style={{ textShadow: '0 0 5px hsl(var(--primary))' }}>VS</span>
+    </div>
+);
 
 const MatchCard = ({ match, canJoinMatch }: { match: Match; canJoinMatch: boolean }) => {
     const { user } = useUser();
@@ -54,13 +61,9 @@ const MatchCard = ({ match, canJoinMatch }: { match: Match; canJoinMatch: boolea
                 }
                 
                 if (matchData.playerIds.includes(user.uid)) {
-                    // This case should ideally not happen if UI is correct, but as a safeguard.
                     return;
                 }
                 
-                const newBalance = (userData.walletBalance || 0) - matchData.entryFee;
-                
-                transaction.update(userRef, { walletBalance: newBalance });
                 transaction.update(matchRef, { 
                     playerIds: arrayUnion(user.uid),
                     players: arrayUnion({
@@ -100,62 +103,76 @@ const MatchCard = ({ match, canJoinMatch }: { match: Match; canJoinMatch: boolea
     const canJoin = match.status === 'waiting' && !match.playerIds.includes(user?.uid || '') && canJoinMatch;
     const canView = match.playerIds.includes(user?.uid || '');
 
+    const creator = match.players[0];
+    const opponent = match.players.length > 1 ? match.players[1] : null;
+
     return (
-    <Card key={match.id} className="w-full shadow-md hover:shadow-lg transition-shadow">
-        <div className="flex items-center p-4">
-            <div className="flex-grow">
-                <CardHeader className="p-0">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <Swords className="h-5 w-5 text-primary" />
-                        <span>Prize: ₹{match.prizePool}</span>
-                    </CardTitle>
-                    <CardDescription className="pt-1">Entry: ₹{match.entryFee}</CardDescription>
-                </CardHeader>
-                <CardContent className="p-0 pt-4">
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center -space-x-3">
-                             {match.players.slice(0, 2).map((player: any) => (
-                            <Avatar key={player.id} className={`h-8 w-8 border-2 border-background`}>
-                                <AvatarImage src={player.avatarUrl} alt={player.name} />
-                                <AvatarFallback>{player.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            ))}
-                            {match.players.length > 2 && (
-                                <Avatar className="h-8 w-8 border-2 border-background bg-muted-foreground/20">
-                                    <AvatarFallback>+{match.players.length - 2}</AvatarFallback>
-                                </Avatar>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <Users className="h-4 w-4" />
-                            <span>{match.playerIds.length}/{match.maxPlayers}</span>
-                        </div>
-                    </div>
-                </CardContent>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-                 <div className={cn("text-xs font-semibold px-2 py-1 rounded-full", {
-                    "bg-green-100 text-green-800": match.status === 'waiting',
-                    "bg-blue-100 text-blue-800": match.status === 'in-progress',
-                    "bg-gray-100 text-gray-800": match.status === 'completed',
-                    "bg-red-100 text-red-800": match.status === 'disputed',
+    <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+    <Card key={match.id} className="w-full shadow-lg border border-primary/20 bg-card/80 backdrop-blur-sm overflow-hidden transition-all duration-300 hover:shadow-primary/20">
+        <CardHeader className="p-4 bg-gradient-to-b from-muted/50 to-transparent">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 text-lg">
+                    <Swords className="h-5 w-5 text-primary" />
+                    <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-start to-primary-end">Prize: ₹{match.prizePool}</span>
+                </div>
+                <div className={cn("text-xs font-bold px-2.5 py-1 rounded-full", {
+                    "bg-green-100 text-green-800 border border-green-300": match.status === 'waiting',
+                    "bg-blue-100 text-blue-800 border border-blue-300": match.status === 'in-progress',
+                    "bg-gray-100 text-gray-800 border border-gray-300": match.status === 'completed',
+                    "bg-red-100 text-red-800 border border-red-300": match.status === 'disputed',
                 })}>
                     {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
                 </div>
-                 {canView ? (
-                    <Button asChild className="w-full h-9" variant="outline">
-                        <Link href={`/match/${match.id}`}>
-                            View
-                        </Link>
-                    </Button>
-                 ) : (
-                    <Button onClick={handleJoinMatch} className="w-full h-9" variant="default" disabled={!canJoin || isJoining}>
-                        {isJoining ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Join'}
-                    </Button>
-                 )}
             </div>
-        </div>
+            <CardDescription className="pt-1 !mt-1">Entry: ₹{match.entryFee}</CardDescription>
+        </CardHeader>
+        <CardContent className="p-4">
+            <div className="flex items-center justify-around">
+                <div className="flex flex-col items-center gap-2 text-center">
+                    <Avatar className={`h-16 w-16 border-4 border-primary/50`}>
+                        <AvatarImage src={creator.avatarUrl} alt={creator.name} />
+                        <AvatarFallback>{creator.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <span className="font-semibold text-sm truncate max-w-[100px]">{creator.name}</span>
+                </div>
+
+                <VersusLogo />
+
+                 <div className="flex flex-col items-center gap-2 text-center">
+                    {opponent ? (
+                        <>
+                        <Avatar className={`h-16 w-16 border-4 border-muted`}>
+                            <AvatarImage src={opponent.avatarUrl} alt={opponent.name} />
+                            <AvatarFallback>{opponent.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <span className="font-semibold text-sm truncate max-w-[100px]">{opponent.name}</span>
+                        </>
+                    ) : (
+                         <>
+                        <Avatar className={`h-16 w-16 border-4 border-dashed border-muted-foreground/50 flex items-center justify-center bg-muted/50`}>
+                            <p className="text-2xl font-bold text-muted-foreground">?</p>
+                        </Avatar>
+                        <span className="font-semibold text-sm text-muted-foreground">Waiting...</span>
+                        </>
+                    )}
+                </div>
+            </div>
+        </CardContent>
+        <CardFooter className='p-4 bg-muted/20'>
+             {canView ? (
+                <Button asChild className="w-full h-10 text-base" variant="outline">
+                    <Link href={`/match/${match.id}`}>
+                        View Match
+                    </Link>
+                </Button>
+             ) : (
+                <Button onClick={handleJoinMatch} className="w-full h-10 text-base" variant="default" disabled={!canJoin || isJoining}>
+                    {isJoining ? <Loader2 className="h-5 w-5 animate-spin"/> : 'Join Now'}
+                </Button>
+             )}
+        </CardFooter>
     </Card>
+    </motion.div>
     );
 };
 
@@ -175,7 +192,6 @@ export default function LobbyPage() {
 
     const matchesRef = collection(firestore, "matches");
     
-    // All matches involving the user to calculate active count
     const allUserMatchesQuery = query(
         matchesRef,
         where("playerIds", "array-contains", user.uid)
@@ -184,11 +200,10 @@ export default function LobbyPage() {
         const matchesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
         const activeMatches = matchesData.filter(m => m.status === 'waiting' || m.status === 'in-progress');
         setActiveMatchCount(activeMatches.length);
-        setMyMatches(matchesData); // This will include all statuses
+        setMyMatches(matchesData);
         setLoading(false);
     });
 
-    // Open Matches (that I am not in)
     const openMatchesQuery = query(matchesRef, where("status", "==", "waiting"));
      const unsubscribeOpenMatches = onSnapshot(openMatchesQuery, (snapshot) => {
         const matchesData = snapshot.docs
@@ -238,7 +253,7 @@ export default function LobbyPage() {
                 <h3 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
                     <Star className="h-6 w-6 text-yellow-400"/> My Matches
                 </h3>
-                <div className="flex flex-col gap-4">
+                <div className="grid md:grid-cols-2 gap-6">
                     {myMatches.map((match) => (
                         <MatchCard key={match.id} match={match} canJoinMatch={canCreateOrJoin} />
                     ))}
@@ -255,14 +270,15 @@ export default function LobbyPage() {
                     <Loader2 className="h-8 w-8 animate-spin text-primary"/>
                  </div>
             ) : openMatches.length > 0 ? (
-                <div className="flex flex-col gap-4">
+                <div className="grid md:grid-cols-2 gap-6">
                     {openMatches.map((match) => (
                        <MatchCard key={match.id} match={match} canJoinMatch={canCreateOrJoin} />
                     ))}
                 </div>
             ) : (
-                <Card className="flex items-center justify-center p-8 border-dashed shadow-md">
-                    <p className="text-muted-foreground">No open matches available. Why not create one?</p>
+                <Card className="flex flex-col items-center justify-center p-8 border-dashed shadow-md bg-muted/30">
+                    <p className="text-muted-foreground font-semibold text-lg">No open matches available.</p>
+                    <p className="text-muted-foreground text-sm mt-1">Why not create one and start a new game?</p>
                 </Card>
             )}
         </section>
