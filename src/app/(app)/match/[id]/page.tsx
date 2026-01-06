@@ -53,11 +53,28 @@ const RoomCodeManager = ({ match, isCreator }: { match: Match, isCreator: boolea
   const [roomCode, setRoomCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const handleRoomCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^0-9]/g, ''); // Allow only numbers
+    if (value.length <= 8) {
+      setRoomCode(value);
+    }
+  };
+
   const handleSubmitRoomCode = async () => {
-    if (!firestore || !roomCode) {
-      toast({ title: 'Please enter a room code.', variant: 'destructive' });
+    if (!/^\d{8}$/.test(roomCode)) {
+      toast({
+        title: 'Invalid Room Code',
+        description: 'Room code must be exactly 8 digits.',
+        variant: 'destructive',
+      });
       return;
     }
+    
+    if (!firestore) {
+      toast({ title: 'An error occurred. Please try again.', variant: 'destructive' });
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
       const matchRef = doc(firestore, 'matches', match.id);
@@ -97,7 +114,16 @@ const RoomCodeManager = ({ match, isCreator }: { match: Match, isCreator: boolea
         </CardHeader>
         <CardContent className="space-y-2">
           <Label htmlFor="room-code">Ludo King Room Code</Label>
-          <Input id="room-code" value={roomCode} onChange={(e) => setRoomCode(e.target.value)} placeholder="e.g., 01234567" />
+          <Input 
+            id="room-code" 
+            value={roomCode} 
+            onChange={handleRoomCodeChange} 
+            placeholder="8-digit code"
+            type="number"
+            inputMode="numeric"
+            maxLength={8}
+            pattern="\d{8}"
+          />
         </CardContent>
         <CardFooter>
           <Button onClick={handleSubmitRoomCode} disabled={isSubmitting} className="w-full">
@@ -196,13 +222,12 @@ export default function MatchPage() {
     try {
       await runTransaction(firestore, async (transaction) => {
         const matchRef = doc(firestore, 'matches', match.id);
-        const matchDoc = await transaction.get(matchRef);
-  
-        if (!matchDoc.exists()) {
+        const currentMatchData = (await transaction.get(matchRef)).data();
+        
+        if (!currentMatchData) {
           throw new Error('Match does not exist anymore.');
         }
-  
-        const currentMatchData = matchDoc.data();
+
         const playersToRefund = currentMatchData.players || [];
         const refundAmount = currentMatchData.entryFee;
   
