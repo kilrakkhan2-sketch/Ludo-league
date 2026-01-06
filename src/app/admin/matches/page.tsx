@@ -121,10 +121,8 @@ const MatchDetailDialog = ({
     });
 
     try {
-      await runTransaction(firestore, async (transaction) => {
-        const matchRef = doc(firestore, 'matches', match.id);
-        transaction.update(matchRef, { status: 'completed', winnerId: winnerId });
-      });
+      const matchRef = doc(firestore, 'matches', match.id);
+      await updateDoc(matchRef, { status: 'completed', winnerId: winnerId });
 
       const updatedMatch = { ...match, status: 'completed', winnerId: winnerId } as Match;
       setMatch(updatedMatch);
@@ -242,17 +240,17 @@ const MatchDetailDialog = ({
                       <div className="space-y-3">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-12 w-12 border">
-                            <AvatarImage src={player?.avatarUrl} />
+                            <AvatarImage src={(player as any)?.avatarUrl} />
                             <AvatarFallback>
-                              {player?.name.charAt(0)}
+                              {(player as any)?.name.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
                           <div>
                             <p className="font-semibold text-base">
-                              {player?.name}
+                              {(player as any)?.name}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              User ID: {player?.id.substring(0, 10)}...
+                              User ID: {(player as any)?.id.substring(0, 10)}...
                             </p>
                           </div>
                         </div>
@@ -282,7 +280,7 @@ const MatchDetailDialog = ({
                             ) : (
                               <CheckCircle2 className="h-4 w-4 mr-2" />
                             )}{' '}
-                            Declare {player?.name} as Winner
+                            Declare {(player as any)?.name} as Winner
                           </Button>
                         )}
                       </div>
@@ -298,7 +296,7 @@ const MatchDetailDialog = ({
                         >
                           <Image
                             src={result.screenshotUrl}
-                            alt={`Screenshot from ${player?.name}`}
+                            alt={`Screenshot from ${(player as any)?.name}`}
                             width={300}
                             height={200}
                             className="rounded-md object-contain border-2 w-full h-auto"
