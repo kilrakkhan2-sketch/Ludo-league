@@ -1,13 +1,11 @@
-
 'use client';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import { Swords, Loader2, Info, Users, Wallet } from "lucide-react";
+import { Swords, Loader2, Info } from "lucide-react";
 import { useUser, useFirestore } from "@/firebase";
-import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, getDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
+import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { Match } from "@/lib/types";
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -19,10 +17,10 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogClose,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useRouter } from 'next/navigation';
 
 const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-lobby');
@@ -31,18 +29,18 @@ const EntryFeeCard = ({ fee, onPlay }: { fee: number; onPlay: (fee: number) => v
   return (
     <motion.div whileHover={{ y: -5 }} className="h-full">
       <Card className="flex flex-col h-full text-center bg-card/80 backdrop-blur-sm border-primary/20 hover:border-primary transition-all duration-300">
-        <CardHeader>
-          <CardTitle className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-start to-primary-end">
+        <CardHeader className="p-4">
+          <CardTitle className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-start to-primary-end">
             ₹{fee}
           </CardTitle>
           <CardDescription>Entry Fee</CardDescription>
         </CardHeader>
-        <CardContent className="flex-grow">
-          <p className="text-lg font-semibold">Prize: <span className="text-green-500">₹{(fee * 1.8).toFixed(2)}</span></p>
+        <CardContent className="flex-grow p-4">
+          <p className="text-md font-semibold">Prize: <span className="text-green-500">₹{(fee * 1.8).toFixed(2)}</span></p>
         </CardContent>
-        <CardFooter>
-          <Button className="w-full" onClick={() => onPlay(fee)}>
-            <Swords className="mr-2 h-4 w-4" /> Play Now
+        <CardFooter className="p-4">
+          <Button className="w-full h-9 text-sm" onClick={() => onPlay(fee)}>
+            <Swords className="mr-2 h-4 w-4" /> Play
           </Button>
         </CardFooter>
       </Card>
@@ -76,7 +74,6 @@ export default function LobbyPage() {
   // Listen for active match on user profile
   useEffect(() => {
     if (userProfile && userProfile.activeMatchId) {
-        // If we are searching and an activeMatchId appears, it means we found a match.
         if (isSearching) {
             toast({ title: "Match Found!", description: "Redirecting you to the match room..." });
             router.push(`/match/${userProfile.activeMatchId}`);
@@ -88,12 +85,11 @@ export default function LobbyPage() {
   }, [userProfile, isSearching, router, toast]);
 
   const handlePlayClick = (fee: number) => {
-    // Pre-checks
     if (!user || !userProfile) {
         toast({ title: "Please login to play.", variant: "destructive" });
         return;
     }
-    if (userProfile.isBlocked) {
+    if ((userProfile as any).isBlocked) {
         toast({ title: "Your account is blocked.", variant: "destructive" });
         return;
     }
@@ -148,7 +144,17 @@ export default function LobbyPage() {
     }
   };
 
-  const entryFees = [50, 100, 250, 500];
+  const lowStakes = Array.from({ length: 10 }, (_, i) => 50 + i * 50);
+  const mediumStakes = Array.from({ length: 9 }, (_, i) => 1000 + i * 500);
+  const highStakes = Array.from({ length: 9 }, (_, i) => 10000 + i * 5000);
+
+  const FeeTier = ({ fees }: { fees: number[] }) => (
+    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+        {fees.map(fee => (
+            <EntryFeeCard key={fee} fee={fee} onPlay={handlePlayClick} />
+        ))}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -189,11 +195,22 @@ export default function LobbyPage() {
             </Alert>
         )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          {entryFees.map(fee => (
-              <EntryFeeCard key={fee} fee={fee} onPlay={handlePlayClick} />
-          ))}
-      </div>
+      <Tabs defaultValue="low" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="low">Low Stakes</TabsTrigger>
+            <TabsTrigger value="medium">Medium Stakes</TabsTrigger>
+            <TabsTrigger value="high">High Stakes</TabsTrigger>
+        </TabsList>
+        <TabsContent value="low" className="pt-4">
+            <FeeTier fees={lowStakes} />
+        </TabsContent>
+        <TabsContent value="medium" className="pt-4">
+            <FeeTier fees={mediumStakes} />
+        </TabsContent>
+        <TabsContent value="high" className="pt-4">
+            <FeeTier fees={highStakes} />
+        </TabsContent>
+      </Tabs>
 
        <Card>
         <CardHeader>
@@ -212,5 +229,3 @@ export default function LobbyPage() {
     </div>
   );
 }
-
-    
