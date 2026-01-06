@@ -162,10 +162,10 @@ const RoomCodeManager = ({ match, isCreator }: { match: Match, isCreator: boolea
             <CardContent className="space-y-4">
                 <div>
                     <Label>Ludo King Room Code</Label>
-                    <div className="flex items-center justify-between bg-muted/50 p-2 rounded-lg mt-1">
-                        <p className="text-lg font-mono tracking-widest font-bold text-primary">{match.roomCode}</p>
-                        <Button variant="ghost" size="icon" onClick={handleCopyRoomCode}>
-                            <Copy className="h-5 w-5 text-muted-foreground" />
+                    <div className="flex items-center justify-between bg-gradient-to-r from-primary-start to-primary-end text-primary-foreground p-3 rounded-lg mt-1 shadow-md">
+                        <p className="text-2xl font-mono tracking-widest font-bold">{match.roomCode}</p>
+                        <Button variant="ghost" size="icon" onClick={handleCopyRoomCode} className='hover:bg-white/20'>
+                            <Copy className="h-5 w-5" />
                         </Button>
                     </div>
                 </div>

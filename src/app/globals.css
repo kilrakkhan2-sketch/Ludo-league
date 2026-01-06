@@ -4,68 +4,91 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%; /* Light Gray: #F9FAFB */
-    --foreground: 222 47% 11%; /* Dark Slate Blue: #111827 */
-    --card: 0 0% 100%; /* White: #FFFFFF */
-    --card-foreground: 222 47% 11%; /* Dark Slate Blue: #111827 */
-    --popover: 0 0% 100%; /* White: #FFFFFF */
-    --popover-foreground: 222 47% 11%; /* Dark Slate Blue: #111827 */
-    --primary: 221 83% 53%; /* Royal Blue: #3B82F6 */
-    --primary-foreground: 210 40% 98%; /* Almost White: #F9FAFB */
-    --secondary: 210 40% 96%; /* Lighter Gray: #F3F4F6 */
-    --secondary-foreground: 222 47% 11%; /* Dark Slate Blue: #111827 */
-    --muted: 210 40% 96%; /* Lighter Gray: #F3F4F6 */
-    --muted-foreground: 215 20% 65%; /* Medium Gray: #9CA3AF */
-    --accent: 210 40% 96%; /* Lighter Gray: #F3F4F6 */
-    --accent-foreground: 222 47% 11%; /* Dark Slate Blue: #111827 */
-    --destructive: 0 84% 60%; /* Red: #EF4444 */
-    --destructive-foreground: 210 40% 98%; /* Almost White: #F9FAFB */
-    --border: 214 32% 91%; /* Light Gray Border: #E5E7EB */
-    --input: 214 32% 91%; /* Light Gray Border: #E5E7EB */
-    --ring: 221 83% 53%; /* Royal Blue: #3B82F6 */
-    --radius: 0.75rem;
+    --background: 220 20% 98%; /* Very Light Gray */
+    --foreground: 222 47% 11%; /* Dark Slate Blue */
     
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 222 47% 11%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    
+    /* Gradient Start/End Colors */
+    --primary-start: 170 80% 50%; /* Teal */
+    --primary-end: 221 83% 53%;   /* Royal Blue */
+
+    /* Solid Primary for fallback/text */
+    --primary: 221 83% 53%; /* Royal Blue */
+    --primary-foreground: 210 40% 98%;
+    
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+    
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    
+    --accent: 220 14% 96%;
+    --accent-foreground: 222 47% 11%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 221 83% 53%;
+    
+    --radius: 0.75rem;
+
     /* Custom Sidebar Colors for Light Theme */
-    --sidebar-background: 210 40% 98%;
+    --sidebar-background: 220 20% 98%;
     --sidebar-foreground: 222 47% 11%;
     --sidebar-primary: 221 83% 53%;
     --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 210 40% 91%;
+    --sidebar-accent: 220 14% 91%;
     --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 214 32% 91%;
+    --sidebar-border: 220 13% 91%;
     --sidebar-ring: 221 83% 53%;
   }
 
   .dark {
-    --background: 222 47% 11%; /* Dark Slate Blue: #111827 */
-    --foreground: 210 40% 98%; /* Almost White: #F9FAFB */
-    --card: 222 47% 16%; /* Darker Slate Blue: #1F2937 */
-    --card-foreground: 210 40% 98%; /* Almost White: #F9FAFB */
-    --popover: 222 47% 11%; /* Dark Slate Blue: #111827 */
-    --popover-foreground: 210 40% 98%; /* Almost White: #F9FAFB */
-    --primary: 169 64% 53%; /* Teal: #2DD4BF */
-    --primary-foreground: 222 47% 11%; /* Dark Slate Blue for text on teal */
-    --secondary: 215 28% 17%; /* Muted Blue-Gray: #202A3A */
-    --secondary-foreground: 210 40% 98%; /* Almost White: #F9FAFB */
-    --muted: 215 28% 17%; /* Muted Blue-Gray: #202A3A */
-    --muted-foreground: 215 20% 65%; /* Lighter Gray: #9CA3AF */
-    --accent: 169 64% 53%; /* Teal: #2DD4BF */
-    --accent-foreground: 222 47% 11%; /* Dark Slate Blue for text on teal */
-    --destructive: 0 63% 40%; /* Soft Red: #D32F2F */
-    --destructive-foreground: 210 40% 98%; /* Almost White: #F9FAFB */
-    --border: 215 28% 22%; /* Slightly lighter than card: #2B3A4C */
-    --input: 215 28% 17%; /* Muted Blue-Gray: #202A3A */
-    --ring: 169 64% 53%; /* Teal: #2DD4BF */
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 16%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary-start: 170 80% 50%;
+    --primary-end: 221 83% 53%;
+    
+    --primary: 170 80% 50%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 215 28% 17%;
+    --secondary-foreground: 210 40% 98%;
+    
+    --muted: 215 28% 17%;
+    --muted-foreground: 215 20% 65%;
+    
+    --accent: 215 28% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 63% 40%;
+    --destructive-foreground: 210 40% 98%;
+    
+    --border: 215 28% 22%;
+    --input: 215 28% 17%;
+    --ring: 170 80% 50%;
     
     /* Custom Sidebar Colors for Dark Theme */
     --sidebar-background: 222 47% 11%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 169 64% 53%;
+    --sidebar-primary: 170 80% 50%;
     --sidebar-primary-foreground: 222 47% 11%;
     --sidebar-accent: 222 47% 16%;
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 215 28% 22%;
-    --sidebar-ring: 169 64% 53%;
+    --sidebar-ring: 170 80% 50%;
   }
 }
 

@@ -28,6 +28,8 @@ export default {
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
+          start: 'hsl(var(--primary-start))',
+          end: 'hsl(var(--primary-end))',
         },
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',
