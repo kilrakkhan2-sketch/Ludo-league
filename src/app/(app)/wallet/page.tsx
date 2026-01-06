@@ -36,7 +36,7 @@ const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-wallet');
 const DynamicQrCode = ({ upiId, amount }: { upiId: string | null, amount: number }) => {
   if (!upiId) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 p-4 bg-muted/50 rounded-lg h-64">
+      <div className="flex flex-col items-center justify-center gap-4 p-4 bg-muted rounded-lg h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary"/>
         <p className="text-sm text-center text-muted-foreground">Loading Payment Details...</p>
       </div>
@@ -47,11 +47,11 @@ const DynamicQrCode = ({ upiId, amount }: { upiId: string | null, amount: number
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiUrl)}`;
 
   return (
-    <div className="flex flex-col items-center gap-4 p-4 bg-muted/50 rounded-lg">
+    <div className="flex flex-col items-center gap-4 p-4 bg-muted rounded-lg">
         <p className="text-sm text-center text-muted-foreground">Scan the QR or use the button below.</p>
         <Image src={qrUrl} alt="QR Code for payment" width={200} height={200} className="rounded-lg border-2 shadow-md bg-white" data-ai-hint="qr code for upi payment with amount" />
         <p className="font-bold text-center text-sm">UPI ID: {upiId}</p>
-        <Button asChild className="w-full bg-blue-600 hover:bg-blue-700">
+        <Button asChild className="w-full">
           <a href={upiUrl}>
             <ExternalLink className="mr-2 h-4 w-4"/>
             Pay with UPI App
@@ -106,6 +106,12 @@ export default function WalletPage() {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
         setTransactions(data);
         setLoading(false);
+    }, (error) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: `transactions where userId == ${user.uid}`,
+        operation: 'list',
+      }));
+      setLoading(false);
     });
 
     const depositRef = collection(firestore, 'depositRequests');
@@ -114,6 +120,11 @@ export default function WalletPage() {
     const unsubscribeDeposits = onSnapshot(qDeposits, (snapshot) => {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DepositRequest));
         setDepositHistory(data);
+    }, (error) => {
+       errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: `depositRequests where userId == ${user.uid}`,
+        operation: 'list',
+      }));
     });
 
     return () => {
@@ -238,7 +249,7 @@ export default function WalletPage() {
   return (
     <div className="space-y-6">
         {bannerImage && (
-            <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden">
+            <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden shadow-lg">
                 <Image src={bannerImage.imageUrl} alt="Wallet Banner" fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                     <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
@@ -266,7 +277,7 @@ export default function WalletPage() {
                 <TabsTrigger value="history"><History className="mr-2 h-4 w-4"/>History</TabsTrigger>
             </TabsList>
             <TabsContent value="deposit">
-                <Card className="shadow-md">
+                <Card>
                     <form onSubmit={handleDepositSubmit}>
                         <CardHeader>
                             <CardTitle>Deposit Funds</CardTitle>
@@ -300,7 +311,7 @@ export default function WalletPage() {
                                     {depositAmount >= 100 ? (
                                         <DynamicQrCode upiId={activeUpiId} amount={depositAmount} />
                                     ) : (
-                                        <div className="flex flex-col items-center justify-center gap-4 p-4 bg-muted/50 rounded-lg h-full">
+                                        <div className="flex flex-col items-center justify-center gap-4 p-4 bg-muted rounded-lg h-full">
                                             <ScanQrCode className="h-10 w-10 text-muted-foreground"/>
                                             <p className="text-sm text-center text-muted-foreground">Enter an amount of ₹100 or more to generate QR code.</p>
                                         </div>
@@ -318,7 +329,7 @@ export default function WalletPage() {
                 </Card>
             </TabsContent>
             <TabsContent value="withdraw">
-                <Card className="shadow-md">
+                <Card>
                     <form onSubmit={handleWithdrawalSubmit}>
                         <CardHeader>
                             <CardTitle>Withdraw Funds</CardTitle>
@@ -350,84 +361,68 @@ export default function WalletPage() {
                 </Card>
             </TabsContent>
             <TabsContent value="history">
-                <Card className="shadow-md">
-                    <CardHeader>
-                        <CardTitle>Deposit & Withdrawal History</CardTitle>
-                        <CardDescription>An overview of your recent deposit and withdrawal requests.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Amount</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Reason</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {loading && <TableRow><TableCell colSpan={4} className="text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto"/></TableCell></TableRow>}
-                                {!loading && depositHistory.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No deposit history found.</TableCell></TableRow>}
-                                {!loading && depositHistory.map((req) => (
-                                    <TableRow key={req.id}>
-                                        <TableCell>{req.createdAt?.toDate().toLocaleDateString()}</TableCell>
-                                        <TableCell className="font-semibold text-green-500">₹{req.amount.toFixed(2)}</TableCell>
-                                        <TableCell>
-                                            <Badge variant={req.status === 'approved' ? 'default' : req.status === 'pending' ? 'secondary' : 'destructive'} className={cn({'bg-green-100 text-green-800': req.status === 'approved'})}>
-                                                {req.status}
+                <div className="space-y-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Deposit & Withdrawal History</CardTitle>
+                            <CardDescription>An overview of your recent deposit and withdrawal requests.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex flex-col gap-3">
+                           {loading && <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin mx-auto"/></div>}
+                            {!loading && depositHistory.length === 0 && <p className="text-center text-muted-foreground py-8">No deposit history found.</p>}
+                            {!loading && depositHistory.map((req) => (
+                                <Card key={req.id} className="p-4">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-semibold text-green-600 text-lg">₹{req.amount.toFixed(2)}</p>
+                                            <p className="text-xs text-muted-foreground">{req.createdAt?.toDate().toLocaleString()}</p>
+                                        </div>
+                                        <Badge variant={req.status === 'approved' ? 'default' : req.status === 'pending' ? 'secondary' : 'destructive'} className={cn({'bg-green-100 text-green-800': req.status === 'approved'})}>
+                                            {req.status}
+                                        </Badge>
+                                    </div>
+                                    {req.rejectionReason && <p className="text-xs text-destructive mt-2">Reason: {req.rejectionReason}</p>}
+                                </Card>
+                            ))}
+                        </CardContent>
+                    </Card>
+                    
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Recent Transactions</CardTitle>
+                            <CardDescription>A log of all movements in your wallet balance.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex flex-col gap-3">
+                            {loading && <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin mx-auto"/></div>}
+                            {!loading && transactions.length === 0 && <p className="text-center text-muted-foreground py-8">No transactions yet.</p>}
+                            {!loading && transactions.slice(0,10).map((t) => (
+                                <Card key={t.id} className="p-4">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-medium flex items-center gap-2">
+                                                {t.amount >= 0 ? <ArrowUpRight className="h-4 w-4 text-green-500"/> : <ArrowDownLeft className="h-4 w-4 text-red-500"/>}
+                                                {t.description || t.type.replace('-', ' ')}
+                                            </p>
+                                             <p className="text-xs text-muted-foreground pl-6">{t.createdAt?.toDate().toLocaleString()}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className={cn("font-semibold text-lg", t.amount >= 0 ? "text-green-500" : "text-red-500")}>
+                                                {t.amount >= 0 ? '+' : ''}₹{t.amount.toFixed(2)}
+                                            </p>
+                                             <Badge variant={t.status === 'completed' ? 'default' : t.status === 'pending' ? 'secondary' : 'destructive'} className={cn('mt-1', {'bg-green-100 text-green-800': t.status === 'completed'})}>
+                                                {t.status}
                                             </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-xs text-muted-foreground">{req.rejectionReason || 'N/A'}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
+                                        </div>
+                                    </div>
+                                </Card>
+                            ))}
+                        </CardContent>
+                    </Card>
+                </div>
             </TabsContent>
         </Tabs>
-
-        <Card className="shadow-md">
-            <CardHeader>
-                <CardTitle>Recent Transactions</CardTitle>
-                <CardDescription>A log of all movements in your wallet balance.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                 <Table>
-                    <TableHeader>
-                        <TableRow>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Date</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {loading && <TableRow><TableCell colSpan={4} className="text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto"/></TableCell></TableRow>}
-                        {!loading && transactions.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No transactions yet.</TableCell></TableRow>}
-                        {!loading && transactions.slice(0,10).map((t) => (
-                            <TableRow key={t.id}>
-                                <TableCell>
-                                <div className="font-medium flex items-center gap-2">
-                                     {t.amount >= 0 ? <ArrowUpRight className="h-4 w-4 text-green-500"/> : <ArrowDownLeft className="h-4 w-4 text-red-500"/>}
-                                    {t.description || t.type.replace('-', ' ')}
-                                </div>
-                                </TableCell>
-                                <TableCell>
-                                <Badge variant={t.status === 'completed' ? 'default' : t.status === 'pending' ? 'secondary' : 'destructive'} className={cn({'bg-green-100 text-green-800': t.status === 'completed'})}>
-                                    {t.status}
-                                </Badge>
-                                </TableCell>
-                                <TableCell className={cn("font-semibold", t.amount >= 0 ? "text-green-500" : "text-red-500")}>
-                                    {t.amount >= 0 ? '+' : ''}₹{t.amount.toFixed(2)}
-                                </TableCell>
-                                <TableCell>{t.createdAt?.toDate().toLocaleString()}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
     </div>
   )
 }
+
+    
