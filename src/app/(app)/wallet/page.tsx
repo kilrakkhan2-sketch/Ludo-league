@@ -337,18 +337,16 @@ export default function WalletPage() {
                                 <Input name="withdraw-amount" id="withdraw-amount" placeholder="e.g., 1000" type="number" required />
                             </div>
                         </CardContent>
-                        <CardFooter>
-                            <Button type="submit" variant="destructive" className="w-full" disabled={isSubmitting || userProfile?.kycStatus !== 'approved'}>
+                        <CardFooter className="flex-col gap-4">
+                             <Button type="submit" variant="destructive" className="w-full" disabled={isSubmitting || userProfile?.kycStatus !== 'approved'}>
                                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                                 Request Withdrawal
                             </Button>
+                             {userProfile?.kycStatus !== 'approved' && (
+                                 <p className="text-sm w-full text-center text-red-500">KYC must be approved to enable withdrawals.</p>
+                            )}
                         </CardFooter>
                     </form>
-                     {userProfile?.kycStatus !== 'approved' && (
-                        <CardFooter>
-                             <p className="text-sm w-full text-center text-red-500">KYC must be approved to enable withdrawals.</p>
-                        </CardFooter>
-                    )}
                 </Card>
             </TabsContent>
             <TabsContent value="history">
@@ -411,7 +409,7 @@ export default function WalletPage() {
                             <TableRow key={t.id}>
                                 <TableCell>
                                 <div className="font-medium flex items-center gap-2">
-                                     {t.amount >= 0 ? <ArrowUpRight className="h-4 w-4 text-green-500"/> : <ArrowDownLeft className="h-4 w-4 text-red-500"/>}
+                                     {t.amount >= 0 ? <ArrowUpright className="h-4 w-4 text-green-500"/> : <ArrowDownLeft className="h-4 w-4 text-red-500"/>}
                                     {t.description || t.type.replace('-', ' ')}
                                 </div>
                                 </TableCell>

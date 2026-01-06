@@ -82,8 +82,8 @@ const RoomCodeManager = ({ match, isCreator }: { match: Match, isCreator: boolea
     window.location.href = 'ludoking://';
   }
 
-  // View for creator to ENTER room code
-  if (isCreator && !match.roomCode) {
+  // Creator's view to ENTER room code when match is full but code not set yet
+  if (isCreator && !match.roomCode && match.playerIds.length === match.maxPlayers && match.status === 'waiting') {
     return (
       <Card>
         <CardHeader>
@@ -107,8 +107,8 @@ const RoomCodeManager = ({ match, isCreator }: { match: Match, isCreator: boolea
     );
   }
 
-  // View for joiner to WAIT for room code
-  if (!isCreator && !match.roomCode) {
+  // Joiner's view to WAIT for room code
+  if (!isCreator && !match.roomCode && match.playerIds.length === match.maxPlayers && match.status === 'waiting') {
      return (
       <Card>
         <CardHeader>
@@ -122,7 +122,7 @@ const RoomCodeManager = ({ match, isCreator }: { match: Match, isCreator: boolea
     );
   }
 
-  // View for BOTH players after code is submitted
+  // View for BOTH players after code is submitted (Play stage)
   if (match.roomCode) {
     return (
         <Card>
@@ -150,7 +150,7 @@ const RoomCodeManager = ({ match, isCreator }: { match: Match, isCreator: boolea
     )
   }
 
-  return null; // Should not happen if match is full
+  return null; // Don't show anything for this component in other states
 };
 
 
@@ -317,9 +317,12 @@ export default function MatchPage() {
   const isJoiner = user && match.playerIds.includes(user.uid) && !isCreator;
   const isMatchFull = match.playerIds.length === match.maxPlayers;
   
-  const showRoomCodeManager = isMatchFull && (match.status === 'waiting' || (match.status === 'in-progress' && !match.roomCode));
-  const showResultSubmission = match.status === 'in-progress' && match.roomCode;
-  const showMatchConcluded = match.status === 'completed' || match.status === 'disputed' || match.status === 'cancelled';
+  // Define visibility for each stage
+  const showWaitingForPlayers = match.status === 'waiting' && !isMatchFull;
+  const showRoomCodeStage = match.status === 'waiting' && isMatchFull;
+  const showPlayAndSubmitStage = match.status === 'in-progress' && !!match.roomCode;
+  const showMatchConcluded = ['completed', 'disputed', 'cancelled'].includes(match.status);
+
 
   return (
     <>
@@ -339,9 +342,26 @@ export default function MatchPage() {
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 mt-4">
         <div className="lg:col-span-2 space-y-8">
             
-          {showRoomCodeManager && <RoomCodeManager match={match} isCreator={isCreator} />}
+          {showWaitingForPlayers && (
+             <Card>
+                <CardHeader>
+                    <CardTitle>Waiting for Players</CardTitle>
+                </CardHeader>
+                <CardContent className="flex items-center justify-center gap-3 text-muted-foreground p-8">
+                    <Loader2 className="h-6 w-6 animate-spin"/>
+                    <p className="font-semibold">Waiting for an opponent to join...</p>
+                </CardContent>
+            </Card>
+           )}
+
+          {showRoomCodeStage && <RoomCodeManager match={match} isCreator={isCreator} />}
           
-          {showResultSubmission && <SubmitResultForm matchId={match.id} />}
+          {showPlayAndSubmitStage && (
+            <>
+              <RoomCodeManager match={match} isCreator={isCreator} />
+              <SubmitResultForm matchId={match.id} />
+            </>
+          )}
 
           {showMatchConcluded && (
             <Card>
@@ -355,18 +375,6 @@ export default function MatchPage() {
               </CardContent>
             </Card>
           )}
-
-           {match.status === 'waiting' && !isMatchFull && (
-             <Card>
-                <CardHeader>
-                    <CardTitle>Waiting for Players</CardTitle>
-                </CardHeader>
-                <CardContent className="flex items-center justify-center gap-3 text-muted-foreground p-8">
-                    <Loader2 className="h-6 w-6 animate-spin"/>
-                    <p className="font-semibold">Waiting for an opponent to join...</p>
-                </CardContent>
-            </Card>
-           )}
 
         </div>
         <div className="space-y-6">
