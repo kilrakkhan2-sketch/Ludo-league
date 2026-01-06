@@ -120,7 +120,6 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
         return;
     }
 
-
     try {
       const isFlaggedForFraud = false; 
 
@@ -161,15 +160,8 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
         const resultsRef = collection(firestore, `matches/${matchId}/results`);
         const allResultsSnapshot = await getDocs(resultsRef);
         const allResults = allResultsSnapshot.docs.map((d) => d.data());
-        // Also include the current submission if it's not in the snapshot yet
-        const currentSubmission = { position, status, userId: user.uid };
-        if (!allResults.find(r => r.userId === user.uid)) {
-            allResults.push(currentSubmission);
-        }
-
-        // Check for win claims
+        
         const winClaims = allResults.filter((r) => r.status === 'win');
-
         const matchData = matchDoc.data();
 
         if (winClaims.length > 1) {
