@@ -4,6 +4,7 @@ import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { useFirebaseApp, useFirestore, useUser } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from './use-toast';
+import { firebaseConfig } from '@/firebase/config';
 
 export const useFcm = () => {
     const { toast } = useToast();
@@ -16,9 +17,9 @@ export const useFcm = () => {
             return;
         }
         
-        const vapidKey = process.env.NEXT_PUBLIC_VAPID_KEY;
+        const vapidKey = firebaseConfig.vapidKey;
         if (!vapidKey) {
-            console.error('VAPID key is not configured. Please set NEXT_PUBLIC_VAPID_KEY environment variable.');
+            console.error('VAPID key is not configured in firebaseConfig.');
             return;
         }
 
