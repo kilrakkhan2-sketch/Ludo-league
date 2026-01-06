@@ -168,3 +168,4 @@ export interface KycApplication {
       submittedAt: Timestamp;
       isFlaggedForFraud?: boolean;
   }
+
