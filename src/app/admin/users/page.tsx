@@ -15,7 +15,8 @@ import {
   limit,
   getDocs,
   endBefore,
-  limitToLast
+  limitToLast,
+  setDoc,
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useFirestore, useUser } from '@/firebase';
