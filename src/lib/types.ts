@@ -18,8 +18,11 @@ export type UserProfile = {
     activeMatchId?: string | null;
     // Rank and progression
     rank: number; // 0 for Beginner, 1 for Learner, etc.
-    totalWinnings: number; // Cumulative net winnings
+    winnings: number; // Cumulative net winnings
     maxUnlockedAmount: number; // The highest entry fee this user can join
+    totalMatchesPlayed: number;
+    totalMatchesWon: number;
+    winRate: number;
     // Loss prevention
     dailyLoss: number;
     lossStreak: number;

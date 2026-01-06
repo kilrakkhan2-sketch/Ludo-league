@@ -61,7 +61,7 @@
             "type": "number",
             "description": "User's matchmaking rank (0-5)."
         },
-        "totalWinnings": {
+        "winnings": {
             "type": "number",
             "description": "The cumulative net winnings of the user."
         },
@@ -115,7 +115,8 @@
             "userName": {"type": "string"},
             "userAvatar": {"type": "string", "format": "uri"},
             "createdAt": {"type": "string", "format": "date-time"},
-            "rank": {"type": "number"}
+            "rank": {"type": "number"},
+            "winRate": {"type": "number"}
         },
         "required": ["userId", "entryFee", "status", "createdAt"]
     },

@@ -76,7 +76,10 @@ export async function signUpWithEmail(email: string, password: string, displayNa
     isAdmin: false, // Ensure isAdmin is set on creation
     rank: 0, // Beginner rank
     maxUnlockedAmount: 100, // Max amount for beginners
-    totalWinnings: 0,
+    winnings: 0,
+    totalMatchesPlayed: 0,
+    totalMatchesWon: 0,
+    winRate: 0,
   }, { merge: true });
 
   return user;
@@ -110,7 +113,10 @@ export async function signInWithGoogle() {
       isAdmin: false,
       rank: 0,
       maxUnlockedAmount: 100,
-      totalWinnings: 0,
+      winnings: 0,
+      totalMatchesPlayed: 0,
+      totalMatchesWon: 0,
+      winRate: 0,
   }, { merge: true });
 
   return user;

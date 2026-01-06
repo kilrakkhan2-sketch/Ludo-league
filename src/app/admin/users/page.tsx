@@ -189,6 +189,8 @@ const UserDetailModal = ({
             {/* User details */}
             <p><strong>User ID:</strong> {user.uid}</p>
             <p><strong>Wallet Balance:</strong> ₹{(user.walletBalance || 0).toFixed(2)}</p>
+            <p><strong>Win Rate:</strong> {user.winRate || 0}%</p>
+            <p><strong>Rank:</strong> {user.rank || 0}</p>
             <div><strong>KYC Status:</strong> <Badge>{user.kycStatus}</Badge></div>
             
             <div className='space-y-2 pt-4 border-t'>
@@ -300,7 +302,8 @@ export default function AdminUsersPage() {
                 <TableHead>User</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Wallet</TableHead>
-                <TableHead>KYC</TableHead>
+                <TableHead>Win Rate</TableHead>
+                <TableHead>Rank</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -308,7 +311,7 @@ export default function AdminUsersPage() {
             <TableBody>
               {loading && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
                   </TableCell>
                 </TableRow>
@@ -316,7 +319,7 @@ export default function AdminUsersPage() {
               {!loading && users.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={7}
                     className="text-center py-8 text-muted-foreground"
                   >
                     No users found.
@@ -339,16 +342,8 @@ export default function AdminUsersPage() {
                     </TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>₹{(user.walletBalance || 0).toFixed(2)}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          user.kycStatus === 'approved' ? 'default' : 'secondary'
-                        }
-                        className={user.kycStatus === 'approved' ? 'bg-green-100 text-green-800' : ''}
-                      >
-                        {user.kycStatus}
-                      </Badge>
-                    </TableCell>
+                    <TableCell>{user.winRate || 0}%</TableCell>
+                    <TableCell>{user.rank || 0}</TableCell>
                     <TableCell>
                       {(user as any).isBlocked ? (
                         <Badge variant="destructive">Banned</Badge>
@@ -376,5 +371,3 @@ export default function AdminUsersPage() {
     </>
   );
 }
-
-    

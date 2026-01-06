@@ -31,14 +31,10 @@ const EntryFeeCard = ({
     fee, 
     onPlay,
     isLocked = false,
-    userRank,
-    requiredRank
 }: { 
     fee: number; 
     onPlay: (fee: number) => void;
     isLocked: boolean;
-    userRank: number;
-    requiredRank: number;
 }) => {
     
     const cardContent = (
@@ -77,7 +73,7 @@ const EntryFeeCard = ({
             <Tooltip>
                 <TooltipTrigger asChild>{cardContent}</TooltipTrigger>
                 <TooltipContent>
-                    <p>Unlock this tier by reaching a higher rank.</p>
+                    <p>Win more matches to unlock this tier.</p>
                 </TooltipContent>
             </Tooltip>
         </TooltipProvider>
@@ -160,7 +156,7 @@ export default function LobbyPage() {
             userName: user.displayName,
             userAvatar: user.photoURL,
             winRate: userProfile.winRate || 0,
-            rank: (userProfile as any).rank || 0,
+            rank: userProfile.rank || 0,
             createdAt: new Date(),
         });
         toast({ title: "Searching for a match..." });
@@ -184,44 +180,22 @@ export default function LobbyPage() {
     }
   };
 
-  const rankConfig = [
-      { rank: 0, maxAmount: 100 },
-      { rank: 1, maxAmount: 300 },
-      { rank: 2, maxAmount: 1000 },
-      { rank: 3, maxAmount: 3000 },
-      { rank: 4, maxAmount: 10000 },
-      { rank: 5, maxAmount: 50000 },
-  ];
-
-  const getRequiredRankForFee = (fee: number): number => {
-    for (const config of rankConfig) {
-        if (fee <= config.maxAmount) {
-            return config.rank;
-        }
-    }
-    return 99; // Should not be reached if fee is within 50k
-  }
-
   const lowStakes = Array.from({ length: 10 }, (_, i) => 50 + i * 50);
   const mediumStakes = Array.from({ length: 9 }, (_, i) => 1000 + i * 500);
   const highStakes = Array.from({ length: 9 }, (_, i) => 10000 + i * 5000);
 
-  const currentUserRank = (userProfile as any)?.rank ?? 0;
-  const maxUnlockedAmount = (userProfile as any)?.maxUnlockedAmount ?? 100;
+  const maxUnlockedAmount = userProfile?.maxUnlockedAmount ?? 0;
 
   const FeeTier = ({ fees }: { fees: number[] }) => (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
       {fees.map(fee => {
         const isLocked = fee > maxUnlockedAmount;
-        const requiredRank = getRequiredRankForFee(fee);
         return (
           <EntryFeeCard 
             key={fee} 
             fee={fee} 
             onPlay={handlePlayClick} 
             isLocked={isLocked}
-            userRank={currentUserRank}
-            requiredRank={requiredRank}
           />
         )
       })}
