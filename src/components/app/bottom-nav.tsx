@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Home, Swords, Trophy, LifeBuoy, Wallet } from "lucide-react"
+import { motion } from 'framer-motion';
 
 const navItems = [
   { href: "/dashboard", label: "Home", icon: Home },
@@ -18,8 +19,8 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm h-16 bg-card border shadow-lg rounded-full md:hidden">
-      <div className="grid h-full grid-cols-5 mx-auto">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm md:hidden">
+      <div className="relative flex h-16 items-center justify-around rounded-full border bg-card/70 p-2 shadow-lg backdrop-blur-md">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href === '/lobby' && pathname.startsWith('/match')) || (item.href === '/dashboard' && pathname === '/');
           return (
@@ -27,15 +28,24 @@ export function BottomNav() {
               key={item.href} 
               href={item.href} 
               className={cn(
-                "inline-flex flex-col items-center justify-center text-center px-1 group",
-                isActive ? "text-primary" : "text-muted-foreground"
+                "relative z-10 flex h-12 w-12 flex-col items-center justify-center gap-1 rounded-full text-center text-muted-foreground transition-colors group",
+                { "text-primary": isActive }
               )}
             >
-              <div className="relative">
-                <item.icon className={cn("w-6 h-6 mb-1 transition-transform", isActive ? "scale-110 -translate-y-0.5" : "group-hover:scale-110")} />
-                {isActive && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-primary"></span>}
-              </div>
-              <span className={cn("text-xs font-medium transition-colors", isActive ? "text-primary" : "group-hover:text-foreground")}>{item.label}</span>
+              <item.icon className="h-6 w-6" />
+              <span className={cn(
+                "text-[10px] font-bold opacity-0 transition-opacity, duration-300",
+                { "opacity-100": isActive }
+              )}>
+                {item.label}
+              </span>
+              {isActive && (
+                <motion.div
+                  layoutId="active-nav-indicator"
+                  className="absolute inset-0 -z-10 rounded-full bg-primary/10"
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+              )}
             </Link>
           )
         })}
@@ -43,5 +53,3 @@ export function BottomNav() {
     </div>
   )
 }
-
-    
