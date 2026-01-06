@@ -29,7 +29,7 @@ export default function RegisterPage() {
     try {
       await signUpWithEmail(email, password, name, referralCode);
       toast({
-        variant: "success",
+        variant: "default",
         title: "Account Created Successfully",
         description: "Welcome to Ludo League! You are now logged in.",
       });
@@ -49,7 +49,7 @@ export default function RegisterPage() {
     try {
       await signInWithGoogle();
       toast({
-        variant: "success",
+        variant: "default",
         title: "Account Created Successfully",
         description: "Welcome to Ludo League! You are now logged in.",
       });
@@ -66,8 +66,8 @@ export default function RegisterPage() {
 
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 px-4">
-      <Card className="mx-auto max-w-sm">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+      <Card className="mx-auto w-full max-w-sm border-0 sm:border shadow-none sm:shadow-lg">
         <form onSubmit={handleRegister}>
           <CardHeader className="text-center">
               <div className="flex justify-center items-center gap-2 mb-2">

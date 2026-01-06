@@ -31,7 +31,7 @@ export default function LoginPage() {
     try {
       await signInWithEmail(email, password);
       toast({
-        variant: "success",
+        variant: "default",
         title: "Login Successful",
         description: "Welcome back! Get ready to play.",
       });
@@ -51,7 +51,7 @@ export default function LoginPage() {
     try {
       await signInWithGoogle();
        toast({
-        variant: "success",
+        variant: "default",
         title: "Login Successful",
         description: "Welcome! Get ready to play.",
       });
@@ -105,7 +105,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 lg:grid lg:grid-cols-2">
-      <div className="hidden lg:flex flex-col items-start justify-center p-12 text-foreground space-y-8 bg-muted/40 h-full">
+      <div className="hidden lg:flex flex-col items-start justify-center p-12 text-foreground space-y-8 bg-card h-full rounded-l-lg">
         <div className="flex items-center gap-3">
           <Swords className="h-10 w-10 text-primary" />
           <h1 className="text-4xl font-bold">Ludo League</h1>
@@ -116,7 +116,9 @@ export default function LoginPage() {
         <div className="space-y-6 pt-4">
           {marketingFeatures.map(feature => (
             <div key={feature.title} className="flex items-start gap-4">
-              <feature.icon className="h-8 w-8 text-primary mt-1" />
+              <div className="bg-primary/10 p-2 rounded-lg">
+                <feature.icon className="h-6 w-6 text-primary" />
+              </div>
               <div>
                 <h3 className="text-lg font-semibold">{feature.title}</h3>
                 <p className="text-muted-foreground">{feature.description}</p>
@@ -125,10 +127,10 @@ export default function LoginPage() {
           ))}
         </div>
       </div>
-      <div className="flex items-center justify-center w-full">
-        <div className="w-full max-w-md">
+      <div className="flex items-center justify-center w-full bg-background lg:bg-card lg:rounded-r-lg">
+        <div className="w-full max-w-md p-4 sm:p-8">
           <form onSubmit={handleLogin}>
-            <Card className="mx-auto border-0 shadow-none lg:border lg:shadow-lg">
+            <Card className="mx-auto border-0 shadow-none bg-transparent">
               <CardHeader className="space-y-1 text-center">
                 <div className="flex justify-center items-center gap-2 lg:hidden">
                   <Swords className="h-8 w-8 text-primary" />
@@ -146,7 +148,7 @@ export default function LoginPage() {
                   <div className="space-y-2">
                     <div className="flex items-center">
                       <Label htmlFor="password">Password</Label>
-                      <button type="button" onClick={() => setResetDialogOpen(true)} className="ml-auto inline-block text-sm underline" suppressHydrationWarning>
+                      <button type="button" onClick={() => setResetDialogOpen(true)} className="ml-auto inline-block text-sm underline text-primary/80 hover:text-primary" suppressHydrationWarning>
                         Forgot your password?
                       </button>
                     </div>
