@@ -237,3 +237,73 @@ exports.onMatchmakingQueueWrite = functions.firestore
     return null;
 });
 
+
+// New, advanced onResultSubmit function
+exports.onResultSubmit = functions.firestore
+  .document('matches/{matchId}/results/{userId}')
+  .onCreate(async (snap, context) => {
+    const matchId = context.params.matchId;
+    const matchRef = db.collection('matches').doc(matchId);
+
+    try {
+      const matchDoc = await matchRef.get();
+      if (!matchDoc.exists) {
+        console.log(`Match with ID: ${matchId} does not exist.`);
+        return null;
+      }
+
+      const matchData = matchDoc.data();
+
+      // Don't process if match is already concluded
+      if (['completed', 'disputed', 'cancelled'].includes(matchData.status)) {
+        console.log(`Match ${matchId} already concluded. Skipping fraud check.`);
+        return null;
+      }
+      
+      const resultsCollectionRef = matchRef.collection('results');
+      const resultsSnapshot = await resultsCollectionRef.get();
+      
+      // If not all players have submitted, do nothing yet.
+      if (resultsSnapshot.size < matchData.playerIds.length) {
+        console.log(`Waiting for all players to submit results for match ${matchId}.`);
+        return null;
+      }
+      
+      // All players have submitted, now run fraud detection
+      const results = resultsSnapshot.docs.map(doc => doc.data());
+      
+      // 1. Check for multiple win claims
+      const winClaims = results.filter(r => r.status === 'win');
+      if (winClaims.length > 1) {
+        await matchRef.update({ status: 'disputed', reviewReason: 'Multiple players claimed victory.' });
+        console.log(`Match ${matchId} flagged for dispute: Multiple winners.`);
+        return null;
+      }
+      
+      // 2. Check for duplicate screenshots
+      const screenshotUrls = results.map(r => r.screenshotUrl);
+      const uniqueUrls = new Set(screenshotUrls);
+      if (screenshotUrls.length !== uniqueUrls.size) {
+        await matchRef.update({ status: 'disputed', reviewReason: 'Duplicate screenshots submitted.' });
+        console.log(`Match ${matchId} flagged for dispute: Duplicate screenshots.`);
+        return null;
+      }
+
+      // If no fraud detected, complete the match
+      if (winClaims.length === 1) {
+        // Clear winner, complete the match
+        await matchRef.update({ status: 'completed', winnerId: winClaims[0].userId });
+        console.log(`Match ${matchId} completed. Winner: ${winClaims[0].userId}`);
+      } else {
+        // No one claimed win, or some other edge case
+        await matchRef.update({ status: 'disputed', reviewReason: 'No clear winner claimed.' });
+        console.log(`Match ${matchId} flagged for dispute: No clear winner.`);
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`Error in onResultSubmit for match ${matchId}:`, error);
+      await matchRef.update({ status: 'disputed', reviewReason: `System error: ${error.message}` }).catch(e => console.error("Failed to update match status to disputed on error:", e));
+      return null;
+    }
+  });

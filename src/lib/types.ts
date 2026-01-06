@@ -34,6 +34,7 @@ export type UserProfile = {
     prizeDistributed?: boolean;
     createdAt: Timestamp;
     updatedAt?: Timestamp;
+    reviewReason?: string;
   };
   
   export type Transaction = {

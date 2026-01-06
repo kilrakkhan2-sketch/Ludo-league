@@ -455,7 +455,7 @@ function AdminMatchesPageContent() {
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Users className="h-4 w-4 text-muted-foreground" />
-                      {match.players.length} / {match.maxPlayers}
+                      {match.playerIds.length} / {match.maxPlayers}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -548,5 +548,3 @@ export default function AdminMatchesPage() {
         </React.Suspense>
     )
 }
-
-    
