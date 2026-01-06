@@ -14,12 +14,9 @@ export type UserProfile = {
     bankDetails?: string;
     isBlocked?: boolean;
     referralCode?: string;
-    winnings?: number;
-    winRate?: number;
     fcmToken?: string;
-    // New Rank-based fields
+    // Rank-based fields
     rank: number;
-    rankPoints: number; // For internal calculation, can be deprecated if totalNetWinning is used
     totalNetWinning: number;
     totalWins: number;
     totalLosses: number;

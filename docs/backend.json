@@ -45,42 +45,9 @@
           "description": "The user's KYC status",
           "enum": ["not_submitted", "pending", "approved", "rejected"]
         },
-        "warningCounter": {
-          "type": "number",
-          "description": "Number of warnings issued to the user"
-        },
-        "adminNotes": {
-          "type": "string",
-          "description": "Private notes from admins about the user"
-        },
         "isBlocked": {
           "type": "boolean",
           "description": "Whether the user is permanently banned."
-        },
-        "isSuspended": {
-          "type": "boolean",
-          "description": "Whether the user is temporarily suspended."
-        },
-        "isWalletFrozen": {
-          "type": "boolean",
-          "description": "Whether the user's wallet is frozen for transactions."
-        },
-        "joinedTournamentIds": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "List of tournament IDs the user has joined."
-        },
-        "totalMatchesPlayed": {
-            "type": "number",
-            "description": "Total matches played by the user."
-        },
-        "totalMatchesWon": {
-            "type": "number",
-            "description": "Total matches won by the user."
-        },
-        "winRate": {
-            "type": "number",
-            "description": "User's win rate in percentage."
         },
         "referralCode": {
             "type": "string",
@@ -97,6 +64,38 @@
         "fcmToken": {
             "type": "string",
             "description": "The user's Firebase Cloud Messaging token for push notifications."
+        },
+        "rank": {
+            "type": "number",
+            "description": "User's current rank (0-5)."
+        },
+        "totalNetWinning": {
+            "type": "number",
+            "description": "Total net amount won by the user, used for rank calculation."
+        },
+        "totalWins": {
+            "type": "number",
+            "description": "Total matches won by the user."
+        },
+        "totalLosses": {
+            "type": "number",
+            "description": "Total matches lost by the user."
+        },
+        "dailyLoss": {
+            "type": "number",
+            "description": "Amount lost by the user in the current day."
+        },
+        "lossStreak": {
+            "type": "number",
+            "description": "Number of consecutive matches lost."
+        },
+        "maxUnlockedAmount": {
+            "type": "number",
+            "description": "The maximum entry fee amount the user is allowed to play."
+        },
+        "currentMatch": {
+            "type": "string",
+            "description": "The ID of the match the user is currently in."
         }
       }
     },

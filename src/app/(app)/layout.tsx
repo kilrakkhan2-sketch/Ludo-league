@@ -41,7 +41,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (user && !isAuthPage) {
     return (
       <AppShell>
-        <main className="flex-1 p-4 md:p-6 lg:p-8 pb-24 md:pb-8">
+        <main className="flex-1 p-4 md:p-6 lg:p-8 pb-24 md:pb-8 overflow-x-hidden">
           <Suspense fallback={<CustomLoader />}>
             {children}
           </Suspense>

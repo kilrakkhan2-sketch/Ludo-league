@@ -16,56 +16,35 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { motion } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { useRouter } from 'next/navigation';
 
 const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-lobby');
 
 const RANK_THRESHOLDS = [
-    { rank: 0, name: 'Beginner', unlockRange: [50, 100], requiredWinning: 0 },
-    { rank: 1, name: 'Learner', unlockRange: [150, 300], requiredWinning: 300 },
-    { rank: 2, name: 'Skilled', unlockRange: [500, 1000], requiredWinning: 1500 },
-    { rank: 3, name: 'Pro', unlockRange: [1500, 3000], requiredWinning: 5000 },
-    { rank: 4, name: 'Elite', unlockRange: [5000, 10000], requiredWinning: 20000 },
-    { rank: 5, name: 'Champion', unlockRange: [15000, 50000], requiredWinning: 50000 },
+    { rank: 0, name: 'Beginner', maxAmount: 100, requiredWinning: 300 },
+    { rank: 1, name: 'Learner', maxAmount: 300, requiredWinning: 1500 },
+    { rank: 2, name: 'Skilled', maxAmount: 1000, requiredWinning: 5000 },
+    { rank: 3, name: 'Pro', maxAmount: 3000, requiredWinning: 20000 },
+    { rank: 4, name: 'Elite', maxAmount: 10000, requiredWinning: 50000 },
+    { rank: 5, name: 'Champion', maxAmount: 50000, requiredWinning: Infinity },
 ];
-
-const getUserRank = (netWinning: number) => {
-    for (let i = RANK_THRESHOLDS.length - 1; i >= 0; i--) {
-        if (netWinning >= RANK_THRESHOLDS[i].requiredWinning) {
-            return RANK_THRESHOLDS[i];
-        }
-    }
-    return RANK_THRESHOLDS[0];
-};
-
-const feeToRankMap = new Map<number, number>();
-RANK_THRESHOLDS.forEach(r => {
-    if(r.unlockRange.length === 2) {
-        for(let fee = r.unlockRange[0]; fee <= r.unlockRange[1]; fee += (fee < 500 ? 50 : (fee < 5000 ? 500 : 5000))) {
-            if(!feeToRankMap.has(fee)) feeToRankMap.set(fee, r.rank);
-        }
-    }
-});
-
 
 const PlayCard = ({ entryFee, onJoin }: { entryFee: number, onJoin: (fee: number) => void }) => {
     const { userProfile } = useUser();
     const [isJoining, setIsJoining] = useState(false);
     
     const prizePool = useMemo(() => entryFee * 1.8, [entryFee]);
-
-    const userRank = useMemo(() => getUserRank(userProfile?.totalNetWinning || 0), [userProfile?.totalNetWinning]);
-    const maxUnlockedAmount = userRank.unlockRange[1];
     
-    const requiredRankForCard = useMemo(() => {
-        for (const rank of RANK_THRESHOLDS) {
-            if (entryFee >= rank.unlockRange[0] && entryFee <= rank.unlockRange[1]) {
-                return rank;
-            }
-        }
-        return RANK_THRESHOLDS[0];
-    }, [entryFee]);
+    const maxUnlockedAmount = userProfile?.maxUnlockedAmount ?? 0;
+    const isLocked = entryFee > maxUnlockedAmount;
 
-    const isLocked = userRank.rank < requiredRankForCard.rank;
+    const nextRankInfo = RANK_THRESHOLDS.find(r => entryFee <= r.maxAmount);
+    const requiredWinning = nextRankInfo?.requiredWinning ?? 0;
+    const currentWinning = userProfile?.totalNetWinning ?? 0;
+    const neededForUnlock = requiredWinning - currentWinning;
+
+    const lockedTooltip = `Win ₹${neededForUnlock.toLocaleString()} more to unlock this tier.`;
 
     const handleJoin = async () => {
         setIsJoining(true);
@@ -80,12 +59,11 @@ const PlayCard = ({ entryFee, onJoin }: { entryFee: number, onJoin: (fee: number
         return 'from-purple-600/20 to-purple-400/20 border-purple-500/50'; // Champion
     };
 
-    const lockedTooltip = `Win ₹${requiredRankForCard.requiredWinning - (userProfile?.totalNetWinning || 0)} more to unlock this tier.`;
 
     const cardContent = (
         <Card className={cn(
             "w-full shadow-lg border bg-card/80 backdrop-blur-sm overflow-hidden transition-all duration-300",
-            isLocked ? "bg-muted/50 border-dashed" : `bg-gradient-to-br ${getTierColor(entryFee)}`,
+            isLocked ? "bg-muted/50 border-dashed filter grayscale" : `bg-gradient-to-br ${getTierColor(entryFee)}`,
         )}>
             <CardHeader className="p-4 text-center">
                 <CardDescription className={cn("font-semibold", isLocked ? "text-muted-foreground" : "text-amber-300")}>Prize Pool</CardDescription>
@@ -127,32 +105,45 @@ const PlayCard = ({ entryFee, onJoin }: { entryFee: number, onJoin: (fee: number
 
 
 export default function LobbyPage() {
-  const { user } = useUser();
+  const { user, userProfile } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const router = useRouter();
   
   const entryFees = useMemo(() => {
     const fees = new Set<number>();
     // Tier 1
     for (let i = 50; i <= 500; i += 50) fees.add(i);
     // Tier 2
-    for (let i = 500; i <= 5000; i += 500) fees.add(i);
+    for (let i = 600; i <= 5000; i += 500) fees.add(i);
     // Tier 3
-    for (let i = 5000; i <= 50000; i += 5000) fees.add(i);
+    for (let i = 6000; i <= 50000; i += 5000) fees.add(i);
     return Array.from(fees).sort((a,b) => a-b);
   }, []);
 
   const handleJoinMatch = async (entryFee: number) => {
-     if (!user || !firestore) {
+     if (!user || !firestore || !userProfile) {
          toast({ title: "You must be logged in.", variant: "destructive" });
          return;
      }
 
-     // Here you would call a cloud function to find an opponent and create/join a match.
-     // For now, we simulate a successful join and link to a placeholder match.
-     toast({ title: `Searching for a ₹${entryFee} match...`});
-     // This is where you would call: const { data } = await functions.findOpponentAndCreateMatch({ entryFee });
-     // And then router.push(`/match/${data.matchId}`);
+    const functions = getFunctions();
+    const findOpponent = httpsCallable(functions, 'findOpponentAndCreateMatch');
+
+    toast({ title: `Searching for a ₹${entryFee} match...`, description: "Please wait while we find you an opponent."});
+
+    try {
+        const { data }: any = await findOpponent({ entryFee });
+        if(data.matchId) {
+            toast({ title: "Match Found!", description: `Joining match ${data.matchId}`});
+            router.push(`/match/${data.matchId}`);
+        } else {
+             throw new Error("Could not find or create a match.");
+        }
+    } catch(error: any) {
+        console.error(error);
+        toast({ title: "Matchmaking Failed", description: error.message || "Could not join the match. Please try again.", variant: "destructive"});
+    }
   }
 
   return (

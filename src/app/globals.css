@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  html,
+  body {
+    @apply overflow-x-hidden;
+  }
   :root {
     --background: 220 20% 98%; /* Very Light Gray */
     --foreground: 222 47% 11%; /* Dark Slate Blue */

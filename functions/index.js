@@ -5,13 +5,14 @@ admin.initializeApp();
 
 const db = admin.firestore();
 
+// Define rank thresholds & max unlocked amounts
 const rankConfig = [
-  { rank: 0, maxAmount: 100, pointsRequired: 300 },
-  { rank: 1, maxAmount: 300, pointsRequired: 1500 },
-  { rank: 2, maxAmount: 1000, pointsRequired: 5000 },
-  { rank: 3, maxAmount: 3000, pointsRequired: 20000 },
-  { rank: 4, maxAmount: 10000, pointsRequired: 50000 },
-  { rank: 5, maxAmount: 50000, pointsRequired: Infinity }
+  { rank: 0, maxAmount: 100, requiredWinning: 300 },
+  { rank: 1, maxAmount: 300, requiredWinning: 1500 },
+  { rank: 2, maxAmount: 1000, requiredWinning: 5000 },
+  { rank: 3, maxAmount: 3000, requiredWinning: 20000 },
+  { rank: 4, maxAmount: 10000, requiredWinning: 50000 },
+  { rank: 5, maxAmount: 50000, requiredWinning: Infinity }
 ];
 
 // This function now finds an opponent OR creates a new match
