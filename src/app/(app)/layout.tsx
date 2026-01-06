@@ -42,7 +42,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
       <AppShell>
         <Suspense fallback={<CustomLoader />}>
-          <div className="pb-24 md:pb-0">{children}</div>
+          {children}
         </Suspense>
       </AppShell>
     );
