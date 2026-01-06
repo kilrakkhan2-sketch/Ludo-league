@@ -27,26 +27,28 @@ import {
 } from 'lucide-react';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import { useFirestore } from '@/firebase';
-import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import type { Transaction, UserProfile } from '@/lib/types';
+
 
 interface StatCardProps {
   title: string;
   value: string;
-  percentage: string;
+  description: string;
   icon: React.ReactNode;
 }
 
-const StatCard = ({ title, value, percentage, icon }: StatCardProps) => (
-  <Card>
+const StatCard = ({ title, value, description, icon }: StatCardProps) => (
+  <Card className="shadow-md">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
       <CardTitle className="text-sm font-medium">{title}</CardTitle>
       {icon}
     </CardHeader>
     <CardContent>
       <div className="text-2xl font-bold">{value}</div>
-      <p className="text-xs text-muted-foreground">{percentage}</p>
+      <p className="text-xs text-muted-foreground">{description}</p>
     </CardContent>
   </Card>
 );
@@ -67,72 +69,73 @@ export default function AdminDashboardPage() {
     if (!firestore) return;
 
     const fetchData = async () => {
-      setLoading(true);
-      try {
-        // Fetch Users
-        const usersSnapshot = await getDocs(collection(firestore, 'users'));
-        setStats(prev => ({ ...prev, totalUsers: usersSnapshot.size }));
+        setLoading(true);
+        try {
+            // Fetch Users count
+            const usersCollection = collection(firestore, 'users');
+            const usersSnapshot = await getDocs(usersCollection);
+            setStats(prev => ({ ...prev, totalUsers: usersSnapshot.size }));
 
-        // Fetch Transactions
-        const transactionsSnapshot = await getDocs(collection(firestore, 'transactions'));
-        let totalRevenue = 0;
-        let totalDeposits = 0;
-        let totalWithdrawals = 0;
-        
-        const now = new Date();
-        const monthlyRevenue: { [key: string]: number } = {};
+            // Fetch Transactions for revenue calculation
+            const transactionsSnapshot = await getDocs(collection(firestore, 'transactions'));
+            let totalDeposits = 0;
+            let totalWithdrawals = 0;
+            const monthlyRevenue: { [key: string]: number } = {};
 
-        transactionsSnapshot.forEach(doc => {
-          const t = doc.data();
-          if (t.status === 'completed') {
-            if (t.type === 'deposit') {
-                totalDeposits += t.amount;
-                // Assuming revenue is generated from deposits (e.g. fees)
-                // This logic might need to be more complex based on the business model
-                totalRevenue += t.amount * 0.1; // Example: 10% revenue on deposits
-            } else if (t.type === 'withdrawal') {
-                totalWithdrawals += Math.abs(t.amount);
-            }
-          }
-          
-          // Aggregate monthly revenue for the chart
-          const date = t.createdAt.toDate();
-          if (date.getFullYear() === now.getFullYear()) {
-              const month = date.toLocaleString('default', { month: 'short' });
-              if(!monthlyRevenue[month]) monthlyRevenue[month] = 0;
-              if(t.type === 'deposit' && t.status === 'completed') monthlyRevenue[month] += t.amount;
-          }
-        });
-        
-        const revenueChartData = Object.entries(monthlyRevenue).map(([name, total]) => ({ name, total }));
-        setRevenueData(revenueChartData);
+            transactionsSnapshot.forEach(doc => {
+                const t = doc.data();
+                if (t.status === 'completed') {
+                    if (t.type === 'deposit') {
+                        totalDeposits += t.amount;
+                    } else if (t.type === 'withdrawal') {
+                        totalWithdrawals += Math.abs(t.amount);
+                    }
+                }
+                // Aggregate monthly revenue for the chart
+                const date = t.createdAt.toDate();
+                const month = date.toLocaleString('default', { month: 'short' });
+                if(!monthlyRevenue[month]) monthlyRevenue[month] = 0;
 
-        setStats(prev => ({ ...prev, totalRevenue, totalDeposits, totalWithdrawals }));
+                // Revenue is 10% of entry fees
+                if(t.type === 'entry-fee' && t.status === 'completed') {
+                    monthlyRevenue[month] += Math.abs(t.amount) * 0.10;
+                }
+            });
 
-        // Fetch Recent Transactions
-        const recentTransQuery = query(
-          collection(firestore, 'transactions'),
-          orderBy('createdAt', 'desc'),
-          limit(5)
-        );
-        const recentTransSnapshot = await getDocs(recentTransQuery);
-        const transData = await Promise.all(recentTransSnapshot.docs.map(async (doc) => {
+            const totalRevenue = Object.values(monthlyRevenue).reduce((acc, cur) => acc + cur, 0);
+            const revenueChartData = Object.entries(monthlyRevenue).map(([name, total]) => ({ name, total: Math.round(total) }));
+            setRevenueData(revenueChartData);
+
+            setStats(prev => ({ ...prev, totalRevenue, totalDeposits, totalWithdrawals }));
+
+        } catch (error) {
+            console.error("Error fetching dashboard data: ", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Listener for recent transactions
+    const recentTransQuery = query(
+      collection(firestore, 'transactions'),
+      orderBy('createdAt', 'desc'),
+      limit(5)
+    );
+    
+    const unsubscribe = onSnapshot(recentTransQuery, async (snapshot) => {
+        const transData = await Promise.all(snapshot.docs.map(async (doc) => {
             const data = doc.data();
             const userDocSnapshot = await getDocs(query(collection(firestore, 'users'), where('uid', '==', data.userId), limit(1)));
             const user = userDocSnapshot.docs.length > 0 ? userDocSnapshot.docs[0].data() : {};
             return { ...data, id: doc.id, user };
         }));
         setRecentTransactions(transData);
-
-      } catch (error) {
-        console.error("Error fetching dashboard data: ", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    });
 
     fetchData();
+    return () => unsubscribe();
   }, [firestore]);
+
 
   if (loading) {
     return (
@@ -147,10 +150,10 @@ export default function AdminDashboardPage() {
       <h2 className="text-3xl font-bold tracking-tight mb-4">Dashboard</h2>
       <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard title="Total Revenue" value={`₹${stats.totalRevenue.toFixed(2)}`} percentage="+20.1% from last month" icon={<DollarSign className="h-4 w-4 text-muted-foreground" />} />
-            <StatCard title="Total Users" value={`${stats.totalUsers}`} percentage="+180.1% from last month" icon={<Users className="h-4 w-4 text-muted-foreground" />} />
-            <StatCard title="Total Deposits" value={`₹${stats.totalDeposits.toFixed(2)}`} percentage="+19% from last month" icon={<CreditCard className="h-4 w-4 text-muted-foreground" />} />
-            <StatCard title="Total Withdrawals" value={`₹${stats.totalWithdrawals.toFixed(2)}`} percentage="+201 since last hour" icon={<Activity className="h-4 w-4 text-muted-foreground" />} />
+            <StatCard title="Total Revenue" value={`₹${stats.totalRevenue.toFixed(2)}`} description="Total commission earned" icon={<DollarSign className="h-4 w-4 text-muted-foreground" />} />
+            <StatCard title="Total Users" value={`${stats.totalUsers}`} description="Total registered users" icon={<Users className="h-4 w-4 text-muted-foreground" />} />
+            <StatCard title="Total Deposits" value={`₹${stats.totalDeposits.toFixed(2)}`} description="All-time user deposits" icon={<CreditCard className="h-4 w-4 text-muted-foreground" />} />
+            <StatCard title="Total Withdrawals" value={`₹${stats.totalWithdrawals.toFixed(2)}`} description="All-time user withdrawals" icon={<Activity className="h-4 w-4 text-muted-foreground" />} />
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             <Card className="col-span-4">
@@ -171,36 +174,21 @@ export default function AdminDashboardPage() {
                     <CardDescription>The last 5 transactions across the platform.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>User</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead className="text-right">Amount</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {recentTransactions.map(t => (
-                                <TableRow key={t.id}>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <Avatar className="h-8 w-8">
-                                                <AvatarImage src={t.user?.photoURL} />
-                                                <AvatarFallback>{t.user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
-                                            </Avatar>
-                                            <span className='font-medium'>{t.user?.displayName || 'Unknown User'}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant={t.type === 'deposit' ? 'default': 'secondary'} className={t.amount > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>{t.type}</Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right font-medium">
-                                        {t.amount > 0 ? '+' : ''}₹{t.amount.toFixed(2)}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                    <div className="space-y-4">
+                       {recentTransactions.length > 0 ? recentTransactions.map(t => (
+                            <div key={t.id} className="flex items-center">
+                                <Avatar className="h-9 w-9">
+                                <AvatarImage src={t.user?.photoURL} alt="Avatar" />
+                                <AvatarFallback>{t.user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                                </Avatar>
+                                <div className="ml-4 space-y-1">
+                                <p className="text-sm font-medium leading-none">{t.user?.displayName || 'Unknown'}</p>
+                                <p className="text-sm text-muted-foreground">{t.description || t.type}</p>
+                                </div>
+                                <div className={`ml-auto font-medium ${t.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>{t.amount > 0 ? '+' : ''}₹{t.amount.toFixed(2)}</div>
+                            </div>
+                        )) : <p className="text-sm text-muted-foreground text-center">No recent transactions.</p>}
+                    </div>
                 </CardContent>
             </Card>
         </div>
@@ -208,3 +196,5 @@ export default function AdminDashboardPage() {
     </>
   );
 }
+
+    
