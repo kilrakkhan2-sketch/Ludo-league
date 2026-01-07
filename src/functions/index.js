@@ -39,13 +39,11 @@ exports.onTransactionCreate = functions.firestore
 
     // Only process completed transactions that affect balance.
     if (status !== 'completed') {
-        console.log(`Transaction ${context.params.transactionId} is not completed. Skipping balance update.`);
         return null;
     }
 
     const validTypes = ['deposit', 'withdrawal', 'entry-fee', 'winnings', 'refund', 'admin-credit', 'admin-debit', 'referral-bonus', 'tournament-fee'];
     if (!validTypes.includes(type)) {
-        console.log(`Invalid transaction type: ${type}. Skipping balance update.`);
         return null;
     }
     
@@ -71,7 +69,6 @@ exports.onTransactionCreate = functions.firestore
             t.update(userRef, updateData);
         });
 
-        console.log(`Transaction ${context.params.transactionId} for user ${userId} handled successfully. New balance updated.`);
         return null;
 
     } catch (error) {
@@ -97,7 +94,6 @@ exports.onDepositApproved = functions.firestore
     const userDoc = await userRef.get();
 
     if (!userDoc.exists()) {
-      console.log(`User ${userId} not found.`);
       return null;
     }
     const userData = userDoc.data();
@@ -111,7 +107,6 @@ exports.onDepositApproved = functions.firestore
           const referrerDoc = await transaction.get(referrerRef);
 
           if (!referrerDoc.exists()) {
-            console.log(`Referrer ${referredBy} not found.`);
             return;
           }
 
@@ -134,8 +129,6 @@ exports.onDepositApproved = functions.firestore
           
           // Mark the new user so they don't trigger this again on future deposits
            transaction.update(userRef, { referralBonusPaid: true });
-
-           console.log(`Created referral transaction of ${commission} for ${referredBy}.`);
         });
       } catch (error) {
         console.error("Error processing referral commission: ", error);
@@ -149,7 +142,6 @@ exports.onMatchmakingQueueWrite = functions.firestore
   .document('matchmakingQueue/{userId}')
   .onWrite(async (change, context) => {
     if (!change.after.exists) {
-      console.log(`User ${context.params.userId} left the queue.`);
       return null;
     }
 
@@ -168,20 +160,17 @@ exports.onMatchmakingQueueWrite = functions.firestore
     const snapshot = await q.get();
 
     if (snapshot.docs.length < 2) {
-      console.log(`Not enough players for fee ${entryFee}. Waiting...`);
       return null;
     }
 
     const opponentDoc = snapshot.docs.find(doc => doc.id !== userId);
     
     if (!opponentDoc) {
-      console.log(`No valid opponent found for ${userId} at fee ${entryFee}. Waiting...`);
       return null;
     }
 
     const opponent = opponentDoc.data();
     const opponentId = opponent.userId;
-    console.log(`Opponent found for ${userId}! Matched with ${opponentId}`);
 
     const player1QueueRef = db.doc(`matchmakingQueue/${userId}`);
     const player2QueueRef = opponentDoc.ref;
@@ -192,7 +181,6 @@ exports.onMatchmakingQueueWrite = functions.firestore
         const p2Doc = await transaction.get(player2QueueRef);
 
         if (!p1Doc.exists || !p2Doc.exists || p1Doc.data().status !== 'waiting' || p2Doc.data().status !== 'waiting') {
-            console.log('One of the players is no longer waiting. Aborting match creation.');
             return;
         }
 
@@ -236,8 +224,6 @@ exports.onMatchmakingQueueWrite = functions.firestore
         transaction.delete(player1QueueRef);
         transaction.delete(player2QueueRef);
       });
-
-      console.log(`Successfully created match and transactions for players ${userId} and ${opponentId}.`);
     } catch (error) {
       console.error("Error in matchmaking transaction: ", error);
     }
@@ -263,7 +249,6 @@ exports.onMatchCreate = functions.firestore
     });
 
     if (tokens.length === 0) {
-      console.log('No tokens to send notifications to.');
       return null;
     }
 
@@ -277,7 +262,6 @@ exports.onMatchCreate = functions.firestore
 
     try {
       const response = await admin.messaging().sendEachForMulticast({ tokens, ...payload });
-      console.log('Notifications sent successfully:', response.successCount);
       if (response.failureCount > 0) {
         console.log('Failed to send notifications to some devices:', response.failureCount);
       }
@@ -299,14 +283,12 @@ exports.onResultSubmit = functions.firestore
     try {
       const matchDoc = await matchRef.get();
       if (!matchDoc.exists) {
-        console.log(`Match with ID: ${matchId} does not exist.`);
         return null;
       }
 
       const matchData = matchDoc.data();
 
       if (['completed', 'disputed', 'cancelled'].includes(matchData.status)) {
-        console.log(`Match ${matchId} already concluded. Skipping result processing.`);
         return null;
       }
       
@@ -314,7 +296,6 @@ exports.onResultSubmit = functions.firestore
       const resultsSnapshot = await resultsCollectionRef.get();
       
       if (resultsSnapshot.size < matchData.playerIds.length) {
-        console.log(`Waiting for all players to submit results for match ${matchId}.`);
         return null;
       }
       
@@ -323,7 +304,6 @@ exports.onResultSubmit = functions.firestore
       const winClaims = results.filter(r => r.status === 'win');
       if (winClaims.length > 1) {
         await matchRef.update({ status: 'disputed', reviewReason: 'Multiple players claimed victory.' });
-        console.log(`Match ${matchId} flagged for dispute: Multiple winners.`);
         return null;
       }
       
@@ -331,16 +311,13 @@ exports.onResultSubmit = functions.firestore
       const uniqueUrls = new Set(screenshotUrls);
       if (screenshotUrls.length !== uniqueUrls.size) {
         await matchRef.update({ status: 'disputed', reviewReason: 'Duplicate screenshots submitted.' });
-        console.log(`Match ${matchId} flagged for dispute: Duplicate screenshots.`);
         return null;
       }
 
       if (winClaims.length === 1) {
         await matchRef.update({ status: 'completed', winnerId: winClaims[0].userId });
-        console.log(`Match ${matchId} completed. Winner: ${winClaims[0].userId}`);
       } else {
         await matchRef.update({ status: 'disputed', reviewReason: 'No clear winner claimed.' });
-        console.log(`Match ${matchId} flagged for dispute: No clear winner.`);
       }
 
       return null;
@@ -427,7 +404,6 @@ exports.onResultSubmit = functions.firestore
             finalMessage = `Successfully declared ${winningPlayer.name} as winner and distributed prize of ₹${amountToCredit}.`;
         });
         
-        console.log(finalMessage);
         return { success: true, message: finalMessage };
 
     } catch (error) {
@@ -438,3 +414,5 @@ exports.onResultSubmit = functions.firestore
         throw new HttpsError('internal', 'An unexpected error occurred during prize distribution.', error);
     }
 });
+
+    

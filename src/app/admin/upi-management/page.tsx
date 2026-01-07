@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { db } from "@/lib/firebase";
+import { useFirestore } from "@/firebase";
 import {
   collection,
   getDocs,
@@ -61,7 +61,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import QRCode from "qrcode.react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface UpiData {
   id: string;
@@ -70,6 +70,7 @@ interface UpiData {
 }
 
 export default function UpiManagementPage() {
+  const db = useFirestore();
   const [upiIds, setUpiIds] = useState<UpiData[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -78,6 +79,7 @@ export default function UpiManagementPage() {
   const { toast } = useToast();
 
   const fetchUpiIds = useCallback(async () => {
+    if (!db) return;
     setLoading(true);
     try {
       const querySnapshot = await getDocs(collection(db, "upiAddresses"));
@@ -96,13 +98,14 @@ export default function UpiManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [db, toast]);
 
   useEffect(() => {
     fetchUpiIds();
   }, [fetchUpiIds]);
 
   const handleSetActive = async (idToActivate: string) => {
+    if (!db) return;
     setIsSaving(true);
     const batch = writeBatch(db);
 
@@ -135,6 +138,7 @@ export default function UpiManagementPage() {
   };
 
   const handleAddUpi = async () => {
+    if (!db) return;
     if (!newUpiId.trim()) {
       toast({
         variant: "destructive",
@@ -170,6 +174,7 @@ export default function UpiManagementPage() {
   };
   
   const handleUpdateUpi = async () => {
+    if (!db) return;
     if (!editingUpi || !editingUpi.upiId.trim()) {
       toast({
         variant: "destructive",
@@ -201,6 +206,7 @@ export default function UpiManagementPage() {
   };
 
   const handleDeleteUpi = async (id: string) => {
+    if (!db) return;
     setIsSaving(true);
     try {
       await deleteDoc(doc(db, "upiAddresses", id));
@@ -267,7 +273,7 @@ export default function UpiManagementPage() {
             Manage the list of UPI IDs for deposits. Only one can be active at a time.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -380,3 +386,5 @@ export default function UpiManagementPage() {
     </>
   );
 }
+
+    
