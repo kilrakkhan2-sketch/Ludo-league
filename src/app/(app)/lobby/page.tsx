@@ -42,11 +42,11 @@ const EntryFeeCard = ({
     
     const cardContent = (
       <motion.div whileHover={!isLocked ? { scale: 1.05, y: -5 } : {}} transition={{ duration: 0.2 }}>
-        <Card className={cn(
-            "relative flex flex-col h-full text-center transition-all duration-300 overflow-hidden",
+        <div className={cn(
+            "relative flex flex-col h-full text-center transition-all duration-300 overflow-hidden rounded-lg border",
             isLocked 
             ? "bg-muted/50 border-muted-foreground/20 cursor-not-allowed"
-            : "hover:border-primary"
+            : "border-transparent hover:border-primary"
         )}>
           {cardBgImage && (
             <Image
@@ -58,35 +58,37 @@ const EntryFeeCard = ({
             />
           )}
 
-          <div className="relative z-10 flex flex-col h-full">
-            <CardHeader className="p-4">
+          <div className="relative z-10 flex flex-col h-full p-4">
+            <div className="flex-grow">
                 {isLocked && <Lock className="absolute top-2 right-2 h-4 w-4 text-muted-foreground" />}
-                <CardTitle className={cn(
+                <h3 className={cn(
                     "text-2xl font-bold",
                     isLocked ? "text-muted-foreground/50" : "text-transparent bg-clip-text bg-gradient-to-r from-primary-start to-primary-end"
                 )}>
                 ₹{fee}
-                </CardTitle>
-                <CardDescription className={cn(isLocked && "text-muted-foreground/50", !isLocked && "text-white/70")}>Entry Fee</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow p-4 space-y-2">
-                <p className={cn("text-md font-semibold", isLocked ? "text-muted-foreground/50" : "text-white")}>
-                Prize: <span className={cn(isLocked ? "text-muted-foreground/50" : "text-green-400")}>₹{(fee * 1.8).toFixed(2)}</span>
-                </p>
-                {playerCount > 0 && !isLocked && (
-                <div className="flex items-center justify-center gap-1.5 text-xs text-blue-300 animate-pulse">
-                    <Users className="h-3 w-3" />
-                    <span>{playerCount} Searching...</span>
+                </h3>
+                <p className={cn("text-sm", isLocked && "text-muted-foreground/50", !isLocked && "text-white/70")}>Entry Fee</p>
+
+                <div className="mt-4 space-y-2">
+                    <p className={cn("text-md font-semibold", isLocked ? "text-muted-foreground/50" : "text-white")}>
+                    Prize: <span className={cn(isLocked ? "text-muted-foreground/50" : "text-green-400")}>₹{(fee * 1.8).toFixed(2)}</span>
+                    </p>
+                    {playerCount > 0 && !isLocked && (
+                    <div className="flex items-center justify-center gap-1.5 text-xs text-blue-300 animate-pulse">
+                        <Users className="h-3 w-3" />
+                        <span>{playerCount} Searching...</span>
+                    </div>
+                    )}
                 </div>
-                )}
-            </CardContent>
-            <CardFooter className="p-4 mt-auto">
+            </div>
+
+            <div className="mt-auto pt-4">
                 <Button className="w-full h-9 text-sm" onClick={() => onPlay(fee)} disabled={isLocked}>
                 {isLocked ? "Locked" : <><Swords className="mr-2 h-4 w-4" /> Play</>}
                 </Button>
-            </CardFooter>
+            </div>
           </div>
-        </Card>
+        </div>
       </motion.div>
     );
 
@@ -125,10 +127,10 @@ export default function LobbyPage() {
   const { toast } = useToast();
   
   const [isSearching, setIsSearching] = useState(false);
-  const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
+  const [activeMatchId, setActiveMatchId = useState<string | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [selectedFee, setSelectedFee] = useState(0);
-  const [queueCounts, setQueueCounts] = useState<{ [key: number]: number }>({});
+  const [queueCounts, setQueueCounts = useState<{ [key: number]: number }>({});
 
   // Listen for active match on user profile
   useEffect(() => {
@@ -336,4 +338,3 @@ export default function LobbyPage() {
       </Card>
     </div>
   );
-}
