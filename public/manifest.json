@@ -1,15 +1,22 @@
+
 {
   "name": "Ludo League",
-  "short_name": "LudoLeague",
+  "short_name": "Ludo League",
   "description": "A platform for competitive Ludo matches.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#222436",
-  "theme_color": "#1F6F54",
+  "background_color": "#D0EAF7",
+  "theme_color": "#29ABE2",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/icon-192x192.png",
       "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ]

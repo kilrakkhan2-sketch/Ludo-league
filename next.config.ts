@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -42,7 +43,7 @@ const nextConfig: NextConfig = {
       },
     ],
     // Allow serving local images from the public directory
-    unoptimized: false,
+    unoptimized: true,
   },
   output: 'standalone',
 };

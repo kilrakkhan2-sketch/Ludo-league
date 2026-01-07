@@ -332,7 +332,7 @@ const Sidebar = React.forwardRef<
     >
         <SidebarHeader>
             <Link href="/dashboard" className="flex items-center gap-2">
-                <Image src="/logo.png" alt="Ludo League Logo" width={32} height={32} />
+                <Image src="/icon-192x192.png" alt="Ludo League Logo" width={32} height={32} />
                 <span className="font-bold text-lg">Ludo League</span>
             </Link>
         </SidebarHeader>
@@ -373,7 +373,7 @@ const SidebarSheet = ({ children }: { children: React.ReactNode }) => {
               <SheetTitle>
                 <SheetClose asChild>
                     <Link href="/dashboard" className="flex items-center gap-2">
-                        <Image src="/logo.png" alt="Ludo League Logo" width={32} height={32} />
+                        <Image src="/icon-192x192.png" alt="Ludo League Logo" width={32} height={32} />
                         <span className="font-bold text-lg">Ludo League</span>
                     </Link>
                 </SheetClose>
