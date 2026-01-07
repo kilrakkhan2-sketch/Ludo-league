@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
+       {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
@@ -42,8 +46,6 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
-    // Allow serving local images from the public directory
-    unoptimized: true,
   },
   output: 'standalone',
 };
