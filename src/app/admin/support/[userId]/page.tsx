@@ -1,176 +1,213 @@
 
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { useUser, useFirestore } from '@/firebase';
-import { useAdminOnly } from '@/hooks/useAdminOnly';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, Timestamp, doc, getDoc } from 'firebase/firestore';
-import { Send, Loader2, ArrowLeft } from 'lucide-react';
+import { useState, useEffect, useRef, FormEvent } from 'react';
+import { db } from '@/lib/firebase';
+import { collection, query, orderBy, onSnapshot, doc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useAdmin } from '@/firebase/use-admin'; 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Loader2, Send, ArrowLeft, UserCircle, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { UserProfile } from '@/lib/types';
+import { Badge } from '@/components/ui/badge';
 
-type Message = {
+interface Message {
   id: string;
   text: string;
-  senderId: string;
-  senderName: string;
-  senderAvatar: string;
-  createdAt: Timestamp;
-};
+  sender: 'user' | 'admin';
+  createdAt: Date;
+}
 
-const ChatMessage = ({ message, isAdminMessage, targetUser }: { message: Message; isAdminMessage: boolean, targetUser: any }) => {
-    const isSupportTeamMessage = message.senderName === 'Support Team';
+interface SupportChatPageProps {
+  params: {
+    userId: string;
+  };
+}
 
-    const senderAvatar = isSupportTeamMessage ? '/icon-192x192.png' : targetUser?.photoURL;
-    const senderName = isSupportTeamMessage ? 'Support Team' : targetUser?.displayName;
+function getInitials(name: string) {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+}
 
-    return (
-        <div className={cn('flex items-end gap-2.5', isSupportTeamMessage ? 'justify-end' : 'justify-start')}>
-          {!isSupportTeamMessage && (
-            <Avatar className="h-9 w-9 border-2 border-white shadow-sm">
-              <AvatarImage src={senderAvatar} />
-              <AvatarFallback>{senderName?.charAt(0) || 'U'}</AvatarFallback>
-            </Avatar>
-          )}
-          <div
-            className={cn(
-              'group max-w-sm md:max-w-md lg:max-w-lg shadow-md',
-              isSupportTeamMessage
-                ? 'bg-gradient-to-br from-slate-700 to-slate-900 text-slate-50 rounded-t-2xl rounded-l-2xl'
-                : 'bg-white dark:bg-slate-800 text-foreground rounded-t-2xl rounded-r-2xl'
-            )}
-          >
-            <div className="px-4 py-3">
-                <p className="text-sm font-medium">{message.text}</p>
-            </div>
-           
-          </div>
-           {isSupportTeamMessage && (
-                 <div className="flex flex-col items-end text-xs text-muted-foreground">
-                    <span>{message.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-            )}
-             {!isSupportTeamMessage && (
-                 <div className="flex flex-col items-start text-xs text-muted-foreground">
-                    <span>{message.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-            )}
-        </div>
-      );
-};
-
-export default function AdminSupportChatPage() {
-  useAdminOnly();
-  const { user } = useUser();
-  const firestore = useFirestore();
-  const params = useParams();
-  const targetUserId = params.userId as string;
+export default function SupportChatPage({ params }: SupportChatPageProps) {
+  const { admin } = useAdmin(); // Assuming you have a hook for admin auth
+  const { userId } = params;
 
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [targetUser, setTargetUser] = useState<any>(null);
-  const messagesEndRef = useRef<null | HTMLDivElement>(null);
+  const [newMessage, setNewMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!firestore || !targetUserId) return;
-
     const fetchUserData = async () => {
-      const userRef = doc(firestore, 'users', targetUserId);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        setTargetUser({ uid: userSnap.id, ...userSnap.data() });
+      const userDocRef = doc(db, 'users', userId);
+      const userDocSnap = await getDoc(userDocRef);
+      if (userDocSnap.exists()) {
+        setUserProfile(userDocSnap.data() as UserProfile);
       } else {
-        console.error('Target user not found');
+        console.error("User not found");
       }
     };
-    
+
     fetchUserData();
 
-    setLoading(true);
-    const messagesRef = collection(firestore, `supportChats/${targetUserId}/messages`);
-    const q = query(messagesRef, orderBy('createdAt', 'asc'));
+    const messagesQuery = query(
+      collection(db, `supportChats/${userId}/messages`),
+      orderBy('createdAt', 'asc')
+    );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
-      setMessages(msgs);
+    const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+      const fetchedMessages: Message[] = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          text: data.text,
+          sender: data.sender,
+          createdAt: data.createdAt.toDate(),
+        } as Message;
+      });
+      setMessages(fetchedMessages);
       setLoading(false);
-    }, (error) => {
-        console.error("Error fetching chat messages: ", error);
-        setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [firestore, targetUserId]);
+  }, [userId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault();
-    if (!firestore || !user || !newMessage.trim() || !targetUserId) return;
+    if (!newMessage.trim() || !admin) return;
 
-    const messagesRef = collection(firestore, `supportChats/${targetUserId}/messages`);
-    await addDoc(messagesRef, {
-      text: newMessage,
-      senderId: user.uid, // The admin's UID
-      senderName: 'Support Team',
-      senderAvatar: '/icon-192x192.png', // Admin avatar
-      createdAt: serverTimestamp(),
-    });
-    setNewMessage('');
+    setIsSending(true);
+    const messagesColRef = collection(db, `supportChats/${userId}/messages`);
+
+    try {
+      await addDoc(messagesColRef, {
+        text: newMessage,
+        sender: 'admin',
+        createdAt: serverTimestamp(),
+        read: false,
+      });
+      setNewMessage('');
+    } catch (error) {
+      console.error("Error sending message:", error);
+      // Handle error (e.g., show toast)
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
-    <div className="space-y-4">
-        <Button asChild variant="ghost" className="-ml-4">
-            <Link href="/admin/support">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Inbox
-            </Link>
-      </Button>
-
-       <Card className="shadow-lg dark:shadow-slate-900">
-        <CardHeader className="border-b dark:border-slate-700">
-          <div className='flex items-center gap-4'>
-             <Avatar className="h-12 w-12 border-2 border-white shadow-lg">
-                <AvatarImage src={targetUser?.photoURL} />
-                <AvatarFallback>{targetUser?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+    <div className="grid md:grid-cols-3 gap-6 h-[calc(100vh-8rem)]">
+      {/* User Info Column */}
+      <Card className="md:col-span-1 h-fit">
+        <CardHeader className='flex flex-row items-center gap-4'>
+            <Avatar className="h-16 w-16">
+              <AvatarImage src={userProfile?.photoURL || undefined} />
+              <AvatarFallback>{userProfile ? getInitials(userProfile.displayName) : 'U'}</AvatarFallback>
             </Avatar>
             <div>
-                 <CardTitle className='text-xl'>Conversation with {targetUser?.displayName || 'User'}</CardTitle>
-                 <CardDescription>User ID: {targetUserId}</CardDescription>
+                <CardTitle>{userProfile?.displayName}</CardTitle>
+                <CardDescription>{userProfile?.email}</CardDescription>
             </div>
-          </div>
         </CardHeader>
-        <CardContent className="p-0 flex flex-col h-[65vh]">
-          <div className="flex-grow space-y-6 overflow-y-auto p-4 md:p-6 bg-slate-50 dark:bg-slate-900/50">
-              {loading && <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>}
-              {!loading && messages.length === 0 && <div className="flex flex-col justify-center items-center h-full text-center text-muted-foreground"><MessageSquare className="h-12 w-12 mb-4"/><p className='font-medium'>This user has not sent any messages yet.</p></div>}
-              {!loading && messages.map(msg => <ChatMessage key={msg.id} message={msg} isAdminMessage={true} targetUser={targetUser} />)}
-              <div ref={messagesEndRef} />
-          </div>
-           <div className="p-4 border-t dark:border-slate-700 bg-background">
-                <form onSubmit={handleSendMessage} className="flex items-center gap-3">
-                <Input
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type your reply as Support Team..."
-                    autoComplete="off"
-                    className="h-12 text-base rounded-full focus-visible:ring-primary/50 dark:bg-slate-800"
-                />
-                <Button type="submit" size="icon" className="h-12 w-12 rounded-full flex-shrink-0 bg-slate-800 hover:bg-slate-900 text-white" disabled={!newMessage.trim()}>
-                    <Send className="h-5 w-5" />
-                </Button>
-                </form>
+        <CardContent className='space-y-4'>
+            <div className="flex justify-between items-center">
+                <span className='text-sm font-medium text-muted-foreground'>KYC Status</span>
+                 <Badge
+                    variant={userProfile?.kycStatus === 'approved' ? 'default' : 'destructive'}
+                    className={cn({
+                        'bg-green-100 text-green-800': userProfile?.kycStatus === 'approved',
+                        'bg-red-100 text-red-800': userProfile?.kycStatus === 'rejected',
+                        'bg-yellow-100 text-yellow-800': userProfile?.kycStatus === 'pending',
+                    })}
+                >
+                    {userProfile?.kycStatus?.toUpperCase() || 'N/A'}
+                </Badge>
             </div>
+             <div className="flex justify-between items-center">
+                <span className='text-sm font-medium text-muted-foreground'>Wallet Balance</span>
+                <span className='font-bold'>₹{userProfile?.walletBalance?.toFixed(2) || '0.00'}</span>
+            </div>
+            <Button asChild className='w-full'>
+                <Link href={`/admin/users/${userId}`}>
+                    <UserCircle className="mr-2 h-4 w-4"/> View Full Profile
+                </Link>
+            </Button>
         </CardContent>
+      </Card>
+
+      {/* Chat Column */}
+      <Card className="md:col-span-2 flex flex-col h-full">
+        <CardHeader className='flex-shrink-0'>
+            <div className='flex items-center gap-4'>
+                <Button asChild variant='outline' size='icon'>
+                     <Link href="/admin/support"><ArrowLeft className="h-4 w-4" /></Link>
+                </Button>
+                <CardTitle>Chat with {userProfile?.displayName}</CardTitle>
+            </div>
+        </CardHeader>
+        <CardContent className="flex-grow overflow-y-auto p-4 space-y-4">
+          {loading ? (
+            <div className="flex justify-center items-center h-full">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : (
+            messages.map((msg, index) => (
+              <div
+                key={index}
+                className={cn('flex items-end gap-2',
+                    msg.sender === 'admin' ? 'justify-end' : 'justify-start')}
+              >
+                {msg.sender === 'user' && (
+                    <Avatar className='h-8 w-8'>
+                         <AvatarImage src={userProfile?.photoURL || undefined} />
+                         <AvatarFallback>{userProfile ? getInitials(userProfile.displayName) : 'U'}</AvatarFallback>
+                    </Avatar>
+                )}
+                <div
+                  className={cn(
+                    'rounded-lg px-4 py-2 max-w-sm',
+                    msg.sender === 'admin'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted'
+                  )}
+                >
+                  <p className="text-sm">{msg.text}</p>
+                  <p className="text-xs mt-1 text-right opacity-70">{msg.createdAt.toLocaleTimeString()}</p>
+                </div>
+                 {msg.sender === 'admin' && (
+                    <Avatar className='h-8 w-8'>
+                        <AvatarFallback><ShieldCheck className='h-5 w-5'/></AvatarFallback>
+                    </Avatar>
+                )}
+              </div>
+            ))
+          )}
+          <div ref={messagesEndRef} />
+        </CardContent>
+        <CardFooter className="p-4 border-t flex-shrink-0">
+          <form onSubmit={handleSendMessage} className="flex w-full items-center gap-2">
+            <Input
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Type your message..."
+              autoComplete="off"
+            />
+            <Button type="submit" disabled={isSending}>
+              {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              <span className="sr-only">Send</span>
+            </Button>
+          </form>
+        </CardFooter>
       </Card>
     </div>
   );

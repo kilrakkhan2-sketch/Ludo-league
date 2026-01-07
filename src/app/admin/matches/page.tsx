@@ -33,15 +33,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Match, MatchResult } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
-  Crown,
   Eye,
   Users,
   XCircle,
   Shield,
-  HandCoins,
   CheckCircle2,
   AlertTriangle,
-  Ban,
   Loader2,
   Trophy,
 } from 'lucide-react';
@@ -52,14 +49,9 @@ import {
   collection,
   onSnapshot,
   query,
-  where,
-  doc,
-  runTransaction,
-  getDocs,
-  updateDoc,
   orderBy,
 } from 'firebase/firestore';
-import { distributeWinnings } from '@/ai/flows/distribute-winnings';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useSearchParams } from 'next/navigation';
 import NoSsr from '@/components/NoSsr';
 
@@ -76,12 +68,12 @@ const MatchDetailDialog = ({
 }) => {
   const [match, setMatch] = useState(initialMatch);
   const [results, setResults] = useState<MatchResult[]>([]);
-  const [isProcessing, setIsProcessing] = useState<string | null>(null); // Use string to track which player is being processed
-  const [isDistributing, setIsDistributing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(startOpen);
 
   const { toast } = useToast();
   const firestore = useFirestore();
+  const functions = getFunctions();
 
   useEffect(() => {
     setMatch(initialMatch); // Keep local state in sync with prop
@@ -94,7 +86,7 @@ const MatchDetailDialog = ({
   useEffect(() => {
     if (!firestore || !isOpen) return;
     const resultsRef = collection(firestore, `matches/${match.id}/results`);
-    const q = query(resultsRef, orderBy('position', 'asc'));
+    const q = query(resultsRef, orderBy('submittedAt', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const resultsData = snapshot.docs.map(
         (doc) => ({ id: doc.id, ...doc.data() } as MatchResult)
@@ -111,33 +103,37 @@ const MatchDetailDialog = ({
 
   const winnerPlayer = match.winnerId ? match.players.find((p) => p.id === match.winnerId) : null;
 
-  const handleDeclareWinner = async (winnerId: string) => {
-    if (!firestore) return;
+  const handleDeclareWinnerAndDistribute = async (winnerId: string) => {
     setIsProcessing(winnerId);
     const winnerPlayerInfo = match.players.find((p) => p.id === winnerId);
     toast({
       title: 'Processing...',
-      description: `Declaring ${winnerPlayerInfo?.name || 'player'} as the winner.`,
+      description: `Declaring ${winnerPlayerInfo?.name || 'player'} as the winner and distributing prize.`,
     });
-
+    
     try {
-      const matchRef = doc(firestore, 'matches', match.id);
-      await updateDoc(matchRef, { status: 'completed', winnerId: winnerId });
+        const declareWinnerAndDistribute = httpsCallable(functions, 'declareWinnerAndDistribute');
+        const result = await declareWinnerAndDistribute({ matchId: match.id, winnerId: winnerId });
 
-      const updatedMatch = { ...match, status: 'completed', winnerId: winnerId } as Match;
-      setMatch(updatedMatch);
-      onUpdate(updatedMatch);
+        const data = result.data as { success: boolean; message: string };
 
-      toast({
-        title: 'Winner Declared!',
-        description: `${winnerPlayerInfo?.name || 'Player'} is now the winner. You can now distribute the prize.`,
-        variant: 'default',
-        className: 'bg-green-100 text-green-800',
-      });
+        if(data.success){
+            toast({
+                title: 'Action Successful!',
+                description: data.message,
+                variant: 'default',
+                className: 'bg-green-100 text-green-800',
+            });
+            // The onSnapshot listener will automatically update the UI.
+            handleOpenChange(false);
+        } else {
+             throw new Error(data.message);
+        }
+
     } catch (error: any) {
       toast({
-        title: 'Error Declaring Winner',
-        description: error.message,
+        title: 'Error Performing Action',
+        description: error.message || 'An unexpected error occurred.',
         variant: 'destructive',
       });
     } finally {
@@ -145,49 +141,6 @@ const MatchDetailDialog = ({
     }
   };
 
-  const handleDistributeWinnings = async () => {
-    if (!match.winnerId) {
-       toast({
-        title: 'No winner declared for this match.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    const winnerPlayerInfo = match.players.find(p => p.id === match.winnerId);
-    
-    setIsDistributing(true);
-    toast({ title: "Distributing winnings...", description: `Processing payment for ${winnerPlayerInfo?.name || 'the winner'}`});
-
-    try {
-      const result = await distributeWinnings({
-        matchId: match.id,
-      });
-      if (result.success) {
-        toast({
-          title: 'Success',
-          description: result.message,
-          className: 'bg-green-100 text-green-800',
-        });
-        const updatedMatch = { ...match, prizeDistributed: true } as Match;
-        setMatch(updatedMatch); // Update local state
-        onUpdate(updatedMatch); // Update parent state
-      } else {
-        toast({
-          title: 'Distribution Failed',
-          description: result.message,
-          variant: 'destructive',
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsDistributing(false);
-    }
-  };
 
   const handleAction = (action: string) => {
     toast({
@@ -266,13 +219,13 @@ const MatchDetailDialog = ({
                             />
                             Position: {result.position}
                           </div>
-                           {result.isFlaggedForFraud && <Badge variant="destructive">Flagged</Badge>}
+                           {(result as any).isFlaggedForFraud && <Badge variant="destructive">Flagged</Badge>}
                         </div>
-                        {['disputed', 'in-progress'].includes(match.status) && (
+                         {match.status === 'disputed' && !match.prizeDistributed && (
                           <Button
                             size="sm"
                             className="w-full text-green-50 bg-green-600 hover:bg-green-700"
-                            onClick={() => handleDeclareWinner(result.userId)}
+                            onClick={() => handleDeclareWinnerAndDistribute(result.userId)}
                             disabled={!!isProcessing}
                           >
                             {isProcessing === result.userId ? (
@@ -280,7 +233,7 @@ const MatchDetailDialog = ({
                             ) : (
                               <CheckCircle2 className="h-4 w-4 mr-2" />
                             )}{' '}
-                            Declare {(player as any)?.name} as Winner
+                            Declare Winner & Distribute Prize
                           </Button>
                         )}
                       </div>
@@ -314,22 +267,6 @@ const MatchDetailDialog = ({
             </div>
           </div>
           <div className="flex flex-wrap justify-end gap-2 pt-4 border-t">
-            {match.status === 'completed' &&
-              !match.prizeDistributed &&
-              match.winnerId && (
-                <Button
-                  variant="accent"
-                  onClick={handleDistributeWinnings}
-                  disabled={isDistributing}
-                >
-                  {isDistributing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <HandCoins className="mr-2 h-4 w-4" />
-                  )}{' '}
-                  Distribute Prize to {winnerPlayer?.name}
-                </Button>
-              )}
             {match.prizeDistributed && (
               <p className="text-sm text-green-600 font-medium flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4" /> Winnings already distributed.
@@ -546,5 +483,3 @@ export default function AdminMatchesPage() {
         </React.Suspense>
     )
 }
-
-    

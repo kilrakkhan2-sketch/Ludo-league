@@ -1,10 +1,12 @@
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const { HttpsError } = require('firebase-functions/v1/https');
 
 admin.initializeApp();
 
 const db = admin.firestore();
+
 
 // Function to set admin claims and also update the user's document in Firestore.
 exports.setAdminClaim = functions.https.onCall(async (data, context) => {
@@ -144,61 +146,63 @@ exports.onDepositApproved = functions.firestore
 exports.onMatchmakingQueueWrite = functions.firestore
   .document('matchmakingQueue/{userId}')
   .onWrite(async (change, context) => {
-    // If a user cancels their search, the document is deleted.
     if (!change.after.exists) {
       console.log(`User ${context.params.userId} left the queue.`);
       return null;
     }
 
     const newUserInQueue = change.after.data();
-    const entryFee = newUserInQueue.entryFee;
-    const userId = newUserInQueue.userId;
+    const { entryFee, userId, status } = newUserInQueue;
+    
+    if (status !== 'waiting') {
+        return null;
+    }
 
     const queueRef = db.collection('matchmakingQueue');
-    // Find another user in the queue with the same entry fee who is not the current user.
     const q = queueRef
       .where('entryFee', '==', entryFee)
-      .where('status', '==', 'waiting')
-      .where('userId', '!=', userId)
-      .limit(1);
+      .where('status', '==', 'waiting');
 
     const snapshot = await q.get();
 
-    if (snapshot.empty) {
-      console.log(`No opponent found for ${userId} with fee ${entryFee}. Waiting...`);
+    if (snapshot.docs.length < 2) {
+      console.log(`Not enough players for fee ${entryFee}. Waiting...`);
       return null;
     }
 
-    // --- Opponent Found! ---
-    const opponent = snapshot.docs[0].data();
+    const opponentDoc = snapshot.docs.find(doc => doc.id !== userId);
+    
+    if (!opponentDoc) {
+      console.log(`No valid opponent found for ${userId} at fee ${entryFee}. Waiting...`);
+      return null;
+    }
+
+    const opponent = opponentDoc.data();
     const opponentId = opponent.userId;
     console.log(`Opponent found for ${userId}! Matched with ${opponentId}`);
 
     const player1QueueRef = db.doc(`matchmakingQueue/${userId}`);
-    const player2QueueRef = db.doc(`matchmakingQueue/${opponentId}`);
+    const player2QueueRef = opponentDoc.ref;
     
-    // --- ATOMIC TRANSACTION START ---
     try {
       await db.runTransaction(async (transaction) => {
-        // Double-check the opponent is still waiting inside the transaction
-        const opponentDoc = await transaction.get(player2QueueRef);
-        if (!opponentDoc.exists || opponentDoc.data().status !== 'waiting') {
-            // Opponent was snatched by another transaction, so the current user keeps waiting.
-            console.log(`Opponent ${opponentId} was already matched. ${userId} will continue waiting.`);
-            return; // Abort this transaction
+        const p1Doc = await transaction.get(player1QueueRef);
+        const p2Doc = await transaction.get(player2QueueRef);
+
+        if (!p1Doc.exists || !p2Doc.exists || p1Doc.data().status !== 'waiting' || p2Doc.data().status !== 'waiting') {
+            console.log('One of the players is no longer waiting. Aborting match creation.');
+            return;
         }
 
-        // 1. Lock both players in the queue to prevent them from being matched with others.
-        transaction.update(player1QueueRef, { status: 'matched', matchedWith: opponentId });
-        transaction.update(player2QueueRef, { status: 'matched', matchedWith: userId });
+        transaction.update(player1QueueRef, { status: 'matched' });
+        transaction.update(player2QueueRef, { status: 'matched' });
 
-        // 2. Create the new match document.
         const newMatchRef = db.collection('matches').doc();
-        const prizePool = entryFee * 1.8; // 10% commission
+        const prizePool = entryFee * 1.8;
         transaction.set(newMatchRef, {
             id: newMatchRef.id,
-            creatorId: userId, // Arbitrarily assign one player as creator
-            status: 'waiting', // Starts as 'waiting' until room code is added
+            creatorId: userId,
+            status: 'waiting',
             entryFee: entryFee,
             prizePool: prizePool,
             maxPlayers: 2,
@@ -210,7 +214,6 @@ exports.onMatchmakingQueueWrite = functions.firestore
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        // 3. Create entry-fee transactions for both players.
         const player1TransRef = db.collection('transactions').doc();
         const player2TransRef = db.collection('transactions').doc();
         const transactionData = {
@@ -223,13 +226,11 @@ exports.onMatchmakingQueueWrite = functions.firestore
         transaction.set(player1TransRef, { ...transactionData, userId: userId, description: `Entry fee for match ${newMatchRef.id}` });
         transaction.set(player2TransRef, { ...transactionData, userId: opponentId, description: `Entry fee for match ${newMatchRef.id}` });
 
-        // 4. Update both users' profiles with the active match ID.
         const player1UserRef = db.doc(`users/${userId}`);
         const player2UserRef = db.doc(`users/${opponentId}`);
         transaction.update(player1UserRef, { activeMatchId: newMatchRef.id });
         transaction.update(player2UserRef, { activeMatchId: newMatchRef.id });
 
-        // 5. Delete players from the matchmaking queue.
         transaction.delete(player1QueueRef);
         transaction.delete(player2QueueRef);
       });
@@ -238,10 +239,52 @@ exports.onMatchmakingQueueWrite = functions.firestore
     } catch (error) {
       console.error("Error in matchmaking transaction: ", error);
     }
-    // --- ATOMIC TRANSACTION END ---
     
     return null;
 });
+
+
+exports.onMatchCreate = functions.firestore
+  .document('matches/{matchId}')
+  .onCreate(async (snap, context) => {
+    const match = snap.data();
+    const creatorId = match.creatorId;
+
+    // Get all users' FCM tokens except the creator
+    const usersSnapshot = await db.collection('users').get();
+    const tokens = [];
+    usersSnapshot.forEach(doc => {
+      const user = doc.data();
+      if (doc.id !== creatorId && user.fcmToken) {
+        tokens.push(user.fcmToken);
+      }
+    });
+
+    if (tokens.length === 0) {
+      console.log('No tokens to send notifications to.');
+      return null;
+    }
+
+    const payload = {
+      notification: {
+        title: 'New Match Available!',
+        body: `A new match for ₹${match.prizePool} has been created. Tap to join now!`,
+        clickAction: `/lobby`,
+      },
+    };
+
+    try {
+      const response = await admin.messaging().sendEachForMulticast({ tokens, ...payload });
+      console.log('Notifications sent successfully:', response.successCount);
+      if (response.failureCount > 0) {
+        console.log('Failed to send notifications to some devices:', response.failureCount);
+      }
+      return response;
+    } catch (error) {
+      console.error('Error sending notifications:', error);
+      return null;
+    }
+  });
 
 
 // New, advanced onResultSubmit function
@@ -260,25 +303,21 @@ exports.onResultSubmit = functions.firestore
 
       const matchData = matchDoc.data();
 
-      // Don't process if match is already concluded
       if (['completed', 'disputed', 'cancelled'].includes(matchData.status)) {
-        console.log(`Match ${matchId} already concluded. Skipping fraud check.`);
+        console.log(`Match ${matchId} already concluded. Skipping result processing.`);
         return null;
       }
       
       const resultsCollectionRef = matchRef.collection('results');
       const resultsSnapshot = await resultsCollectionRef.get();
       
-      // If not all players have submitted, do nothing yet.
       if (resultsSnapshot.size < matchData.playerIds.length) {
         console.log(`Waiting for all players to submit results for match ${matchId}.`);
         return null;
       }
       
-      // All players have submitted, now run fraud detection
       const results = resultsSnapshot.docs.map(doc => doc.data());
       
-      // 1. Check for multiple win claims
       const winClaims = results.filter(r => r.status === 'win');
       if (winClaims.length > 1) {
         await matchRef.update({ status: 'disputed', reviewReason: 'Multiple players claimed victory.' });
@@ -286,7 +325,6 @@ exports.onResultSubmit = functions.firestore
         return null;
       }
       
-      // 2. Check for duplicate screenshots
       const screenshotUrls = results.map(r => r.screenshotUrl);
       const uniqueUrls = new Set(screenshotUrls);
       if (screenshotUrls.length !== uniqueUrls.size) {
@@ -295,13 +333,10 @@ exports.onResultSubmit = functions.firestore
         return null;
       }
 
-      // If no fraud detected, complete the match
       if (winClaims.length === 1) {
-        // Clear winner, complete the match
         await matchRef.update({ status: 'completed', winnerId: winClaims[0].userId });
         console.log(`Match ${matchId} completed. Winner: ${winClaims[0].userId}`);
       } else {
-        // No one claimed win, or some other edge case
         await matchRef.update({ status: 'disputed', reviewReason: 'No clear winner claimed.' });
         console.log(`Match ${matchId} flagged for dispute: No clear winner.`);
       }
@@ -314,4 +349,90 @@ exports.onResultSubmit = functions.firestore
     }
   });
 
-    
+  exports.declareWinnerAndDistribute = functions.https.onCall(async (data, context) => {
+    if (context.auth?.token?.admin !== true) {
+        throw new HttpsError('permission-denied', 'Only admins can call this function.');
+    }
+
+    const { matchId, winnerId } = data;
+    if (!matchId || !winnerId) {
+        throw new HttpsError('invalid-argument', 'The function must be called with "matchId" and "winnerId" arguments.');
+    }
+
+    const matchRef = db.collection('matches').doc(matchId);
+
+    try {
+        let winningPlayer;
+        let finalMessage = 'An unknown error occurred';
+
+        await db.runTransaction(async (transaction) => {
+            const matchDoc = await transaction.get(matchRef);
+            if (!matchDoc.exists) {
+                throw new HttpsError('not-found', 'Match not found.');
+            }
+            const matchData = matchDoc.data();
+
+            if (matchData.status === 'completed' && matchData.prizeDistributed) {
+                throw new HttpsError('failed-precondition', 'Winnings have already been distributed for this match.');
+            }
+
+            if (!matchData.playerIds.includes(winnerId)) {
+                throw new HttpsError('invalid-argument', 'The declared winner is not a player in this match.');
+            }
+
+            winningPlayer = matchData.players.find(p => p.id === winnerId);
+            const prizePool = matchData.prizePool;
+            const commission = prizePool * 0.10;
+            const amountToCredit = prizePool - commission;
+
+            // 1. Update the match document
+            transaction.update(matchRef, { 
+                status: 'completed', 
+                winnerId: winnerId,
+                prizeDistributed: true,
+            });
+
+            // 2. Create the winnings transaction
+            const winningsTransactionRef = db.collection('transactions').doc();
+            transaction.set(winningsTransactionRef, {
+                userId: winnerId,
+                type: 'winnings',
+                amount: amountToCredit,
+                status: 'completed',
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                relatedMatchId: matchId,
+                description: `Winnings for match ${matchId}`,
+            });
+
+            // 3. Update player stats
+            for (const playerId of matchData.playerIds) {
+                const userRef = db.collection('users').doc(playerId);
+                const userDoc = await transaction.get(userRef);
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    const totalMatchesPlayed = (userData.totalMatchesPlayed || 0) + 1;
+                    const totalMatchesWon = (userData.totalMatchesWon || 0) + (playerId === winnerId ? 1 : 0);
+                    const winRate = totalMatchesPlayed > 0 ? Math.round((totalMatchesWon / totalMatchesPlayed) * 100) : 0;
+                    
+                    transaction.update(userRef, {
+                        totalMatchesPlayed: totalMatchesPlayed,
+                        totalMatchesWon: totalMatchesWon,
+                        winRate: winRate,
+                    });
+                }
+            }
+
+            finalMessage = `Successfully declared ${winningPlayer.name} as winner and distributed prize of ₹${amountToCredit}.`;
+        });
+        
+        console.log(finalMessage);
+        return { success: true, message: finalMessage };
+
+    } catch (error) {
+        console.error('Error in declareWinnerAndDistribute:', error);
+        if (error instanceof HttpsError) {
+            throw error;
+        }
+        throw new HttpsError('internal', 'An unexpected error occurred during prize distribution.', error);
+    }
+});

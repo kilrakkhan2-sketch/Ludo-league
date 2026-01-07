@@ -29,7 +29,8 @@ service cloud.firestore {
     // User Profile Documents
     match /users/{userId} {
       allow read: if request.auth != null; // Any auth user can read profiles.
-      allow create, update: if isOwner(userId); // Only owner can write to their profile.
+      allow create: if isOwner(userId); // Only owner can create their profile.
+      allow update: if isOwner(userId) || isAdmin(); // Owner can update their own, admin can update any.
     }
     
     // Matchmaking Queue
@@ -62,27 +63,30 @@ service cloud.firestore {
       allow write: if isOwner(userId);
     }
 
-    // Transactions Collection (highly restricted)
+    // Transactions Collection
     match /transactions/{transactionId} {
-      allow read: if isOwner(resource.data.userId);
-      allow create, update, delete: if false; // Functions only
-      allow list: if request.auth.uid == request.query.filters[0].value;
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isAdmin(); // Admins can create transactions (e.g. for payouts)
+      allow update, delete: if false; // Functions only for updates
+      allow list: if request.auth.uid == request.query.filters[0].value || isAdmin();
     }
     
     // Deposit Requests
     match /depositRequests/{depositId} {
-        allow read: if isOwner(resource.data.userId);
+        allow read: if isOwner(resource.data.userId) || isAdmin();
         allow create: if isOwner(request.resource.data.userId);
-        allow list: if request.auth.uid == request.query.filters[0].value;
-        allow update, delete: if false;
+        allow list: if request.auth.uid == request.query.filters[0].value || isAdmin();
+        allow update: if isAdmin(); // Admins can approve/reject
+        allow delete: if false;
     }
     
     // Withdrawal Requests
     match /withdrawalRequests/{withdrawalId} {
-        allow read: if isOwner(resource.data.userId);
+        allow read: if isOwner(resource.data.userId) || isAdmin();
         allow create: if isOwner(request.resource.data.userId);
-        allow list: if request.auth.uid == request.query.filters[0].value;
-        allow update, delete: if false;
+        allow list: if request.auth.uid == request.query.filters[0].value || isAdmin();
+        allow update: if isAdmin(); // Admins can approve/reject
+        allow delete: if false;
     }
 
     // Support Chat

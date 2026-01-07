@@ -25,13 +25,14 @@ import { ArrowDownLeft, ArrowUpRight, UploadCloud, DownloadCloud, Landmark, Wall
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { useUser, useFirestore } from "@/firebase"
 import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp, doc } from "firebase/firestore"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import type { Transaction, UpiConfiguration, DepositRequest, WithdrawalRequest } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
-import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage"
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import imageCompression from 'browser-image-compression';
 
 const bannerImage = PlaceHolderImages.find(img => img.id === 'wallet-banner');
 
@@ -135,22 +136,28 @@ export default function WalletPage() {
     };
   }, [firestore, user]);
 
-  const getFileAsDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          resolve(event.target.result as string);
-        } else {
-          reject(new Error("Failed to read file."));
-        }
-      };
-      reader.onerror = (error) => {
-        reject(error);
-      };
-      reader.readAsDataURL(file);
-    });
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+        setDepositScreenshot(e.target.files[0]);
+    }
   };
+
+  const compressImage = useCallback(async (file: File) => {
+      const options = {
+          maxSizeMB: 1, // Max file size in MB
+          maxWidthOrHeight: 1920, // Max width or height
+          useWebWorker: true,
+      };
+      try {
+          toast({ title: 'Compressing image...', description: 'Please wait a moment.' });
+          const compressedFile = await imageCompression(file, options);
+          return compressedFile;
+      } catch (error) {
+          console.error('Image compression error:', error);
+          toast({ title: 'Compression Failed', description: 'Could not compress image. Uploading original file.', variant: 'destructive' });
+          return file; // Fallback to original file
+      }
+  }, [toast]);
 
   const handleDepositSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -174,12 +181,13 @@ export default function WalletPage() {
     
     setIsSubmitting(true);
     try {
-        const dataUrl = await getFileAsDataUrl(depositScreenshot);
+        const compressedFile = await compressImage(depositScreenshot);
+        
         const storage = getStorage();
-        const storageRef = ref(storage, `deposits/${user.uid}/${Date.now()}`);
+        const storageRef = ref(storage, `deposits/${user.uid}/${Date.now()}-${compressedFile.name}`);
 
-        await uploadString(storageRef, dataUrl, 'data_url');
-        const screenshotUrl = await getDownloadURL(storageRef);
+        const uploadResult = await uploadBytes(storageRef, compressedFile);
+        const screenshotUrl = await getDownloadURL(uploadResult.ref);
 
         await addDoc(collection(firestore, 'depositRequests'), {
             userId: user.uid,
@@ -300,7 +308,7 @@ export default function WalletPage() {
                                     </div>
                                      <div className="grid gap-2">
                                         <Label htmlFor="screenshot">Payment Screenshot</Label>
-                                        <Input name="screenshot" id="screenshot" type="file" required onChange={(e) => setDepositScreenshot(e.target.files?.[0] || null)} className="file:text-primary"/>
+                                        <Input name="screenshot" id="screenshot" type="file" required onChange={handleFileChange} className="file:text-primary" accept="image/*"/>
                                     </div>
                                 </div>
                                 

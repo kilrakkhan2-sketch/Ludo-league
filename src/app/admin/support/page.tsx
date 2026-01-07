@@ -1,150 +1,165 @@
 
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { collection, getDocs, onSnapshot, query, orderBy, limit, doc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
-import { useAdminOnly } from '@/hooks/useAdminOnly';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { collection, getDocs, doc, getDoc, orderBy, query, limit } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, MessageSquare, ChevronRight } from 'lucide-react';
+import { Loader2, MessageSquare, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { type DocumentData } from 'firebase/firestore';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface ChatThread {
   userId: string;
-  lastMessage: string;
-  lastMessageTimestamp: Date | null;
   userName: string;
+  userEmail: string;
+  lastMessage?: string;
+  lastMessageAt?: Date;
   userAvatar: string;
 }
 
-// A new component to fetch and display the last message for a thread
-const LastMessage = ({ firestore, userId }: { firestore: any; userId: string }) => {
-  const [lastMsg, setLastMsg] = useState<{text: string, timestamp: string}>({ text: 'No messages yet...', timestamp: '' });
+function getInitials(name: string) {
+    const names = name.split(' ');
+    const initials = names.map(n => n[0]).join('');
+    return initials.toUpperCase();
+}
 
-  useEffect(() => {
-    if (!firestore || !userId) return;
-
-    const messagesRef = collection(firestore, `supportChats/${userId}/messages`);
-    const q = query(messagesRef, orderBy('createdAt', 'desc'), limit(1));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        const lastDoc = snapshot.docs[0].data();
-        const text = lastDoc.text || '';
-        // Truncate message if too long
-        const snippet = text.length > 50 ? `${text.substring(0, 50)}...` : text;
-        const time = lastDoc.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '';
-        setLastMsg({ text: snippet, timestamp: time });
-      } else {
-        setLastMsg({ text: 'No messages yet...', timestamp: '' });
-      }
-    });
-
-    return () => unsubscribe();
-  }, [firestore, userId]);
-
-  return (
-    <div className='flex justify-between items-center w-full'>
-        <p className="text-sm text-muted-foreground truncate">
-            {lastMsg.text}
-        </p>
-        <span className="text-xs text-muted-foreground ml-2 whitespace-nowrap">{lastMsg.timestamp}</span>
-    </div>
-  )
-};
-
-
-export default function AdminSupportPage() {
-  useAdminOnly();
-  const firestore = useFirestore();
-  const [chatThreads, setChatThreads] = useState<ChatThread[]>([]);
+export default function SupportInboxPage() {
+  const [threads, setThreads] = useState<ChatThread[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchChats = async () => {
-      if (!firestore) return;
-
+    const fetchThreads = async () => {
       setLoading(true);
+      setError(null);
       try {
-        const supportChatsRef = collection(firestore, 'supportChats');
-        const chatDocs = await getDocs(supportChatsRef);
-        const threads: ChatThread[] = [];
+        const chatsCollectionRef = collection(db, 'supportChats');
+        const chatDocsSnapshot = await getDocs(chatsCollectionRef);
 
-        for (const chatDoc of chatDocs.docs) {
-            // The doc id is the user's UID
-            const userId = chatDoc.id;
-            // We need to fetch user details separately
-            const userRef = doc(firestore, 'users', userId);
-            const userSnap = await getDoc(userRef);
-            
-            if(userSnap.exists()){
-                const userData = userSnap.data();
-                threads.push({
-                    userId: userId,
-                    userName: userData.displayName || 'Unknown User',
-                    userAvatar: userData.photoURL || '',
-                    // Placeholder values, will be updated by LastMessage component
-                    lastMessage: '', 
-                    lastMessageTimestamp: null
-                });
-            }
+        if (chatDocsSnapshot.empty) {
+          setThreads([]);
+          setLoading(false);
+          return;
         }
 
-        setChatThreads(threads);
-      } catch (error) {
-        console.error('Error fetching support chats:', error);
+        const threadPromises = chatDocsSnapshot.docs.map(async (chatDoc) => {
+          const userId = chatDoc.id;
+          
+          // Fetch user data
+          const userDocRef = doc(db, 'users', userId);
+          const userDoc = await getDoc(userDocRef);
+
+          // Fetch last message
+          const messagesQuery = query(collection(db, `supportChats/${userId}/messages`), orderBy('createdAt', 'desc'), limit(1));
+          const lastMessageSnapshot = await getDocs(messagesQuery);
+          const lastMessage = lastMessageSnapshot.docs.length > 0 ? lastMessageSnapshot.docs[0].data() : null;
+
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            return {
+              userId,
+              userName: userData.displayName || 'N/A',
+              userEmail: userData.email || 'N/A',
+              userAvatar: userData.photoURL || '',
+              lastMessage: lastMessage?.text || 'No messages yet.',
+              lastMessageAt: lastMessage?.createdAt?.toDate(),
+            };
+          } else {
+             return null; // or a default object
+          }
+        });
+
+        const resolvedThreads = (await Promise.all(threadPromises)).filter(Boolean) as ChatThread[];
+        
+        // Sort threads by last message date
+        resolvedThreads.sort((a, b) => (b.lastMessageAt?.getTime() || 0) - (a.lastMessageAt?.getTime() || 0));
+
+        setThreads(resolvedThreads);
+      } catch (err) {
+        console.error('Error fetching support threads:', err);
+        setError('Failed to load support threads. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchChats();
-  }, [firestore]);
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+    fetchThreads();
+  }, []);
 
   return (
     <div className="space-y-6">
-        <h1 className="text-3xl font-bold tracking-tight">Support Inbox</h1>
-        <Card>
-            <CardHeader>
-                <CardTitle className='flex items-center gap-2'>
-                    <MessageSquare className='h-6 w-6'/>
-                    Active Conversations
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                {chatThreads.length === 0 ? (
-                <p className="text-muted-foreground">No active support chats found.</p>
-                ) : (
-                <div className="space-y-2">
-                    {chatThreads.map((thread) => (
-                    <Link href={`/admin/support/${thread.userId}`} key={thread.userId}>
-                        <div className="flex items-center p-3 -mx-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
-                            <Avatar className="h-12 w-12 mr-4 border">
-                                <AvatarImage src={thread.userAvatar} />
-                                <AvatarFallback>{thread.userName.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-grow">
-                                <p className="font-semibold">{thread.userName}</p>
-                                 <LastMessage firestore={firestore} userId={thread.userId} />
-                            </div>
-                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        <div className="flex items-center justify-between">
+            <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+                <MessageSquare className="h-8 w-8 text-primary" />
+                Support Inbox
+            </h2>
+        </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Conversations</CardTitle>
+          <CardDescription>All active support conversations with users.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center items-center py-20">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-20 text-red-500">
+              <p>{error}</p>
+            </div>
+          ) : threads.length === 0 ? (
+             <div className="text-center py-20">
+                <h3 className="text-xl font-semibold">No Conversations</h3>
+                <p className="text-muted-foreground mt-2">When a user starts a new chat, it will appear here.</p>
+             </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Last Message</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {threads.map((thread) => (
+                  <TableRow key={thread.userId}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarImage src={thread.userAvatar} alt={thread.userName} />
+                          <AvatarFallback>{getInitials(thread.userName)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-semibold">{thread.userName}</p>
+                          <p className="text-sm text-muted-foreground">{thread.userEmail}</p>
                         </div>
-                    </Link>
-                    ))}
-                </div>
-                )}
-            </CardContent>
-        </Card>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                        <p className='truncate max-w-sm'>{thread.lastMessage}</p>
+                        <p className='text-xs text-muted-foreground'>
+                            {thread.lastMessageAt ? thread.lastMessageAt.toLocaleString() : ''}
+                        </p>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Link href={`/admin/support/${thread.userId}`} className={cn(buttonVariants({ variant: 'outline' }))}>
+                        Open Chat <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

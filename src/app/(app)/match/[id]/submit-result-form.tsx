@@ -1,313 +1,237 @@
 
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Image from 'next/image';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { useState, useCallback } from "react";
+import { useUser, useFirestore } from "@/firebase";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useToast } from '@/hooks/use-toast';
-import {
-  AlertCircle,
-  CheckCircle2,
-  Trophy,
-  Loader2,
-  UploadCloud,
-  XCircle,
-} from 'lucide-react';
-import { useUser, useFirestore } from '@/firebase';
-import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
-import {
-  collection,
-  serverTimestamp,
   doc,
   setDoc,
-  onSnapshot,
-} from 'firebase/firestore';
+  serverTimestamp,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, Shield, Sword, Flag, Upload } from "lucide-react";
+import imageCompression from "browser-image-compression";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
-export function SubmitResultForm({ matchId }: { matchId: string }) {
+interface SubmitResultFormProps {
+  matchId: string;
+  onResultSubmitted: () => void;
+}
+
+export function SubmitResultForm({ matchId, onResultSubmitted }: SubmitResultFormProps) {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-
-  const [preview, setPreview] = useState<string | null>(null);
-  const [dataUri, setDataUri] = useState<string>('');
+  const [result, setResult] = useState<"win" | "loss" | "cancel">("win");
+  const [screenshot, setScreenshot] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formState, setFormState] = useState<{
-    message: string;
-    isError: boolean;
-  } | null>(null);
-  const [submittedPositions, setSubmittedPositions] = useState<number[]>([]);
-  const [hasSubmitted, setHasSubmitted] = useState(false);
-  const [position, setPosition] = useState<number | null>(null);
-  const [status, setStatus] = useState<'win' | 'loss' | null>(null);
+  const [existingResult, setExistingResult] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    if (!firestore || !matchId) return;
-
-    const resultsRef = collection(firestore, `matches/${matchId}/results`);
-    const unsubscribe = onSnapshot(resultsRef, (snapshot) => {
-      const positions: number[] = [];
-      let userSubmitted = false;
-      snapshot.docs.forEach((doc) => {
-        positions.push(doc.data().position);
-        if (doc.data().userId === user?.uid) {
-            userSubmitted = true;
-        }
+  const checkForExistingResult = useCallback(async () => {
+    if (!user || !firestore) return;
+    setIsLoading(true);
+    try {
+      const resultQuery = query(
+        collection(firestore, `matches/${matchId}/results`),
+        where("userId", "==", user.uid)
+      );
+      const querySnapshot = await getDocs(resultQuery);
+      setExistingResult(!querySnapshot.empty);
+    } catch (error) {
+      console.error("Error checking for existing result:", error);
+      toast({
+        title: "Error",
+        description: "Failed to check your submission status.",
+        variant: "destructive",
       });
-      setSubmittedPositions(positions);
-      setHasSubmitted(userSubmitted);
-    });
-
-    return () => unsubscribe();
-  }, [firestore, matchId, user?.uid]);
-
-  const handlePositionChange = (value: string) => {
-    const pos = Number(value);
-    setPosition(pos);
-    if (pos === 1) {
-        setStatus('win');
-    } else {
-        setStatus('loss');
+    } finally {
+      setIsLoading(false);
     }
-  }
+  }, [user, firestore, matchId, toast]);
+
+  useState(() => {
+    checkForExistingResult();
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-        setDataUri(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (e.target.files && e.target.files[0]) {
+      setScreenshot(e.target.files[0]);
     }
   };
+  
+  const compressImage = useCallback(async (file: File) => {
+      const options = {
+          maxSizeMB: 1, // Max file size in MB
+          maxWidthOrHeight: 1920, // Max width or height
+          useWebWorker: true,
+      };
+      try {
+          toast({ title: 'Compressing image...', description: 'Please wait, this may take a moment.' });
+          const compressedFile = await imageCompression(file, options);
+          return compressedFile;
+      } catch (error) {
+          console.error('Image compression error:', error);
+          toast({ title: 'Compression Failed', description: 'Could not compress image. Uploading original file.', variant: 'destructive' });
+          return file; // Fallback to original file
+      }
+  }, [toast]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!user || !firestore || !dataUri) {
+    if (!user || !firestore) {
       toast({
-        title: 'Please login and select a screenshot.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    if (!position || !status) {
-      toast({
-        title: 'Please select your position.',
-        variant: 'destructive',
+        title: "Authentication Error",
+        description: "You must be logged in to submit a result.",
+        variant: "destructive",
       });
       return;
     }
 
-    if (position === 1 && status === 'loss') {
-        toast({ title: "Invalid Selection", description: "You cannot claim 1st position with a 'Loss' status.", variant: "destructive"});
-        return;
-    }
-
-    if (position > 1 && status === 'win') {
-        toast({ title: "Invalid Selection", description: "You can only claim 'Win' status if you are in 1st position.", variant: "destructive"});
-        return;
+    if (result !== "cancel" && !screenshot) {
+      toast({
+        title: "Screenshot Required",
+        description: "You must upload a screenshot to claim a win or loss.",
+        variant: "destructive",
+      });
+      return;
     }
 
     setIsSubmitting(true);
-    setFormState(null);
-
     try {
-      const storage = getStorage();
-      const storageRef = ref(
-        storage,
-        `match-results/${matchId}/${user.uid}/${Date.now()}.jpg`
-      );
-      await uploadString(storageRef, dataUri, 'data_url');
-      const screenshotUrl = await getDownloadURL(storageRef);
+      let screenshotUrl = "";
+      if (screenshot) {
+        const compressedFile = await compressImage(screenshot);
+        const storage = getStorage();
+        const storageRef = ref(
+          storage,
+          `match-results/${matchId}/${user.uid}-${compressedFile.name}`
+        );
+        
+        const uploadResult = await uploadBytes(storageRef, compressedFile);
+        screenshotUrl = await getDownloadURL(uploadResult.ref);
+      }
 
-      const resultDocRef = doc(
-        firestore,
-        `matches/${matchId}/results`,
-        user.uid
-      );
-
-      await setDoc(resultDocRef, {
+      const resultRef = doc(firestore, `matches/${matchId}/results`, user.uid);
+      await setDoc(resultRef, {
         userId: user.uid,
-        userName: user.displayName,
-        userAvatar: user.photoURL,
-        position,
-        status,
+        status: result,
         screenshotUrl,
         submittedAt: serverTimestamp(),
       });
-      
-      // The onResultSubmit cloud function will now handle all logic.
 
-      setFormState({
-        message: 'Result submitted successfully! Your submission is now under review.',
-        isError: false,
+      toast({
+        title: "Result Submitted!",
+        description: "Your match result has been recorded.",
       });
-
+      onResultSubmitted(); // Callback to update parent component state
+      setExistingResult(true);
     } catch (error: any) {
-      console.error('Error submitting result:', error);
-      setFormState({
-        message: `Submission failed: ${error.message}`,
-        isError: true,
+      console.error("Error submitting result:", error);
+      toast({
+        title: "Submission Failed",
+        description: error.message || "An unexpected error occurred.",
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (hasSubmitted && !formState) {
+  if (isLoading) {
+      return <div className="flex justify-center items-center p-8"><Loader2 className="h-8 w-8 animate-spin"/></div>;
+  }
+
+  if (existingResult) {
     return (
-        <Alert variant="default" className="bg-green-50 border-green-200 text-green-800">
-            <CheckCircle2 className="h-4 w-4 !text-green-500"/>
-            <AlertTitle>Result Submitted</AlertTitle>
-            <AlertDescription>You have already submitted your result for this match. Please wait for the other players and admin verification.</AlertDescription>
-        </Alert>
-    )
+      <Card className="w-full max-w-md mx-auto">
+          <CardHeader>
+              <CardTitle>Result Submitted</CardTitle>
+              <CardDescription>You have already submitted your result for this match. The result will be automatically processed once your opponent also submits.</CardDescription>
+          </CardHeader>
+      </Card>
+    );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Submit Match Result</CardTitle>
-        <CardDescription>
-          Upload your result screenshot and select your final position in the game.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="screenshot">Result Screenshot</Label>
-            <Input
-              id="screenshot"
-              name="screenshot"
-              type="file"
-              accept="image/*"
-              required
-              onChange={handleFileChange}
-              className="file:text-primary"
-            />
-            {preview && (
-              <Image
-                src={preview}
-                alt="Screenshot preview"
-                width={600}
-                height={400}
-                className="mt-2 rounded-md object-contain border"
-              />
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label>Your Position</Label>
-            <RadioGroup name="position" required onValueChange={handlePositionChange} className="flex gap-4">
-              {[1, 2, 3, 4].map((pos) => (
-                <div key={pos} className="flex items-center space-x-2">
-                  <RadioGroupItem
-                    value={String(pos)}
-                    id={`pos-${pos}`}
-                    disabled={submittedPositions.includes(pos)}
-                  />
-                  <Label
-                    htmlFor={`pos-${pos}`}
-                    className="flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
-                  >
-                    {pos === 1 && <Trophy className="h-4 w-4 text-yellow-500" />}
-                    {pos}
-                    {pos === 1
-                      ? 'st'
-                      : pos === 2
-                      ? 'nd'
-                      : pos === 3
-                      ? 'rd'
-                      : 'th'}
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Your Claimed Status</Label>
-            <RadioGroup 
-                name="status" 
-                value={status ?? ""} 
-                onValueChange={(value) => setStatus(value as 'win' | 'loss')} 
-                className="flex gap-4"
-                required
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="win" id="win" disabled={position !== 1}/>
-                <Label
-                  htmlFor="win"
-                  className="flex items-center gap-1.5 cursor-pointer text-green-600"
+    <Card className="w-full max-w-md mx-auto">
+        <CardHeader>
+            <CardTitle>Submit Match Result</CardTitle>
+            <CardDescription>Select your result and upload a screenshot as proof.</CardDescription>
+        </CardHeader>
+        <form onSubmit={handleSubmit}>
+            <CardContent className="space-y-6">
+                <RadioGroup
+                    value={result}
+                    onValueChange={(value: "win" | "loss" | "cancel") => setResult(value)}
+                    className="grid grid-cols-3 gap-4"
                 >
-                  <CheckCircle2 className="h-4 w-4" />
-                  I Won
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="loss" id="loss" disabled={position === 1} />
-                <Label
-                  htmlFor="loss"
-                  className="flex items-center gap-1.5 cursor-pointer text-red-600"
-                >
-                  <XCircle className="h-4 w-4" />I Lost
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
+                    <Label className={`flex flex-col items-center justify-center rounded-md border-2 p-4 font-bold cursor-pointer transition-colors ${
+                        result === 'win' ? 'border-primary bg-primary/10' : 'border-muted'
+                    }`}>
+                        <RadioGroupItem value="win" className="sr-only" />
+                        <Shield className="h-8 w-8 mb-2 text-green-500"/>
+                        I WON
+                    </Label>
+                    <Label className={`flex flex-col items-center justify-center rounded-md border-2 p-4 font-bold cursor-pointer transition-colors ${
+                        result === 'loss' ? 'border-primary bg-primary/10' : 'border-muted'
+                    }`}>
+                        <RadioGroupItem value="loss" className="sr-only" />
+                        <Sword className="h-8 w-8 mb-2 text-red-500"/>
+                        I LOST
+                    </Label>
+                    <Label className={`flex flex-col items-center justify-center rounded-md border-2 p-4 font-bold cursor-pointer transition-colors ${
+                        result === 'cancel' ? 'border-primary bg-primary/10' : 'border-muted'
+                    }`}>
+                        <RadioGroupItem value="cancel" className="sr-only" />
+                        <Flag className="h-8 w-8 mb-2 text-yellow-500"/>
+                        CANCEL
+                    </Label>
+                </RadioGroup>
 
-          {formState && (
-            <Alert
-              variant={formState.isError ? 'destructive' : 'default'}
-              className={
-                !formState.isError
-                  ? 'bg-green-50 border-green-200 text-green-800'
-                  : ''
-              }
-            >
-              {formState.isError ? (
-                <AlertCircle className="h-4 w-4" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 !text-green-500" />
-              )}
-              <AlertTitle>{formState.isError ? 'Error' : 'Success'}</AlertTitle>
-              <AlertDescription>{formState.message}</AlertDescription>
-            </Alert>
-          )}
-
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isSubmitting || !position}
-            variant="accent"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Submitting...
-              </>
-            ) : (
-              <>
-                <UploadCloud className="mr-2 h-4 w-4" />
-                Submit Result for Review
-              </>
-            )}
-          </Button>
+                {result !== "cancel" && (
+                    <div className="space-y-2">
+                        <Label htmlFor="screenshot" className="flex items-center gap-2 font-semibold">
+                            <Upload className="h-5 w-5 text-primary" />
+                            Upload Winning/Losing Screenshot
+                        </Label>
+                        <Input
+                            id="screenshot"
+                            type="file"
+                            required
+                            onChange={handleFileChange}
+                            accept="image/*"
+                            className="file:text-primary file:font-semibold"
+                        />
+                         <p className="text-xs text-muted-foreground pt-1">
+                            A clear screenshot of the final game screen is required.
+                        </p>
+                    </div>
+                )}
+                 {result === "cancel" && (
+                     <p className="text-sm text-center text-muted-foreground p-4 bg-muted/50 rounded-md">
+                        Select this option only if the match was cancelled due to a valid reason (e.g., opponent didn't show up).
+                     </p>
+                )}
+            </CardContent>
+            <CardFooter>
+                <Button type="submit" disabled={isSubmitting} className="w-full">
+                    {isSubmitting ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    Submit Result
+                </Button>
+            </CardFooter>
         </form>
-      </CardContent>
     </Card>
   );
 }
