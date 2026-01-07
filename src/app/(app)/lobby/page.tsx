@@ -40,9 +40,9 @@ const EntryFeeCard = ({
     
     const cardContent = (
       <div className={cn(
-            "relative flex flex-col h-full text-center transition-all duration-300 overflow-hidden rounded-lg border",
+            "relative flex flex-col text-center transition-all duration-300 overflow-hidden rounded-lg border p-4 h-full",
             isLocked 
-            ? "bg-muted/50 border-muted-foreground/20 cursor-not-allowed"
+            ? "border-muted-foreground/20 cursor-not-allowed"
             : "border-transparent hover:border-primary"
         )}>
           {cardBgImage && (
@@ -55,20 +55,22 @@ const EntryFeeCard = ({
             />
           )}
 
-          <div className="relative z-10 flex flex-col h-full p-4">
+          {isLocked && <div className="absolute inset-0 bg-black/50 z-10"></div>}
+
+          <div className="relative z-10 flex flex-col h-full">
             <div className="flex-grow">
-                {isLocked && <Lock className="absolute top-2 right-2 h-4 w-4 text-muted-foreground" />}
+                {isLocked && <Lock className="absolute top-2 right-2 h-4 w-4 text-white/70" />}
                 <h3 className={cn(
                     "text-2xl font-bold",
-                    isLocked ? "text-muted-foreground/50" : "text-white"
+                    isLocked ? "text-white/50" : "text-white"
                 )}>
                 ₹{fee}
                 </h3>
-                <p className={cn("text-sm", isLocked && "text-muted-foreground/50", !isLocked && "text-white/70")}>Entry Fee</p>
+                <p className={cn("text-sm", isLocked ? "text-white/50" : "text-white/70")}>Entry Fee</p>
 
                 <div className="mt-4 space-y-2">
-                    <p className={cn("text-md font-semibold", isLocked ? "text-muted-foreground/50" : "text-white")}>
-                    Prize: <span className={cn(isLocked ? "text-muted-foreground/50" : "text-green-400")}>₹{(fee * 1.8).toFixed(2)}</span>
+                    <p className={cn("text-md font-semibold", isLocked ? "text-white/50" : "text-white")}>
+                    Prize: <span className={cn(isLocked ? "text-green-400/50" : "text-green-400")}>₹{(fee * 1.8).toFixed(2)}</span>
                     </p>
                     {playerCount > 0 && !isLocked && (
                     <div className="flex items-center justify-center gap-1.5 text-xs text-blue-300 animate-pulse">
