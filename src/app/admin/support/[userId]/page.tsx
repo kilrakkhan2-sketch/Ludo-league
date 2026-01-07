@@ -6,7 +6,8 @@ import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { useUser, useFirestore, useAdminOnly } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
+import { useAdminOnly } from '@/hooks/useAdminOnly';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { Send, Loader2, ArrowLeft } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -25,7 +26,7 @@ type Message = {
 const ChatMessage = ({ message, isAdminMessage, targetUser }: { message: Message; isAdminMessage: boolean, targetUser: any }) => {
     const isSupportTeamMessage = message.senderName === 'Support Team';
 
-    const senderAvatar = isSupportTeamMessage ? '/logo.png' : targetUser?.photoURL;
+    const senderAvatar = isSupportTeamMessage ? '/icon-192x192.png' : targetUser?.photoURL;
     const senderName = isSupportTeamMessage ? 'Support Team' : targetUser?.displayName;
 
     return (
@@ -120,7 +121,7 @@ export default function AdminSupportChatPage() {
       text: newMessage,
       senderId: user.uid, // The admin's UID
       senderName: 'Support Team',
-      senderAvatar: '/logo.png', // Admin avatar
+      senderAvatar: '/icon-192x192.png', // Admin avatar
       createdAt: serverTimestamp(),
     });
     setNewMessage('');

@@ -2,8 +2,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { collection, getDocs, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
-import { useFirestore, useAdminOnly } from '@/firebase';
+import { collection, getDocs, onSnapshot, query, orderBy, limit, doc } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import { useAdminOnly } from '@/hooks/useAdminOnly';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, MessageSquare, ChevronRight } from 'lucide-react';
