@@ -3,6 +3,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
@@ -331,7 +332,7 @@ const Sidebar = React.forwardRef<
     >
         <SidebarHeader>
             <Link href="/dashboard" className="flex items-center gap-2">
-                <Swords className="h-6 w-6 text-primary" />
+                <Image src="/logo.png" alt="Ludo League Logo" width={32} height={32} />
                 <span className="font-bold text-lg">Ludo League</span>
             </Link>
         </SidebarHeader>
@@ -372,7 +373,7 @@ const SidebarSheet = ({ children }: { children: React.ReactNode }) => {
               <SheetTitle>
                 <SheetClose asChild>
                     <Link href="/dashboard" className="flex items-center gap-2">
-                        <Swords className="h-6 w-6 text-primary" />
+                        <Image src="/logo.png" alt="Ludo League Logo" width={32} height={32} />
                         <span className="font-bold text-lg">Ludo League</span>
                     </Link>
                 </SheetClose>
