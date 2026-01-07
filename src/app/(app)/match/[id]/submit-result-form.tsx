@@ -240,11 +240,15 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
 
           <div className="space-y-2">
             <Label>Your Claimed Status</Label>
-            <div
-              className="flex gap-4"
+            <RadioGroup 
+                name="status" 
+                value={status ?? ""} 
+                onValueChange={(value) => setStatus(value as 'win' | 'loss')} 
+                className="flex gap-4"
+                required
             >
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="win" id="win" checked={status === 'win'} disabled />
+                <RadioGroupItem value="win" id="win" disabled={position !== 1}/>
                 <Label
                   htmlFor="win"
                   className="flex items-center gap-1.5 cursor-pointer text-green-600"
@@ -254,7 +258,7 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="loss" id="loss" checked={status === 'loss'} disabled/>
+                <RadioGroupItem value="loss" id="loss" disabled={position === 1} />
                 <Label
                   htmlFor="loss"
                   className="flex items-center gap-1.5 cursor-pointer text-red-600"
@@ -262,7 +266,7 @@ export function SubmitResultForm({ matchId }: { matchId: string }) {
                   <XCircle className="h-4 w-4" />I Lost
                 </Label>
               </div>
-            </div>
+            </RadioGroup>
           </div>
 
           {formState && (
