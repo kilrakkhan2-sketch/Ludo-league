@@ -253,11 +253,6 @@ export default function WalletPage() {
         {bannerImage && (
             <div className="relative w-full h-48 md:h-64 rounded-lg overflow-hidden shadow-lg">
                 <Image src={bannerImage.imageUrl} alt={bannerImage.description} fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
-                        <WalletIcon className="h-8 w-8" /> My Wallet
-                    </h2>
-                </div>
             </div>
         )}
         <Card className="shadow-md">
@@ -423,7 +418,7 @@ export default function WalletPage() {
                                             </p>
                                              <Badge variant={t.status === 'completed' ? 'default' : t.status === 'pending' ? 'secondary' : 'destructive'} className={cn('mt-1', {'bg-green-100 text-green-800': t.status === 'completed'})}>
                                                 {t.status}
-                                            </Badge>
+                                             </Badge>
                                         </div>
                                     </div>
                                 </Card>
