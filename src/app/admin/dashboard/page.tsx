@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import { useFirestore } from '@/firebase';
-import { collection, getDocs, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, limit, onSnapshot, getDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Transaction, UserProfile } from '@/lib/types';
@@ -123,12 +123,12 @@ export default function AdminDashboardPage() {
     );
     
     const unsubscribe = onSnapshot(recentTransQuery, async (snapshot) => {
-        const transData = await Promise.all(snapshot.docs.map(async (doc) => {
-            const data = doc.data();
-            // In a real app, you might want to fetch user data more efficiently
-            const userDoc = await getDoc(collection(firestore, 'users', data.userId));
+        const transData = await Promise.all(snapshot.docs.map(async (docSnap) => {
+            const data = docSnap.data();
+            const userDocRef = doc(firestore, 'users', data.userId);
+            const userDoc = await getDoc(userDocRef);
             const user = userDoc.exists() ? userDoc.data() : {};
-            return { ...data, id: doc.id, user };
+            return { ...data, id: docSnap.id, user };
         }));
         setRecentTransactions(transData);
     });
@@ -150,14 +150,14 @@ export default function AdminDashboardPage() {
     <>
       <h2 className="text-3xl font-bold tracking-tight mb-4">Dashboard</h2>
       <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard title="Total Revenue" value={`₹${stats.totalRevenue.toFixed(2)}`} description="Total commission earned" icon={<DollarSign className="h-4 w-4 text-muted-foreground" />} />
             <StatCard title="Total Users" value={`${stats.totalUsers}`} description="Total registered users" icon={<Users className="h-4 w-4 text-muted-foreground" />} />
             <StatCard title="Total Deposits" value={`₹${stats.totalDeposits.toFixed(2)}`} description="All-time user deposits" icon={<CreditCard className="h-4 w-4 text-muted-foreground" />} />
             <StatCard title="Total Withdrawals" value={`₹${stats.totalWithdrawals.toFixed(2)}`} description="All-time user withdrawals" icon={<Activity className="h-4 w-4 text-muted-foreground" />} />
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-1 lg:col-span-4">
+        <div className="grid gap-4 lg:grid-cols-7 flex-col lg:flex-row">
+            <Card className="lg:col-span-4">
                 <CardHeader><CardTitle>Revenue Overview</CardTitle></CardHeader>
                 <CardContent className="pl-2">
                     <ResponsiveContainer width="100%" height={350}>
@@ -169,7 +169,7 @@ export default function AdminDashboardPage() {
                     </ResponsiveContainer>
                 </CardContent>
             </Card>
-            <Card className="col-span-1 lg:col-span-3">
+            <Card className="lg:col-span-3">
                 <CardHeader>
                     <CardTitle>Recent Transactions</CardTitle>
                     <CardDescription>The last 5 transactions across the platform.</CardDescription>
