@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { collection, getDocs, doc, getDoc, orderBy, query, limit } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, orderBy, query, limit, onSnapshot } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -51,15 +51,22 @@ export default function SupportInboxPage() {
           setLoading(false);
           return;
         }
-
+        
         const threadPromises = chatDocsSnapshot.docs.map(async (chatDoc) => {
           const userId = chatDoc.id;
           
           const userDocRef = doc(firestore, 'users', userId);
-          const userDoc = await getDoc(userDocRef);
+          const messagesQuery = query(
+              collection(firestore, `supportChats/${userId}/messages`), 
+              orderBy('createdAt', 'desc'), 
+              limit(1)
+            );
 
-          const messagesQuery = query(collection(firestore, `supportChats/${userId}/messages`), orderBy('createdAt', 'desc'), limit(1));
-          const lastMessageSnapshot = await getDocs(messagesQuery);
+          const [userDoc, lastMessageSnapshot] = await Promise.all([
+              getDoc(userDocRef),
+              getDocs(messagesQuery)
+          ]);
+            
           const lastMessage = lastMessageSnapshot.docs.length > 0 ? lastMessageSnapshot.docs[0].data() : null;
 
           if (userDoc.exists()) {
@@ -72,25 +79,31 @@ export default function SupportInboxPage() {
               lastMessage: lastMessage?.text || 'No messages yet.',
               lastMessageAt: lastMessage?.createdAt?.toDate(),
             };
-          } else {
-             return null;
           }
+          return null; // Return null if user doc doesn't exist
         });
 
-        const resolvedThreads = (await Promise.all(threadPromises)).filter(Boolean) as ChatThread[];
+        const resolvedThreads = (await Promise.all(threadPromises)).filter((t): t is ChatThread => t !== null);
         
         resolvedThreads.sort((a, b) => (b.lastMessageAt?.getTime() || 0) - (a.lastMessageAt?.getTime() || 0));
 
         setThreads(resolvedThreads);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error fetching support threads:', err);
-        setError('Failed to load support threads. Please try again later.');
+        setError(`Failed to load support threads: ${err.message}`);
       } finally {
         setLoading(false);
       }
     };
 
     fetchThreads();
+
+    const unsubscribe = onSnapshot(collection(firestore, 'supportChats'), () => {
+        // Re-fetch all threads when a new chat is created
+        fetchThreads();
+    });
+
+    return () => unsubscribe();
   }, [firestore]);
 
   return (
