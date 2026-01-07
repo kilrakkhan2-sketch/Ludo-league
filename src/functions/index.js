@@ -43,7 +43,7 @@ exports.onTransactionCreate = functions.firestore
         return null;
     }
 
-    const validTypes = ['deposit', 'withdrawal', 'entry-fee', 'winnings', 'refund', 'admin-credit', 'admin-debit', 'referral-bonus'];
+    const validTypes = ['deposit', 'withdrawal', 'entry-fee', 'winnings', 'refund', 'admin-credit', 'admin-debit', 'referral-bonus', 'tournament-fee'];
     if (!validTypes.includes(type)) {
         console.log(`Invalid transaction type: ${type}. Skipping balance update.`);
         return null;
@@ -66,7 +66,9 @@ exports.onTransactionCreate = functions.firestore
                 throw new Error(`Insufficient balance for user ${userId}. Transaction would result in negative balance.`);
             }
 
-            t.update(userRef, { walletBalance: newBalance });
+            const updateData = { walletBalance: newBalance };
+
+            t.update(userRef, updateData);
         });
 
         console.log(`Transaction ${context.params.transactionId} for user ${userId} handled successfully. New balance updated.`);
