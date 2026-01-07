@@ -43,22 +43,19 @@ const EntryFeeCard = ({
     const cardContent = (
       <motion.div whileHover={!isLocked ? { scale: 1.05, y: -5 } : {}} transition={{ duration: 0.2 }}>
         <Card className={cn(
-            "relative flex flex-col h-full text-center bg-card/80 backdrop-blur-sm border-primary/20 transition-all duration-300 overflow-hidden",
+            "relative flex flex-col h-full text-center transition-all duration-300 overflow-hidden",
             isLocked 
             ? "bg-muted/50 border-muted-foreground/20 cursor-not-allowed"
             : "hover:border-primary"
         )}>
           {cardBgImage && (
-            <>
-                <Image
-                    src={cardBgImage.imageUrl}
-                    alt="Ludo Background"
-                    fill
-                    className="object-fill z-0 opacity-25 dark:opacity-10"
-                    data-ai-hint={cardBgImage.imageHint}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent z-0"></div>
-            </>
+            <Image
+                src={cardBgImage.imageUrl}
+                alt="Ludo Background"
+                fill
+                className="object-fill z-0"
+                data-ai-hint={cardBgImage.imageHint}
+            />
           )}
 
           <div className="relative z-10 flex flex-col h-full">
