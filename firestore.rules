@@ -53,7 +53,7 @@ service cloud.firestore {
     match /matches/{matchId} {
       allow read: if request.auth != null;
       allow create: if false; // Handled by Cloud Function
-      allow update: if request.auth != null && request.auth.uid in resource.data.playerIds;
+      allow update: if (request.auth != null && request.auth.uid in resource.data.playerIds) || isAdmin();
     }
 
     // Match Results Sub-collection
