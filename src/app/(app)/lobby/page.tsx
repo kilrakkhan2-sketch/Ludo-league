@@ -54,7 +54,7 @@ const EntryFeeCard = ({
                     src={cardBgImage.imageUrl}
                     alt="Ludo Background"
                     fill
-                    className="object-contain z-0 opacity-20 dark:opacity-10"
+                    className="object-fill z-0 opacity-25 dark:opacity-10"
                     data-ai-hint={cardBgImage.imageHint}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent z-0"></div>
