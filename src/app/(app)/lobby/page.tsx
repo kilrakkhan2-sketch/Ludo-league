@@ -41,52 +41,54 @@ const EntryFeeCard = ({
     
     const cardStyle = cardBgImage ? { 
         backgroundImage: `url(${cardBgImage.imageUrl})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
      } : {};
 
     const cardContent = (
       <div
         style={cardStyle}
         className={cn(
-          "relative flex flex-col justify-between text-center transition-all duration-300 overflow-hidden rounded-lg border h-48",
+          "relative flex flex-col h-[180px] text-white p-4 justify-between overflow-hidden rounded-lg border",
+          "bg-cover bg-center", // Tailwind classes for background image control
           isLocked && "grayscale-[40%]"
         )}
       >
+        {/* Overlay for better text readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent"></div>
+
         {/* Content Layer */}
-        <div className="relative z-10 flex flex-col h-full text-white p-4 justify-between">
-          {/* Top Content */}
-          <div className="flex-grow">
-            <h3 className="text-2xl font-bold [text-shadow:_1px_1px_2px_rgb(0_0_0_/_0.8)]">
-              ₹{fee}
-            </h3>
-            <p className="text-sm opacity-80 [text-shadow:_1px_1px_2px_rgb(0_0_0_/_0.8)]">Entry Fee</p>
+        <div className="relative z-10 flex flex-col h-full">
+            {/* Top Content */}
+            <div className="flex-grow">
+                <h3 className="text-2xl font-bold [text-shadow:_1px_1px_2px_rgb(0_0_0_/_0.8)]">
+                ₹{fee}
+                </h3>
+                <p className="text-sm opacity-90 [text-shadow:_1px_1px_2px_rgb(0_0_0_/_0.8)]">Entry Fee</p>
 
-            <div className="mt-2 space-y-1">
-              <p className="text-md font-semibold [text-shadow:_1px_1px_2px_rgb(0_0_0_/_0.8)]">
-                Prize: <span className="text-green-400">₹{(fee * 1.8).toFixed(2)}</span>
-              </p>
-              {playerCount > 0 && !isLocked && (
-                <div className="flex items-center justify-center gap-1.5 text-xs text-blue-300 animate-pulse [text-shadow:_1px_1px_2px_rgb(0_0_0_/_0.8)]">
-                  <Users className="h-3 w-3" />
-                  <span>{playerCount} Searching...</span>
+                <div className="mt-2 space-y-1">
+                <p className="text-md font-semibold [text-shadow:_1px_1px_2px_rgb(0_0_0_/_0.8)]">
+                    Prize: <span className="text-green-400">₹{(fee * 1.8).toFixed(2)}</span>
+                </p>
+                {playerCount > 0 && !isLocked && (
+                    <div className="flex items-center justify-center gap-1.5 text-xs text-blue-300 animate-pulse [text-shadow:_1px_1px_2px_rgb(0_0_0_/_0.8)]">
+                    <Users className="h-3 w-3" />
+                    <span>{playerCount} Searching...</span>
+                    </div>
+                )}
                 </div>
-              )}
             </div>
-          </div>
 
-          {/* Bottom Button */}
-          <div className="mt-auto">
-            <Button className="w-full h-9 text-sm shadow-lg" onClick={() => onPlay(fee)} disabled={isLocked}>
-              <Swords className="mr-2 h-4 w-4" /> Play
-            </Button>
-          </div>
+            {/* Bottom Button */}
+            <div className="mt-auto">
+                <Button className="w-full h-9 text-sm shadow-lg" onClick={() => onPlay(fee)} disabled={isLocked}>
+                    <Swords className="mr-2 h-4 w-4" /> Play
+                </Button>
+            </div>
         </div>
-
+        
         {/* Locked State Overlay */}
         {isLocked && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center backdrop-blur-[2px] bg-black/30">
-                <div className="flex items-center gap-2 text-white font-bold text-lg">
+            <div className="absolute inset-0 z-20 flex items-center justify-center backdrop-blur-[2px]">
+                <div className="flex items-center gap-2 text-white font-bold text-lg [text-shadow:_1px_1px_2px_rgb(0_0_0_/_0.8)]">
                     <Lock className="h-5 w-5" />
                     Locked
                 </div>
@@ -338,5 +340,3 @@ export default function LobbyPage() {
     </div>
   );
 }
-
-    
