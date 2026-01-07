@@ -26,6 +26,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 
 const bannerImage = PlaceHolderImages.find(img => img.id === 'lobby-banner');
+const cardBgImage = PlaceHolderImages.find(img => img.id === 'ludo-background');
 
 const EntryFeeCard = ({ 
     fee, 
@@ -42,37 +43,52 @@ const EntryFeeCard = ({
     const cardContent = (
       <motion.div whileHover={!isLocked ? { scale: 1.05, y: -5 } : {}} transition={{ duration: 0.2 }}>
         <Card className={cn(
-            "flex flex-col h-full text-center bg-card/80 backdrop-blur-sm border-primary/20 transition-all duration-300",
+            "relative flex flex-col h-full text-center bg-card/80 backdrop-blur-sm border-primary/20 transition-all duration-300 overflow-hidden",
             isLocked 
             ? "bg-muted/50 border-muted-foreground/20 cursor-not-allowed"
             : "hover:border-primary"
         )}>
-          <CardHeader className="p-4 relative">
-            {isLocked && <Lock className="absolute top-2 right-2 h-4 w-4 text-muted-foreground" />}
-            <CardTitle className={cn(
-                "text-2xl font-bold",
-                isLocked ? "text-muted-foreground/50" : "text-transparent bg-clip-text bg-gradient-to-r from-primary-start to-primary-end"
-            )}>
-              ₹{fee}
-            </CardTitle>
-            <CardDescription className={cn(isLocked && "text-muted-foreground/50")}>Entry Fee</CardDescription>
-          </CardHeader>
-          <CardContent className="flex-grow p-4 space-y-2">
-            <p className={cn("text-md font-semibold", isLocked ? "text-muted-foreground/50" : "")}>
-              Prize: <span className={cn(isLocked ? "text-muted-foreground/50" : "text-green-500")}>₹{(fee * 1.8).toFixed(2)}</span>
-            </p>
-             {playerCount > 0 && !isLocked && (
-              <div className="flex items-center justify-center gap-1.5 text-xs text-blue-500 animate-pulse">
-                <Users className="h-3 w-3" />
-                <span>{playerCount} Searching...</span>
-              </div>
-            )}
-          </CardContent>
-          <CardFooter className="p-4">
-            <Button className="w-full h-9 text-sm" onClick={() => onPlay(fee)} disabled={isLocked}>
-              {isLocked ? "Locked" : <><Swords className="mr-2 h-4 w-4" /> Play</>}
-            </Button>
-          </CardFooter>
+          {cardBgImage && (
+            <>
+                <Image
+                    src={cardBgImage.imageUrl}
+                    alt="Ludo Background"
+                    fill
+                    className="object-cover z-0 opacity-10 dark:opacity-5"
+                    data-ai-hint={cardBgImage.imageHint}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent z-0"></div>
+            </>
+          )}
+
+          <div className="relative z-10 flex flex-col h-full">
+            <CardHeader className="p-4">
+                {isLocked && <Lock className="absolute top-2 right-2 h-4 w-4 text-muted-foreground" />}
+                <CardTitle className={cn(
+                    "text-2xl font-bold",
+                    isLocked ? "text-muted-foreground/50" : "text-transparent bg-clip-text bg-gradient-to-r from-primary-start to-primary-end"
+                )}>
+                ₹{fee}
+                </CardTitle>
+                <CardDescription className={cn(isLocked && "text-muted-foreground/50", !isLocked && "text-white/70")}>Entry Fee</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow p-4 space-y-2">
+                <p className={cn("text-md font-semibold", isLocked ? "text-muted-foreground/50" : "text-white")}>
+                Prize: <span className={cn(isLocked ? "text-muted-foreground/50" : "text-green-400")}>₹{(fee * 1.8).toFixed(2)}</span>
+                </p>
+                {playerCount > 0 && !isLocked && (
+                <div className="flex items-center justify-center gap-1.5 text-xs text-blue-300 animate-pulse">
+                    <Users className="h-3 w-3" />
+                    <span>{playerCount} Searching...</span>
+                </div>
+                )}
+            </CardContent>
+            <CardFooter className="p-4 mt-auto">
+                <Button className="w-full h-9 text-sm" onClick={() => onPlay(fee)} disabled={isLocked}>
+                {isLocked ? "Locked" : <><Swords className="mr-2 h-4 w-4" /> Play</>}
+                </Button>
+            </CardFooter>
+          </div>
         </Card>
       </motion.div>
     );
