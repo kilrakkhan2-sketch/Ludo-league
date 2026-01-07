@@ -237,61 +237,65 @@ exports.onDepositApproved = functions.firestore
 exports.onMatchmakingQueueWrite = functions.firestore
   .document('matchmakingQueue/{userId}')
   .onWrite(async (change, context) => {
-    // If a user cancels their search, the document is deleted.
     if (!change.after.exists) {
       console.log(`User ${context.params.userId} left the queue.`);
       return null;
     }
 
     const newUserInQueue = change.after.data();
-    const entryFee = newUserInQueue.entryFee;
-    const userId = newUserInQueue.userId;
+    const { entryFee, userId, status } = newUserInQueue;
+    
+    // Only trigger if the user is new to the queue and waiting
+    if (status !== 'waiting') {
+        return null;
+    }
 
     const queueRef = db.collection('matchmakingQueue');
-    // Find another user in the queue with the same entry fee who is not the current user.
     const q = queueRef
       .where('entryFee', '==', entryFee)
-      .where('status', '==', 'waiting')
-      .where('userId', '!=', userId)
-      .limit(1);
+      .where('status', '==', 'waiting');
 
     const snapshot = await q.get();
 
-    if (snapshot.empty) {
-      console.log(`No opponent found for ${userId} with fee ${entryFee}. Waiting...`);
+    if (snapshot.docs.length < 2) {
+      console.log(`Not enough players for fee ${entryFee}. Waiting...`);
       return null;
     }
 
-    // --- Opponent Found! ---
-    const opponent = snapshot.docs[0].data();
+    // Find a valid opponent (not the user who triggered the function)
+    const opponentDoc = snapshot.docs.find(doc => doc.id !== userId);
+    
+    if (!opponentDoc) {
+      console.log(`No valid opponent found for ${userId} at fee ${entryFee}. Waiting...`);
+      return null;
+    }
+
+    const opponent = opponentDoc.data();
     const opponentId = opponent.userId;
     console.log(`Opponent found for ${userId}! Matched with ${opponentId}`);
 
     const player1QueueRef = db.doc(`matchmakingQueue/${userId}`);
-    const player2QueueRef = db.doc(`matchmakingQueue/${opponentId}`);
+    const player2QueueRef = opponentDoc.ref;
     
-    // --- ATOMIC TRANSACTION START ---
     try {
       await db.runTransaction(async (transaction) => {
-        // Double-check the opponent is still waiting inside the transaction
-        const opponentDoc = await transaction.get(player2QueueRef);
-        if (!opponentDoc.exists || opponentDoc.data().status !== 'waiting') {
-            // Opponent was snatched by another transaction, so the current user keeps waiting.
-            console.log(`Opponent ${opponentId} was already matched. ${userId} will continue waiting.`);
-            return; // Abort this transaction
+        const p1Doc = await transaction.get(player1QueueRef);
+        const p2Doc = await transaction.get(player2QueueRef);
+
+        if (!p1Doc.exists || !p2Doc.exists || p1Doc.data().status !== 'waiting' || p2Doc.data().status !== 'waiting') {
+            console.log('One of the players is no longer waiting. Aborting match creation.');
+            return;
         }
 
-        // 1. Lock both players in the queue to prevent them from being matched with others.
-        transaction.update(player1QueueRef, { status: 'matched', matchedWith: opponentId });
-        transaction.update(player2QueueRef, { status: 'matched', matchedWith: userId });
+        transaction.update(player1QueueRef, { status: 'matched' });
+        transaction.update(player2QueueRef, { status: 'matched' });
 
-        // 2. Create the new match document.
         const newMatchRef = db.collection('matches').doc();
-        const prizePool = entryFee * 1.8; // 10% commission
+        const prizePool = entryFee * 1.8;
         transaction.set(newMatchRef, {
             id: newMatchRef.id,
-            creatorId: userId, // Arbitrarily assign one player as creator
-            status: 'waiting', // Starts as 'waiting' until room code is added
+            creatorId: userId,
+            status: 'waiting',
             entryFee: entryFee,
             prizePool: prizePool,
             maxPlayers: 2,
@@ -303,7 +307,6 @@ exports.onMatchmakingQueueWrite = functions.firestore
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        // 3. Create entry-fee transactions for both players.
         const player1TransRef = db.collection('transactions').doc();
         const player2TransRef = db.collection('transactions').doc();
         const transactionData = {
@@ -316,13 +319,11 @@ exports.onMatchmakingQueueWrite = functions.firestore
         transaction.set(player1TransRef, { ...transactionData, userId: userId, description: `Entry fee for match ${newMatchRef.id}` });
         transaction.set(player2TransRef, { ...transactionData, userId: opponentId, description: `Entry fee for match ${newMatchRef.id}` });
 
-        // 4. Update both users' profiles with the active match ID.
         const player1UserRef = db.doc(`users/${userId}`);
         const player2UserRef = db.doc(`users/${opponentId}`);
         transaction.update(player1UserRef, { activeMatchId: newMatchRef.id });
         transaction.update(player2UserRef, { activeMatchId: newMatchRef.id });
 
-        // 5. Delete players from the matchmaking queue.
         transaction.delete(player1QueueRef);
         transaction.delete(player2QueueRef);
       });
@@ -330,8 +331,9 @@ exports.onMatchmakingQueueWrite = functions.firestore
       console.log(`Successfully created match and transactions for players ${userId} and ${opponentId}.`);
     } catch (error) {
       console.error("Error in matchmaking transaction: ", error);
+      // If the transaction fails, we should ideally revert the status of players who were marked as 'matched'
+      // but for simplicity, we rely on them re-queueing if something goes wrong.
     }
-    // --- ATOMIC TRANSACTION END ---
     
     return null;
 });
@@ -380,5 +382,7 @@ exports.onMatchCreate = functions.firestore
       return null;
     }
   });
+
+    
 
     
