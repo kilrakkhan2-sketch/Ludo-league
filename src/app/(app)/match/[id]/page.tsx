@@ -1,3 +1,4 @@
+
 'use client';
 import Image from 'next/image';
 import { SubmitResultForm } from '@/components/app/submit-result-form';
@@ -112,7 +113,7 @@ const RoomCodeManager = ({ match, isCreator }: { match: Match, isCreator: boolea
             value={roomCode} 
             onChange={handleRoomCodeChange} 
             placeholder="8-digit code"
-            type="number"
+            type="text"
             inputMode="numeric"
             maxLength={8}
             pattern="\d{8}"
@@ -223,6 +224,9 @@ export default function MatchPage() {
     if (!firestore ||!user || !match || match.status !== 'waiting') return;
     
     setIsActionLoading(true);
+    
+    const isCreator = user.uid === match.creatorId;
+    const isJoiner = !isCreator;
   
     try {
         const matchRef = doc(firestore, 'matches', match.id);
@@ -310,7 +314,6 @@ export default function MatchPage() {
   }
   
   const isCreator = user?.uid === match.creatorId;
-  const isJoiner = user && match.playerIds.includes(user.uid) && !isCreator;
   const isPlayer = user && match.playerIds.includes(user.uid);
   const isMatchFull = match.playerIds.length === match.maxPlayers;
   

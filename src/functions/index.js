@@ -414,5 +414,3 @@ exports.onResultSubmit = functions.firestore
         throw new HttpsError('internal', 'An unexpected error occurred during prize distribution.', error);
     }
 });
-
-    

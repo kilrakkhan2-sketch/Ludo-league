@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback } from 'react';
@@ -101,6 +102,10 @@ export default function KycPage() {
         setIsSubmitting(true);
         try {
             const formData = new FormData(e.currentTarget);
+            const fullName = formData.get('fullName') as string;
+            const dateOfBirth = formData.get('dateOfBirth') as string;
+            const aadhaarNumber = formData.get('aadhaarNumber') as string;
+            const panNumber = formData.get('panNumber') as string;
             const bankDetails = formData.get('bank-details') as string;
             const upiId = formData.get('upi-id') as string;
             
@@ -125,6 +130,10 @@ export default function KycPage() {
                 submittedAt: serverTimestamp(),
                 aadhaarPanUrl: idProofUrl,
                 selfieUrl: selfieUrl,
+                fullName,
+                dateOfBirth,
+                aadhaarNumber,
+                panNumber,
                 bankDetails,
                 upiId,
                 userName: user.displayName,
@@ -176,6 +185,22 @@ export default function KycPage() {
             <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="grid md:grid-cols-2 gap-6">
+                             <div className="space-y-2">
+                                <Label htmlFor="fullName">Full Name (as per ID)</Label>
+                                <Input id="fullName" name="fullName" required placeholder="Enter your full name" />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                                <Input id="dateOfBirth" name="dateOfBirth" type="date" required />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="aadhaarNumber">Aadhaar Number</Label>
+                                <Input id="aadhaarNumber" name="aadhaarNumber" placeholder="Enter 12-digit Aadhaar number" />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="panNumber">PAN Number</Label>
+                                <Input id="panNumber" name="panNumber" placeholder="Enter 10-digit PAN number" />
+                            </div>
                             <div className="space-y-2">
                                 <Label htmlFor="id-proof">Aadhaar / PAN Card</Label>
                                 <Input id="id-proof" type="file" required className="file:text-primary" onChange={(e) => handleFileChange(e, setIdProof)} />

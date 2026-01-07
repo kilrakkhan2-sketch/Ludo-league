@@ -1,3 +1,4 @@
+
 'use client';
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
@@ -71,6 +72,7 @@ export default function WalletPage() {
   
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [depositHistory, setDepositHistory] = useState<DepositRequest[]>([]);
+  const [withdrawalHistory, setWithdrawalHistory] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [depositAmount, setDepositAmount] = useState(100);
@@ -128,10 +130,25 @@ export default function WalletPage() {
         operation: 'list',
       }));
     });
+    
+    const withdrawalRef = collection(firestore, 'withdrawalRequests');
+    const qWithdrawals = query(withdrawalRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    
+    const unsubscribeWithdrawals = onSnapshot(qWithdrawals, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WithdrawalRequest));
+        setWithdrawalHistory(data);
+    }, (error) => {
+         errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: `withdrawalRequests where userId == ${user.uid}`,
+            operation: 'list',
+        }));
+    });
+
 
     return () => {
         unsubscribeTrans();
         unsubscribeDeposits();
+        unsubscribeWithdrawals();
     };
   }, [firestore, user]);
 
@@ -213,7 +230,7 @@ export default function WalletPage() {
 
   const handleWithdrawalSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-     if (!user || !firestore) {
+     if (!user || !firestore || !userProfile) {
         toast({ title: "Please login first", variant: "destructive" });
         return;
     }
@@ -242,8 +259,8 @@ export default function WalletPage() {
             amount,
             status: 'pending',
             createdAt: serverTimestamp(),
-            upiId: userProfile?.upiId || '',
-            bankDetails: userProfile?.bankDetails || '',
+            upiId: userProfile.upiId || '',
+            bankDetails: userProfile.bankDetails || '',
             userName: user.displayName, // For admin panel
         } as Omit<WithdrawalRequest, 'id'>);
         toast({ title: "Withdrawal request submitted successfully." });
@@ -373,7 +390,8 @@ export default function WalletPage() {
                         </CardHeader>
                         <CardContent className="flex flex-col gap-3">
                            {loading && <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin mx-auto"/></div>}
-                            {!loading && depositHistory.length === 0 && <p className="text-center text-muted-foreground py-8">No deposit history found.</p>}
+                            {!loading && depositHistory.length === 0 && withdrawalHistory.length === 0 && <p className="text-center text-muted-foreground py-8">No requests found.</p>}
+                            
                             {!loading && depositHistory.map((req) => (
                                 <Card key={req.id} className="p-3">
                                     <div className="flex justify-between items-center">
@@ -394,6 +412,28 @@ export default function WalletPage() {
                                         </div>
                                     </div>
                                     {req.rejectionReason && <p className="text-xs text-destructive mt-2 pt-2 border-t">Reason: {req.rejectionReason}</p>}
+                                </Card>
+                            ))}
+                            {!loading && withdrawalHistory.map((req) => (
+                                <Card key={req.id} className="p-3">
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-3">
+                                            <div className="bg-red-100 p-2 rounded-full">
+                                                <ArrowDownLeft className="h-4 w-4 text-red-600"/>
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold">Withdrawal Request</p>
+                                                <p className="text-xs text-muted-foreground">{req.createdAt?.toDate().toLocaleString()}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-lg text-red-600">₹{req.amount.toFixed(2)}</p>
+                                            <Badge variant={req.status === 'approved' ? 'default' : req.status === 'pending' ? 'secondary' : 'destructive'} className={cn('mt-1', {'bg-green-100 text-green-800': req.status === 'approved'})}>
+                                                {req.status}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                     {req.rejectionReason && <p className="text-xs text-destructive mt-2 pt-2 border-t">Reason: {req.rejectionReason}</p>}
                                 </Card>
                             ))}
                         </CardContent>

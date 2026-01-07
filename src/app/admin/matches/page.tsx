@@ -212,12 +212,12 @@ const MatchDetailDialog = ({
                             <Trophy
                               className={cn(
                                 'h-5 w-5',
-                                result.position === 1
+                                result.status === 'win'
                                   ? 'text-yellow-500'
                                   : 'text-muted-foreground'
                               )}
                             />
-                            Position: {result.position}
+                            Claim: {result.status}
                           </div>
                            {(result as any).isFlaggedForFraud && <Badge variant="destructive">Flagged</Badge>}
                         </div>

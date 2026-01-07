@@ -11,7 +11,9 @@ export function FirebaseClientProvider({
 }) {
   return (
     <FirebaseProvider>
-      {children}
+      <UserProvider>
+        {children}
+      </UserProvider>
     </FirebaseProvider>
   );
 }
