@@ -1,8 +1,9 @@
+
 'use client';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Swords, Loader2, Info, Lock } from "lucide-react";
+import { Swords, Loader2, Info, Lock, Wallet } from "lucide-react";
 import { useUser, useFirestore } from "@/firebase";
 import { useEffect, useState } from "react";
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
@@ -38,33 +39,35 @@ const EntryFeeCard = ({
 }) => {
     
     const cardContent = (
-      <Card className={cn(
-          "flex flex-col h-full text-center bg-card/80 backdrop-blur-sm border-primary/20 transition-all duration-300",
-          isLocked 
-          ? "bg-muted/50 border-muted-foreground/20 cursor-not-allowed"
-          : "hover:border-primary hover:-translate-y-1"
-      )}>
-        <CardHeader className="p-4 relative">
-          {isLocked && <Lock className="absolute top-2 right-2 h-4 w-4 text-muted-foreground" />}
-          <CardTitle className={cn(
-              "text-2xl font-bold",
-              isLocked ? "text-muted-foreground/50" : "text-transparent bg-clip-text bg-gradient-to-r from-primary-start to-primary-end"
-          )}>
-            ₹{fee}
-          </CardTitle>
-          <CardDescription className={cn(isLocked && "text-muted-foreground/50")}>Entry Fee</CardDescription>
-        </CardHeader>
-        <CardContent className="flex-grow p-4">
-          <p className={cn("text-md font-semibold", isLocked ? "text-muted-foreground/50" : "")}>
-            Prize: <span className={cn(isLocked ? "text-muted-foreground/50" : "text-green-500")}>₹{(fee * 1.8).toFixed(2)}</span>
-          </p>
-        </CardContent>
-        <CardFooter className="p-4">
-          <Button className="w-full h-9 text-sm" onClick={() => onPlay(fee)} disabled={isLocked}>
-            {isLocked ? "Locked" : <><Swords className="mr-2 h-4 w-4" /> Play</>}
-          </Button>
-        </CardFooter>
-      </Card>
+      <motion.div whileHover={!isLocked ? { scale: 1.05, y: -5 } : {}} transition={{ duration: 0.2 }}>
+        <Card className={cn(
+            "flex flex-col h-full text-center bg-card/80 backdrop-blur-sm border-primary/20 transition-all duration-300",
+            isLocked 
+            ? "bg-muted/50 border-muted-foreground/20 cursor-not-allowed"
+            : "hover:border-primary"
+        )}>
+          <CardHeader className="p-4 relative">
+            {isLocked && <Lock className="absolute top-2 right-2 h-4 w-4 text-muted-foreground" />}
+            <CardTitle className={cn(
+                "text-2xl font-bold",
+                isLocked ? "text-muted-foreground/50" : "text-transparent bg-clip-text bg-gradient-to-r from-primary-start to-primary-end"
+            )}>
+              ₹{fee}
+            </CardTitle>
+            <CardDescription className={cn(isLocked && "text-muted-foreground/50")}>Entry Fee</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-grow p-4">
+            <p className={cn("text-md font-semibold", isLocked ? "text-muted-foreground/50" : "")}>
+              Prize: <span className={cn(isLocked ? "text-muted-foreground/50" : "text-green-500")}>₹{(fee * 1.8).toFixed(2)}</span>
+            </p>
+          </CardContent>
+          <CardFooter className="p-4">
+            <Button className="w-full h-9 text-sm" onClick={() => onPlay(fee)} disabled={isLocked}>
+              {isLocked ? "Locked" : <><Swords className="mr-2 h-4 w-4" /> Play</>}
+            </Button>
+          </CardFooter>
+        </Card>
+      </motion.div>
     );
 
   if (isLocked) {
@@ -73,7 +76,7 @@ const EntryFeeCard = ({
             <Tooltip>
                 <TooltipTrigger asChild>{cardContent}</TooltipTrigger>
                 <TooltipContent>
-                    <p>Win more to unlock higher stakes matches.</p>
+                    <p>Win more matches to unlock higher stakes.</p>
                 </TooltipContent>
             </Tooltip>
         </TooltipProvider>
@@ -108,7 +111,7 @@ export default function LobbyPage() {
 
   // Listen for active match on user profile
   useEffect(() => {
-    if (userProfile && userProfile.activeMatchId) {
+    if (userProfile?.activeMatchId) {
         if (isSearching) {
             toast({ title: "Match Found!", description: "Redirecting you to the match room..." });
             router.push(`/match/${userProfile.activeMatchId}`);
@@ -208,23 +211,41 @@ export default function LobbyPage() {
         {isSearching && <SearchingOverlay onCancel={handleCancelSearch} />}
         
         <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Confirm Entry Fee</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Wallet className="h-6 w-6 text-primary"/>
+                        Confirm Match Entry
+                    </DialogTitle>
                     <DialogDescription>
-                        An amount of ₹{selectedFee} will be deducted from your wallet to join the match. Are you sure you want to proceed?
+                        Please confirm that you want to join a match with an entry fee of ₹{selectedFee}.
                     </DialogDescription>
                 </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Current Wallet Balance:</span>
+                        <span className="font-medium">₹{userProfile?.walletBalance.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Entry Fee:</span>
+                        <span className="font-medium text-destructive">- ₹{selectedFee.toFixed(2)}</span>
+                    </div>
+                    <div className="border-t border-dashed my-2"></div>
+                    <div className="flex justify-between items-center font-semibold text-md">
+                        <span className="text-muted-foreground">Estimated Balance After:</span>
+                        <span>₹{(userProfile?.walletBalance - selectedFee).toFixed(2)}</span>
+                    </div>
+                </div>
                 <DialogFooter>
                     <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-                    <Button onClick={handleConfirmPlay}>Confirm & Play</Button>
+                    <Button onClick={handleConfirmPlay}>Confirm & Play for ₹{selectedFee}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
 
 
         {bannerImage && (
-             <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden">
+             <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden shadow-lg">
                 <Image src={bannerImage.imageUrl} alt="Lobby Banner" fill className="object-cover" data-ai-hint={bannerImage.imageHint}/>
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                     <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
@@ -235,9 +256,9 @@ export default function LobbyPage() {
         )}
         
         {activeMatchId && (
-            <Alert variant="destructive" className="cursor-pointer" onClick={() => router.push(`/match/${activeMatchId}`)}>
+            <Alert variant="destructive" className="cursor-pointer border-2 shadow-sm" onClick={() => router.push(`/match/${activeMatchId}`)}>
                 <Info className="h-4 w-4" />
-                <AlertTitle>You have an active match!</AlertTitle>
+                <AlertTitle className="font-bold">You have an active match!</AlertTitle>
                 <AlertDescription>Click here to go to your match room and complete the game.</AlertDescription>
             </Alert>
         )}
@@ -263,18 +284,16 @@ export default function LobbyPage() {
         <CardHeader>
           <CardTitle>How to Play</CardTitle>
         </CardHeader>
-        <CardContent className="prose prose-sm dark:prose-invert">
-          <ol>
-            <li>Select an entry fee and click `Play`.</li>
-            <li>We'll find an opponent for you.</li>
-            <li>Once a match is found, you'll be redirected to the match room.</li>
-            <li>Use the room code from the match room to play in your Ludo King app.</li>
-            <li>After the game, come back and submit your result with a screenshot.</li>
+        <CardContent className="prose prose-sm dark:prose-invert text-card-foreground">
+          <ol className="space-y-2">
+            <li>Select an entry fee and click <span className='font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded-sm'>Play</span>.</li>
+            <li>Wait for us to find a suitable opponent for you.</li>
+            <li>Once a match is found, you will be automatically redirected to the match room.</li>
+            <li>Copy the room code from the match room and use it to play in your Ludo King app.</li>
+            <li>After the game, return to the app and submit your result with a screenshot to claim your winnings.</li>
           </ol>
         </CardContent>
       </Card>
     </div>
   );
 }
-
-    
