@@ -1,3 +1,4 @@
+
 'use client';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
@@ -38,56 +39,60 @@ const EntryFeeCard = ({
     playerCount: number;
 }) => {
     
+    const cardStyle = cardBgImage ? { backgroundImage: `url(${cardBgImage.imageUrl})` } : {};
+
     const cardContent = (
-      <div className={cn(
-            "relative flex flex-col text-center transition-all duration-300 overflow-hidden rounded-lg border p-4 h-full",
-            isLocked 
-            ? "border-muted-foreground/20 cursor-not-allowed"
-            : "border-transparent hover:border-primary"
-        )}>
-          {cardBgImage && (
-            <Image
-                src={cardBgImage.imageUrl}
-                alt="Ludo Background"
-                fill
-                className="object-fill z-0"
-                data-ai-hint={cardBgImage.imageHint}
-            />
-          )}
+      <div
+        style={cardStyle}
+        className={cn(
+          "relative flex flex-col justify-between text-center transition-all duration-300 overflow-hidden rounded-lg border p-4 h-48",
+          "bg-cover bg-center", // Background image styling
+          isLocked && "grayscale-[40%]"
+        )}
+      >
+        {/* Overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent z-10" />
 
-          {isLocked && <div className="absolute inset-0 bg-black/50 z-10"></div>}
+        {/* Content Layer */}
+        <div className="relative z-20 flex flex-col h-full text-white">
+          {/* Top Content */}
+          <div className="flex-grow">
+            <h3 className="text-2xl font-bold">
+              ₹{fee}
+            </h3>
+            <p className="text-sm opacity-80">Entry Fee</p>
 
-          <div className="relative z-10 flex flex-col h-full">
-            <div className="flex-grow">
-                {isLocked && <Lock className="absolute top-2 right-2 h-4 w-4 text-white/70" />}
-                <h3 className={cn(
-                    "text-2xl font-bold",
-                    isLocked ? "text-white/50" : "text-white"
-                )}>
-                ₹{fee}
-                </h3>
-                <p className={cn("text-sm", isLocked ? "text-white/50" : "text-white/70")}>Entry Fee</p>
-
-                <div className="mt-4 space-y-2">
-                    <p className={cn("text-md font-semibold", isLocked ? "text-white/50" : "text-white")}>
-                    Prize: <span className={cn(isLocked ? "text-green-400/50" : "text-green-400")}>₹{(fee * 1.8).toFixed(2)}</span>
-                    </p>
-                    {playerCount > 0 && !isLocked && (
-                    <div className="flex items-center justify-center gap-1.5 text-xs text-blue-300 animate-pulse">
-                        <Users className="h-3 w-3" />
-                        <span>{playerCount} Searching...</span>
-                    </div>
-                    )}
+            <div className="mt-2 space-y-1">
+              <p className="text-md font-semibold">
+                Prize: <span className="text-green-400">₹{(fee * 1.8).toFixed(2)}</span>
+              </p>
+              {playerCount > 0 && !isLocked && (
+                <div className="flex items-center justify-center gap-1.5 text-xs text-blue-300 animate-pulse">
+                  <Users className="h-3 w-3" />
+                  <span>{playerCount} Searching...</span>
                 </div>
-            </div>
-
-            <div className="mt-auto pt-4">
-                <Button className="w-full h-9 text-sm" onClick={() => onPlay(fee)} disabled={isLocked}>
-                {isLocked ? "Locked" : <><Swords className="mr-2 h-4 w-4" /> Play</>}
-                </Button>
+              )}
             </div>
           </div>
+
+          {/* Bottom Button */}
+          <div className="mt-auto">
+            <Button className="w-full h-9 text-sm" onClick={() => onPlay(fee)} disabled={isLocked}>
+              <Swords className="mr-2 h-4 w-4" /> Play
+            </Button>
+          </div>
         </div>
+
+        {/* Locked State Overlay */}
+        {isLocked && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center backdrop-blur-[2px] bg-black/30">
+                <div className="flex items-center gap-2 text-white font-bold text-lg">
+                    <Lock className="h-5 w-5" />
+                    Locked
+                </div>
+            </div>
+        )}
+      </div>
     );
 
   if (isLocked) {
