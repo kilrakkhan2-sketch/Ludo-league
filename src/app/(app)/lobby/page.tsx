@@ -2,7 +2,7 @@
 'use client';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
-import { Swords, Loader2, Info, Lock, Wallet, Users } from "lucide-react";
+import { Swords, Loader2, Info, Lock, Wallet, Users, User, Shield, BarChart, X } from "lucide-react";
 import { useUser, useFirestore } from "@/firebase";
 import { useEffect, useState } from "react";
 import { doc, setDoc, deleteDoc, collection, onSnapshot, query, where } from "firebase/firestore";
@@ -23,8 +23,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useRouter } from 'next/navigation';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const bannerImage = PlaceHolderImages.find(img => img.id === 'lobby-banner');
 const cardBgImage = PlaceHolderImages.find(img => img.id === 'ludo-background');
 
 const EntryFeeCard = ({ 
@@ -41,37 +42,38 @@ const EntryFeeCard = ({
     
     const cardStyle = cardBgImage ? { 
         backgroundImage: `url(${cardBgImage.imageUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
      } : {};
 
     const cardContent = (
       <div
         style={cardStyle}
         className={cn(
-          "relative flex flex-col h-[180px] text-white p-4 justify-between overflow-hidden rounded-lg border",
-          "bg-cover bg-center", // Tailwind classes for background image control
-          isLocked && "grayscale-[40%]"
+          "relative flex flex-col h-[180px] text-white p-4 justify-between overflow-hidden rounded-lg border border-white/10 shadow-lg",
+          isLocked && "grayscale"
         )}
       >
         {/* Overlay for better text readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent z-0"></div>
 
         {/* Content Layer */}
         <div className="relative z-10 flex flex-col h-full">
             {/* Top Content */}
             <div className="flex-grow">
-                <h3 className="text-2xl font-bold [text-shadow:_1px_1px_2px_rgb(0_0_0_/_0.8)]">
-                ₹{fee}
+                <h3 className="text-2xl font-bold drop-shadow-md">
+                    ₹{fee}
                 </h3>
-                <p className="text-sm opacity-90 [text-shadow:_1px_1px_2px_rgb(0_0_0_/_0.8)]">Entry Fee</p>
+                <p className="text-sm opacity-90 drop-shadow-sm">Entry Fee</p>
 
                 <div className="mt-2 space-y-1">
-                <p className="text-md font-semibold [text-shadow:_1px_1px_2px_rgb(0_0_0_/_0.8)]">
-                    Prize: <span className="text-green-400">₹{(fee * 1.8).toFixed(2)}</span>
+                <p className="text-md font-semibold drop-shadow-sm">
+                    Prize: <span className="text-green-400 font-bold">₹{(fee * 1.8).toFixed(2)}</span>
                 </p>
                 {playerCount > 0 && !isLocked && (
-                    <div className="flex items-center justify-center gap-1.5 text-xs text-blue-300 animate-pulse [text-shadow:_1px_1px_2px_rgb(0_0_0_/_0.8)]">
-                    <Users className="h-3 w-3" />
-                    <span>{playerCount} Searching...</span>
+                    <div className="flex items-center justify-center gap-1.5 text-xs text-blue-300 animate-pulse drop-shadow-sm">
+                        <Users className="h-3 w-3" />
+                        <span>{playerCount} Searching...</span>
                     </div>
                 )}
                 </div>
@@ -79,7 +81,7 @@ const EntryFeeCard = ({
 
             {/* Bottom Button */}
             <div className="mt-auto">
-                <Button className="w-full h-9 text-sm shadow-lg" onClick={() => onPlay(fee)} disabled={isLocked}>
+                <Button className="w-full h-9 text-sm shadow-lg bg-gradient-to-r from-primary-start to-primary-end" onClick={() => onPlay(fee)} disabled={isLocked}>
                     <Swords className="mr-2 h-4 w-4" /> Play
                 </Button>
             </div>
@@ -87,8 +89,8 @@ const EntryFeeCard = ({
         
         {/* Locked State Overlay */}
         {isLocked && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center backdrop-blur-[2px]">
-                <div className="flex items-center gap-2 text-white font-bold text-lg [text-shadow:_1px_1px_2px_rgb(0_0_0_/_0.8)]">
+            <div className="absolute inset-0 z-20 flex items-center justify-center backdrop-blur-[2px] bg-black/30">
+                <div className="flex items-center gap-2 text-white font-bold text-lg drop-shadow-lg">
                     <Lock className="h-5 w-5" />
                     Locked
                 </div>
@@ -113,15 +115,77 @@ const EntryFeeCard = ({
   return cardContent;
 };
 
-const SearchingOverlay = ({ onCancel }: { onCancel: () => void }) => (
-    <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-6">
-        <h2 className="text-3xl font-bold text-primary">Searching for Opponent...</h2>
-        <div className="flex items-center gap-4">
-            <Loader2 className="h-12 w-12 animate-spin text-primary"/>
-            <p className="text-lg text-muted-foreground">Please wait while we find a match for you.</p>
+
+const PlayerCard = ({ name, avatarUrl, winRate }: { name: string, avatarUrl: string | null | undefined, winRate: number }) => (
+    <div className="flex flex-col items-center gap-3">
+        <Avatar className="h-24 w-24 border-4 border-white shadow-lg">
+            <AvatarImage src={avatarUrl || ''} />
+            <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+        </Avatar>
+        <div className="text-center">
+            <h3 className="text-lg font-bold text-white">{name}</h3>
+            <p className="text-sm text-white/80">Win Rate: {winRate}%</p>
         </div>
-        <Button variant="outline" className="mt-8" onClick={onCancel}>Cancel Search</Button>
     </div>
+);
+
+const SearchingCard = () => (
+    <div className="flex flex-col items-center gap-3">
+        <div className="h-24 w-24 rounded-full border-4 border-dashed border-white/50 bg-white/10 flex items-center justify-center shadow-lg animate-pulse">
+            <User className="h-10 w-10 text-white/70"/>
+        </div>
+        <div className="text-center">
+            <h3 className="text-lg font-bold text-white">Searching...</h3>
+            <p className="text-sm text-white/80">Finding opponent</p>
+        </div>
+    </div>
+);
+
+
+const SearchingOverlay = ({ user, userProfile, onCancel }: { user: any, userProfile: any, onCancel: () => void }) => (
+    <AnimatePresence>
+        <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-gray-900/80 backdrop-blur-lg z-50 flex flex-col items-center justify-center p-4"
+            style={{
+                background: 'radial-gradient(circle, rgba(20,27,47,0.95) 0%, rgba(10,13,24,0.98) 100%)'
+            }}
+        >
+            <motion.div 
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2, duration: 0.5 }}
+                className="flex items-center justify-around w-full max-w-md"
+            >
+                <PlayerCard name={user.displayName} avatarUrl={user.photoURL} winRate={userProfile?.winRate || 0} />
+                <div className="text-5xl font-black text-white/50 mx-4">VS</div>
+                <SearchingCard />
+            </motion.div>
+
+            <motion.div 
+                 initial={{ y: 20, opacity: 0 }}
+                 animate={{ y: 0, opacity: 1 }}
+                 transition={{ delay: 0.5, duration: 0.5 }}
+                 className="text-center mt-12"
+            >
+                <h2 className="text-2xl font-bold text-white">Finding the perfect opponent for you...</h2>
+                <p className="text-white/60 mt-2">This usually takes just a few moments.</p>
+            </motion.div>
+            
+            <motion.div
+                 initial={{ y: 20, opacity: 0 }}
+                 animate={{ y: 0-20, opacity: 1 }}
+                 transition={{ delay: 0.8, duration: 0.5 }}
+                 className="absolute bottom-10"
+            >
+                <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10" onClick={onCancel}>
+                    <X className="mr-2 h-4 w-4"/> Cancel Search
+                </Button>
+            </motion.div>
+        </motion.div>
+    </AnimatePresence>
 );
 
 
@@ -260,7 +324,7 @@ export default function LobbyPage() {
 
   return (
     <div className="space-y-6">
-        {isSearching && <SearchingOverlay onCancel={handleCancelSearch} />}
+        {isSearching && <SearchingOverlay user={user} userProfile={userProfile} onCancel={handleCancelSearch} />}
         
         <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
             <DialogContent className="sm:max-w-[425px]">
@@ -334,7 +398,8 @@ export default function LobbyPage() {
             <li>Wait for us to find a suitable opponent for you.</li>
             <li>Once a match is found, you will be automatically redirected to the match room.</li>
             <li>Copy the room code from the match room and use it to play in your Ludo King app.</li>
-            <li>After the game, return to the app and submit your result with a screenshot to claim your winnings.</li>
+            <li>After the game, take a screenshot of the win/loss screen.</li>
+            <li>Come back to the app and submit your result with the screenshot to claim your winnings.</li>
           </ol>
         </div>
     </div>
