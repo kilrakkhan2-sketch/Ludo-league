@@ -14,8 +14,8 @@ import type { Match } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
-// Define the banner images from placeholders
-const bannerImages = PlaceHolderImages.filter(img => img.id.startsWith('banner-')).map(img => img.imageUrl);
+// Define the banner images from placeholders, using all new custom banners
+const bannerImages = PlaceHolderImages.filter(img => img.id.endsWith('-banner')).map(img => img.imageUrl);
 
 
 const ActionCard = ({ title, description, href, icon: Icon }: { title: string, description:string, href: string, icon: React.ElementType }) => (

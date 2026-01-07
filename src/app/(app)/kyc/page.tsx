@@ -20,7 +20,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 type KycStatus = 'not_submitted' | 'pending' | 'approved' | 'rejected';
 
-const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-kyc');
+const bannerImage = PlaceHolderImages.find(img => img.id === 'kyc-banner');
 
 const KycStatusIndicator = ({ status, reason }: { status: KycStatus, reason?: string }) => {
     switch (status) {
@@ -165,7 +165,7 @@ export default function KycPage() {
     <div className="space-y-6">
         {bannerImage && (
             <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden">
-                <Image src={bannerImage.imageUrl} alt="KYC Banner" fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
+                <Image src={bannerImage.imageUrl} alt={bannerImage.description} fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                     <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
                         <ShieldCheck className="h-8 w-8" /> KYC Verification

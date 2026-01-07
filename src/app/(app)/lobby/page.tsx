@@ -26,7 +26,7 @@ import { useRouter } from 'next/navigation';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
-const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-lobby');
+const bannerImage = PlaceHolderImages.find(img => img.id === 'lobby-banner');
 
 const EntryFeeCard = ({ 
     fee, 
@@ -246,7 +246,7 @@ export default function LobbyPage() {
 
         {bannerImage && (
              <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden shadow-lg">
-                <Image src={bannerImage.imageUrl} alt="Lobby Banner" fill className="object-cover" data-ai-hint={bannerImage.imageHint}/>
+                <Image src={bannerImage.imageUrl} alt={bannerImage.description} fill className="object-cover" data-ai-hint={bannerImage.imageHint}/>
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                     <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
                         <Swords className="h-8 w-8" /> Match Lobby

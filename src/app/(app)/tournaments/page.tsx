@@ -15,7 +15,7 @@ import type { Tournament } from "@/lib/types";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { getTournamentStatus } from "@/lib/types";
 
-const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-tournaments');
+const bannerImage = PlaceHolderImages.find(img => img.id === 'tournaments-banner');
 
 const TournamentCard = ({ tournament }: { tournament: Tournament }) => {
     if (!tournament) {
@@ -165,7 +165,7 @@ export default function TournamentsPage() {
     <div className="space-y-6">
         {bannerImage && (
              <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden">
-                <Image src={bannerImage.imageUrl} alt="Tournaments Banner" fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
+                <Image src={bannerImage.imageUrl} alt={bannerImage.description} fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                     <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
                         <Trophy className="h-8 w-8" /> Tournaments

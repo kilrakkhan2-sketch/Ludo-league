@@ -33,7 +33,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
-const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-wallet');
+const bannerImage = PlaceHolderImages.find(img => img.id === 'wallet-banner');
 
 const DynamicQrCode = ({ upiId, amount }: { upiId: string | null, amount: number }) => {
   if (!upiId) {
@@ -252,7 +252,7 @@ export default function WalletPage() {
     <div className="space-y-6">
         {bannerImage && (
             <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden shadow-lg">
-                <Image src={bannerImage.imageUrl} alt="Wallet Banner" fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
+                <Image src={bannerImage.imageUrl} alt={bannerImage.description} fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                     <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
                         <WalletIcon className="h-8 w-8" /> My Wallet
