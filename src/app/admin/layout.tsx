@@ -28,7 +28,8 @@ import {
   FolderKanban,
   AtSign,
   Gift,
-  Newspaper
+  Newspaper,
+  MessageSquare,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet"
@@ -51,6 +52,7 @@ export default function AdminLayout({
         { href: "/admin/deposits", label: "Deposits", icon: WalletCards },
         { href: "/admin/withdrawals", label: "Withdrawals", icon: Download },
         { href: "/admin/kyc-requests", label: "KYC Requests", icon: ShieldCheck },
+        { href: "/admin/support", label: "Support Inbox", icon: MessageSquare },
         { href: "/admin/upi-management", label: "UPI Management", icon: AtSign },
         { href: "/admin/referral-settings", label: "Referral Settings", icon: Gift },
         { href: "/admin/news-management", label: "News Management", icon: Newspaper },
