@@ -251,7 +251,7 @@ export default function WalletPage() {
   return (
     <div className="space-y-6">
         {bannerImage && (
-            <div className="relative w-full h-48 md:h-64 rounded-lg overflow-hidden shadow-lg">
+            <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-lg">
                 <Image src={bannerImage.imageUrl} alt={bannerImage.description} fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
             </div>
         )}

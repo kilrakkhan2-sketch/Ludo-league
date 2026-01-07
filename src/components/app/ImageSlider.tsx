@@ -15,7 +15,7 @@ export const ImageSlider = ({ images }: { images: string[] }) => {
   const [emblaRef] = useEmblaCarousel({ loop: true }, [Autoplay(autoplayOptions)]);
 
   return (
-    <div className="relative w-full h-48 md:h-64 rounded-lg overflow-hidden shadow-lg" ref={emblaRef}>
+    <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-lg" ref={emblaRef}>
         <div className="flex h-full">
             {images.map((src, index) => (
                 <div className="relative flex-[0_0_100%] h-full" key={index}>
