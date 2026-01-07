@@ -63,7 +63,7 @@ const EntryFeeCard = ({
                 {isLocked && <Lock className="absolute top-2 right-2 h-4 w-4 text-muted-foreground" />}
                 <h3 className={cn(
                     "text-2xl font-bold",
-                    isLocked ? "text-muted-foreground/50" : "text-transparent bg-clip-text bg-gradient-to-r from-primary-start to-primary-end"
+                    isLocked ? "text-muted-foreground/50" : "text-white"
                 )}>
                 ₹{fee}
                 </h3>
@@ -338,3 +338,4 @@ export default function LobbyPage() {
       </Card>
     </div>
   );
+}
