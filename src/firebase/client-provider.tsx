@@ -1,3 +1,4 @@
+
 'use client';
 
 import { UserProvider } from './auth/use-user';
@@ -10,7 +11,7 @@ export function FirebaseClientProvider({
 }) {
   return (
     <FirebaseProvider>
-      <UserProvider>{children}</UserProvider>
+      {children}
     </FirebaseProvider>
   );
 }

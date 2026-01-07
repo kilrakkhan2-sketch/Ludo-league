@@ -32,12 +32,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, isAuthenticating, isAdmin, isAuthPage, pathname, router]);
 
-  // While authentication is in progress, show a loader.
-  if (isAuthenticating) {
+
+  // While authentication is in progress, or if we are waiting for a redirect, show a loader.
+  if (isAuthenticating || (!user && !isAuthPage) || (user && isAuthPage)) {
     return <CustomLoader />;
   }
-
-  // If a user exists and they are not on an auth page, render the main app shell.
+  
+  // If a user exists and they are on a protected page, render the app shell.
   if (user && !isAuthPage) {
     return (
       <AppShell>
@@ -55,6 +56,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // In all other cases (e.g., waiting for a redirect to complete), show a loader.
+  // Fallback loader for any other edge cases during transition.
   return <CustomLoader />;
 }
