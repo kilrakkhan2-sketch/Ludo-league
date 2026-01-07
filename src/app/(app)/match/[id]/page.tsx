@@ -26,7 +26,7 @@ import {
   Gamepad2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { useFirestore, useUser } from '@/firebase';
 import {
   doc,
@@ -97,10 +97,6 @@ const RoomCodeManager = ({ match, isCreator }: { match: Match, isCreator: boolea
       toast({ title: 'Room code copied!' });
     }
   };
-  
-  const handleOpenLudoKing = () => {
-    window.open('ludoking://', '_self');
-  }
 
   // Creator's view to ENTER room code when match is full but code not set yet
   if (isCreator && !match.roomCode && match.playerIds.length === match.maxPlayers && match.status === 'waiting') {
@@ -171,9 +167,9 @@ const RoomCodeManager = ({ match, isCreator }: { match: Match, isCreator: boolea
                         </Button>
                     </div>
                 </div>
-                 <Button onClick={handleOpenLudoKing} className="w-full" variant="accent">
+                 <a href="ludoking://" className={cn(buttonVariants({ variant: "accent" }), "w-full")}>
                     Open Ludo King
-                 </Button>
+                 </a>
             </CardContent>
         </Card>
     )
@@ -451,5 +447,3 @@ export default function MatchPage() {
     </>
   );
 }
-
-    
