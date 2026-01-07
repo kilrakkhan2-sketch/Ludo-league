@@ -1,9 +1,8 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
 import { collection, getDocs, doc, getDoc, orderBy, query, limit } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useFirestore } from '@/firebase';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -11,6 +10,8 @@ import { Loader2, MessageSquare, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useAdminOnly } from '@/hooks/useAdminOnly';
+
 
 interface ChatThread {
   userId: string;
@@ -22,22 +23,27 @@ interface ChatThread {
 }
 
 function getInitials(name: string) {
+    if(!name) return "U";
     const names = name.split(' ');
     const initials = names.map(n => n[0]).join('');
     return initials.toUpperCase();
 }
 
 export default function SupportInboxPage() {
+  const firestore = useFirestore();
+  useAdminOnly();
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if(!firestore) return;
+    
     const fetchThreads = async () => {
       setLoading(true);
       setError(null);
       try {
-        const chatsCollectionRef = collection(db, 'supportChats');
+        const chatsCollectionRef = collection(firestore, 'supportChats');
         const chatDocsSnapshot = await getDocs(chatsCollectionRef);
 
         if (chatDocsSnapshot.empty) {
@@ -49,12 +55,10 @@ export default function SupportInboxPage() {
         const threadPromises = chatDocsSnapshot.docs.map(async (chatDoc) => {
           const userId = chatDoc.id;
           
-          // Fetch user data
-          const userDocRef = doc(db, 'users', userId);
+          const userDocRef = doc(firestore, 'users', userId);
           const userDoc = await getDoc(userDocRef);
 
-          // Fetch last message
-          const messagesQuery = query(collection(db, `supportChats/${userId}/messages`), orderBy('createdAt', 'desc'), limit(1));
+          const messagesQuery = query(collection(firestore, `supportChats/${userId}/messages`), orderBy('createdAt', 'desc'), limit(1));
           const lastMessageSnapshot = await getDocs(messagesQuery);
           const lastMessage = lastMessageSnapshot.docs.length > 0 ? lastMessageSnapshot.docs[0].data() : null;
 
@@ -69,13 +73,12 @@ export default function SupportInboxPage() {
               lastMessageAt: lastMessage?.createdAt?.toDate(),
             };
           } else {
-             return null; // or a default object
+             return null;
           }
         });
 
         const resolvedThreads = (await Promise.all(threadPromises)).filter(Boolean) as ChatThread[];
         
-        // Sort threads by last message date
         resolvedThreads.sort((a, b) => (b.lastMessageAt?.getTime() || 0) - (a.lastMessageAt?.getTime() || 0));
 
         setThreads(resolvedThreads);
@@ -88,7 +91,7 @@ export default function SupportInboxPage() {
     };
 
     fetchThreads();
-  }, []);
+  }, [firestore]);
 
   return (
     <div className="space-y-6">

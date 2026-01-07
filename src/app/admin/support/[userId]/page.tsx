@@ -1,10 +1,9 @@
-
 "use client";
 
 import { useState, useEffect, useRef, FormEvent } from 'react';
-import { db } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useAdmin } from '@/firebase/use-admin'; 
+import { useFirestore } from '@/firebase';
+import { useAdminOnly } from '@/hooks/useAdminOnly';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,12 +13,15 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { UserProfile } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
+import { useUser } from '@/firebase';
 
 interface Message {
   id: string;
   text: string;
-  sender: 'user' | 'admin';
-  createdAt: Date;
+  senderId: string;
+  createdAt: any;
+  senderName: string;
+  senderAvatar: string;
 }
 
 interface SupportChatPageProps {
@@ -29,11 +31,14 @@ interface SupportChatPageProps {
 }
 
 function getInitials(name: string) {
+    if(!name) return "U";
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
 export default function SupportChatPage({ params }: SupportChatPageProps) {
-  const { admin } = useAdmin(); // Assuming you have a hook for admin auth
+  const { user: adminUser } = useUser();
+  const firestore = useFirestore();
+  useAdminOnly();
   const { userId } = params;
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -44,8 +49,10 @@ export default function SupportChatPage({ params }: SupportChatPageProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if(!firestore) return;
+
     const fetchUserData = async () => {
-      const userDocRef = doc(db, 'users', userId);
+      const userDocRef = doc(firestore, 'users', userId);
       const userDocSnap = await getDoc(userDocRef);
       if (userDocSnap.exists()) {
         setUserProfile(userDocSnap.data() as UserProfile);
@@ -57,7 +64,7 @@ export default function SupportChatPage({ params }: SupportChatPageProps) {
     fetchUserData();
 
     const messagesQuery = query(
-      collection(db, `supportChats/${userId}/messages`),
+      collection(firestore, `supportChats/${userId}/messages`),
       orderBy('createdAt', 'asc')
     );
 
@@ -66,9 +73,7 @@ export default function SupportChatPage({ params }: SupportChatPageProps) {
         const data = doc.data();
         return {
           id: doc.id,
-          text: data.text,
-          sender: data.sender,
-          createdAt: data.createdAt.toDate(),
+          ...data,
         } as Message;
       });
       setMessages(fetchedMessages);
@@ -76,7 +81,7 @@ export default function SupportChatPage({ params }: SupportChatPageProps) {
     });
 
     return () => unsubscribe();
-  }, [userId]);
+  }, [firestore, userId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -84,22 +89,22 @@ export default function SupportChatPage({ params }: SupportChatPageProps) {
 
   const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !admin) return;
+    if (!newMessage.trim() || !adminUser || !firestore) return;
 
     setIsSending(true);
-    const messagesColRef = collection(db, `supportChats/${userId}/messages`);
+    const messagesColRef = collection(firestore, `supportChats/${userId}/messages`);
 
     try {
       await addDoc(messagesColRef, {
         text: newMessage,
-        sender: 'admin',
+        senderId: adminUser.uid,
+        senderName: "Support",
+        senderAvatar: "", // Admin avatar can be set here
         createdAt: serverTimestamp(),
-        read: false,
       });
       setNewMessage('');
     } catch (error) {
       console.error("Error sending message:", error);
-      // Handle error (e.g., show toast)
     } finally {
       setIsSending(false);
     }
@@ -107,12 +112,11 @@ export default function SupportChatPage({ params }: SupportChatPageProps) {
 
   return (
     <div className="grid md:grid-cols-3 gap-6 h-[calc(100vh-8rem)]">
-      {/* User Info Column */}
       <Card className="md:col-span-1 h-fit">
         <CardHeader className='flex flex-row items-center gap-4'>
             <Avatar className="h-16 w-16">
               <AvatarImage src={userProfile?.photoURL || undefined} />
-              <AvatarFallback>{userProfile ? getInitials(userProfile.displayName) : 'U'}</AvatarFallback>
+              <AvatarFallback>{userProfile ? getInitials(userProfile.displayName || '') : 'U'}</AvatarFallback>
             </Avatar>
             <div>
                 <CardTitle>{userProfile?.displayName}</CardTitle>
@@ -145,7 +149,6 @@ export default function SupportChatPage({ params }: SupportChatPageProps) {
         </CardContent>
       </Card>
 
-      {/* Chat Column */}
       <Card className="md:col-span-2 flex flex-col h-full">
         <CardHeader className='flex-shrink-0'>
             <div className='flex items-center gap-4'>
@@ -155,7 +158,7 @@ export default function SupportChatPage({ params }: SupportChatPageProps) {
                 <CardTitle>Chat with {userProfile?.displayName}</CardTitle>
             </div>
         </CardHeader>
-        <CardContent className="flex-grow overflow-y-auto p-4 space-y-4">
+        <CardContent className="flex-grow overflow-y-auto p-4 space-y-4 bg-muted/20">
           {loading ? (
             <div className="flex justify-center items-center h-full">
               <Loader2 className="h-8 w-8 animate-spin" />
@@ -165,26 +168,26 @@ export default function SupportChatPage({ params }: SupportChatPageProps) {
               <div
                 key={index}
                 className={cn('flex items-end gap-2',
-                    msg.sender === 'admin' ? 'justify-end' : 'justify-start')}
+                    msg.senderId === adminUser?.uid ? 'justify-end' : 'justify-start')}
               >
-                {msg.sender === 'user' && (
+                {msg.senderId !== adminUser?.uid && (
                     <Avatar className='h-8 w-8'>
                          <AvatarImage src={userProfile?.photoURL || undefined} />
-                         <AvatarFallback>{userProfile ? getInitials(userProfile.displayName) : 'U'}</AvatarFallback>
+                         <AvatarFallback>{userProfile ? getInitials(userProfile.displayName || '') : 'U'}</AvatarFallback>
                     </Avatar>
                 )}
                 <div
                   className={cn(
-                    'rounded-lg px-4 py-2 max-w-sm',
-                    msg.sender === 'admin'
+                    'rounded-lg px-4 py-2 max-w-sm shadow-sm',
+                    msg.senderId === adminUser?.uid
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
+                      : 'bg-background'
                   )}
                 >
                   <p className="text-sm">{msg.text}</p>
-                  <p className="text-xs mt-1 text-right opacity-70">{msg.createdAt.toLocaleTimeString()}</p>
+                  <p className="text-xs mt-1 text-right opacity-70">{msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                 </div>
-                 {msg.sender === 'admin' && (
+                 {msg.senderId === adminUser?.uid && (
                     <Avatar className='h-8 w-8'>
                         <AvatarFallback><ShieldCheck className='h-5 w-5'/></AvatarFallback>
                     </Avatar>

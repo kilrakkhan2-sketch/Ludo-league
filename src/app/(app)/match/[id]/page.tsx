@@ -1,7 +1,6 @@
-
 'use client';
 import Image from 'next/image';
-import { SubmitResultForm } from '@/app/(app)/match/[id]/submit-result-form';
+import { SubmitResultForm } from '@/components/app/submit-result-form';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Card,
@@ -36,9 +35,6 @@ import {
   Timestamp,
   arrayRemove,
   updateDoc,
-  getDoc,
-  type DocumentReference,
-  setDoc,
 } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import type { Match } from '@/lib/types';

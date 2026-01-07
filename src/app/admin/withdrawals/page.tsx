@@ -1,4 +1,3 @@
-
 'use client';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -13,10 +12,10 @@ import {
 } from "@/components/ui/table"
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react"
 import { useFirestore, useUser } from "@/firebase"
-import { collection, onSnapshot, query, where, doc, getDoc, updateDoc, writeBatch, serverTimestamp, orderBy, runTransaction } from "firebase/firestore"
+import { collection, onSnapshot, query, where, doc, updateDoc, writeBatch, serverTimestamp, orderBy, runTransaction } from "firebase/firestore"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
-import type { WithdrawalRequest, UserProfile } from "@/lib/types";
+import type { WithdrawalRequest } from "@/lib/types";
 
 export default function AdminWithdrawalsPage() {
   const firestore = useFirestore();
@@ -70,14 +69,12 @@ export default function AdminWithdrawalsPage() {
                 
                 const transactionRef = doc(collection(firestore, 'transactions'));
                 
-                // Mark request as approved
                 transaction.update(requestRef, { 
                     status: 'approved', 
                     reviewedAt: serverTimestamp(), 
                     reviewedBy: adminUser.uid 
                 });
 
-                // Create a transaction log. The onTransactionCreate Cloud Function will handle the balance update.
                 transaction.set(transactionRef, {
                     userId: request.userId,
                     type: 'withdrawal',
@@ -86,12 +83,11 @@ export default function AdminWithdrawalsPage() {
                     createdAt: serverTimestamp(),
                     description: `Withdrawal to ${request.upiId || 'Bank Account'}`
                 });
-            } else { // Reject
+            } else {
                 transaction.update(requestRef, { 
                     status: 'rejected', 
                     reviewedAt: serverTimestamp(), 
                     reviewedBy: adminUser.uid,
-                    // TODO: Add rejection reason input
                 });
             }
         });
@@ -179,5 +175,3 @@ export default function AdminWithdrawalsPage() {
     </>
   )
 }
-
-    
