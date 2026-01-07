@@ -3,10 +3,10 @@
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Swords, Loader2, Info, Lock, Wallet } from "lucide-react";
+import { Swords, Loader2, Info, Lock, Wallet, Users } from "lucide-react";
 import { useUser, useFirestore } from "@/firebase";
 import { useEffect, useState } from "react";
-import { doc, setDoc, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, deleteDoc, collection, onSnapshot, query, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { Match } from "@/lib/types";
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -32,10 +32,12 @@ const EntryFeeCard = ({
     fee, 
     onPlay,
     isLocked = false,
+    playerCount = 0,
 }: { 
     fee: number; 
     onPlay: (fee: number) => void;
     isLocked: boolean;
+    playerCount: number;
 }) => {
     
     const cardContent = (
@@ -56,10 +58,16 @@ const EntryFeeCard = ({
             </CardTitle>
             <CardDescription className={cn(isLocked && "text-muted-foreground/50")}>Entry Fee</CardDescription>
           </CardHeader>
-          <CardContent className="flex-grow p-4">
+          <CardContent className="flex-grow p-4 space-y-2">
             <p className={cn("text-md font-semibold", isLocked ? "text-muted-foreground/50" : "")}>
               Prize: <span className={cn(isLocked ? "text-muted-foreground/50" : "text-green-500")}>₹{(fee * 1.8).toFixed(2)}</span>
             </p>
+             {playerCount > 0 && !isLocked && (
+              <div className="flex items-center justify-center gap-1.5 text-xs text-blue-500 animate-pulse">
+                <Users className="h-3 w-3" />
+                <span>{playerCount} Searching...</span>
+              </div>
+            )}
           </CardContent>
           <CardFooter className="p-4">
             <Button className="w-full h-9 text-sm" onClick={() => onPlay(fee)} disabled={isLocked}>
@@ -108,6 +116,7 @@ export default function LobbyPage() {
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [selectedFee, setSelectedFee] = useState(0);
+  const [queueCounts, setQueueCounts] = useState<{ [key: number]: number }>({});
 
   // Listen for active match on user profile
   useEffect(() => {
@@ -121,6 +130,29 @@ export default function LobbyPage() {
         setActiveMatchId(null);
     }
   }, [userProfile, isSearching, router, toast]);
+
+  // Listen for changes in the matchmaking queue
+  useEffect(() => {
+    if (!firestore) return;
+    const q = query(collection(firestore, 'matchmakingQueue'), where('status', '==', 'waiting'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const counts: { [key: number]: number } = {};
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            const fee = data.entryFee;
+            if (counts[fee]) {
+                counts[fee]++;
+            } else {
+                counts[fee] = 1;
+            }
+        });
+        setQueueCounts(counts);
+    });
+
+    return () => unsubscribe();
+  }, [firestore]);
+
 
   const handlePlayClick = (fee: number) => {
     if (!user || !userProfile) {
@@ -200,6 +232,7 @@ export default function LobbyPage() {
             fee={fee} 
             onPlay={handlePlayClick} 
             isLocked={isLocked}
+            playerCount={queueCounts[fee] || 0}
           />
         )
       })}
