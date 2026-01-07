@@ -1,7 +1,6 @@
 'use client';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Swords, Loader2, Info, Lock, Wallet, Users } from "lucide-react";
 import { useUser, useFirestore } from "@/firebase";
 import { useEffect, useState } from "react";
@@ -10,7 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 import type { Match } from "@/lib/types";
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { motion } from 'framer-motion';
 import {
   Dialog,
   DialogContent,
@@ -41,8 +39,7 @@ const EntryFeeCard = ({
 }) => {
     
     const cardContent = (
-      <motion.div whileHover={!isLocked ? { scale: 1.05, y: -5 } : {}} transition={{ duration: 0.2 }}>
-        <div className={cn(
+      <div className={cn(
             "relative flex flex-col h-full text-center transition-all duration-300 overflow-hidden rounded-lg border",
             isLocked 
             ? "bg-muted/50 border-muted-foreground/20 cursor-not-allowed"
@@ -89,7 +86,6 @@ const EntryFeeCard = ({
             </div>
           </div>
         </div>
-      </motion.div>
     );
 
   if (isLocked) {
@@ -127,10 +123,10 @@ export default function LobbyPage() {
   const { toast } = useToast();
   
   const [isSearching, setIsSearching] = useState(false);
-  const [activeMatchId, setActiveMatchId = useState<string | null>(null);
+  const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [selectedFee, setSelectedFee] = useState(0);
-  const [queueCounts, setQueueCounts = useState<{ [key: number]: number }>({});
+  const [queueCounts, setQueueCounts] = useState<{ [key: number]: number }>({});
 
   // Listen for active match on user profile
   useEffect(() => {
@@ -322,20 +318,16 @@ export default function LobbyPage() {
         </TabsContent>
       </Tabs>
 
-       <Card>
-        <CardHeader>
-          <CardTitle>How to Play</CardTitle>
-        </CardHeader>
-        <CardContent className="prose prose-sm dark:prose-invert text-card-foreground">
-          <ol className="space-y-2">
+       <div className="prose prose-sm dark:prose-invert text-card-foreground p-6 border rounded-lg">
+        <h3 className='font-bold text-lg'>How to Play</h3>
+          <ol className="space-y-2 mt-4">
             <li>Select an entry fee and click <span className='font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded-sm'>Play</span>.</li>
             <li>Wait for us to find a suitable opponent for you.</li>
             <li>Once a match is found, you will be automatically redirected to the match room.</li>
             <li>Copy the room code from the match room and use it to play in your Ludo King app.</li>
             <li>After the game, return to the app and submit your result with a screenshot to claim your winnings.</li>
           </ol>
-        </CardContent>
-      </Card>
+        </div>
     </div>
   );
 }
