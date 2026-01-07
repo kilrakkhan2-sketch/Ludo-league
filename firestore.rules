@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -36,6 +37,11 @@ service cloud.firestore {
       allow read, create, delete: if isOwner(userId);
       allow update: if false;
     }
+    // Allow any authenticated user to list the queue to see player counts
+    match /matchmakingQueue/{docId} {
+        allow list: if request.auth != null;
+    }
+
 
     // KYC Applications
     match /kycApplications/{kycId} {
