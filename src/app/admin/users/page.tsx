@@ -295,7 +295,7 @@ export default function AdminUsersPage() {
             />
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -337,11 +337,11 @@ export default function AdminUsersPage() {
                             {user.displayName?.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="font-medium">{user.displayName}</span>
+                        <span className="font-medium whitespace-nowrap">{user.displayName}</span>
                       </div>
                     </TableCell>
                     <TableCell>{user.email}</TableCell>
-                    <TableCell>₹{(user.walletBalance || 0).toFixed(2)}</TableCell>
+                    <TableCell className="whitespace-nowrap">₹{(user.walletBalance || 0).toFixed(2)}</TableCell>
                     <TableCell>{user.winRate || 0}%</TableCell>
                     <TableCell>{user.rank || 0}</TableCell>
                     <TableCell>
@@ -371,5 +371,3 @@ export default function AdminUsersPage() {
     </>
   );
 }
-
-    

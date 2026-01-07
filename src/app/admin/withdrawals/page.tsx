@@ -1,3 +1,4 @@
+
 'use client';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -116,7 +117,7 @@ export default function AdminWithdrawalsPage() {
             Review and approve or reject user withdrawal requests. The user's balance will be updated automatically on approval.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -138,10 +139,10 @@ export default function AdminWithdrawalsPage() {
                             <AvatarImage src={(request as any).user?.photoURL} />
                             <AvatarFallback>{request.userName?.charAt(0) || 'U'}</AvatarFallback>
                         </Avatar>
-                        <span className="font-medium">{request.userName || 'Unknown User'}</span>
+                        <span className="font-medium whitespace-nowrap">{request.userName || 'Unknown User'}</span>
                         </div>
                     </TableCell>
-                    <TableCell className="font-semibold">₹{request.amount.toLocaleString('en-IN')}</TableCell>
+                    <TableCell className="font-semibold whitespace-nowrap">₹{request.amount.toLocaleString('en-IN')}</TableCell>
                     <TableCell>
                         {request.upiId ? (
                             <div className="text-xs">
@@ -155,7 +156,7 @@ export default function AdminWithdrawalsPage() {
                             </div>
                         ) : <p className="text-xs text-muted-foreground">Not provided</p>}
                     </TableCell>
-                    <TableCell>{request.createdAt?.toDate().toLocaleString()}</TableCell>
+                    <TableCell className="whitespace-nowrap">{request.createdAt?.toDate().toLocaleString()}</TableCell>
                     <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">
                             <Button variant="outline" size="sm" className="text-green-600 border-green-500 hover:bg-green-100 hover:text-green-700" onClick={() => handleAction(request, 'approve')} disabled={processingId === request.id}>

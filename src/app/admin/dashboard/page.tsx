@@ -125,8 +125,9 @@ export default function AdminDashboardPage() {
     const unsubscribe = onSnapshot(recentTransQuery, async (snapshot) => {
         const transData = await Promise.all(snapshot.docs.map(async (doc) => {
             const data = doc.data();
-            const userDocSnapshot = await getDocs(query(collection(firestore, 'users'), where('uid', '==', data.userId), limit(1)));
-            const user = userDocSnapshot.docs.length > 0 ? userDocSnapshot.docs[0].data() : {};
+            // In a real app, you might want to fetch user data more efficiently
+            const userDoc = await getDoc(collection(firestore, 'users', data.userId));
+            const user = userDoc.exists() ? userDoc.data() : {};
             return { ...data, id: doc.id, user };
         }));
         setRecentTransactions(transData);
@@ -156,7 +157,7 @@ export default function AdminDashboardPage() {
             <StatCard title="Total Withdrawals" value={`₹${stats.totalWithdrawals.toFixed(2)}`} description="All-time user withdrawals" icon={<Activity className="h-4 w-4 text-muted-foreground" />} />
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-4">
+            <Card className="col-span-1 lg:col-span-4">
                 <CardHeader><CardTitle>Revenue Overview</CardTitle></CardHeader>
                 <CardContent className="pl-2">
                     <ResponsiveContainer width="100%" height={350}>
@@ -168,7 +169,7 @@ export default function AdminDashboardPage() {
                     </ResponsiveContainer>
                 </CardContent>
             </Card>
-            <Card className="col-span-3">
+            <Card className="col-span-1 lg:col-span-3">
                 <CardHeader>
                     <CardTitle>Recent Transactions</CardTitle>
                     <CardDescription>The last 5 transactions across the platform.</CardDescription>
@@ -196,5 +197,3 @@ export default function AdminDashboardPage() {
     </>
   );
 }
-
-    
