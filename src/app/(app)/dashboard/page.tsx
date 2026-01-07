@@ -14,7 +14,7 @@ import type { Match } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
-// Define the banner images from placeholders, using all new custom banners
+// Use all new custom banners for the slider
 const bannerImages = PlaceHolderImages.filter(img => img.id.endsWith('-banner')).map(img => img.imageUrl);
 
 
