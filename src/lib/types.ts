@@ -14,17 +14,6 @@ export type UserProfile = {
     isBlocked?: boolean;
     referralCode?: string;
     fcmToken?: string;
-<<<<<<< HEAD
-    // Rank-based fields
-    rank: number;
-    totalNetWinning: number;
-    totalWins: number;
-    totalLosses: number;
-    dailyLoss: number;
-    lossStreak: number;
-    maxUnlockedAmount: number;
-    currentMatch?: string | null;
-=======
     activeMatchId?: string | null;
     // Rank and progression
     rank: number; // 0 for Beginner, 1 for Learner, etc.
@@ -37,7 +26,6 @@ export type UserProfile = {
     dailyLoss: number;
     lossStreak: number;
     joinedTournamentIds?: string[];
->>>>>>> 044e79b6961ef34a2b4ea52020693a4d9630eca3
   };
   
   export type Match = {
@@ -192,8 +180,3 @@ export interface KycApplication {
       submittedAt: Timestamp;
       isFlaggedForFraud?: boolean;
   }
-<<<<<<< HEAD
-=======
-
-    
->>>>>>> 044e79b6961ef34a2b4ea52020693a4d9630eca3

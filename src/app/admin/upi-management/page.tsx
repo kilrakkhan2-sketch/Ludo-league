@@ -60,7 +60,7 @@ import {
   QrCode,
   AlertTriangle,
 } from "lucide-react";
-import QRCode from "qrcode.react";
+import { QRCodeSVG as QRCode } from "qrcode.react";
 import { useToast } from "@/hooks/use-toast";
 
 interface UpiData {

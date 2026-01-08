@@ -1,4 +1,3 @@
-
 'use client';
 import { motion } from 'framer-motion';
 import { NewsTicker } from './app/news-ticker';
@@ -30,7 +29,7 @@ export const CustomLoader = () => {
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-background via-card to-background">
       {/* Noise background */}
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\"><g fill-opacity=\"0.05\"><circle fill=\"hsl(var(--primary))\" cx=\"400\" cy=\"400\" r=\"600\"/><circle fill=\"hsl(var(--secondary))\" cx=\"400\" cy=\"400\" r=\"500\"/><circle fill=\"hsl(var(--muted))\" cx=\"400\" cy=\"400\" r=\"300\"/><circle fill=\"hsl(var(--accent))\" cx=\"400\" cy=\"400\" r=\"200\"/><circle fill=\"hsl(var(--border))\" cx=\"400\" cy=\"400\" r=\"100\"/></g></svg>')] opacity-20"></div>
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3csvg_xmlns=%27http://www.w3.org/2000/svg%27_viewBox=%270_0_800_800%27%3e%3cg_fill-opacity=%270.05%27%3e%3ccircle_fill=%27hsl(var(--primary))%27_cx=%27400%27_cy=%27400%27_r=%27600%27/%3e%3ccircle_fill=%27hsl(var(--secondary))%27_cx=%27400%27_cy=%27400%27_r=%27500%27/%3e%3ccircle_fill=%27hsl(var(--muted))%27_cx=%27400%27_cy=%27400%27_r=%27300%27/%3e%3ccircle_fill=%27hsl(var(--accent))%27_cx=%27400%27_cy=%27400%27_r=%27200%27/%3e%3ccircle_fill=%27hsl(var(--border))%27_cx=%27400%27_cy=%27400%27_r=%27100%27/%3e%3c/g%3e%3c/svg%3e')] opacity-20"></div>
       
       <div className="relative flex flex-col items-center justify-center gap-8 text-center p-4">
         <motion.div 
