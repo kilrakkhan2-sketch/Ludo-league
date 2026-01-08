@@ -44,6 +44,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useParams, useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import OpenLudoKingButton from '@/components/app/OpenLudoKingButton';
 
 const RoomCodeManager = ({ match, isCreator }: { match: Match, isCreator: boolean }) => {
   const firestore = useFirestore();
@@ -164,9 +165,7 @@ const RoomCodeManager = ({ match, isCreator }: { match: Match, isCreator: boolea
                         </Button>
                     </div>
                 </div>
-                 <a href="ludoking://" className={cn(buttonVariants({ variant: "accent" }), "w-full")}>
-                    Open Ludo King
-                 </a>
+                <OpenLudoKingButton />
             </CardContent>
         </Card>
     )

@@ -54,8 +54,6 @@ const EntryFeeCard = ({
           isLocked && "grayscale"
         )}
       >
-        {/* Overlay for better text readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent z-0"></div>
 
         {/* Content Layer */}
         <div className="relative z-10 flex flex-col h-full">
