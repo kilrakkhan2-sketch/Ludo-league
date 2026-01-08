@@ -47,53 +47,80 @@ import { useParams, useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import OpenLudoKingButton from '@/components/app/OpenLudoKingButton';
-
+import { motion } from 'framer-motion';
 
 const PlayerLobby = ({ match, winnerId }: { match: Match, winnerId: string | null }) => {
     const player1 = match.players[0];
     const player2 = match.players.length > 1 ? match.players[1] : null;
-    
-    const PlayerAvatar = ({ player, isWinner }: { player: Player, isWinner: boolean }) => (
-        <div className="flex flex-col items-center gap-2 relative">
+
+    const PlayerAvatar = ({ player, isWinner, position }: { player: Player, isWinner: boolean, position: 'left' | 'right' }) => (
+        <motion.div
+            initial={{ opacity: 0, x: position === 'left' ? -50 : 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="flex flex-col items-center gap-3 relative"
+        >
             {isWinner && (
-                <Trophy className="absolute -top-6 h-10 w-10 text-amber-400 drop-shadow-lg" />
+                <motion.div
+                    initial={{ scale: 0, rotate: -90 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 20, delay: 0.7 }}
+                    className="absolute -top-8"
+                >
+                    <Trophy className="h-12 w-12 text-amber-400 drop-shadow-[0_4px_6px_rgba(251,191,36,0.5)]" />
+                </motion.div>
             )}
             <Avatar className={cn(
-                "h-24 w-24 border-4 shadow-lg",
-                isWinner ? "border-amber-400" : "border-muted"
+                "h-28 w-28 border-[6px] shadow-lg",
+                isWinner ? "border-amber-400" : "border-primary/30"
             )}>
                 <AvatarImage src={player.avatarUrl} alt={player.name} />
-                <AvatarFallback>{player.name.charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="text-3xl font-bold">{player.name.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
-            <h3 className="font-bold text-lg text-center truncate max-w-[150px]">{player.name}</h3>
-            <p className="text-sm text-muted-foreground">Win Rate: {player.winRate || 0}%</p>
-        </div>
+            <div className="text-center">
+              <h3 className="font-bold text-xl text-foreground truncate max-w-[150px]">{player.name}</h3>
+              <p className="text-sm text-muted-foreground">Win Rate: {player.winRate || 0}%</p>
+            </div>
+        </motion.div>
     );
 
     return (
-        <Card className="w-full bg-card shadow-lg border-2 border-primary/20">
-            <CardContent className="p-6">
-                <div className="flex items-center justify-around">
-                    {player1 && <PlayerAvatar player={player1} isWinner={winnerId === player1.id} />}
-                    
-                    <div className="text-4xl font-black text-muted-foreground/50 mx-4">VS</div>
+        <div className="w-full rounded-2xl bg-gradient-to-tr from-card to-muted/50 p-6 shadow-xl border border-border">
+            <div className="flex items-center justify-around">
+                {player1 && <PlayerAvatar player={player1} isWinner={winnerId === player1.id} position="left" />}
+                
+                <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.4, delay: 0.4 }}
+                    className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-br from-primary via-primary-dark to-accent-foreground/80 mx-4 drop-shadow-sm"
+                >
+                    VS
+                </motion.div>
 
-                    {player2 ? (
-                        <PlayerAvatar player={player2} isWinner={winnerId === player2.id} />
-                    ) : (
-                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                             <Avatar className="h-24 w-24 border-4 border-dashed flex items-center justify-center bg-muted/50">
-                                <Loader2 className="h-8 w-8 animate-spin"/>
-                            </Avatar>
-                            <h3 className="font-semibold text-lg">Waiting...</h3>
+                {player2 ? (
+                    <PlayerAvatar player={player2} isWinner={winnerId === player2.id} position="right" />
+                ) : (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.5, delay: 0.2 }}
+                        className="flex flex-col items-center gap-3 text-muted-foreground"
+                    >
+                         <Avatar className="h-28 w-28 border-4 border-dashed flex items-center justify-center bg-muted/50">
+                            <Loader2 className="h-10 w-10 animate-spin text-primary"/>
+                        </Avatar>
+                        <div className="text-center">
+                            <h3 className="font-semibold text-xl text-foreground">Waiting...</h3>
                             <p className="text-sm">For Opponent</p>
                         </div>
-                    )}
-                </div>
-            </CardContent>
-        </Card>
+                    </motion.div>
+                )}
+            </div>
+        </div>
     );
 };
+
 
 const MatchDetailsCard = ({ match }: { match: Match }) => (
     <div className="w-full text-center rounded-xl bg-gradient-to-tr from-primary via-primary-dark to-primary-start p-6 shadow-2xl">
@@ -420,8 +447,8 @@ export default function MatchPage() {
   const showMatchConcluded = ['completed', 'disputed', 'cancelled'].includes(match.status);
 
   const ActionArea = () => {
-      if (showJoinButton) return <JoinMatchButton {...{match, user, userProfile, isActionLoading, handleJoinMatch}} />;
-      if (showRoomCodeStage) return <RoomCodeManager match={match} isCreator={isCreator} />;
+      if (showJoinButton) return <JoinMatchButton {...{match, user, userProfile, isActionLoading, handleJoinMatch}} />
+      if (showRoomCodeStage) return <RoomCodeManager match={match} isCreator={isCreator} />
       if (showPlayAndSubmitStage) return <SubmitResultForm matchId={match.id} winnerId={winnerId} />; // Pass winnerId here
       if (showMatchConcluded) return <MatchConcludedCard match={match} />
       return null; 

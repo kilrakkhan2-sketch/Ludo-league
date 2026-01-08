@@ -35,7 +35,7 @@ export default function AppHeader() {
             <div className="flex-1 text-center md:flex-none">
                 <div className="flex items-center justify-center md:justify-start gap-2">
                     <Image src="/icon-192x192.png" alt="Ludo League Logo" width={32} height={32} />
-                    <h1 className="hidden sm:block text-xl font-bold text-white tracking-wider">Ludo League</h1>
+                    <h1 className="text-xl font-bold text-white tracking-wider">Ludo League</h1>
                 </div>
             </div>
             <div className="flex flex-1 items-center justify-end gap-3">

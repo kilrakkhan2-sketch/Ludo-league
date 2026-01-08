@@ -4,7 +4,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { FullScreenLoader } from '@/components/ui/FullScreenLoader';
-import { firebaseApp } from './client';
+import { firebaseApp } from './config';
 
 interface AuthContextType {
   user: User | null;
