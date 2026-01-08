@@ -110,4 +110,21 @@
   .card {
     @apply relative overflow-hidden;
   }
+  .animate-ripple {
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    animation: ripple 0.7s linear;
+  }
+}
+
+@keyframes ripple {
+  from {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(50);
+    opacity: 0;
+  }
 }

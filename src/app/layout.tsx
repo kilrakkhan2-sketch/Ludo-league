@@ -5,6 +5,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import { Inter } from 'next/font/google';
+import { AuthProvider } from '@/firebase/auth-provider';
+import { RippleEffect } from '@/components/ui/ripple-effect';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -40,9 +42,12 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <FirebaseClientProvider>
+          <AuthProvider>
             {children}
             <Toaster />
             <FirebaseErrorListener />
+            <RippleEffect />
+          </AuthProvider>
         </FirebaseClientProvider>
       </body>
     </html>

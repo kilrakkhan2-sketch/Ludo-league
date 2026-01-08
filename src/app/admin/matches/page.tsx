@@ -1,215 +1,132 @@
-
 'use client';
 
-import Image from 'next/image';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose,
-} from '@/components/ui/dialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { Match, MatchResult } from '@/lib/types';
-import { cn } from '@/lib/utils';
-import {
-  Eye,
-  Users,
-  XCircle,
-  Shield,
-  CheckCircle2,
-  AlertTriangle,
-  Loader2,
-  Trophy,
-} from 'lucide-react';
-import React, { useEffect, useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { useFirestore } from '@/firebase';
-import {
-  collection,
-  onSnapshot,
-  query,
-  orderBy,
-} from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { useSearchParams, useRouter } from 'next/navigation';
-import NoSsr from '@/components/NoSsr';
+import { useState, useEffect } from 'react';
+import { db } from "@/firebase";// Assuming you have firebase initialized and exported from here
+import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Swords, Crown } from "lucide-react";
 
-function AdminMatchesPageContent() {
-  const [allMatches, setAllMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(true);
-  const firestore = useFirestore();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!firestore) return;
-    setLoading(true);
-    const matchesRef = collection(firestore, 'matches');
-    const q = query(matchesRef, orderBy('createdAt', 'desc')); // Fetch all matches for admin
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(
-        (doc) => ({ id: doc.id, ...doc.data() } as Match)
-      );
-      setAllMatches(data);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [firestore]);
-
-  const matchesByStatus = (status: Match['status']) =>
-    allMatches.filter((match) => match.status === status);
-
-  const MatchTable = ({
-    matches,
-    title,
-    description,
-  }: {
-    matches: Match[];
-    title: string;
-    description: string;
-  }) => (
-    <Card className="shadow-md">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>
-          {description}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="relative w-full overflow-auto">
-            <Table>
-            <TableHeader>
-                <TableRow>
-                <TableHead>Match ID</TableHead>
-                <TableHead>Prize</TableHead>
-                <TableHead>Players</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {loading && (
-                <TableRow>
-                    <TableCell
-                    colSpan={5}
-                    className="text-center text-muted-foreground py-8"
-                    >
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-                    </TableCell>
-                </TableRow>
-                )}
-                {!loading &&
-                matches.map((match) => (
-                    <TableRow key={match.id}>
-                    <TableCell className="font-mono text-xs">{match.id}</TableCell>
-                    <TableCell>₹{match.prizePool}</TableCell>
-                    <TableCell>
-                        <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        {match.playerIds.length} / {match.maxPlayers}
-                        </div>
-                    </TableCell>
-                    <TableCell>
-                        <Badge
-                        variant={
-                            match.status === 'completed'
-                            ? 'outline'
-                            : match.status === 'disputed'
-                            ? 'destructive'
-                            : 'secondary'
-                        }
-                        className={cn({
-                            'text-blue-600 border-blue-600 bg-blue-50':
-                            match.status === 'in-progress',
-                            'text-green-600 border-green-600 bg-green-50':
-                            match.status === 'completed',
-                        })}
-                        >
-                        {match.status.charAt(0).toUpperCase() +
-                            match.status.slice(1)}
-                        </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                        <Button variant="outline" size="sm" onClick={() => router.push(`/admin/matches/${match.id}`)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Match
-                        </Button>
-                    </TableCell>
-                    </TableRow>
-                ))}
-                {!loading && matches.length === 0 && (
-                <TableRow>
-                    <TableCell
-                    colSpan={5}
-                    className="text-center text-muted-foreground py-8"
-                    >
-                    No {title.toLowerCase()} found.
-                    </TableCell>
-                </TableRow>
-                )}
-            </TableBody>
-            </Table>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  return (
-    <>
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight mb-4">
-          Match Management
-        </h2>
-      </div>
-      <Tabs defaultValue="disputed" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="disputed">Disputed</TabsTrigger>
-          <TabsTrigger value="in-progress">In Progress</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-          <TabsTrigger value="waiting">Waiting</TabsTrigger>
-        </TabsList>
-        <TabsContent value="disputed" className="mt-4">
-          <MatchTable matches={matchesByStatus('disputed')} title="Disputed Matches" description="Matches where player submissions conflict. Manual review required."/>
-        </TabsContent>
-        <TabsContent value="in-progress" className="mt-4">
-          <MatchTable matches={matchesByStatus('in-progress')} title="In-Progress Matches" description="Matches that have started but results are not yet fully submitted."/>
-        </TabsContent>
-        <TabsContent value="completed" className="mt-4">
-          <MatchTable matches={matchesByStatus('completed')} title="Completed Matches" description="Matches that have finished and are awaiting prize distribution or are finalized."/>
-        </TabsContent>
-        <TabsContent value="waiting" className="mt-4">
-          <MatchTable matches={matchesByStatus('waiting')} title="Waiting Matches" description="Matches waiting for more players to join." />
-        </TabsContent>
-      </Tabs>
-    </>
-  );
+// Define the type for a Match
+interface Match {
+    id: string;
+    players: {
+        uid: string;
+        displayName: string;
+        photoURL: string;
+    }[];
+    winnerId?: string;
+    prize: number;
+    status: 'ongoing' | 'completed' | 'cancelled';
+    createdAt: any; // Firestore timestamp
 }
 
-export default function AdminMatchesPage() {
+// Main component for the Matches page
+export default function MatchesPage() {
+    const [matches, setMatches] = useState<Match[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // Real-time listener for matches
+    useEffect(() => {
+        const q = query(collection(db, "matches"), orderBy("createdAt", "desc"));
+
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const matchesList: Match[] = [];
+            querySnapshot.forEach((doc) => {
+                matchesList.push({ id: doc.id, ...doc.data() } as Match);
+            });
+            setMatches(matchesList);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching matches: ", error);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    if (loading) {
+        return <div className="flex justify-center items-center h-64">Loading matches...</div>;
+    }
+
     return (
-        <React.Suspense fallback={<div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>}>
-            <AdminMatchesPageContent />
-        </React.Suspense>
-    )
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Swords /> Match History</CardTitle>
+                <CardDescription>Browse the history of all matches played. Data is updated in real-time.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {/* Desktop View: Table */}
+                <div className="hidden md:block">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Players</TableHead>
+                                <TableHead>Prize</TableHead>
+                                <TableHead>Winner</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Date</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {matches.map((match) => (
+                                <TableRow key={match.id}>
+                                    <TableCell className="flex items-center gap-4">
+                                        {match.players.map(p => (
+                                            <div key={p.uid} className="flex items-center gap-2">
+                                                <Avatar className="h-8 w-8">
+                                                    <AvatarImage src={p.photoURL} />
+                                                    <AvatarFallback>{p.displayName?.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <span>{p.displayName}</span>
+                                            </div>
+                                        ))}
+                                    </TableCell>
+                                    <TableCell className="font-semibold">₹{match.prize.toLocaleString('en-IN')}</TableCell>
+                                    <TableCell>
+                                        {match.winnerId ? 
+                                            match.players.find(p => p.uid === match.winnerId)?.displayName : 'N/A'}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant={match.status === 'completed' ? 'success' : match.status === 'ongoing' ? 'secondary' : 'destructive'}>{match.status}</Badge>
+                                    </TableCell>
+                                    <TableCell>{match.createdAt?.toDate().toLocaleString()}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+
+                {/* Mobile View: Card List */}
+                <div className="grid gap-4 md:hidden">
+                    {matches.map((match) => (
+                        <Card key={match.id} className="p-4">
+                            <div className="flex justify-between items-start">
+                                <p className="font-bold text-lg">Prize: ₹{match.prize.toLocaleString('en-IN')}</p>
+                                <Badge variant={match.status === 'completed' ? 'success' : match.status === 'ongoing' ? 'secondary' : 'destructive'}>{match.status}</Badge>
+                            </div>
+                             <p className="text-sm text-muted-foreground mb-3">{match.createdAt?.toDate().toLocaleString()}</p>
+                            
+                            <div className="space-y-3">
+                                {match.players.map(p => (
+                                     <div key={p.uid} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+                                        <div className="flex items-center gap-2">
+                                            <Avatar className="h-8 w-8">
+                                                <AvatarImage src={p.photoURL} />
+                                                <AvatarFallback>{p.displayName?.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <span className="font-medium">{p.displayName}</span>
+                                        </div>
+                                        {match.winnerId === p.uid && <Crown className="h-5 w-5 text-yellow-500"/>}
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                    ))}
+                </div>
+            </CardContent>
+        </Card>
+    );
 }

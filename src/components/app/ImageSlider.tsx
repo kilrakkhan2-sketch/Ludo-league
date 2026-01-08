@@ -29,7 +29,7 @@ export const ImageSlider = ({ images }: { images: ImagePlaceholder[] }) => {
         <div className="flex h-full">
             {images.map((image, index) => (
                 <div className="relative flex-[0_0_100%] h-full" key={image.id}>
-                    <Link href={formatUrl(image.id)} className="block h-full w-full">
+                    <Link href={formatUrl(image.id)} className="block h-full w-full relative">
                         <Image 
                             src={image.imageUrl} 
                             alt={image.description || `Banner image ${index + 1}`}

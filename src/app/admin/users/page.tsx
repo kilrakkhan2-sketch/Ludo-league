@@ -1,375 +1,131 @@
-
 'use client';
-import { useState, useEffect, useCallback } from 'react';
-import {
-  collection,
-  query,
-  onSnapshot,
-  doc,
-  updateDoc,
-  writeBatch,
-  serverTimestamp,
-  addDoc,
-  orderBy,
-  startAt,
-  limit,
-  getDocs,
-  endAt,
-  limitToLast,
-  setDoc,
-} from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { useFirestore, useUser } from '@/firebase';
-import { useToast } from '@/hooks/use-toast';
-import type { UserProfile } from '@/lib/types';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Loader2,
-  Search,
-  Eye,
-  Ban,
-  UserCheck,
-  ShieldCheck,
-  ShieldOff,
-  History,
-  ChevronLeft,
-  ChevronRight
-} from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import Link from 'next/link';
-import { debounce } from 'lodash';
 
-const UserDetailModal = ({
-  user,
-  isOpen,
-  onOpenChange,
-}: {
-  user: UserProfile;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-}) => {
-  const firestore = useFirestore();
-  const { user: adminUser } = useUser();
-  const { toast } = useToast();
-  const [walletAdjustment, setWalletAdjustment] = useState(0);
-  const [adjustmentReason, setAdjustmentReason] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { db } from "@/firebase";// Assuming you have firebase initialized and exported from here
+import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Users } from "lucide-react";
 
-  const handleWalletUpdate = async () => {
-      if (!firestore || !adminUser || !walletAdjustment || !adjustmentReason) {
-        toast({ title: 'Amount and reason are required', variant: 'destructive'});
-        return;
-      }
-      setIsProcessing(true);
+// Define the type for a User
+interface User {
+    id: string;
+    displayName: string;
+    email: string;
+    photoURL: string;
+    balance: number;
+    kycVerified: boolean;
+    createdAt: any; // Firestore timestamp
+}
 
-      try {
-        const transType = walletAdjustment > 0 ? 'admin-credit' : 'admin-debit';
-        
-        await addDoc(collection(firestore, 'transactions'), {
-            userId: user.uid,
-            type: transType,
-            amount: walletAdjustment,
-            status: 'completed', 
-            createdAt: serverTimestamp(),
-            description: `Admin adjustment: ${adjustmentReason}`
+// Main component for the Users page
+export default function UsersPage() {
+    const [users, setUsers] = useState<User[]>([]);
+    const [loading, setLoading] = useState(true);
+    const router = useRouter();
+
+    // Real-time listener for users
+    useEffect(() => {
+        const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
+
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const usersList: User[] = [];
+            querySnapshot.forEach((doc) => {
+                usersList.push({ id: doc.id, ...doc.data() } as User);
+            });
+            setUsers(usersList);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching users: ", error);
+            setLoading(false);
         });
 
-        const logRef = doc(collection(firestore, 'adminLogs'));
-        await setDoc(logRef, {
-            adminId: adminUser.uid,
-            action: 'manual_wallet_adjustment',
-            targetUserId: user.uid,
-            timestamp: serverTimestamp(),
-            notes: `Adjusted by ${walletAdjustment}. Reason: ${adjustmentReason}`
-        });
+        return () => unsubscribe();
+    }, []);
 
-        toast({ title: 'Wallet adjustment transaction created', description: 'The user\'s balance will update shortly via cloud function.', className: 'bg-green-100 text-green-800' });
-        onOpenChange(false); 
-      } catch (e: any) {
-        toast({ title: 'Failed to update wallet', description: e.message, variant: 'destructive' });
-      } finally {
-          setIsProcessing(false);
-          setWalletAdjustment(0);
-          setAdjustmentReason('');
-      }
-  };
-  
-  const handleAdminToggle = async () => {
-    if (!adminUser) return;
-    setIsProcessing(true);
-    const functions = getFunctions();
-    const setAdminClaim = httpsCallable(functions, 'setAdminClaim');
-    const newIsAdmin = !(user as any).isAdmin;
+    const handleUserClick = (userId: string) => {
+        router.push(`/admin/users/${userId}`);
+    };
 
-    try {
-      await setAdminClaim({ uid: user.uid, isAdmin: newIsAdmin });
-      toast({
-        title: `User ${newIsAdmin ? 'promoted to' : 'demoted from'} admin`,
-        className: 'bg-green-100 text-green-800',
-      });
-      onOpenChange(false);
-    } catch (e: any) {
-      console.error(e);
-      toast({
-        title: 'Failed to update admin status',
-        description: e.message,
-        variant: 'destructive',
-      });
-    } finally {
-        setIsProcessing(false);
+    if (loading) {
+        return <div className="flex justify-center items-center h-64">Loading users...</div>;
     }
-  };
 
-  const handleStatusChange = async (newStatus: boolean) => {
-    if (!firestore || !adminUser) return;
-    setIsProcessing(true);
-    const userRef = doc(firestore, 'users', user.uid);
-    const batch = writeBatch(firestore);
-
-    batch.update(userRef, { isBlocked: newStatus });
-
-    const logRef = doc(collection(firestore, 'adminLogs'));
-    batch.set(logRef, {
-        adminId: adminUser.uid,
-        action: newStatus ? 'user_banned' : 'user_unbanned',
-        targetUserId: user.uid,
-        timestamp: serverTimestamp(),
-        notes: `User ${user.displayName} was ${newStatus ? 'banned' : 'unbanned'}.`
-    });
-
-    try {
-        await batch.commit();
-        toast({
-            title: `User ${newStatus ? 'Banned' : 'Unbanned'}`,
-            className: newStatus ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800',
-        });
-        onOpenChange(false);
-    } catch (e: any) {
-        toast({ title: 'Failed to update user status', description: e.message, variant: 'destructive' });
-    } finally {
-        setIsProcessing(false);
-    }
-};
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>Manage User</DialogTitle>
-          <DialogDescription>{user.displayName} - {user.email}</DialogDescription>
-        </DialogHeader>
-        <div className="py-4 space-y-4">
-            {/* User details */}
-            <p><strong>User ID:</strong> {user.uid}</p>
-            <p><strong>Wallet Balance:</strong> ₹{(user.walletBalance || 0).toFixed(2)}</p>
-            <p><strong>Win Rate:</strong> {user.winRate || 0}%</p>
-            <p><strong>Rank:</strong> {user.rank || 0}</p>
-            <div><strong>KYC Status:</strong> <Badge>{user.kycStatus}</Badge></div>
-            
-            <div className='space-y-2 pt-4 border-t'>
-                <h4 className='font-semibold'>Adjust Wallet</h4>
-                <div className='flex gap-2'>
-                    <Input type="number" placeholder="e.g., 100 or -50" value={walletAdjustment} onChange={e => setWalletAdjustment(Number(e.target.value))}/>
-                    <Input placeholder="Reason for adjustment" value={adjustmentReason} onChange={e => setAdjustmentReason(e.target.value)}/>
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Users /> All Users</CardTitle>
+                <CardDescription>Select a user to view details and manage their account. Data is updated in real-time.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {/* Desktop View: Table */}
+                <div className="hidden md:block">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>User</TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Balance</TableHead>
+                                <TableHead>KYC Status</TableHead>
+                                <TableHead>Joined On</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {users.map((user) => (
+                                <TableRow key={user.id} onClick={() => handleUserClick(user.id)} className="cursor-pointer hover:bg-muted/50">
+                                    <TableCell>
+                                        <div className="flex items-center gap-3">
+                                            <Avatar>
+                                                <AvatarImage src={user.photoURL} />
+                                                <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <span className="font-medium whitespace-nowrap">{user.displayName}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>{user.email}</TableCell>
+                                    <TableCell className="font-semibold">₹{user.balance?.toLocaleString('en-IN') || 0}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={user.kycVerified ? 'success' : 'secondary'}>
+                                            {user.kycVerified ? 'Verified' : 'Not Verified'}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell>{user.createdAt?.toDate().toLocaleDateString()}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 </div>
-                <Button onClick={handleWalletUpdate} disabled={!walletAdjustment || !adjustmentReason || isProcessing}>
-                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                    Apply Adjustment
-                </Button>
-            </div>
-             <div className='space-y-2 pt-4 border-t'>
-                <h4 className='font-semibold'>Admin Status</h4>
-                <Button onClick={handleAdminToggle} variant="secondary" disabled={isProcessing}>
-                  {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                  {(user as any).isAdmin ? <ShieldOff className='mr-2 h-4 w-4'/> : <ShieldCheck className='mr-2 h-4 w-4'/>}
-                  {(user as any).isAdmin ? 'Demote from Admin' : 'Promote to Admin'}
-                </Button>
-            </div>
-            <div className='space-y-2 pt-4 border-t'>
-                <h4 className='font-semibold'>Account Status</h4>
-                <div className="text-sm text-muted-foreground">
-                    Current status: {(user as any).isBlocked ? <Badge variant="destructive">Banned</Badge> : <Badge className="bg-green-100 text-green-800">Active</Badge>}
-                </div>
-                <Button 
-                    onClick={() => handleStatusChange(!(user as any).isBlocked)} 
-                    variant={(user as any).isBlocked ? "outline" : "destructive"}
-                    disabled={isProcessing}
-                >
-                    {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                    {(user as any).isBlocked ? <UserCheck className='mr-2 h-4 w-4'/> : <Ban className='mr-2 h-4 w-4'/>}
-                    {(user as any).isBlocked ? 'Unban User' : 'Ban User'}
-                </Button>
-            </div>
-        </div>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button type="button" variant="secondary">Close</Button>
-          </DialogClose>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
 
-export default function AdminUsersPage() {
-  const firestore = useFirestore();
-  const { toast } = useToast();
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-
-  const handleSearch = useCallback(
-    debounce(async (term) => {
-      setLoading(true);
-      if (!firestore) return;
-
-      try {
-        const usersRef = collection(firestore, 'users');
-        const q = term
-          ? query(usersRef, orderBy('displayName'), startAt(term), endAt(term + '\uf8ff'))
-          : query(usersRef, orderBy('displayName'));
-
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile));
-        setUsers(data);
-      } catch (error: any) {
-        console.error('Error fetching users:', error);
-        toast({ title: 'Error fetching users', description: error.message, variant: 'destructive' });
-      } finally {
-        setLoading(false);
-      }
-    }, 500),
-    [firestore, toast]
-  );
-
-  useEffect(() => {
-    handleSearch(searchTerm);
-    return () => handleSearch.cancel();
-  }, [searchTerm, handleSearch]);
-
-  return (
-    <>
-      <h2 className="text-3xl font-bold tracking-tight mb-4">User Management</h2>
-      <Card>
-        <CardHeader>
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>
-            Search, view, and manage all users on the platform.
-          </CardDescription>
-          <div className="relative w-full max-w-sm pt-4">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search by name..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="relative w-full overflow-auto">
-            <Table>
-                <TableHeader>
-                <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Wallet</TableHead>
-                    <TableHead>Win Rate</TableHead>
-                    <TableHead>Rank</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-                </TableHeader>
-                <TableBody>
-                {loading && (
-                    <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
-                        <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-                    </TableCell>
-                    </TableRow>
-                )}
-                {!loading && users.length === 0 && (
-                    <TableRow>
-                    <TableCell
-                        colSpan={7}
-                        className="text-center py-8 text-muted-foreground"
-                    >
-                        No users found.
-                    </TableCell>
-                    </TableRow>
-                )}
-                {!loading &&
-                    users.map((user) => (
-                    <TableRow key={user.uid}>
-                        <TableCell>
-                        <div className="flex items-center gap-3">
-                            <Avatar>
-                            <AvatarImage src={user.photoURL || undefined} />
-                            <AvatarFallback>
-                                {user.displayName?.charAt(0)}
-                            </AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium whitespace-nowrap">{user.displayName}</span>
-                        </div>
-                        </TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell className="whitespace-nowrap">₹{(user.walletBalance || 0).toFixed(2)}</TableCell>
-                        <TableCell>{user.winRate || 0}%</TableCell>
-                        <TableCell>{user.rank || 0}</TableCell>
-                        <TableCell>
-                        {(user as any).isBlocked ? (
-                            <Badge variant="destructive">Banned</Badge>
-                        ) : (
-                            <Badge className="bg-green-100 text-green-800">Active</Badge>
-                        )}
-                        </TableCell>
-                        <TableCell className="text-right space-x-2">
-                            <Button variant="outline" size="sm" onClick={() => setSelectedUser(user)}><Eye className="h-4 w-4 mr-2"/>Manage</Button>
-                            <Button variant="outline" size="sm" asChild>
-                                <Link href={`/admin/users/${user.uid}`}>
-                                    <History className="h-4 w-4 mr-2"/> History
-                                </Link>
-                            </Button>
-                        </TableCell>
-                    </TableRow>
+                {/* Mobile View: Card List */}
+                <div className="grid gap-4 md:hidden">
+                    {users.map((user) => (
+                        <Card key={user.id} onClick={() => handleUserClick(user.id)} className="p-4 cursor-pointer hover:bg-muted/50">
+                            <div className="flex items-center gap-3 mb-4">
+                                <Avatar>
+                                    <AvatarImage src={user.photoURL} />
+                                    <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="font-bold">{user.displayName}</p>
+                                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                                </div>
+                            </div>
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between"><span>Balance:</span> <span className="font-bold">₹{user.balance?.toLocaleString('en-IN') || 0}</span></div>
+                                <div className="flex justify-between"><span>KYC:</span> 
+                                    <Badge variant={user.kycVerified ? 'success' : 'secondary'}>
+                                        {user.kycVerified ? 'Verified' : 'Not Verified'}
+                                    </Badge>
+                                </div>
+                                <div className="flex justify-between"><span>Joined:</span> <span className="text-muted-foreground">{user.createdAt?.toDate().toLocaleDateString()}</span></div>
+                            </div>
+                        </Card>
                     ))}
-                </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-      {selectedUser && (
-        <UserDetailModal user={selectedUser} isOpen={!!selectedUser} onOpenChange={() => setSelectedUser(null)} />
-      )}
-    </>
-  );
+                </div>
+            </CardContent>
+        </Card>
+    );
 }

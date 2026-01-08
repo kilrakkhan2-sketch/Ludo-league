@@ -1,263 +1,181 @@
-
 'use client';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { CheckCircle2, Eye, XCircle, Loader2 } from "lucide-react"
-import { useFirestore, useUser } from "@/firebase"
-import { collection, onSnapshot, query, where, doc, getDoc, updateDoc, writeBatch, serverTimestamp, orderBy } from "firebase/firestore"
-import { useEffect, useState } from "react"
-import { useToast } from "@/hooks/use-toast"
-import type { KycApplication, UserProfile } from "@/lib/types";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-    DialogClose,
-  } from '@/components/ui/dialog';
-import NoSsr from "@/components/NoSsr";
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 
+import { useState, useEffect } from 'react';
+import { db } from "@/firebase";// Assuming you have firebase initialized and exported from here
+import { collection, query, onSnapshot, orderBy, doc, updateDoc } from "firebase/firestore";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Eye, CheckCircle, XCircle, UserCheck } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
-interface KycRequest extends KycApplication {
+// Define the type for a KYC request
+interface KycRequest {
     id: string;
-    userName?: string;
-    userAvatar?: string;
+    userId: string;
+    userName: string;
+    userAvatar: string;
+    documentType: 'Aadhaar' | 'PAN';
+    documentNumber: string;
+    documentFrontUrl: string;
+    documentBackUrl?: string; // Optional for PAN
+    status: 'pending' | 'approved' | 'rejected';
+    createdAt: any; // Firestore timestamp
 }
 
-const KycDetailModal = ({
-    request,
-    isOpen,
-    onOpenChange,
-    onAction,
-    isProcessing,
-  }: {
-    request: KycRequest;
-    isOpen: boolean;
-    onOpenChange: (open: boolean) => void;
-    onAction: (id: string, action: 'approve' | 'reject', reason?: string) => void;
-    isProcessing: boolean;
-  }) => {
-    const [rejectionReason, setRejectionReason] = useState('');
+// Main component for the KYC page
+export default function KycPage() {
+    const [requests, setRequests] = useState<KycRequest[]>([]);
+    const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
 
-    const handleReject = () => {
-        if (!rejectionReason) {
-            alert("Please provide a reason for rejection.");
-            return;
+    // Real-time listener for KYC requests
+    useEffect(() => {
+        const q = query(collection(db, "kyc"), orderBy("createdAt", "desc"));
+
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const kycRequests: KycRequest[] = [];
+            querySnapshot.forEach((doc) => {
+                kycRequests.push({ id: doc.id, ...doc.data() } as KycRequest);
+            });
+            setRequests(kycRequests);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching KYC requests: ", error);
+            toast({ title: "Error", description: "Could not fetch KYC requests.", variant: "destructive" });
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [toast]);
+
+    // Handler to update KYC status
+    const handleUpdateStatus = async (id: string, status: 'approved' | 'rejected') => {
+        const kycRef = doc(db, "kyc", id);
+        try {
+            await updateDoc(kycRef, { status });
+             // Also update the user's KYC status in the users collection
+            const request = requests.find(r => r.id === id);
+            if (request && status === 'approved') {
+                const userRef = doc(db, "users", request.userId);
+                await updateDoc(userRef, { kycVerified: true });
+            }
+            toast({ title: "Success", description: `KYC request has been ${status}.` });
+        } catch (error) {
+            console.error("Error updating status: ", error);
+            toast({ title: "Error", description: "Failed to update KYC status.", variant: "destructive" });
         }
-        onAction(request.id, 'reject', rejectionReason);
+    };
+
+    if (loading) {
+        return <div className="flex justify-center items-center h-64">Loading KYC requests...</div>;
     }
 
     return (
-    <NoSsr>
-      <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[525px]">
-          <DialogHeader>
-            <DialogTitle>KYC Application Details</DialogTitle>
-            <DialogDescription>Review the user's submitted KYC information.</DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
-            <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16 border">
-                    <AvatarImage src={request.userAvatar} />
-                    <AvatarFallback>{request.userName?.charAt(0) || 'U'}</AvatarFallback>
-                </Avatar>
-                <div>
-                    <p className="font-bold text-lg">{request.userName}</p>
-                    <p className="text-sm text-muted-foreground">User ID: {request.userId}</p>
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><UserCheck /> KYC Verification</CardTitle>
+                <CardDescription>Review and manage user KYC submissions. Data is updated in real-time.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {/* Desktop View: Table */}
+                <div className="hidden md:block">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>User</TableHead>
+                                <TableHead>Document Type</TableHead>
+                                <TableHead>Document Number</TableHead>
+                                <TableHead>Documents</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {requests.map((request) => (
+                                <TableRow key={request.id}>
+                                    <TableCell>
+                                        <div className="flex items-center gap-3">
+                                            <Avatar>
+                                                <AvatarImage src={request.userAvatar} />
+                                                <AvatarFallback>{request.userName?.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <span className="font-medium whitespace-nowrap">{request.userName || 'Unknown'}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>{request.documentType}</TableCell>
+                                    <TableCell className="font-mono text-xs">{request.documentNumber}</TableCell>
+                                    <TableCell>
+                                        <div className="flex gap-2">
+                                            <Button variant="outline" size="sm" asChild>
+                                                <a href={request.documentFrontUrl} target="_blank" rel="noopener noreferrer">Front</a>
+                                            </Button>
+                                            {request.documentBackUrl && (
+                                                 <Button variant="outline" size="sm" asChild>
+                                                    <a href={request.documentBackUrl} target="_blank" rel="noopener noreferrer">Back</a>
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant={request.status === 'pending' ? 'secondary' : request.status === 'approved' ? 'success' : 'destructive'}>{request.status}</Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        {request.status === 'pending' && (
+                                            <div className="flex gap-2 justify-end">
+                                                <Button size="sm" variant="success" onClick={() => handleUpdateStatus(request.id, 'approved')}><CheckCircle className="h-4 w-4" /></Button>
+                                                <Button size="sm" variant="destructive" onClick={() => handleUpdateStatus(request.id, 'rejected')}><XCircle className="h-4 w-4" /></Button>
+                                            </div>
+                                        )}
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 </div>
-            </div>
 
-            <div className="pt-4 border-t">
-                <p className="font-medium text-muted-foreground">Document Images:</p>
-                <div className="flex gap-4 mt-2">
-                    <a href={request.aadhaarPanUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">View ID Proof</a>
-                    <a href={request.selfieUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">View Selfie</a>
-                </div>
-            </div>
-
-            <div className="pt-4 border-t">
-                <p className="font-medium text-muted-foreground">Payment Details:</p>
-                {request.bankDetails && <div className="text-sm"><p className="font-semibold">Bank Details:</p><p className="whitespace-pre-wrap">{request.bankDetails}</p></div>}
-                {request.upiId && <div className="text-sm"><p className="font-semibold">UPI ID:</p><p>{request.upiId}</p></div>}
-                {!request.bankDetails && !request.upiId && <p className="text-sm text-muted-foreground">Not provided.</p>}
-            </div>
-
-            <div className="pt-4 border-t">
-                <Label htmlFor="rejectionReason">Rejection Reason</Label>
-                <Input id="rejectionReason" value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} placeholder="Provide a clear reason for rejection..."/>
-            </div>
-
-          </div>
-          <DialogFooter className="sm:justify-between">
-            <div className="flex-grow">
-                <Button variant="destructive" onClick={handleReject} disabled={isProcessing || !rejectionReason}>
-                    {isProcessing ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Reject'}
-                </Button>
-            </div>
-            <Button type="button" className="bg-green-600 hover:bg-green-700" onClick={() => onAction(request.id, 'approve')} disabled={isProcessing}>
-              {isProcessing ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Approve'}
-            </Button>
-            <DialogClose asChild>
-                <Button type="button" variant="secondary" disabled={isProcessing}>Cancel</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      </NoSsr>
-    );
-  };
-
-export default function AdminKycPage() {
-  const firestore = useFirestore();
-  const { user: adminUser } = useUser();
-  const [requests, setRequests] = useState<KycRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [processingId, setProcessingId] = useState<string | null>(null);
-  const [selectedRequest, setSelectedRequest] = useState<KycRequest | null>(null);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    if (!firestore) return;
-    setLoading(true);
-
-    const kycRef = collection(firestore, 'kycApplications');
-    const q = query(kycRef, where('status', '==', 'pending'), orderBy('submittedAt', 'asc'));
-
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-        const data = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as KycRequest));
-        setRequests(data);
-        setLoading(false);
-    }, (error) => {
-        console.error("Error fetching KYC requests: ", error);
-        toast({ title: 'Error fetching data', description: error.message, variant: 'destructive' });
-        setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [firestore, toast]);
-
-  const handleAction = async (id: string, action: 'approve' | 'reject', reason: string = '') => {
-    if (!firestore || !adminUser) return;
-    if (action === 'reject' && !reason) {
-        toast({ title: 'Rejection reason is required', variant: 'destructive' });
-        return;
-    }
-    setProcessingId(id);
-
-    const kycRef = doc(firestore, 'kycApplications', id);
-    const kycData = requests.find(r => r.id === id);
-    if(!kycData) return;
-
-    const userRef = doc(firestore, 'users', kycData.userId);
-
-    const batch = writeBatch(firestore);
-    const newStatus = action === 'approve' ? 'approved' : 'rejected';
-
-    batch.update(kycRef, { 
-        status: newStatus, 
-        reviewedAt: serverTimestamp(), 
-        reviewedBy: adminUser.uid, 
-        rejectionReason: action === 'reject' ? reason : null
-    });
-
-    if (action === 'approve') {
-        batch.update(userRef, {
-            kycStatus: 'approved',
-            upiId: kycData.upiId || null,
-            bankDetails: kycData.bankDetails || null,
-            kycRejectionReason: null, // Clear any previous rejection reason
-        });
-    } else {
-        batch.update(userRef, {
-            kycStatus: 'rejected',
-            kycRejectionReason: reason || 'Your KYC application was rejected. Please review your documents and resubmit.',
-        });
-    }
-
-    try {
-        await batch.commit();
-        toast({ title: `Request ${newStatus}`, className: action === 'approve' ? 'bg-green-100 text-green-800' : ''});
-        setSelectedRequest(null); // Close modal on success
-    } catch (error: any) {
-        console.error(`Error ${action}ing request:`, error);
-        toast({ title: `Failed to ${action} request`, description: error.message, variant: 'destructive' });
-    } finally {
-        setProcessingId(null);
-    }
-  };
-
-  return (
-    <>
-      <h2 className="text-3xl font-bold tracking-tight mb-4">KYC Requests</h2>
-      <Card className="shadow-md">
-        <CardHeader>
-          <CardTitle>Pending Applications</CardTitle>
-          <CardDescription>
-            Review and approve or reject user KYC applications.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="relative w-full overflow-auto">
-            <Table>
-                <TableHeader>
-                <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Date Submitted</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {loading && <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary"/></TableCell></TableRow>}
-                    {!loading && requests.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No pending KYC requests.</TableCell></TableRow>}
-                    {!loading && requests.map((request) => (
-                        <TableRow key={request.id} className="hover:bg-muted/50">
-                        <TableCell>
-                            <div className="flex items-center gap-3">
-                                <Avatar className="border">
-                                    <AvatarImage src={request.userAvatar} />
-                                    <AvatarFallback>{request.userName?.charAt(0) || 'U'}</AvatarFallback>
-                                </Avatar>
-                                <span className="font-medium whitespace-nowrap">{request.userName || 'Unknown User'}</span>
+                {/* Mobile View: Card List */}
+                <div className="grid gap-4 md:hidden">
+                    {requests.map((request) => (
+                        <Card key={request.id} className="p-4">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-3 mb-3">
+                                     <Avatar>
+                                        <AvatarImage src={request.userAvatar} />
+                                        <AvatarFallback>{request.userName?.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="font-bold">{request.userName || 'Unknown'}</p>
+                                        <p className="text-sm text-muted-foreground">{request.documentType}</p>
+                                    </div>
+                                </div>
+                                <Badge variant={request.status === 'pending' ? 'secondary' : request.status === 'approved' ? 'success' : 'destructive'}>{request.status}</Badge>
                             </div>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">{request.submittedAt?.toDate().toLocaleString()}</TableCell>
-                        <TableCell><Badge variant="secondary">{request.status}</Badge></TableCell>
-                        <TableCell className="text-right">
-                            <Button variant="outline" size="sm" onClick={() => setSelectedRequest(request)}>
-                                <Eye className="h-4 w-4 mr-2"/> Review
-                            </Button>
-                        </TableCell>
-                        </TableRow>
+                            <p className="font-mono text-sm bg-muted p-2 rounded my-2">{request.documentNumber}</p>
+                            <div className="flex justify-between mt-4 items-center">
+                                <div className="flex gap-2">
+                                    <Button variant="outline" size="sm" asChild>
+                                        <a href={request.documentFrontUrl} target="_blank" rel="noopener noreferrer"><Eye className="h-4 w-4 mr-1"/> Front</a>
+                                    </Button>
+                                    {request.documentBackUrl && (
+                                        <Button variant="outline" size="sm" asChild>
+                                            <a href={request.documentBackUrl} target="_blank" rel="noopener noreferrer"><Eye className="h-4 w-4 mr-1"/> Back</a>
+                                        </Button>
+                                    )}
+                                </div>
+                                {request.status === 'pending' && (
+                                    <div className="flex gap-2">
+                                        <Button size="sm" variant="success" onClick={() => handleUpdateStatus(request.id, 'approved')}><CheckCircle className="h-4 w-4" /></Button>
+                                        <Button size="sm" variant="destructive" onClick={() => handleUpdateStatus(request.id, 'rejected')}><XCircle className="h-4 w-4" /></Button>
+                                    </div>
+                                )}
+                            </div>
+                        </Card>
                     ))}
-                </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-      {selectedRequest && (
-        <KycDetailModal 
-            request={selectedRequest} 
-            isOpen={!!selectedRequest} 
-            onOpenChange={() => setSelectedRequest(null)} 
-            onAction={handleAction} 
-            isProcessing={processingId === selectedRequest.id}
-        />
-      )}
-    </>
-  )
+                </div>
+            </CardContent>
+        </Card>
+    );
 }
