@@ -5,7 +5,7 @@ import { useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Gift, Loader2, Save } from 'lucide-react';
@@ -68,10 +68,12 @@ export default function ReferralSettingsPage() {
 
   return (
     <>
-      <h2 className="text-3xl font-bold tracking-tight mb-4 flex items-center gap-2">
-        <Gift className="h-8 w-8 text-primary" />
-        Referral Settings
-      </h2>
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+                <Gift className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
+                Referral Settings
+            </h2>
+      </div>
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>Set Referral Commission</CardTitle>
@@ -83,7 +85,7 @@ export default function ReferralSettingsPage() {
           <div className="space-y-2">
             <Label htmlFor="commission-percentage">Commission Percentage (%)</Label>
             {loading ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin" />
                     <span>Loading current settings...</span>
                 </div>
@@ -99,15 +101,17 @@ export default function ReferralSettingsPage() {
                 />
             )}
           </div>
-          <Button onClick={handleSave} disabled={isSaving || loading}>
-            {isSaving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
-            )}
-            Save Settings
-          </Button>
         </CardContent>
+        <CardFooter className="bg-muted/30 px-6 py-4">
+             <Button onClick={handleSave} disabled={isSaving || loading} className="w-full sm:w-auto">
+                {isSaving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                <Save className="mr-2 h-4 w-4" />
+                )}
+                Save Settings
+            </Button>
+        </CardFooter>
       </Card>
     </>
   );

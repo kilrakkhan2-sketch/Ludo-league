@@ -63,13 +63,13 @@ export default function StorageManagementPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight mb-4 flex items-center gap-2">
-          <FolderKanban className="h-8 w-8 text-primary" />
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+          <FolderKanban className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
           Storage Management
         </h2>
       </div>
-      <Card className="border-destructive">
+      <Card className="border-destructive max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-destructive">
             <AlertTriangle />
@@ -79,17 +79,19 @@ export default function StorageManagementPage() {
             These actions are permanent and cannot be undone.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <p className="font-medium">Clean Up Old Database Records</p>
-          <p className="text-sm text-muted-foreground">
-            Permanently delete completed matches and associated transactions
-            that are older than 24 months to free up database storage.
-          </p>
+        <CardContent className="space-y-4">
+            <div>
+                <p className="font-medium">Clean Up Old Database Records</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                    Permanently delete completed matches and associated transactions
+                    that are older than 24 months to free up database storage.
+                </p>
+            </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="bg-muted/30 px-6 py-4">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" disabled={isDeleting}>
+              <Button variant="destructive" disabled={isDeleting} className="w-full sm:w-auto">
                 {isDeleting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (

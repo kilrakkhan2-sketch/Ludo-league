@@ -120,7 +120,7 @@ export default function AdminLayout({
                  <UserNav />
             </header>
             <main className="p-4 sm:p-6 md:p-8 flex-1 overflow-x-auto">
-              <div className="">
+              <div className="flex-1 max-w-full">
                 {children}
               </div>
             </main>

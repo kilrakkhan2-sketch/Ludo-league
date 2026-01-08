@@ -9,9 +9,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { doc, getFirestore, getDoc, updateDoc, setDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, getFirestore, getDoc, updateDoc, setDoc, collection, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { getFirebaseApp } from '@/firebase/server';
-import { calculateWinRate } from './calculate-win-rate';
 
 const DistributeWinningsInputSchema = z.object({
   matchId: z.string().describe('The ID of the match to distribute winnings for.'),
@@ -80,7 +79,26 @@ const distributeWinningsFlow = ai.defineFlow(
       // After winnings transaction is created, update stats for all players in the match
       const playerIds = matchData.playerIds || [];
       for (const playerId of playerIds) {
-          await calculateWinRate({ userId: playerId });
+          const userRef = doc(firestore, 'users', playerId);
+          await runTransaction(firestore, async (transaction) => {
+              const userDoc = await transaction.get(userRef);
+              if (!userDoc.exists()) {
+                  console.warn(`User profile not found for ID: ${playerId}. Skipping stats update.`);
+                  return;
+              }
+              
+              const userData = userDoc.data();
+              const totalMatchesPlayed = (userData.totalMatchesPlayed || 0) + 1;
+              const totalMatchesWon = (userData.totalMatchesWon || 0) + (playerId === winnerId ? 1 : 0);
+              
+              const winRate = totalMatchesPlayed > 0 ? (totalMatchesWon / totalMatchesPlayed) * 100 : 0;
+
+              transaction.update(userRef, {
+                  totalMatchesPlayed: totalMatchesPlayed,
+                  totalMatchesWon: totalMatchesWon,
+                  winRate: winRate,
+              });
+          });
       }
 
       return {

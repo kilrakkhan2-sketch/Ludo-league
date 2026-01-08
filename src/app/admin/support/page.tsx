@@ -3,15 +3,13 @@
 import { useState, useEffect } from 'react';
 import { collection, getDocs, doc, getDoc, orderBy, query, limit, onSnapshot } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, MessageSquare, ArrowRight } from 'lucide-react';
+import { Loader2, MessageSquare, ArrowRight, Inbox } from 'lucide-react';
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAdminOnly } from '@/hooks/useAdminOnly';
-
 
 interface ChatThread {
   userId: string;
@@ -28,6 +26,35 @@ function getInitials(name: string) {
     const initials = names.map(n => n[0]).join('');
     return initials.toUpperCase();
 }
+
+// New component for mobile card view
+const ThreadCard = ({ thread }: { thread: ChatThread }) => (
+    <Card className="hover:bg-muted/50 transition-colors">
+        <Link href={`/admin/support/${thread.userId}`} className="block">
+            <CardHeader>
+                <div className="flex items-center gap-4">
+                    <Avatar>
+                      <AvatarImage src={thread.userAvatar} alt={thread.userName} />
+                      <AvatarFallback>{getInitials(thread.userName)}</AvatarFallback>
+                    </Avatar>
+                    <div className='w-full'>
+                      <div className='flex justify-between items-start'>
+                          <div>
+                            <p className="font-semibold">{thread.userName}</p>
+                            <p className="text-sm text-muted-foreground">{thread.userEmail}</p>
+                          </div>
+                          <p className='text-xs text-muted-foreground whitespace-nowrap'>{thread.lastMessageAt ? thread.lastMessageAt.toLocaleDateString() : ''}</p>
+                      </div>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent>
+                 <p className='text-sm text-muted-foreground truncate'>{thread.lastMessage}</p>
+            </CardContent>
+        </Link>
+    </Card>
+);
+
 
 export default function SupportInboxPage() {
   const firestore = useFirestore();
@@ -80,7 +107,7 @@ export default function SupportInboxPage() {
               lastMessageAt: lastMessage?.createdAt?.toDate(),
             };
           }
-          return null; // Return null if user doc doesn't exist
+          return null;
         });
 
         const resolvedThreads = (await Promise.all(threadPromises)).filter((t): t is ChatThread => t !== null);
@@ -99,7 +126,6 @@ export default function SupportInboxPage() {
     fetchThreads();
 
     const unsubscribe = onSnapshot(collection(firestore, 'supportChats'), () => {
-        // Re-fetch all threads when a new chat is created
         fetchThreads();
     });
 
@@ -108,9 +134,9 @@ export default function SupportInboxPage() {
 
   return (
     <div className="space-y-6">
-        <div className="flex items-center justify-between">
-            <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                <MessageSquare className="h-8 w-8 text-primary" />
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+                <MessageSquare className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
                 Support Inbox
             </h2>
         </div>
@@ -131,48 +157,18 @@ export default function SupportInboxPage() {
             </div>
           ) : threads.length === 0 ? (
              <div className="text-center py-20">
-                <h3 className="text-xl font-semibold">No Conversations</h3>
+                 <div className="mx-auto p-4 bg-muted rounded-full w-fit">
+                    <Inbox className="h-10 w-10 text-muted-foreground"/>
+                 </div>
+                <h3 className="text-xl font-semibold mt-4">No Conversations</h3>
                 <p className="text-muted-foreground mt-2">When a user starts a new chat, it will appear here.</p>
              </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Last Message</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <div className="space-y-4">
                 {threads.map((thread) => (
-                  <TableRow key={thread.userId}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage src={thread.userAvatar} alt={thread.userName} />
-                          <AvatarFallback>{getInitials(thread.userName)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-semibold">{thread.userName}</p>
-                          <p className="text-sm text-muted-foreground">{thread.userEmail}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                        <p className='truncate max-w-sm'>{thread.lastMessage}</p>
-                        <p className='text-xs text-muted-foreground'>
-                            {thread.lastMessageAt ? thread.lastMessageAt.toLocaleString() : ''}
-                        </p>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Link href={`/admin/support/${thread.userId}`} className={cn(buttonVariants({ variant: 'outline' }))}>
-                        Open Chat <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </TableCell>
-                  </TableRow>
+                    <ThreadCard key={thread.userId} thread={thread} />
                 ))}
-              </TableBody>
-            </Table>
+            </div>
           )}
         </CardContent>
       </Card>

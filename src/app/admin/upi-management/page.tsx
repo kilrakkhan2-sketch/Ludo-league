@@ -69,6 +69,72 @@ interface UpiData {
   isActive: boolean;
 }
 
+// New component for mobile card view
+const UpiCard = ({
+  upi,
+  onSetActive,
+  onDelete,
+  onEdit,
+  isSaving,
+}: {
+  upi: UpiData;
+  onSetActive: (id: string) => void;
+  onDelete: (id: string) => void;
+  onEdit: (upi: UpiData) => void;
+  isSaving: boolean;
+}) => (
+  <div className={`p-4 border rounded-lg ${upi.isActive ? "bg-green-100/50 border-green-300" : "bg-card"}`}>
+    <div className="flex justify-between items-start gap-4">
+      <span className="font-mono text-sm break-all pr-2">{upi.upiId}</span>
+      <Switch
+        checked={upi.isActive}
+        onCheckedChange={() => onSetActive(upi.id)}
+        disabled={isSaving || upi.isActive}
+        aria-label="Set active UPI"
+      />
+    </div>
+    <div className="mt-4 flex items-center justify-end space-x-2">
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button variant="ghost" size="sm">
+            <QrCode className="h-5 w-5 mr-1" /> QR
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-xs">
+          <div className="p-4 flex flex-col items-center justify-center">
+            <QRCode value={`upi://pay?pa=${upi.upiId}`} size={200} />
+            <p className="mt-4 font-mono text-sm">{upi.upiId}</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Button variant="ghost" size="icon" onClick={() => onEdit(upi)}>
+        <Edit className="h-4 w-4" />
+      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="destructive" size="icon" disabled={upi.isActive}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the UPI ID <span className="font-bold">`{upi.upiId}`</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => onDelete(upi.id)}>
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  </div>
+);
+
 export default function UpiManagementPage() {
   const db = useFirestore();
   const [upiIds, setUpiIds] = useState<UpiData[]>([]);
@@ -149,7 +215,6 @@ export default function UpiManagementPage() {
     }
     setIsSaving(true);
     try {
-      // If no other UPIs exist, make this one active
       const isActive = upiIds.length === 0;
       await addDoc(collection(db, "upiAddresses"), {
         upiId: newUpiId.trim(),
@@ -229,14 +294,14 @@ export default function UpiManagementPage() {
 
   return (
     <>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <AtSign className="h-8 w-8 text-primary" />
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+          <AtSign className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
           UPI Management
         </h2>
         <Dialog>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Add New UPI
             </Button>
           </DialogTrigger>
@@ -273,7 +338,7 @@ export default function UpiManagementPage() {
             Manage the list of UPI IDs for deposits. Only one can be active at a time.
           </CardDescription>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -284,94 +349,91 @@ export default function UpiManagementPage() {
                 <p className="text-sm text-muted-foreground">Click "Add New UPI" to get started.</p>
              </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>UPI ID</TableHead>
-                  <TableHead className="text-center">QR Code</TableHead>
-                  <TableHead className="text-center">Active</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* Mobile View: Cards */}
+              <div className="md:hidden space-y-4">
                 {upiIds.map((upi) => (
-                  <TableRow key={upi.id} className={upi.isActive ? "bg-green-100/50" : ""}>
-                    <TableCell className="font-medium">{upi.upiId}</TableCell>
-                    <TableCell className="text-center">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <QrCode className="h-5 w-5" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-xs">
-                          <div className="p-4 flex flex-col items-center justify-center">
-                            <QRCode value={`upi://pay?pa=${upi.upiId}`} size={200} />
-                            <p className="mt-4 font-mono text-sm">{upi.upiId}</p>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Switch
-                        checked={upi.isActive}
-                        onCheckedChange={() => handleSetActive(upi.id)}
-                        disabled={isSaving || upi.isActive}
-                        aria-label="Set active UPI"
-                      />
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                        <Dialog>
-                            <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={() => setEditingUpi({...upi})}>
-                                    <Edit className="h-4 w-4" />
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Edit UPI ID</DialogTitle>
-                                </DialogHeader>
-                                <div className="py-4">
-                                <Input
-                                    value={editingUpi?.upiId || ''}
-                                    onChange={(e) => setEditingUpi(prev => prev ? {...prev, upiId: e.target.value} : null)}
-                                />
-                                </div>
-                                <DialogFooter>
-                                <Button variant="outline" onClick={() => setEditingUpi(null)}>Cancel</Button>
-                                <Button onClick={handleUpdateUpi} disabled={isSaving}>
-                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                    Save Changes
-                                </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="icon" disabled={upi.isActive}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete the UPI ID <span className="font-bold">`{upi.upiId}`</span>.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteUpi(upi.id)}>
-                              Continue
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </TableCell>
-                  </TableRow>
+                  <UpiCard
+                    key={upi.id}
+                    upi={upi}
+                    onSetActive={handleSetActive}
+                    onDelete={handleDeleteUpi}
+                    onEdit={() => setEditingUpi({...upi})}
+                    isSaving={isSaving}
+                  />
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+
+              {/* Desktop View: Table */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>UPI ID</TableHead>
+                      <TableHead className="text-center">QR Code</TableHead>
+                      <TableHead className="text-center">Active</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {upiIds.map((upi) => (
+                      <TableRow key={upi.id} className={upi.isActive ? "bg-green-100/50" : ""}>
+                        <TableCell className="font-medium max-w-xs truncate">{upi.upiId}</TableCell>
+                        <TableCell className="text-center">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <QrCode className="h-5 w-5" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-xs">
+                              <div className="p-4 flex flex-col items-center justify-center">
+                                <QRCode value={`upi://pay?pa=${upi.upiId}`} size={200} />
+                                <p className="mt-4 font-mono text-sm">{upi.upiId}</p>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Switch
+                            checked={upi.isActive}
+                            onCheckedChange={() => handleSetActive(upi.id)}
+                            disabled={isSaving || upi.isActive}
+                            aria-label="Set active UPI"
+                          />
+                        </TableCell>
+                        <TableCell className="text-right space-x-2">
+                            <Button variant="ghost" size="icon" onClick={() => setEditingUpi({...upi})}>
+                                <Edit className="h-4 w-4" />
+                            </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="icon" disabled={upi.isActive}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the UPI ID <span className="font-bold">`{upi.upiId}`</span>.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteUpi(upi.id)}>
+                                  Continue
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
            {!loading && upiIds.filter(u => u.isActive).length !== 1 && (
                <div className="mt-4 p-3 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 flex items-center gap-2">
@@ -383,8 +445,27 @@ export default function UpiManagementPage() {
            )}
         </CardContent>
       </Card>
+      
+      <Dialog open={!!editingUpi} onOpenChange={(isOpen) => !isOpen && setEditingUpi(null)}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Edit UPI ID</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+            <Input
+                value={editingUpi?.upiId || ''}
+                onChange={(e) => setEditingUpi(prev => prev ? {...prev, upiId: e.target.value} : null)}
+            />
+            </div>
+            <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingUpi(null)}>Cancel</Button>
+            <Button onClick={handleUpdateUpi} disabled={isSaving}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Save Changes
+            </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
-
-    

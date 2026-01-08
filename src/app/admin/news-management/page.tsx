@@ -14,14 +14,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   collection,
   addDoc,
   serverTimestamp,
@@ -47,6 +39,25 @@ import {
   DialogClose,
   DialogFooter
 } from '@/components/ui/dialog';
+
+const NewsItemCard = ({ news, onEdit, onDelete }: { news: News, onEdit: (news: News) => void, onDelete: (id: string) => void}) => (
+    <Card>
+        <CardHeader>
+            <CardTitle className="text-lg">{news.title}</CardTitle>
+            <CardDescription>
+                By {news.authorName} on {news.createdAt?.toDate().toLocaleDateString()}
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+            <p className="text-sm text-muted-foreground line-clamp-3">{news.content}</p>
+        </CardContent>
+        <CardFooter className="flex justify-end gap-2">
+            <Button size="sm" variant="outline" onClick={() => onEdit(news)}><Edit className="h-4 w-4 mr-2"/>Edit</Button>
+            <Button size="sm" variant="destructive" onClick={() => onDelete(news.id)}><Trash2 className="h-4 w-4 mr-2"/>Delete</Button>
+        </CardFooter>
+    </Card>
+)
+
 
 export default function NewsManagementPage() {
   const firestore = useFirestore();
@@ -131,79 +142,69 @@ export default function NewsManagementPage() {
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-3">
-      <div className="lg:col-span-2">
-        <Card className="shadow-md">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Newspaper className="h-6 w-6 text-primary" />
-              Existing News Items
-            </CardTitle>
-            <CardDescription>View, edit, or delete current news items.</CardDescription>
-          </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Content</TableHead>
-                  <TableHead>Created At</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading && <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary"/></TableCell></TableRow>}
-                {!loading && newsItems.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No news items found.</TableCell></TableRow>}
-                {!loading && newsItems.map(item => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-semibold">{item.title}</TableCell>
-                    <TableCell className="max-w-xs truncate">{item.content}</TableCell>
-                    <TableCell className="whitespace-nowrap">{item.createdAt?.toDate().toLocaleString()}</TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleEdit(item)}><Edit className="h-4 w-4"/></Button>
-                      <Button size="icon" variant="destructive" className="h-8 w-8" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4"/></Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="space-y-8">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+                <Newspaper className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
+                News Management
+            </h2>
+        </div>
+        <div className="grid gap-8 lg:grid-cols-3 lg:items-start">
+            <div className="lg:col-span-1">
+                <Card className="shadow-md">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                    <PlusCircle className="h-6 w-6 text-primary" />
+                    Create News Item
+                    </CardTitle>
+                    <CardDescription>Add a new announcement to the news ticker.</CardDescription>
+                </CardHeader>
+                <form onSubmit={handleSubmit}>
+                    <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="title">Title</Label>
+                        <Input id="title" name="title" value={formState.title || ''} onChange={handleInputChange} placeholder="e.g., New Tournament!" required/>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="content">Content</Label>
+                        <Textarea id="content" name="content" value={formState.content || ''} onChange={handleInputChange} placeholder="Describe the news in detail..." required rows={5} />
+                    </div>
+                    </CardContent>
+                    <CardFooter>
+                    <Button type="submit" className="w-full" disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <PlusCircle className="mr-2 h-4 w-4"/>}
+                        Add News Item
+                    </Button>
+                    </CardFooter>
+                </form>
+                </Card>
+            </div>
 
-      <div>
-        <Card className="shadow-md">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PlusCircle className="h-6 w-6 text-primary" />
-              Create News Item
-            </CardTitle>
-            <CardDescription>Add a new announcement to the news ticker.</CardDescription>
-          </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
-                <Input id="title" name="title" value={formState.title} onChange={handleInputChange} placeholder="e.g., New Tournament!" required/>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="content">Content</Label>
-                <Textarea id="content" name="content" value={formState.content} onChange={handleInputChange} placeholder="Describe the news in detail..." required rows={5} />
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <PlusCircle className="mr-2 h-4 w-4"/>}
-                Add News Item
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
-      </div>
+            <div className="lg:col-span-2">
+                <Card className="shadow-md">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                    <Newspaper className="h-6 w-6 text-primary" />
+                    Existing News Items
+                    </CardTitle>
+                    <CardDescription>View, edit, or delete current news items.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {loading && <div className="text-center py-8"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary"/></div>}
+                    {!loading && newsItems.length === 0 && <div className="text-center py-8 text-muted-foreground">No news items found.</div>}
+                    {!loading && <div className="space-y-4">
+                        {newsItems.map(item => (
+                            <NewsItemCard key={item.id} news={item} onEdit={handleEdit} onDelete={handleDelete} />
+                        ))}
+                    </div>}
+                </CardContent>
+                </Card>
+            </div>
+        </div>
       
       {editingNews && (
         <Dialog open={!!editingNews} onOpenChange={() => setEditingNews(null)}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Edit News Item</DialogTitle>
               <DialogDescription>Make changes to the news item below.</DialogDescription>
