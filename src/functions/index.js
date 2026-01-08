@@ -329,9 +329,31 @@ exports.onResultSubmit = functions.firestore
   });
 
   exports.declareWinnerAndDistribute = functions.https.onCall(async (data, context) => {
-    if (context.auth?.token?.admin !== true) {
+    // Check if the caller is authenticated.
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
+    }
+
+    // Check for admin status in custom claims first.
+    const isTokenAdmin = context.auth.token.admin === true;
+    let isFirestoreAdmin = false;
+
+    // If not found in token, check Firestore as a fallback.
+    if (!isTokenAdmin) {
+        try {
+            const callerDoc = await db.collection('users').doc(context.auth.uid).get();
+            if (callerDoc.exists && callerDoc.data().isAdmin === true) {
+                isFirestoreAdmin = true;
+            }
+        } catch (e) {
+            console.error("Error checking Firestore for admin status:", e);
+        }
+    }
+
+    if (!isTokenAdmin && !isFirestoreAdmin) {
         throw new HttpsError('permission-denied', 'Only admins can call this function.');
     }
+
 
     const { matchId, winnerId } = data;
     if (!matchId || !winnerId) {
