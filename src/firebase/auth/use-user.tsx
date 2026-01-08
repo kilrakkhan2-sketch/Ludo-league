@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -12,7 +11,17 @@ import type { User } from 'firebase/auth';
 import { useAuth, useFirestore } from '../provider';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
+import { Loader2 } from 'lucide-react';
 
+// A simple full-screen loader component to prevent rendering the app in an inconsistent state.
+const FullScreenLoader = () => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+        <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-lg text-muted-foreground">Loading App...</p>
+        </div>
+    </div>
+);
 
 type UserContextValue = {
   user: User | null;
@@ -32,55 +41,64 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true); // Start with loading true
 
   useEffect(() => {
-    if (!auth) {
-        // Auth service might not be available on initial server render.
-        // We will wait for the client-side effect to run.
-        return;
+    if (!auth || !firestore) {
+      return;
     }
 
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      setUser(user);
-      if (user) {
-        const tokenResult = await user.getIdTokenResult();
-        // Set admin status from custom claim first for responsiveness
-        setIsAdmin(tokenResult.claims.isAdmin === true);
+    const unsubscribeAuth = auth.onAuthStateChanged((authUser) => {
+      if (authUser) {
+        // If a user is authenticated, listen to their profile document.
+        const userProfileRef = doc(firestore, 'users', authUser.uid);
+        
+        const unsubscribeProfile = onSnapshot(userProfileRef, 
+          async (profileDoc) => {
+            const tokenResult = await authUser.getIdTokenResult();
+            const isAdminClaim = tokenResult.claims.isAdmin === true;
+
+            if (profileDoc.exists()) {
+              const profileData = profileDoc.data() as UserProfile;
+              setUser(authUser);
+              setUserProfile({ uid: profileDoc.id, ...profileData });
+              // Firestore doc is the source of truth for admin status
+              setIsAdmin(profileData.isAdmin ?? isAdminClaim);
+            } else {
+              // Authenticated user with no profile doc in Firestore.
+              setUser(authUser);
+              setUserProfile(null);
+              setIsAdmin(isAdminClaim);
+            }
+            setLoading(false); // Stop loading once user and profile are processed.
+          },
+          (error) => {
+            console.error("Error listening to user profile:", error);
+            setUser(authUser);
+            setUserProfile(null);
+            setIsAdmin(false);
+            setLoading(false); // Stop loading even on error to prevent getting stuck.
+          }
+        );
+        
+        return () => unsubscribeProfile();
+
       } else {
-        setIsAdmin(false);
+        // No user is authenticated.
+        setUser(null);
         setUserProfile(null);
-        setLoading(false);
+        setIsAdmin(false);
+        setLoading(false); // Stop loading, app will show public/login state.
       }
     });
 
-    return () => unsubscribe();
-  }, [auth]);
+    return () => unsubscribeAuth();
 
-  useEffect(() => {
-    if (user && firestore) {
-      setLoading(true);
-      const userProfileRef = doc(firestore, 'users', user.uid);
-      const unsubscribe = onSnapshot(userProfileRef, (doc) => {
-        if (doc.exists()) {
-          const profileData = doc.data() as UserProfile;
-          setUserProfile({ uid: doc.id, ...profileData });
-          // Overwrite admin status with the one from Firestore doc as the source of truth
-          setIsAdmin(profileData.isAdmin === true);
-        } else {
-          setUserProfile(null);
-          setIsAdmin(false);
-        }
-        setLoading(false);
-      }, (error) => {
-          console.error("Error listening to user profile:", error);
-          setUserProfile(null);
-          setIsAdmin(false);
-          setLoading(false);
-      });
-      return () => unsubscribe();
-    } else if (!user) {
-        setLoading(false);
-    }
-  }, [user, firestore]);
+  }, [auth, firestore]);
 
+  // While the initial auth check is running, show a full-screen loader.
+  if (loading) {
+    return <FullScreenLoader />;
+  }
+  
+  // Once loaded, render the app.
   return (
     <UserContext.Provider value={{ user, userProfile, isAdmin, loading }}>
       {children}

@@ -97,78 +97,80 @@ function AdminMatchesPageContent() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Match ID</TableHead>
-              <TableHead>Prize</TableHead>
-              <TableHead>Players</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading && (
-              <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="text-center text-muted-foreground py-8"
-                >
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-                </TableCell>
-              </TableRow>
-            )}
-            {!loading &&
-              matches.map((match) => (
-                <TableRow key={match.id}>
-                  <TableCell className="font-mono text-xs">{match.id}</TableCell>
-                  <TableCell>₹{match.prizePool}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      {match.playerIds.length} / {match.maxPlayers}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        match.status === 'completed'
-                          ? 'outline'
-                          : match.status === 'disputed'
-                          ? 'destructive'
-                          : 'secondary'
-                      }
-                      className={cn({
-                        'text-blue-600 border-blue-600 bg-blue-50':
-                          match.status === 'in-progress',
-                        'text-green-600 border-green-600 bg-green-50':
-                          match.status === 'completed',
-                      })}
-                    >
-                      {match.status.charAt(0).toUpperCase() +
-                        match.status.slice(1)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                     <Button variant="outline" size="sm" onClick={() => router.push(`/admin/matches/${match.id}`)}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Match
-                     </Button>
-                  </TableCell>
+        <div className="relative w-full overflow-auto">
+            <Table>
+            <TableHeader>
+                <TableRow>
+                <TableHead>Match ID</TableHead>
+                <TableHead>Prize</TableHead>
+                <TableHead>Players</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            {!loading && matches.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="text-center text-muted-foreground py-8"
-                >
-                  No {title.toLowerCase()} found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+                {loading && (
+                <TableRow>
+                    <TableCell
+                    colSpan={5}
+                    className="text-center text-muted-foreground py-8"
+                    >
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                    </TableCell>
+                </TableRow>
+                )}
+                {!loading &&
+                matches.map((match) => (
+                    <TableRow key={match.id}>
+                    <TableCell className="font-mono text-xs">{match.id}</TableCell>
+                    <TableCell>₹{match.prizePool}</TableCell>
+                    <TableCell>
+                        <div className="flex items-center gap-1">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        {match.playerIds.length} / {match.maxPlayers}
+                        </div>
+                    </TableCell>
+                    <TableCell>
+                        <Badge
+                        variant={
+                            match.status === 'completed'
+                            ? 'outline'
+                            : match.status === 'disputed'
+                            ? 'destructive'
+                            : 'secondary'
+                        }
+                        className={cn({
+                            'text-blue-600 border-blue-600 bg-blue-50':
+                            match.status === 'in-progress',
+                            'text-green-600 border-green-600 bg-green-50':
+                            match.status === 'completed',
+                        })}
+                        >
+                        {match.status.charAt(0).toUpperCase() +
+                            match.status.slice(1)}
+                        </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                        <Button variant="outline" size="sm" onClick={() => router.push(`/admin/matches/${match.id}`)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Match
+                        </Button>
+                    </TableCell>
+                    </TableRow>
+                ))}
+                {!loading && matches.length === 0 && (
+                <TableRow>
+                    <TableCell
+                    colSpan={5}
+                    className="text-center text-muted-foreground py-8"
+                    >
+                    No {title.toLowerCase()} found.
+                    </TableCell>
+                </TableRow>
+                )}
+            </TableBody>
+            </Table>
+        </div>
       </CardContent>
     </Card>
   );

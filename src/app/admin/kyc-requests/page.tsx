@@ -210,41 +210,43 @@ export default function AdminKycPage() {
             Review and approve or reject user KYC applications.
           </CardDescription>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Date Submitted</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-                {loading && <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary"/></TableCell></TableRow>}
-                {!loading && requests.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No pending KYC requests.</TableCell></TableRow>}
-                {!loading && requests.map((request) => (
-                    <TableRow key={request.id} className="hover:bg-muted/50">
-                    <TableCell>
-                        <div className="flex items-center gap-3">
-                            <Avatar className="border">
-                                <AvatarImage src={request.userAvatar} />
-                                <AvatarFallback>{request.userName?.charAt(0) || 'U'}</AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium whitespace-nowrap">{request.userName || 'Unknown User'}</span>
-                        </div>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">{request.submittedAt?.toDate().toLocaleString()}</TableCell>
-                    <TableCell><Badge variant="secondary">{request.status}</Badge></TableCell>
-                    <TableCell className="text-right">
-                        <Button variant="outline" size="sm" onClick={() => setSelectedRequest(request)}>
-                            <Eye className="h-4 w-4 mr-2"/> Review
-                        </Button>
-                    </TableCell>
-                    </TableRow>
-                ))}
-            </TableBody>
-          </Table>
+        <CardContent>
+          <div className="relative w-full overflow-auto">
+            <Table>
+                <TableHeader>
+                <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Date Submitted</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {loading && <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary"/></TableCell></TableRow>}
+                    {!loading && requests.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No pending KYC requests.</TableCell></TableRow>}
+                    {!loading && requests.map((request) => (
+                        <TableRow key={request.id} className="hover:bg-muted/50">
+                        <TableCell>
+                            <div className="flex items-center gap-3">
+                                <Avatar className="border">
+                                    <AvatarImage src={request.userAvatar} />
+                                    <AvatarFallback>{request.userName?.charAt(0) || 'U'}</AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium whitespace-nowrap">{request.userName || 'Unknown User'}</span>
+                            </div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">{request.submittedAt?.toDate().toLocaleString()}</TableCell>
+                        <TableCell><Badge variant="secondary">{request.status}</Badge></TableCell>
+                        <TableCell className="text-right">
+                            <Button variant="outline" size="sm" onClick={() => setSelectedRequest(request)}>
+                                <Eye className="h-4 w-4 mr-2"/> Review
+                            </Button>
+                        </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
       {selectedRequest && (

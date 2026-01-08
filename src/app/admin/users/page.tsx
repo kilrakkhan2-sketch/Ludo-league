@@ -295,74 +295,76 @@ export default function AdminUsersPage() {
             />
           </div>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Wallet</TableHead>
-                <TableHead>Win Rate</TableHead>
-                <TableHead>Rank</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading && (
+        <CardContent>
+          <div className="relative w-full overflow-auto">
+            <Table>
+                <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
-                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-                  </TableCell>
+                    <TableHead>User</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Wallet</TableHead>
+                    <TableHead>Win Rate</TableHead>
+                    <TableHead>Rank</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              )}
-              {!loading && users.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="text-center py-8 text-muted-foreground"
-                  >
-                    No users found.
-                  </TableCell>
-                </TableRow>
-              )}
-              {!loading &&
-                users.map((user) => (
-                  <TableRow key={user.uid}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage src={user.photoURL || undefined} />
-                          <AvatarFallback>
-                            {user.displayName?.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium whitespace-nowrap">{user.displayName}</span>
-                      </div>
+                </TableHeader>
+                <TableBody>
+                {loading && (
+                    <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                        <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
                     </TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell className="whitespace-nowrap">₹{(user.walletBalance || 0).toFixed(2)}</TableCell>
-                    <TableCell>{user.winRate || 0}%</TableCell>
-                    <TableCell>{user.rank || 0}</TableCell>
-                    <TableCell>
-                      {(user as any).isBlocked ? (
-                        <Badge variant="destructive">Banned</Badge>
-                       ) : (
-                        <Badge className="bg-green-100 text-green-800">Active</Badge>
-                       )}
+                    </TableRow>
+                )}
+                {!loading && users.length === 0 && (
+                    <TableRow>
+                    <TableCell
+                        colSpan={7}
+                        className="text-center py-8 text-muted-foreground"
+                    >
+                        No users found.
                     </TableCell>
-                    <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => setSelectedUser(user)}><Eye className="h-4 w-4 mr-2"/>Manage</Button>
-                        <Button variant="outline" size="sm" asChild>
-                            <Link href={`/admin/users/${user.uid}`}>
-                                <History className="h-4 w-4 mr-2"/> History
-                            </Link>
-                        </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
+                    </TableRow>
+                )}
+                {!loading &&
+                    users.map((user) => (
+                    <TableRow key={user.uid}>
+                        <TableCell>
+                        <div className="flex items-center gap-3">
+                            <Avatar>
+                            <AvatarImage src={user.photoURL || undefined} />
+                            <AvatarFallback>
+                                {user.displayName?.charAt(0)}
+                            </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium whitespace-nowrap">{user.displayName}</span>
+                        </div>
+                        </TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell className="whitespace-nowrap">₹{(user.walletBalance || 0).toFixed(2)}</TableCell>
+                        <TableCell>{user.winRate || 0}%</TableCell>
+                        <TableCell>{user.rank || 0}</TableCell>
+                        <TableCell>
+                        {(user as any).isBlocked ? (
+                            <Badge variant="destructive">Banned</Badge>
+                        ) : (
+                            <Badge className="bg-green-100 text-green-800">Active</Badge>
+                        )}
+                        </TableCell>
+                        <TableCell className="text-right space-x-2">
+                            <Button variant="outline" size="sm" onClick={() => setSelectedUser(user)}><Eye className="h-4 w-4 mr-2"/>Manage</Button>
+                            <Button variant="outline" size="sm" asChild>
+                                <Link href={`/admin/users/${user.uid}`}>
+                                    <History className="h-4 w-4 mr-2"/> History
+                                </Link>
+                            </Button>
+                        </TableCell>
+                    </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
       {selectedUser && (

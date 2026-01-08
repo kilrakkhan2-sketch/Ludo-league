@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button"
@@ -10,7 +9,9 @@ import { Separator } from "@/components/ui/separator"
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast"
-
+import { PlaceHolderImages } from '@/lib/placeholder-images';
+import Image from 'next/image';
+import { Swords } from "lucide-react";
 
 export default function LoginPage() {
     const { login, loginWithGoogle } = useAuth();
@@ -45,15 +46,31 @@ export default function LoginPage() {
             toast({ title: 'Google Login Failed', description: error.message, variant: 'destructive' });
         }
     };
+    
+    const bgImage = PlaceHolderImages.find(img => img.id === 'ludo-background');
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-950 p-4">
-            <Card className="mx-auto max-w-sm w-full">
-                <CardHeader>
-                <CardTitle className="text-2xl">Login</CardTitle>
-                <CardDescription>
-                    Enter your email below to login to your account
-                </CardDescription>
+        <div className="relative flex min-h-screen items-center justify-center p-4">
+             {bgImage && (
+                <Image
+                    src={bgImage.imageUrl}
+                    alt={bgImage.description}
+                    fill
+                    className="object-cover z-0"
+                />
+            )}
+            <div className="absolute inset-0 bg-black/50 z-10" />
+            
+            <Card className="relative z-20 mx-auto max-w-sm w-full bg-background/80 backdrop-blur-sm border-white/20">
+                <CardHeader className="text-center">
+                    <div className="flex justify-center items-center gap-2 mb-2">
+                        <Swords className="h-8 w-8 text-primary" />
+                        <h1 className="text-3xl font-bold">Ludo Game</h1>
+                    </div>
+                    <CardTitle className="text-2xl">Login</CardTitle>
+                    <CardDescription>
+                        Enter your credentials to access your account
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleLogin} className="grid gap-4">
@@ -90,9 +107,15 @@ export default function LoginPage() {
                         </Button>
                     </form>
                     <Separator className="my-6" />
-                    <Button variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={loading}>
+                    <Button variant="outline" className="w-full bg-transparent" onClick={handleGoogleLogin} disabled={loading}>
                         Login with Google
                     </Button>
+                     <div className="mt-4 text-center text-sm">
+                        Don&apos;t have an account?{" "}
+                        <a href="/register" className="underline">
+                            Sign up
+                        </a>
+                    </div>
                 </CardContent>
             </Card>
         </div>

@@ -117,60 +117,62 @@ export default function AdminWithdrawalsPage() {
             Review and approve or reject user withdrawal requests. The user's balance will be updated automatically on approval.
           </CardDescription>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Method</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-                {loading && <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary"/></TableCell></TableRow>}
-                {!loading && requests.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No pending withdrawal requests.</TableCell></TableRow>}
-                {!loading && requests.map((request) => (
-                    <TableRow key={request.id} className="hover:bg-muted/50">
-                    <TableCell>
-                        <div className="flex items-center gap-3">
-                        <Avatar className="border">
-                            <AvatarImage src={(request as any).user?.photoURL} />
-                            <AvatarFallback>{request.userName?.charAt(0) || 'U'}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium whitespace-nowrap">{request.userName || 'Unknown User'}</span>
-                        </div>
-                    </TableCell>
-                    <TableCell className="font-semibold whitespace-nowrap">₹{request.amount.toLocaleString('en-IN')}</TableCell>
-                    <TableCell>
-                        {request.upiId ? (
-                            <div className="text-xs">
-                                <p className="font-semibold">UPI</p>
-                                <p>{request.upiId}</p>
-                            </div>
-                        ) : request.bankDetails ? (
-                            <div className="text-xs">
-                                <p className="font-semibold">Bank Transfer</p>
-                                <p className="whitespace-pre-wrap">{request.bankDetails}</p>
-                            </div>
-                        ) : <p className="text-xs text-muted-foreground">Not provided</p>}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">{request.createdAt?.toDate().toLocaleString()}</TableCell>
-                    <TableCell className="text-right">
-                        <div className="flex gap-2 justify-end">
-                            <Button variant="outline" size="sm" className="text-green-600 border-green-500 hover:bg-green-100 hover:text-green-700" onClick={() => handleAction(request, 'approve')} disabled={processingId === request.id}>
-                                {processingId === request.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <><CheckCircle2 className="h-4 w-4 mr-2" /> Approve</>}
-                            </Button>
-                            <Button variant="destructive" size="sm" onClick={() => handleAction(request, 'reject')} disabled={processingId === request.id}>
-                                {processingId === request.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <><XCircle className="h-4 w-4 mr-2" /> Reject</>}
-                            </Button>
-                        </div>
-                    </TableCell>
+        <CardContent>
+            <div className="relative w-full overflow-auto">
+                <Table>
+                    <TableHeader>
+                    <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Method</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                ))}
-            </TableBody>
-          </Table>
+                    </TableHeader>
+                    <TableBody>
+                        {loading && <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary"/></TableCell></TableRow>}
+                        {!loading && requests.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No pending withdrawal requests.</TableCell></TableRow>}
+                        {!loading && requests.map((request) => (
+                            <TableRow key={request.id} className="hover:bg-muted/50">
+                            <TableCell>
+                                <div className="flex items-center gap-3">
+                                <Avatar className="border">
+                                    <AvatarImage src={(request as any).user?.photoURL} />
+                                    <AvatarFallback>{request.userName?.charAt(0) || 'U'}</AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium whitespace-nowrap">{request.userName || 'Unknown User'}</span>
+                                </div>
+                            </TableCell>
+                            <TableCell className="font-semibold whitespace-nowrap">₹{request.amount.toLocaleString('en-IN')}</TableCell>
+                            <TableCell>
+                                {request.upiId ? (
+                                    <div className="text-xs">
+                                        <p className="font-semibold">UPI</p>
+                                        <p>{request.upiId}</p>
+                                    </div>
+                                ) : request.bankDetails ? (
+                                    <div className="text-xs">
+                                        <p className="font-semibold">Bank Transfer</p>
+                                        <p className="whitespace-pre-wrap">{request.bankDetails}</p>
+                                    </div>
+                                ) : <p className="text-xs text-muted-foreground">Not provided</p>}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">{request.createdAt?.toDate().toLocaleString()}</TableCell>
+                            <TableCell className="text-right">
+                                <div className="flex gap-2 justify-end">
+                                    <Button variant="outline" size="sm" className="text-green-600 border-green-500 hover:bg-green-100 hover:text-green-700" onClick={() => handleAction(request, 'approve')} disabled={processingId === request.id}>
+                                        {processingId === request.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <><CheckCircle2 className="h-4 w-4 mr-2" /> Approve</>}
+                                    </Button>
+                                    <Button variant="destructive" size="sm" onClick={() => handleAction(request, 'reject')} disabled={processingId === request.id}>
+                                        {processingId === request.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <><XCircle className="h-4 w-4 mr-2" /> Reject</>}
+                                    </Button>
+                                </div>
+                            </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
         </CardContent>
       </Card>
     </>

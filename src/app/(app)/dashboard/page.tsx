@@ -9,13 +9,12 @@ import { NewsTicker } from "@/components/app/news-ticker";
 import { useUser, useFirestore } from "@/firebase";
 import { useEffect, useState } from "react";
 import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
-import type { Match } from "@/lib/types";
+import type { Match, ImagePlaceholder } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 // Use all new custom banners for the slider
-const bannerImages = PlaceHolderImages.filter(img => img.id.endsWith('-banner')).map(img => img.imageUrl);
-
+const bannerImages: ImagePlaceholder[] = PlaceHolderImages.filter(img => img.id.endsWith('-banner'));
 
 const ActionCard = ({ title, description, href, icon: Icon }: { title: string, description:string, href: string, icon: React.ElementType }) => (
     <Card className="shadow-md hover:shadow-lg transition-shadow hover:bg-muted/50">
@@ -36,12 +35,15 @@ const ActionCard = ({ title, description, href, icon: Icon }: { title: string, d
 );
 
 const RecentMatchCard = ({ match }: { match: Match }) => {
+    // Find the opponent
+    const opponent = match.players.find(p => p.id !== match.creatorId);
+
     return (
         <Link href={`/match/${match.id}`} className="block hover:bg-muted/50 p-3 rounded-lg transition-colors">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div className="flex items-center -space-x-2">
-                        {match.players.slice(0, 2).map((player: any) => (
+                        {match.players.slice(0, 2).map((player) => (
                         <Avatar key={player.id} className="h-8 w-8 border-2 border-background">
                             <AvatarImage src={player.avatarUrl} alt={player.name} />
                             <AvatarFallback>{player.name.charAt(0)}</AvatarFallback>
@@ -50,7 +52,9 @@ const RecentMatchCard = ({ match }: { match: Match }) => {
                     </div>
                     <div>
                         <p className="font-semibold text-sm">Prize: ₹{match.prizePool}</p>
-                        <p className="text-xs text-muted-foreground">vs {match.players.find(p => p.id !== match.creatorId)?.name || 'Opponent'}</p>
+                        <p className="text-xs text-muted-foreground">
+                            {opponent ? `vs ${opponent.name}` : 'Waiting for opponent'}
+                        </p>
                     </div>
                 </div>
                 <div className={cn("text-xs font-semibold px-2 py-1 rounded-full", {

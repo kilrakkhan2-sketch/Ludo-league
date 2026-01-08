@@ -2,7 +2,7 @@
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Swords, Loader2, Info, Lock, Wallet, Users, User, Shield, BarChart, X } from "lucide-react";
+import { Swords, Loader2, Info, Lock, Wallet, Users, User, Shield, BarChart, X, Trophy } from "lucide-react";
 import { useUser, useFirestore } from "@/firebase";
 import { useEffect, useState } from "react";
 import { doc, setDoc, deleteDoc, collection, onSnapshot, query, where } from "firebase/firestore";
@@ -26,7 +26,6 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const cardBgImage = PlaceHolderImages.find(img => img.id === 'ludo-background');
 
 const EntryFeeCard = ({ 
     fee, 
@@ -40,6 +39,7 @@ const EntryFeeCard = ({
     playerCount: number;
 }) => {
     
+    const cardBgImage = PlaceHolderImages.find(img => img.id === 'ludo-background');
     const cardStyle = cardBgImage ? { 
         backgroundImage: `url(${cardBgImage.imageUrl})`,
         backgroundSize: 'cover',
@@ -51,48 +51,35 @@ const EntryFeeCard = ({
         style={cardStyle}
         className={cn(
           "relative flex flex-col h-[180px] text-white p-4 justify-between overflow-hidden rounded-lg border border-white/10 shadow-lg",
+           isLocked && "grayscale"
         )}
       >
-
-        {/* Content Layer */}
+        {/* Content is directly on the background image, with drop-shadow for readability */}
         <div className="relative z-10 flex flex-col h-full">
-            {/* Top Content */}
             <div className="flex-grow">
-                <h3 className="text-2xl font-bold drop-shadow-md">
+                <p className="text-sm opacity-90 [text-shadow:0_1px_3px_rgba(0,0,0,0.5)]">Entry Fee</p>
+                <h3 className="text-3xl font-bold [text-shadow:0_2px_4px_rgba(0,0,0,0.6)]">
                     ₹{fee}
                 </h3>
-                <p className="text-sm opacity-90 drop-shadow-sm">Entry Fee</p>
-
-                <div className="mt-2 space-y-1">
-                <p className="text-md font-semibold drop-shadow-sm">
-                    Prize: <span className="text-green-400 font-bold">₹{(fee * 1.8).toFixed(2)}</span>
+                
+                <p className="text-md font-semibold mt-2 [text-shadow:0_1px_3px_rgba(0,0,0,0.5)]">
+                    Prize: <span className="text-green-400 font-bold">₹{(fee * 1.8).toFixed(0)}</span>
                 </p>
+            </div>
+
+            <div className="mt-auto">
+                <Button className="w-full h-10 text-md font-bold shadow-lg bg-gradient-to-r from-primary-start to-primary-end" onClick={() => onPlay(fee)} disabled={isLocked}>
+                    {isLocked ? <Lock className="mr-2 h-4 w-4" /> : <Swords className="mr-2 h-4 w-4" />}
+                    Play
+                </Button>
                 {playerCount > 0 && !isLocked && (
-                    <div className="flex items-center justify-center gap-1.5 text-xs text-blue-300 animate-pulse drop-shadow-sm">
+                    <div className="flex items-center justify-center gap-1.5 text-xs text-white/90 animate-pulse mt-1.5 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
                         <Users className="h-3 w-3" />
                         <span>{playerCount} Searching...</span>
                     </div>
                 )}
-                </div>
-            </div>
-
-            {/* Bottom Button */}
-            <div className="mt-auto">
-                <Button className="w-full h-9 text-sm shadow-lg bg-gradient-to-r from-primary-start to-primary-end" onClick={() => onPlay(fee)} disabled={isLocked}>
-                    <Swords className="mr-2 h-4 w-4" /> Play
-                </Button>
             </div>
         </div>
-        
-        {/* Locked State Overlay */}
-        {isLocked && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center">
-                <div className="flex items-center gap-2 text-white font-bold text-lg drop-shadow-lg">
-                    <Lock className="h-5 w-5" />
-                    Locked
-                </div>
-            </div>
-        )}
       </div>
     );
 
@@ -303,7 +290,7 @@ export default function LobbyPage() {
   const maxUnlockedAmount = userProfile?.maxUnlockedAmount || 100;
 
   const FeeTier = ({ fees }: { fees: number[] }) => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
       {fees.map(fee => {
         const isLocked = fee > maxUnlockedAmount;
         return (
@@ -370,7 +357,7 @@ export default function LobbyPage() {
                 <Info className="h-4 w-4" />
                 <AlertTitle className="font-bold">You have an active match!</AlertTitle>
                 <AlertDescription>Click here to go to your match room and complete the game.</AlertDescription>
-            </Aler t>
+            </Alert>
         )}
 
       <Tabs defaultValue="low" className="w-full">
