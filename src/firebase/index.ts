@@ -34,4 +34,4 @@ const { app, auth, firestore: db, messaging } = initializeFirebase(firebaseConfi
 // export the useUser hook
 export { useUser };
 export { FirebaseProvider, useFirebase, useFirebaseApp, useAuth, useFirestore, FirebaseClientProvider, useMessaging };
-export { initializeFirebase, db, messaging };
+export { initializeFirebase, db, messaging, app as firebaseApp };
