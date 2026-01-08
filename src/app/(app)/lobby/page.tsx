@@ -51,7 +51,6 @@ const EntryFeeCard = ({
         style={cardStyle}
         className={cn(
           "relative flex flex-col h-[180px] text-white p-4 justify-between overflow-hidden rounded-lg border border-white/10 shadow-lg",
-          isLocked && "grayscale"
         )}
       >
 
@@ -87,7 +86,7 @@ const EntryFeeCard = ({
         
         {/* Locked State Overlay */}
         {isLocked && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center backdrop-blur-[2px] bg-black/30">
+            <div className="absolute inset-0 z-20 flex items-center justify-center">
                 <div className="flex items-center gap-2 text-white font-bold text-lg drop-shadow-lg">
                     <Lock className="h-5 w-5" />
                     Locked
@@ -371,7 +370,7 @@ export default function LobbyPage() {
                 <Info className="h-4 w-4" />
                 <AlertTitle className="font-bold">You have an active match!</AlertTitle>
                 <AlertDescription>Click here to go to your match room and complete the game.</AlertDescription>
-            </Alert>
+            </Aler t>
         )}
 
       <Tabs defaultValue="low" className="w-full">
