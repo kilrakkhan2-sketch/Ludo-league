@@ -1,14 +1,10 @@
 
 'use client';
-
-import { useState, useEffect, useRef } from 'react';
-import { useFirestore } from '@/firebase';
+import { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
-import type { News } from '@/lib/types';
-import { Card, CardContent } from '@/components/ui/card';
-import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
-import Autoplay from 'embla-carousel-autoplay';
+import { useFirestore } from '@/firebase';
 import { Megaphone } from 'lucide-react';
+import type { News } from '@/lib/types';
 import Link from 'next/link';
 
 export function NewsTicker() {
@@ -16,15 +12,11 @@ export function NewsTicker() {
   const [newsItems, setNewsItems] = useState<News[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const plugin = useRef(
-    Autoplay({ delay: 5000, stopOnInteraction: true, stopOnMouseEnter: true })
-  );
-
   useEffect(() => {
     if (!firestore) return;
     setLoading(true);
     const newsRef = collection(firestore, 'news');
-    const q = query(newsRef, orderBy('createdAt', 'desc'), limit(10));
+    const q = query(newsRef, orderBy('createdAt', 'desc'), limit(5));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as News));
       setNewsItems(data);
@@ -39,31 +31,21 @@ export function NewsTicker() {
   }
 
   return (
-    <Card className="bg-primary/10 border-primary/20 overflow-hidden">
-      <CardContent className="p-0">
-        <Carousel
-          plugins={[plugin.current]}
-          className="w-full"
-          opts={{ loop: true, align: 'start' }}
-          orientation="vertical"
-        >
-          <CarouselContent className="h-14">
-            {newsItems.map((item) => (
-              <CarouselItem key={item.id}>
-                <Link href="/news" className="flex items-center pl-4 pr-6 h-full w-full group">
-                    <div className="flex items-center gap-4 w-full">
-                        <Megaphone className="h-6 w-6 text-primary flex-shrink-0 group-hover:scale-110 transition-transform" />
-                        <div className="flex-grow overflow-hidden">
-                            <p className="font-bold text-sm truncate group-hover:text-primary transition-colors">{item.title}</p>
-                            <p className="text-xs text-muted-foreground truncate">{item.content}</p>
-                        </div>
-                    </div>
-                </Link>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-        </Carousel>
-      </CardContent>
-    </Card>
+    <Link href="/news" className="block overflow-hidden group">
+      <div className="relative flex items-center bg-primary/10 text-primary-foreground py-3 rounded-lg border border-primary/20 h-14">
+        <div className="absolute left-0 pl-4 pr-4 z-10 bg-gradient-to-r from-background via-background/80 to-transparent h-full flex items-center">
+            <Megaphone className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+        </div>
+        <div className="animate-marquee whitespace-nowrap pl-16 flex">
+          {[...newsItems, ...newsItems].map((item, index) => (
+            <span key={`${item.id}-${index}`} className="mx-6 text-sm font-medium text-foreground flex-shrink-0 truncate">
+              <span className="font-bold text-primary truncate">{item.title}:</span> <span className="truncate">{item.content}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </Link>
   );
 }
+
+    

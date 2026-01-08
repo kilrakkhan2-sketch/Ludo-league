@@ -49,6 +49,49 @@
           "type": "boolean",
           "description": "Whether the user is permanently banned."
         },
+<<<<<<< HEAD
+=======
+        "activeMatchId": {
+            "type": "string",
+            "description": "The ID of the match the user is currently playing or waiting for."
+        },
+        "fcmToken": {
+            "type": "string",
+            "description": "The user's Firebase Cloud Messaging token for push notifications."
+        },
+        "rank": {
+            "type": "number",
+            "description": "User's matchmaking rank (0-5)."
+        },
+        "winnings": {
+            "type": "number",
+            "description": "The cumulative net winnings of the user."
+        },
+        "totalMatchesPlayed": {
+            "type": "number",
+            "description": "Total matches played by the user."
+        },
+        "totalMatchesWon": {
+            "type": "number",
+            "description": "Total matches won by the user."
+        },
+        "winRate": {
+            "type": "number",
+            "description": "User's win rate in percentage."
+        },
+        "dailyLoss": {
+            "type": "number",
+            "description": "The total amount lost by the user today."
+        },
+        "lossStreak": {
+            "type": "number",
+            "description": "Number of consecutive matches lost."
+        },
+        "maxUnlockedAmount": {
+            "type": "number",
+            "description": "The maximum entry fee amount the user is allowed to play for."
+        },
+>>>>>>> 044e79b6961ef34a2b4ea52020693a4d9630eca3
         "referralCode": {
             "type": "string",
             "description": "The user's unique referral code."
@@ -61,8 +104,9 @@
             "type": "boolean",
             "description": "Whether the referral bonus for the first deposit has been paid."
         },
-        "fcmToken": {
+        "bankDetails": {
             "type": "string",
+<<<<<<< HEAD
             "description": "The user's Firebase Cloud Messaging token for push notifications."
         },
         "rank": {
@@ -96,6 +140,17 @@
         "currentMatch": {
             "type": "string",
             "description": "The ID of the match the user is currently in."
+=======
+            "description": "User's bank account information (name, account number, IFSC)."
+        },
+        "upiId": {
+            "type": "string",
+            "description": "User's UPI ID."
+        },
+        "kycRejectionReason": {
+            "type": "string",
+            "description": "The reason why the user's KYC was rejected."
+>>>>>>> 044e79b6961ef34a2b4ea52020693a4d9630eca3
         }
       }
     },
@@ -103,6 +158,22 @@
         "title": "Admin",
         "description": "An administrator with elevated privileges",
         "type": "object-extend"
+    },
+    "MatchmakingQueue": {
+        "title": "Matchmaking Queue",
+        "description": "A user waiting for an opponent.",
+        "type": "object",
+        "properties": {
+            "userId": {"type": "string"},
+            "entryFee": {"type": "number"},
+            "status": {"type": "string", "enum": ["waiting", "matched"]},
+            "userName": {"type": "string"},
+            "userAvatar": {"type": "string", "format": "uri"},
+            "createdAt": {"type": "string", "format": "date-time"},
+            "rank": {"type": "number"},
+            "winRate": {"type": "number"}
+        },
+        "required": ["userId", "entryFee", "status", "createdAt"]
     },
     "KycApplication": {
       "title": "KYC Application",
@@ -162,14 +233,6 @@
         },
         "panNumber": {
             "type": "string"
-        },
-        "aadhaarImage": {
-            "type": "string",
-            "format": "uri"
-        },
-        "panImage": {
-            "type": "string",
-            "format": "uri"
         }
       },
       "required": [
@@ -177,7 +240,9 @@
         "status",
         "submittedAt",
         "aadhaarPanUrl",
-        "selfieUrl"
+        "selfieUrl",
+        "fullName",
+        "dateOfBirth"
       ]
     },
     "Match": {
@@ -207,7 +272,6 @@
             "position": {"type": "number", "description": "Claimed position (1-4)."},
             "status": {"type": "string", "enum": ["win", "loss"], "description": "Claimed status."},
             "screenshotUrl": {"type": "string", "format": "uri"},
-            "screenshotHash": {"type": "string", "description": "Hash of the screenshot to detect duplicates."},
             "submittedAt": {"type": "string", "format": "date-time"}
         },
         "required": ["userId", "position", "status", "screenshotUrl", "submittedAt"]
@@ -331,6 +395,19 @@
             "createdAt": { "type": "string", "format": "date-time" }
         },
         "required": ["title", "content", "authorId", "createdAt"]
+    },
+    "SupportMessage": {
+      "title": "Support Message",
+      "description": "A single message in a support chat thread.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderAvatar": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "senderId", "createdAt"]
     }
   },
   "auth": {
@@ -350,6 +427,12 @@
         "$ref": "#/backend/entities/UserProfile"
       },
       "description": "Stores public user profile information."
+    },
+    "/matchmakingQueue/{userId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MatchmakingQueue"
+      },
+      "description": "Queue for users waiting for a match."
     },
     "/kycApplications/{applicationId}": {
       "schema": {
@@ -404,6 +487,12 @@
             "$ref": "#/backend/entities/Match"
         },
         "description": "Stores all matches that are part of a specific tournament."
+    },
+    "/supportChats/{userId}/messages/{messageId}": {
+      "schema": {
+        "$ref": "#/backend/entities/SupportMessage"
+      },
+      "description": "Stores messages for a user's support chat."
     },
     "/upiConfiguration/active": {
         "schema": {

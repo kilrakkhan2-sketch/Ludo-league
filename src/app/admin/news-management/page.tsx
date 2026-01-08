@@ -141,7 +141,7 @@ export default function NewsManagementPage() {
             </CardTitle>
             <CardDescription>View, edit, or delete current news items.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -158,7 +158,7 @@ export default function NewsManagementPage() {
                   <TableRow key={item.id}>
                     <TableCell className="font-semibold">{item.title}</TableCell>
                     <TableCell className="max-w-xs truncate">{item.content}</TableCell>
-                    <TableCell>{item.createdAt?.toDate().toLocaleString()}</TableCell>
+                    <TableCell className="whitespace-nowrap">{item.createdAt?.toDate().toLocaleString()}</TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleEdit(item)}><Edit className="h-4 w-4"/></Button>
                       <Button size="icon" variant="destructive" className="h-8 w-8" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4"/></Button>

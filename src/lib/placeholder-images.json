@@ -1,10 +1,46 @@
 {
   "placeholderImages": [
     {
-      "id": "qr-code",
-      "description": "QR code for payment",
-      "imageUrl": "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi%3A%2F%2Fpay%3Fpa%3Dludoleague%40example%26pn%3DLudo%2520League",
-      "imageHint": "qr code"
+      "id": "dashboard-banner",
+      "description": "Main banner for the dashboard.",
+      "imageUrl": "/dashboard.banner.png",
+      "imageHint": "ludo game board"
+    },
+    {
+      "id": "lobby-banner",
+      "description": "Banner for the match lobby.",
+      "imageUrl": "/lobby.banner.png",
+      "imageHint": "game board challenge"
+    },
+    {
+      "id": "tournaments-banner",
+      "description": "Banner for the tournaments page.",
+      "imageUrl": "/tournaments.banner.png",
+      "imageHint": "championship trophy"
+    },
+    {
+      "id": "leaderboard-banner",
+      "description": "Banner for the leaderboard page.",
+      "imageUrl": "/leaderboard.banner.png",
+      "imageHint": "winners podium"
+    },
+    {
+      "id": "wallet-banner",
+      "description": "Banner for the wallet page.",
+      "imageUrl": "/wallet.banner.png",
+      "imageHint": "digital wallet payment"
+    },
+    {
+      "id": "kyc-banner",
+      "description": "Banner for the KYC page.",
+      "imageUrl": "/kyc.banner.png",
+      "imageHint": "identity verification security"
+    },
+    {
+      "id": "ludo-background",
+      "description": "A subtle background for cards.",
+      "imageUrl": "/ludo-background.png",
+      "imageHint": "ludo dice game"
     },
     {
       "id": "avatar-1",
@@ -29,84 +65,6 @@
       "description": "User avatar 4",
       "imageUrl": "https://images.unsplash.com/photo-1636377985931-898218afd306?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxtYW4lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjczMzMwMDl8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "man portrait"
-    },
-    {
-      "id": "ludo-screenshot-1",
-      "description": "Ludo King game result screenshot 1",
-      "imageUrl": "https://images.unsplash.com/photo-1682376429291-0a176f7dbae9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxnYW1lJTIwc2NyZWVuc2hvdHxlbnwwfHx8fDE3Njc0MTQ0OTd8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "game screenshot"
-    },
-    {
-      "id": "ludo-screenshot-2",
-      "description": "Ludo King game result screenshot 2",
-      "imageUrl": "https://images.unsplash.com/photo-1639656333069-03dfa7e5bd46?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtb2JpbGUlMjBnYW1lfGVufDB8fHx8MTc2NzQxNDQ5Nnww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "mobile game"
-    },
-    {
-      "id": "payment-screenshot-1",
-      "description": "Payment screenshot 1",
-      "imageUrl": "https://images.unsplash.com/photo-1726137569825-7535962addcd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxwYXltZW50JTIwcmVjZWlwdHxlbnwwfHx8fDE3NjczNDAyOTJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "payment receipt"
-    },
-    {
-      "id": "banner-1",
-      "description": "Promotional banner for a ludo tournament.",
-      "imageUrl": "https://images.unsplash.com/photo-1667552749299-551eec9151f6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxsdWRvJTIwZ2FtZXxlbnwwfHx8fDE3Njc0NDM1MTl8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "ludo game"
-    },
-    {
-      "id": "banner-2",
-      "description": "Promotional banner for weekly challenge.",
-      "imageUrl": "https://images.unsplash.com/photo-1643829434220-43df2b9a485a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxkaWNlJTIwZ2FtZXxlbnwwfHx8fDE3Njc0NDM1MTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "dice game"
-    },
-    {
-      "id": "banner-3",
-      "description": "Promotional banner for new user bonus.",
-      "imageUrl": "https://images.unsplash.com/photo-1656761961831-bf4f231500b1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx3aW5uZXIlMjBwcml6ZXxlbnwwfHx8fDE3Njc0NDM1MTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "winner prize"
-    },
-    {
-      "id": "banner-lobby",
-      "description": "Banner for the match lobby.",
-      "imageUrl": "https://images.unsplash.com/photo-1654741522302-5e070439774c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxnYW1lJTIwYm9hcmR8ZW58MHx8fHwxNzY3MzYzNDQxfDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "game board"
-    },
-    {
-      "id": "banner-tournaments",
-      "description": "Banner for the tournaments page.",
-      "imageUrl": "https://images.unsplash.com/photo-1759446334429-bb1f2d1d9f13?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxjaGFtcGlvbnNoaXAlMjB0cm9waHl8ZW58MHx8fHwxNzY3MzczMDYyfDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "championship trophy"
-    },
-    {
-      "id": "banner-leaderboard",
-      "description": "Banner for the leaderboard page.",
-      "imageUrl": "https://images.unsplash.com/photo-1659277319138-bc5ea0b3377f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHx3aW5uZXJzJTIwcG9kaXVtfGVufDB8fHx8MTc2NzQ0MzUxOHww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "winners podium"
-    },
-    {
-      "id": "banner-wallet",
-      "description": "Banner for the wallet page.",
-      "imageUrl": "https://images.unsplash.com/photo-1599050751795-6cdaafbc2319?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxkaWdpdGFsJTIwd2FsbGV0fGVufDB8fHx8MTc2NzQwOTM0OXww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "digital wallet"
-    },
-    {
-      "id": "banner-kyc",
-      "description": "Banner for the KYC page.",
-      "imageUrl": "https://images.unsplash.com/photo-1762330469123-ce98036eff16?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxpZGVudGl0eSUyMHZlcmlmaWNhdGlvbnxlbnwwfHx8fDE3Njc0NDM1MTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "identity verification"
-    },
-    {
-      "id": "ludo-classic",
-      "description": "Image for Ludo Classic game type",
-      "imageUrl": "https://images.unsplash.com/photo-1751380293405-678d73c1de66?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxjbGFzc2ljJTIwYm9hcmR8ZW58MHx8fHwxNzY3NDQ1NTYxfDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "classic board"
-    },
-    {
-      "id": "ludo-popular",
-      "description": "Image for Ludo Popular game type",
-      "imageUrl": "https://images.unsplash.com/photo-1554497126-8a1188dc43a9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtb2Rlcm4lMjBnYW1lfGVufDB8fHx8MTc2NzQ0NTU2MXww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "modern game"
     }
   ]
 }

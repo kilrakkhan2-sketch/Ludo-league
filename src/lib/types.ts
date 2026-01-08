@@ -1,4 +1,3 @@
-
 import { Timestamp } from "firebase/firestore";
 
 export type UserProfile = {
@@ -15,6 +14,7 @@ export type UserProfile = {
     isBlocked?: boolean;
     referralCode?: string;
     fcmToken?: string;
+<<<<<<< HEAD
     // Rank-based fields
     rank: number;
     totalNetWinning: number;
@@ -24,6 +24,20 @@ export type UserProfile = {
     lossStreak: number;
     maxUnlockedAmount: number;
     currentMatch?: string | null;
+=======
+    activeMatchId?: string | null;
+    // Rank and progression
+    rank: number; // 0 for Beginner, 1 for Learner, etc.
+    winnings: number; // Cumulative net winnings
+    maxUnlockedAmount: number; // The highest entry fee this user can join
+    totalMatchesPlayed: number;
+    totalMatchesWon: number;
+    winRate: number;
+    // Loss prevention
+    dailyLoss: number;
+    lossStreak: number;
+    joinedTournamentIds?: string[];
+>>>>>>> 044e79b6961ef34a2b4ea52020693a4d9630eca3
   };
   
   export type Match = {
@@ -39,13 +53,14 @@ export type UserProfile = {
     roomCode?: string;
     prizeDistributed?: boolean;
     createdAt: Timestamp;
-    updatedAt: Timestamp;
+    updatedAt?: Timestamp;
+    reviewReason?: string;
   };
   
   export type Transaction = {
     id: string;
     userId: string;
-    type: 'deposit' | 'withdrawal' | 'entry-fee' | 'winnings' | 'refund' | 'admin-credit' | 'admin-debit' | 'referral-bonus';
+    type: 'deposit' | 'withdrawal' | 'entry-fee' | 'winnings' | 'refund' | 'admin-credit' | 'admin-debit' | 'referral-bonus' | 'tournament-fee';
     amount: number;
     status: 'pending' | 'completed' | 'rejected' | 'approved';
     createdAt: Timestamp;
@@ -53,6 +68,7 @@ export type UserProfile = {
     utr?: string;
     screenshotUrl?: string;
     relatedMatchId?: string;
+    relatedTournamentId?: string;
   };
 
   export type Wallet = {
@@ -99,12 +115,13 @@ export type UserProfile = {
     prizePool: number;
     startTime: Timestamp;
     endTime: Timestamp;
-    status: 'upcoming' | 'live' | 'completed' | 'cancelled';
+    status: 'upcoming' | 'live' | 'completed' | 'cancelled' | 'paused';
     commissionType: 'percentage' | 'fixed';
     commissionValue: number;
     rules: string;
     playerIds: string[];
     createdBy: string;
+    prizeDistributed?: boolean;
   };
   
   export type UpiConfiguration = {
@@ -132,7 +149,7 @@ export type UserProfile = {
     const endTime = tournament.endTime.toDate();
 
     // Do not re-calculate for settled statuses
-    if (tournament.status === 'cancelled' || tournament.status === 'completed') {
+    if (tournament.status === 'cancelled' || tournament.status === 'completed' || tournament.status === 'paused') {
         return tournament.status;
     }
 
@@ -175,3 +192,8 @@ export interface KycApplication {
       submittedAt: Timestamp;
       isFlaggedForFraud?: boolean;
   }
+<<<<<<< HEAD
+=======
+
+    
+>>>>>>> 044e79b6961ef34a2b4ea52020693a4d9630eca3

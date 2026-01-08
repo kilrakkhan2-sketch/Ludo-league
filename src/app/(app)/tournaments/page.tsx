@@ -8,72 +8,94 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Calendar, Users, Trophy, Ticket, CircleDotDashed, CheckCircle2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useFirestore } from "@/firebase";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { useFirestore, useUser } from "@/firebase";
+import { collection, onSnapshot, query } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import type { Tournament } from "@/lib/types";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { getTournamentStatus } from "@/lib/types";
 
-const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-tournaments');
+const bannerImage = PlaceHolderImages.find(img => img.id === 'tournaments-banner');
 
-const TournamentCard = ({ tournament }: { tournament: Tournament }) => {
+const TournamentCard = ({ tournament }: { tournament: Tournament | null }) => {
     if (!tournament) {
         return (
-            <Card className="flex flex-col overflow-hidden">
-                <div className="relative h-40 w-full bg-muted animate-pulse"></div>
+            <Card className="flex flex-col overflow-hidden animate-pulse">
+                <div className="relative h-40 w-full bg-muted"></div>
                 <CardHeader>
-                    <div className="h-6 w-3/4 bg-muted animate-pulse rounded-md"></div>
-                    <div className="h-4 w-1/2 bg-muted animate-pulse rounded-md mt-2"></div>
+                    <div className="h-6 w-3/4 bg-muted rounded-md"></div>
+                    <div className="h-4 w-1/2 bg-muted rounded-md mt-2"></div>
                 </CardHeader>
                 <CardContent className="flex-grow space-y-3">
                     <div className="flex justify-between items-center">
-                        <div className="h-4 w-1/3 bg-muted animate-pulse rounded-md"></div>
-                        <div className="h-4 w-1/4 bg-muted animate-pulse rounded-md"></div>
+                        <div className="h-4 w-1/3 bg-muted rounded-md"></div>
+                        <div className="h-4 w-1/4 bg-muted rounded-md"></div>
                     </div>
                     <div className="flex justify-between items-center">
-                        <div className="h-4 w-1/3 bg-muted animate-pulse rounded-md"></div>
-                        <div className="h-4 w-1/4 bg-muted animate-pulse rounded-md"></div>
+                        <div className="h-4 w-1/3 bg-muted rounded-md"></div>
+                        <div className="h-4 w-1/4 bg-muted rounded-md"></div>
                     </div>
                     <div className="flex justify-between items-center">
-                        <div className="h-4 w-1/3 bg-muted animate-pulse rounded-md"></div>
-                        <div className="h-4 w-1/4 bg-muted animate-pulse rounded-md"></div>
+                        <div className="h-4 w-1/3 bg-muted rounded-md"></div>
+                        <div className="h-4 w-1/4 bg-muted rounded-md"></div>
                     </div>
                 </CardContent>
                 <CardFooter>
-                    <div className="h-10 w-full bg-muted animate-pulse rounded-md"></div>
+                    <div className="h-10 w-full bg-muted rounded-md"></div>
                 </CardFooter>
             </Card>
         );
     }
     
+    const { user } = useUser();
     const status = getTournamentStatus(tournament);
+    const isJoined = user && tournament.playerIds.includes(user.uid);
+    const isFull = tournament.filledSlots >= tournament.totalSlots;
+
+    const getAction = () => {
+        switch (status) {
+            case 'upcoming':
+                if (isFull && !isJoined) return <Button className="w-full" variant="secondary" disabled>Slots Full</Button>;
+                if (isJoined) return <Button asChild className="w-full" variant="outline"><Link href={`/tournaments/${tournament.id}`}>View Details</Link></Button>;
+                return <Button asChild className="w-full" variant="accent"><Link href={`/tournaments/${tournament.id}`}>Join Now</Link></Button>;
+            case 'live':
+                return <Button asChild className="w-full" variant="destructive"><Link href={`/tournaments/${tournament.id}`}>Watch Live</Link></Button>;
+            case 'completed':
+                 return <Button asChild className="w-full" variant="outline"><Link href={`/tournaments/${tournament.id}`}>View Results</Link></Button>;
+            default:
+                 return <Button asChild className="w-full" variant="outline"><Link href={`/tournaments/${tournament.id}`}>View Details</Link></Button>;
+        }
+    };
+
 
     return (
-        <Card className="flex flex-col overflow-hidden">
-            <div className="relative h-40 w-full">
-                {tournament.bannerImageUrl ? (
-                    <Image
-                        src={tournament.bannerImageUrl}
-                        alt={`${tournament.name} banner`}
-                        fill
-                        className="object-cover"
-                    />
-                ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-muted">
-                        <Trophy className="h-16 w-16 text-muted-foreground" />
-                    </div>
-                )}
-                <Badge 
-                    className={cn("absolute top-2 right-2 text-xs font-bold", {
-                        "bg-yellow-500 text-white": status === 'upcoming',
-                        "bg-red-600 text-white animate-pulse": status === 'live',
-                        "bg-green-600 text-white": status === 'completed'
-                    })}
-                >
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                </Badge>
-            </div>
+        <Card className="flex flex-col overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
+             <Link href={`/tournaments/${tournament.id}`} className="block">
+                <div className="relative h-40 w-full">
+                    {tournament.bannerImageUrl ? (
+                        <Image
+                            src={tournament.bannerImageUrl}
+                            alt={`${tournament.name} banner`}
+                            fill
+                            className="object-cover"
+                        />
+                    ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-muted">
+                            <Trophy className="h-16 w-16 text-muted-foreground" />
+                        </div>
+                    )}
+                    <Badge 
+                        className={cn("absolute top-2 right-2 text-xs font-bold", {
+                            "bg-yellow-500 text-white": status === 'upcoming',
+                            "bg-red-600 text-white animate-pulse": status === 'live',
+                            "bg-green-600 text-white": status === 'completed',
+                             "bg-gray-500 text-white": status === 'cancelled' || status === 'paused',
+                        })}
+                    >
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </Badge>
+                </div>
+            </Link>
             <CardHeader>
                 <CardTitle>{tournament.name}</CardTitle>
                 {tournament.startTime && (
@@ -98,24 +120,7 @@ const TournamentCard = ({ tournament }: { tournament: Tournament }) => {
                 </div>
             </CardContent>
             <CardFooter>
-                {status === 'upcoming' && tournament.filledSlots < tournament.totalSlots && (
-                     <Button asChild className="w-full" variant="accent">
-                        <Link href={`/tournaments/${tournament.id}`}>Join Now</Link>
-                    </Button>
-                )}
-                 {status === 'upcoming' && tournament.filledSlots >= tournament.totalSlots && (
-                     <Button className="w-full" variant="secondary" disabled>Slots Full</Button>
-                )}
-                {status === 'live' && (
-                    <Button asChild className="w-full" variant="destructive">
-                        <Link href={`/tournaments/${tournament.id}`}>Watch Live</Link>
-                    </Button>
-                )}
-                {status === 'completed' && (
-                     <Button asChild className="w-full" variant="outline">
-                        <Link href={`/tournaments/${tournament.id}`}>View Results</Link>
-                    </Button>
-                )}
+                {getAction()}
             </CardFooter>
         </Card>
     );
@@ -123,15 +128,18 @@ const TournamentCard = ({ tournament }: { tournament: Tournament }) => {
 
 export default function TournamentsPage() {
     const firestore = useFirestore();
-    const [tournaments, setTournaments] = useState<Tournament[]>(new Array(3).fill(null));
+    const [tournaments, setTournaments] = useState<Tournament[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (!firestore) return;
         setLoading(true);
         const tourneysRef = collection(firestore, 'tournaments');
-        const unsubscribe = onSnapshot(tourneysRef, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tournament));
+        const q = query(tourneysRef); // No specific ordering needed here, will sort in memory
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tournament))
+                // Sort by start time descending
+                .sort((a, b) => b.startTime.seconds - a.startTime.seconds);
             setTournaments(data);
             setLoading(false);
         });
@@ -139,15 +147,15 @@ export default function TournamentsPage() {
         return () => unsubscribe();
     }, [firestore]);
 
-    const upcomingTournaments = !loading ? tournaments.filter(t => getTournamentStatus(t) === 'upcoming') : new Array(3).fill(null);
-    const liveTournaments = !loading ? tournaments.filter(t => getTournamentStatus(t) === 'live') : [];
-    const completedTournaments = !loading ? tournaments.filter(t => getTournamentStatus(t) === 'completed') : [];
+    const upcomingTournaments = tournaments.filter(t => getTournamentStatus(t) === 'upcoming');
+    const liveTournaments = tournaments.filter(t => getTournamentStatus(t) === 'live');
+    const completedTournaments = tournaments.filter(t => ['completed', 'cancelled', 'paused'].includes(getTournamentStatus(t)));
 
-    const TournamentList = ({ list, emptyMessage }: { list: Tournament[], emptyMessage: string }) => {
+    const TournamentList = ({ list, emptyMessage }: { list: Tournament[] | null[], emptyMessage: string }) => {
         if (loading) {
             return (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                    {list.map((_, i) => <TournamentCard key={i} tournament={null} />)}
+                    {[...Array(3)].map((_, i) => <TournamentCard key={i} tournament={null} />)}
                 </div>
             );
         }
@@ -156,7 +164,7 @@ export default function TournamentsPage() {
         }
         return (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                {list.map(t => <TournamentCard key={t.id} tournament={t} />)}
+                {list.map(t => <TournamentCard key={t!.id} tournament={t} />)}
             </div>
         );
     }
@@ -164,13 +172,8 @@ export default function TournamentsPage() {
   return (
     <div className="space-y-6">
         {bannerImage && (
-             <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden">
-                <Image src={bannerImage.imageUrl} alt="Tournaments Banner" fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
-                        <Trophy className="h-8 w-8" /> Tournaments
-                    </h2>
-                </div>
+             <div className="relative w-full aspect-video rounded-lg overflow-hidden">
+                <Image src={bannerImage.imageUrl} alt={bannerImage.description} fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
             </div>
         )}
 
@@ -183,7 +186,7 @@ export default function TournamentsPage() {
                     <CircleDotDashed className="h-4 w-4 mr-2"/> Live
                 </TabsTrigger>
                 <TabsTrigger value="completed">
-                    <CheckCircle2 className="h-4 w-4 mr-2"/> Completed
+                    <CheckCircle2 className="h-4 w-4 mr-2"/> Finished
                 </TabsTrigger>
             </TabsList>
             <TabsContent value="upcoming">
@@ -193,7 +196,7 @@ export default function TournamentsPage() {
                  <TournamentList list={liveTournaments} emptyMessage="No live tournaments right now." />
             </TabsContent>
             <TabsContent value="completed">
-                 <TournamentList list={completedTournaments} emptyMessage="No completed tournaments found." />
+                 <TournamentList list={completedTournaments} emptyMessage="No finished tournaments found." />
             </TabsContent>
         </Tabs>
     </div>

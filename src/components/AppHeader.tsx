@@ -1,11 +1,10 @@
 
 'use client';
 
+import Image from "next/image";
 import NoSsr from "@/components/NoSsr";
 import { UserNav } from "@/components/app/user-nav";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Crown } from "lucide-react";
-
 
 export default function AppHeader() {
     return (
@@ -13,7 +12,7 @@ export default function AppHeader() {
             <SidebarTrigger className="md:hidden text-primary-foreground hover:text-primary-foreground/80 hover:bg-white/20"/>
             <div className="flex-1 text-center">
                 <div className="flex items-center justify-center gap-2">
-                    <Crown className="h-6 w-6 text-yellow-300"/>
+                    <Image src="/icon-192x192.png" alt="Ludo League Logo" width={32} height={32} />
                     <h1 className="text-xl font-bold text-white tracking-wider">Ludo League</h1>
                 </div>
             </div>

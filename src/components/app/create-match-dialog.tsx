@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { addDoc, collection, serverTimestamp, doc, runTransaction, Timestamp } from 'firebase/firestore';
 import { Loader2, PlusCircle, Swords } from 'lucide-react';
 
+// This component is no longer used in the new matchmaking flow, but kept for reference or future use.
 export function CreateMatchDialog({ canCreate }: { canCreate: boolean }) {
   const { user, userProfile } = useUser();
   const firestore = useFirestore();
@@ -74,6 +75,7 @@ export function CreateMatchDialog({ canCreate }: { canCreate: boolean }) {
 
             // 2. Create the match
             transaction.set(matchRef, {
+                id: matchRef.id,
                 creatorId: user.uid,
                 status: 'waiting',
                 entryFee: entryFee,
@@ -107,7 +109,7 @@ export function CreateMatchDialog({ canCreate }: { canCreate: boolean }) {
       <DialogTrigger asChild>
         <Button disabled={!canCreate}>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Create Match
+          Create Match (Old)
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">

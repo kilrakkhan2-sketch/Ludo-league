@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -44,30 +45,25 @@
           "description": "The user's KYC status",
           "enum": ["not_submitted", "pending", "approved", "rejected"]
         },
-        "warningCounter": {
-          "type": "number",
-          "description": "Number of warnings issued to the user"
-        },
-        "adminNotes": {
-          "type": "string",
-          "description": "Private notes from admins about the user"
-        },
         "isBlocked": {
           "type": "boolean",
           "description": "Whether the user is permanently banned."
         },
-        "isSuspended": {
-          "type": "boolean",
-          "description": "Whether the user is temporarily suspended."
+        "activeMatchId": {
+            "type": "string",
+            "description": "The ID of the match the user is currently playing or waiting for."
         },
-        "isWalletFrozen": {
-          "type": "boolean",
-          "description": "Whether the user's wallet is frozen for transactions."
+        "fcmToken": {
+            "type": "string",
+            "description": "The user's Firebase Cloud Messaging token for push notifications."
         },
-        "joinedTournamentIds": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "List of tournament IDs the user has joined."
+        "rank": {
+            "type": "number",
+            "description": "User's matchmaking rank (0-5)."
+        },
+        "winnings": {
+            "type": "number",
+            "description": "The cumulative net winnings of the user."
         },
         "totalMatchesPlayed": {
             "type": "number",
@@ -81,6 +77,18 @@
             "type": "number",
             "description": "User's win rate in percentage."
         },
+        "dailyLoss": {
+            "type": "number",
+            "description": "The total amount lost by the user today."
+        },
+        "lossStreak": {
+            "type": "number",
+            "description": "Number of consecutive matches lost."
+        },
+        "maxUnlockedAmount": {
+            "type": "number",
+            "description": "The maximum entry fee amount the user is allowed to play for."
+        },
         "referralCode": {
             "type": "string",
             "description": "The user's unique referral code."
@@ -88,14 +96,6 @@
         "referredBy": {
             "type": "string",
             "description": "The UID of the user who referred this user."
-        },
-        "referralBonusPaid": {
-            "type": "boolean",
-            "description": "Whether the referral bonus for the first deposit has been paid."
-        },
-        "fcmToken": {
-            "type": "string",
-            "description": "The user's Firebase Cloud Messaging token for push notifications."
         }
       }
     },
@@ -103,6 +103,22 @@
         "title": "Admin",
         "description": "An administrator with elevated privileges",
         "type": "object-extend"
+    },
+    "MatchmakingQueue": {
+        "title": "Matchmaking Queue",
+        "description": "A user waiting for an opponent.",
+        "type": "object",
+        "properties": {
+            "userId": {"type": "string"},
+            "entryFee": {"type": "number"},
+            "status": {"type": "string", "enum": ["waiting", "matched"]},
+            "userName": {"type": "string"},
+            "userAvatar": {"type": "string", "format": "uri"},
+            "createdAt": {"type": "string", "format": "date-time"},
+            "rank": {"type": "number"},
+            "winRate": {"type": "number"}
+        },
+        "required": ["userId", "entryFee", "status", "createdAt"]
     },
     "KycApplication": {
       "title": "KYC Application",
@@ -149,27 +165,6 @@
         "upiId": {
             "type": "string",
             "description": "User's UPI ID."
-        },
-        "fullName": {
-          "type": "string"
-        },
-        "dateOfBirth": {
-            "type": "string",
-            "format": "date"
-        },
-        "aadhaarNumber": {
-            "type": "string"
-        },
-        "panNumber": {
-            "type": "string"
-        },
-        "aadhaarImage": {
-            "type": "string",
-            "format": "uri"
-        },
-        "panImage": {
-            "type": "string",
-            "format": "uri"
         }
       },
       "required": [
@@ -207,7 +202,6 @@
             "position": {"type": "number", "description": "Claimed position (1-4)."},
             "status": {"type": "string", "enum": ["win", "loss"], "description": "Claimed status."},
             "screenshotUrl": {"type": "string", "format": "uri"},
-            "screenshotHash": {"type": "string", "description": "Hash of the screenshot to detect duplicates."},
             "submittedAt": {"type": "string", "format": "date-time"}
         },
         "required": ["userId", "position", "status", "screenshotUrl", "submittedAt"]
@@ -363,6 +357,12 @@
         "$ref": "#/backend/entities/UserProfile"
       },
       "description": "Stores public user profile information."
+    },
+    "/matchmakingQueue/{userId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MatchmakingQueue"
+      },
+      "description": "Queue for users waiting for a match."
     },
     "/kycApplications/{applicationId}": {
       "schema": {

@@ -3,10 +3,11 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, Swords, Home, Trophy, BarChart, Wallet, ShieldCheck, Gavel, Shield, FileText, Landmark, CircleHelp, LifeBuoy, Settings, LogOut, Gift } from "lucide-react"
+import { PanelLeft, Swords, Home, Trophy, BarChart, Wallet, ShieldCheck, Gavel, Shield, FileText, Landmark, CircleHelp, LifeBuoy, Settings, LogOut, Gift, LayoutDashboard, Users, Download, FolderKanban, AtSign, Newspaper, WalletCards } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -155,7 +156,7 @@ const SidebarProvider = React.forwardRef<
 SidebarProvider.displayName = "SidebarProvider"
 
 
-const SidebarNav = ({ inSheet = false }: { inSheet?: boolean }) => {
+const SidebarNav = ({ inSheet = false, isAdminPage = false }: { inSheet?: boolean, isAdminPage?: boolean }) => {
     const pathname = usePathname();
     const { isAdmin } = useUser();
     const router = useRouter();
@@ -165,7 +166,7 @@ const SidebarNav = ({ inSheet = false }: { inSheet?: boolean }) => {
         router.push('/');
     };
     
-    const navItems = [
+    const appNavItems = [
       { href: "/dashboard", label: "Home", icon: Home },
       { href: "/lobby", label: "Lobby", icon: Swords },
       { href: "/tournaments", label: "Tournaments", icon: Trophy },
@@ -173,6 +174,21 @@ const SidebarNav = ({ inSheet = false }: { inSheet?: boolean }) => {
       { href: "/wallet", label: "Wallet", icon: Wallet },
       { href: "/kyc", label: "KYC Verification", icon: ShieldCheck },
     ]
+
+    const adminNavItems = [
+        { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/admin/users", label: "User Management", icon: Users },
+        { href: "/admin/matches", label: "Matches", icon: Trophy },
+        { href: "/admin/tournaments", label: "Tournaments", icon: Trophy },
+        { href: "/admin/deposits", label: "Deposits", icon: WalletCards },
+        { href: "/admin/withdrawals", label: "Withdrawals", icon: Download },
+        { href: "/admin/kyc-requests", label: "KYC Requests", icon: ShieldCheck },
+        { href: "/admin/upi-management", label: "UPI Management", icon: AtSign },
+        { href: "/admin/referral-settings", label: "Referral Settings", icon: Gift },
+        { href: "/admin/news-management", label: "News Management", icon: Newspaper },
+        { href: "/admin/storage", label: "Storage", icon: FolderKanban },
+    ]
+
     const legalItems = [
       { href: "/terms-and-conditions", label: "Terms & Conditions", icon: Gavel },
       { href: "/privacy-policy", label: "Privacy Policy", icon: Shield },
@@ -182,6 +198,8 @@ const SidebarNav = ({ inSheet = false }: { inSheet?: boolean }) => {
       { href: "/tutorials", label: "Tutorials", icon: CircleHelp },
       { href: "/support", label: "Support", icon: LifeBuoy },
     ]
+
+    const navItems = isAdminPage ? adminNavItems : appNavItems;
   
     const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => 
     inSheet ? (
@@ -199,7 +217,7 @@ const SidebarNav = ({ inSheet = false }: { inSheet?: boolean }) => {
         {navItems.map((item) => (
           <SidebarMenuItem key={item.href}>
             <NavLink href={item.href}>
-              <SidebarMenuButton isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}>
+              <SidebarMenuButton isActive={pathname === item.href || (item.href !== '/dashboard' && item.href !== '/admin/dashboard' && pathname.startsWith(item.href))}>
                   <item.icon className="h-4 w-4" />
                   {item.label}
               </SidebarMenuButton>
@@ -207,81 +225,85 @@ const SidebarNav = ({ inSheet = false }: { inSheet?: boolean }) => {
           </SidebarMenuItem>
         ))}
       </SidebarMenu>
-
-      <SidebarSeparator />
       
-      <SidebarGroup>
-          <SidebarMenu>
-              <SidebarMenuItem>
-                  <NavLink href="/referrals">
-                      <SidebarMenuButton isActive={pathname.startsWith('/referrals')}>
-                          <Gift className="h-4 w-4" />
-                          Referrals
-                      </SidebarMenuButton>
-                  </NavLink>
-              </SidebarMenuItem>
-          </SidebarMenu>
-      </SidebarGroup>
+      {!isAdminPage && (
+          <>
+          <SidebarSeparator />
+          
+          <SidebarGroup>
+              <SidebarMenu>
+                  <SidebarMenuItem>
+                      <NavLink href="/referrals">
+                          <SidebarMenuButton isActive={pathname.startsWith('/referrals')}>
+                              <Gift className="h-4 w-4" />
+                              Referrals
+                          </SidebarMenuButton>
+                      </NavLink>
+                  </SidebarMenuItem>
+              </SidebarMenu>
+          </SidebarGroup>
 
-      <SidebarSeparator />
+          <SidebarSeparator />
 
-      <SidebarGroup>
-        <SidebarGroupLabel>Legal</SidebarGroupLabel>
-        <SidebarGroupContent>
-            <SidebarMenu>
-                 {legalItems.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                        <NavLink href={item.href}>
-                        <SidebarMenuButton isActive={pathname === item.href}>
-                            <item.icon className="h-4 w-4" />
-                            {item.label}
-                        </SidebarMenuButton>
-                        </NavLink>
-                    </SidebarMenuItem>
-                ))}
-            </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-
-       <SidebarSeparator />
-
-      <SidebarGroup>
-        <SidebarGroupLabel>Help</SidebarGroupLabel>
-        <SidebarGroupContent>
-            <SidebarMenu>
-                 {helpItems.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                        <NavLink href={item.href}>
-                        <SidebarMenuButton isActive={pathname === item.href}>
-                            <item.icon className="h-4 w-4" />
-                            {item.label}
-                        </SidebarMenuButton>
-                        </NavLink>
-                    </SidebarMenuItem>
-                ))}
-            </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-      
-      {isAdmin && (
-        <>
-            <SidebarSeparator />
-            <SidebarGroup>
-                <SidebarGroupLabel>Admin</SidebarGroupLabel>
-                <SidebarGroupContent>
-                    <SidebarMenu>
-                        <SidebarMenuItem>
-                            <NavLink href="/admin/dashboard">
-                                <SidebarMenuButton isActive={pathname.startsWith('/admin')}>
-                                    <ShieldCheck className="h-4 w-4 text-destructive" />
-                                    Admin Panel
-                                </SidebarMenuButton>
+          <SidebarGroup>
+            <SidebarGroupLabel>Legal</SidebarGroupLabel>
+            <SidebarGroupContent>
+                <SidebarMenu>
+                    {legalItems.map((item) => (
+                        <SidebarMenuItem key={item.href}>
+                            <NavLink href={item.href}>
+                            <SidebarMenuButton isActive={pathname === item.href}>
+                                <item.icon className="h-4 w-4" />
+                                {item.label}
+                            </SidebarMenuButton>
                             </NavLink>
                         </SidebarMenuItem>
-                    </SidebarMenu>
-                </SidebarGroupContent>
-            </SidebarGroup>
-        </>
+                    ))}
+                </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarSeparator />
+
+          <SidebarGroup>
+            <SidebarGroupLabel>Help</SidebarGroupLabel>
+            <SidebarGroupContent>
+                <SidebarMenu>
+                    {helpItems.map((item) => (
+                        <SidebarMenuItem key={item.href}>
+                            <NavLink href={item.href}>
+                            <SidebarMenuButton isActive={pathname === item.href}>
+                                <item.icon className="h-4 w-4" />
+                                {item.label}
+                            </SidebarMenuButton>
+                            </NavLink>
+                        </SidebarMenuItem>
+                    ))}
+                </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+          
+          {isAdmin && (
+            <>
+                <SidebarSeparator />
+                <SidebarGroup>
+                    <SidebarGroupLabel>Admin</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            <SidebarMenuItem>
+                                <NavLink href="/admin/dashboard">
+                                    <SidebarMenuButton isActive={pathname.startsWith('/admin')}>
+                                        <ShieldCheck className="h-4 w-4 text-destructive" />
+                                        Admin Panel
+                                    </SidebarMenuButton>
+                                </NavLink>
+                            </SidebarMenuItem>
+                        </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+            </>
+          )}
+          </>
       )}
 
       </>
@@ -310,7 +332,7 @@ const Sidebar = React.forwardRef<
     >
         <SidebarHeader>
             <Link href="/dashboard" className="flex items-center gap-2">
-                <Swords className="h-6 w-6 text-primary" />
+                <Image src="/icon-192x192.png" alt="Ludo League Logo" width={32} height={32} />
                 <span className="font-bold text-lg">Ludo League</span>
             </Link>
         </SidebarHeader>
@@ -351,7 +373,7 @@ const SidebarSheet = ({ children }: { children: React.ReactNode }) => {
               <SheetTitle>
                 <SheetClose asChild>
                     <Link href="/dashboard" className="flex items-center gap-2">
-                        <Swords className="h-6 w-6 text-primary" />
+                        <Image src="/icon-192x192.png" alt="Ludo League Logo" width={32} height={32} />
                         <span className="font-bold text-lg">Ludo League</span>
                     </Link>
                 </SheetClose>

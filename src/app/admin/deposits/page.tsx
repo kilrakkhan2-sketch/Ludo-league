@@ -114,7 +114,7 @@ export default function AdminDepositsPage() {
             Review and approve or reject user deposit requests. The user's balance will be updated automatically on approval.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -137,12 +137,12 @@ export default function AdminDepositsPage() {
                         <AvatarImage src={(request as any).user?.photoURL} />
                         <AvatarFallback>{(request as any).userName?.charAt(0) || 'U'}</AvatarFallback>
                       </Avatar>
-                      <span className="font-medium">{(request as any).userName || 'Unknown User'}</span>
+                      <span className="font-medium whitespace-nowrap">{(request as any).userName || 'Unknown User'}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="font-semibold">₹{request.amount.toLocaleString('en-IN')}</TableCell>
+                  <TableCell className="font-semibold whitespace-nowrap">₹{request.amount.toLocaleString('en-IN')}</TableCell>
                   <TableCell className="font-mono text-xs">{request.utr}</TableCell>
-                  <TableCell>{request.createdAt?.toDate().toLocaleString()}</TableCell>
+                  <TableCell className="whitespace-nowrap">{request.createdAt?.toDate().toLocaleString()}</TableCell>
                   <TableCell>
                     <Button variant="outline" size="sm" asChild>
                         <a href={request.screenshotUrl} target="_blank" rel="noopener noreferrer">

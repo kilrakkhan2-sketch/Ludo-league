@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -8,75 +9,90 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return request.auth != null &&
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      // Check for custom admin claim OR a specific field in the user's document.
+      return request.auth != null && (
+        request.auth.token.admin == true ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true)
+      );
     }
 
-    // ========= ADMIN RULE: Global Access =========
+    // ========= ADMIN RULE: Global Read/Write Access =========
+    // Admins can read and write anything, anywhere.
     match /{path=**} {
       allow read, write: if isAdmin();
     }
 
-    // ========= Rules for Non-Admin Users =========
+    // ========= Rules for Non-Admin Authenticated Users =========
 
+    // User Profile Documents
     match /users/{userId} {
-      // User can write to their own doc.
-      allow create, update: if isOwner(userId);
-      // Any authenticated user can read any other user's profile (for leaderboards, etc).
-      allow read: if request.auth != null;
+      allow read: if request.auth != null; // Any auth user can read public profiles.
+      allow create: if isOwner(userId); // Only owner can create their profile.
+      allow update: if isOwner(userId); // Owner can update their own profile.
+    }
+    
+    // Matchmaking Queue
+    match /matchmakingQueue/{userId} {
+      allow read, create, delete: if isOwner(userId);
+      allow update: if false; // Updates are handled by the Cloud Function.
+    }
+    // Any authenticated user can list the queue to see player counts
+    match /matchmakingQueue/{docId} {
+        allow list: if request.auth != null;
     }
 
+    // KYC Applications
     match /kycApplications/{kycId} {
-      allow create: if isOwner(request.resource.data.userId);
-      allow get: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId); // User can create their own KYC app.
+      allow get: if isOwner(resource.data.userId); // User can get their own KYC app.
     }
 
+    // Matches Collection
     match /matches/{matchId} {
-      // Non-admins can read a match if they are a player OR if the match is waiting.
-      // This covers both queries on the lobby page.
-      allow read: if request.auth != null && (request.auth.uid in resource.data.playerIds || resource.data.status == 'waiting');
-
-      allow create: if isOwner(request.resource.data.creatorId);
-      
-      // Allow joining a match or updating it if user is a player.
-      allow update: if request.auth != null && (resource.data.status == 'waiting' || request.auth.uid in resource.data.playerIds);
+      allow read: if request.auth != null; // Any user can see match details in lobby/history.
+      allow create: if false; // Handled by matchmaking Cloud Function
+      allow update: if (request.auth != null && request.auth.uid in resource.data.playerIds); // Only players can update (e.g., submit room code).
     }
 
-    match /matches/{matchId}/results/{resultId} {
+    // Match Results Sub-collection
+    match /matches/{matchId}/results/{userId} {
       allow read: if request.auth != null;
-      allow write: if isOwner(resultId);
+      allow write: if isOwner(userId); // A player can submit their own result.
     }
 
-    // Rules for user-specific data collections
-    match /transactions/{docId} {
-      allow read: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
-      // Allow user to query their own transactions
-      allow list: if request.auth.uid == request.query.filters.userId;
+    // Transactions Collection
+    match /transactions/{transactionId} {
+      allow get: if isOwner(resource.data.userId);
+      allow list: if request.auth != null && request.query.where[0][2] == request.auth.uid; // User can only list their own transactions.
+      allow create, update, delete: if false; // All transactions created by Cloud Functions.
     }
     
-    match /depositRequests/{docId} {
-        allow read: if isOwner(resource.data.userId);
+    // Deposit Requests
+    match /depositRequests/{depositId} {
+        allow get: if isOwner(resource.data.userId);
         allow create: if isOwner(request.resource.data.userId);
-        // Allow user to query their own deposit requests
-        allow list: if request.auth.uid == request.query.filters.userId;
+        allow list: if request.auth != null && request.query.where[0][2] == request.auth.uid;
     }
     
-    match /withdrawalRequests/{docId} {
-        allow read: if isOwner(resource.data.userId);
+    // Withdrawal Requests
+    match /withdrawalRequests/{withdrawalId} {
+        allow get: if isOwner(resource.data.userId);
         allow create: if isOwner(request.resource.data.userId);
-        // Allow user to query their own withdrawal requests
-        allow list: if request.auth.uid == request.query.filters.userId;
+        allow list: if request.auth != null && request.query.where[0][2] == request.auth.uid;
     }
 
-    // Read-only collections for clients.
+    // Support Chat
+    match /supportChats/{userId}/messages/{messageId} {
+      // A user can read/write to their own chat thread.
+      allow read, write: if isOwner(userId);
+    }
+
+    // Read-only collections for all authenticated users.
     match /tournaments/{doc=**} { allow read: if request.auth != null; }
     match /news/{doc=**} { allow read: if request.auth != null; }
     match /upiConfiguration/active { allow read: if request.auth != null; }
     match /referralConfiguration/settings { allow get: if request.auth != null; }
 
-    // Admin-only collections (clients can't read or write).
-    match /adminLogs/{l=**} { allow read, write: if false; }
   }
 }

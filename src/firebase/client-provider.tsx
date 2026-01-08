@@ -1,5 +1,7 @@
+
 'use client';
 
+import { UserProvider } from './auth/use-user';
 import { FirebaseProvider } from './provider';
 
 export function FirebaseClientProvider({
@@ -7,5 +9,11 @@ export function FirebaseClientProvider({
 }: {
   children: React.ReactNode;
 }) {
-  return <FirebaseProvider>{children}</FirebaseProvider>;
+  return (
+    <FirebaseProvider>
+      <UserProvider>
+        {children}
+      </UserProvider>
+    </FirebaseProvider>
+  );
 }

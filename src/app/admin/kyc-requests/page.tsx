@@ -210,7 +210,7 @@ export default function AdminKycPage() {
             Review and approve or reject user KYC applications.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -231,10 +231,10 @@ export default function AdminKycPage() {
                                 <AvatarImage src={request.userAvatar} />
                                 <AvatarFallback>{request.userName?.charAt(0) || 'U'}</AvatarFallback>
                             </Avatar>
-                            <span className="font-medium">{request.userName || 'Unknown User'}</span>
+                            <span className="font-medium whitespace-nowrap">{request.userName || 'Unknown User'}</span>
                         </div>
                     </TableCell>
-                    <TableCell>{request.submittedAt?.toDate().toLocaleString()}</TableCell>
+                    <TableCell className="whitespace-nowrap">{request.submittedAt?.toDate().toLocaleString()}</TableCell>
                     <TableCell><Badge variant="secondary">{request.status}</Badge></TableCell>
                     <TableCell className="text-right">
                         <Button variant="outline" size="sm" onClick={() => setSelectedRequest(request)}>

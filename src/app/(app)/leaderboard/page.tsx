@@ -19,7 +19,7 @@ type UserProfile = {
   winnings?: number;
 };
 
-const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-leaderboard');
+const bannerImage = PlaceHolderImages.find(img => img.id === 'leaderboard-banner');
 
 export default function LeaderboardPage() {
   const firestore = useFirestore();
@@ -59,13 +59,8 @@ export default function LeaderboardPage() {
   return (
     <div className='space-y-6'>
        {bannerImage && (
-            <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden">
-                <Image src={bannerImage.imageUrl} alt="Leaderboard Banner" fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
-                        <BarChart className="h-8 w-8" /> Leaderboard
-                    </h2>
-                </div>
+            <div className="relative w-full aspect-video rounded-lg overflow-hidden">
+                <Image src={bannerImage.imageUrl} alt={bannerImage.description} fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
             </div>
         )}
 

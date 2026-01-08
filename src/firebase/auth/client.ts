@@ -13,7 +13,7 @@ import {
   sendPasswordResetEmail,
   type Auth,
 } from 'firebase/auth';
-import { doc, setDoc, getFirestore, serverTimestamp, type Firestore, getDocs, query, where, collection, limit } from 'firebase/firestore';
+import { doc, setDoc, getFirestore, serverTimestamp, type Firestore, getDocs, query, where, collection, limit, getDoc } from 'firebase/firestore';
 import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app';
 import { firebaseConfig } from '../config';
 
@@ -73,8 +73,17 @@ export async function signUpWithEmail(email: string, password: string, displayNa
     kycStatus: 'not_submitted',
     createdAt: serverTimestamp(),
     referralCode: generateReferralCode(displayName),
-    referredBy: referredBy,
+    referredBy: referredBy || null,
+    referralBonusPaid: false,
     isAdmin: false, // Ensure isAdmin is set on creation
+    rank: 0, // Beginner rank
+    maxUnlockedAmount: 100, // Max amount for beginners
+    winnings: 0,
+    totalMatchesPlayed: 0,
+    totalMatchesWon: 0,
+    winRate: 0,
+    dailyLoss: 0,
+    lossStreak: 0,
   }, { merge: true });
 
   return user;
@@ -95,18 +104,38 @@ export async function signInWithGoogle() {
   // Create or update user profile in Firestore
   const firestore = getFirebaseFirestore();
   const userProfileRef = doc(firestore, 'users', user.uid);
-  await setDoc(userProfileRef, {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-      // Set initial values only if they don't exist by merging
-      walletBalance: 0,
-      kycStatus: 'not_submitted',
-      createdAt: serverTimestamp(),
-      referralCode: generateReferralCode(user.displayName || 'user'),
-      isAdmin: false, // Ensure isAdmin is set on creation/merge
-  }, { merge: true });
+  const userDoc = await getDoc(userProfileRef);
+
+  if (!userDoc.exists()) {
+    // New user signing up with Google
+    await setDoc(userProfileRef, {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        walletBalance: 0,
+        kycStatus: 'not_submitted',
+        createdAt: serverTimestamp(),
+        referralCode: generateReferralCode(user.displayName || 'user'),
+        referralBonusPaid: false,
+        isAdmin: false,
+        rank: 0,
+        maxUnlockedAmount: 100,
+        winnings: 0,
+        totalMatchesPlayed: 0,
+        totalMatchesWon: 0,
+        winRate: 0,
+        dailyLoss: 0,
+        lossStreak: 0,
+    }, { merge: true });
+  } else {
+    // Existing user, just update display name and photo
+     await setDoc(userProfileRef, {
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+    }, { merge: true });
+  }
+
 
   return user;
 }

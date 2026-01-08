@@ -132,24 +132,23 @@ export default function AdminTournamentsPage() {
             </CardTitle>
             <CardDescription>View and manage all tournaments.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Start Time</TableHead>
-                  <TableHead>End Time</TableHead>
                   <TableHead>Slots</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading && <TableRow><TableCell colSpan={6} className="text-center py-8"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary"/></TableCell></TableRow>}
-                {!loading && tournaments.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No tournaments found.</TableCell></TableRow>}
+                {loading && <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary"/></TableCell></TableRow>}
+                {!loading && tournaments.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No tournaments found.</TableCell></TableRow>}
                 {!loading && tournaments.map(t => (
                     <TableRow key={t.id}>
-                        <TableCell className="font-semibold">{t.name}</TableCell>
+                        <TableCell className="font-semibold whitespace-nowrap">{t.name}</TableCell>
                         <TableCell>
                             <Badge className={cn({
                                 'bg-yellow-500 text-white': t.status === 'upcoming',
@@ -158,8 +157,7 @@ export default function AdminTournamentsPage() {
                                 'bg-gray-500 text-white': t.status === 'cancelled',
                             })}>{t.status}</Badge>
                         </TableCell>
-                        <TableCell>{t.startTime?.toDate().toLocaleString()}</TableCell>
-                        <TableCell>{t.endTime?.toDate().toLocaleString()}</TableCell>
+                        <TableCell className="whitespace-nowrap">{t.startTime?.toDate().toLocaleString()}</TableCell>
                         <TableCell>{t.filledSlots}/{t.totalSlots}</TableCell>
                         <TableCell className="text-right">
                            <AlertDialog>

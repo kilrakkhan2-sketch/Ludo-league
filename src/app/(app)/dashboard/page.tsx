@@ -1,4 +1,3 @@
-
 'use client';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,8 +13,8 @@ import type { Match } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
-// Define the banner images from placeholders
-const bannerImages = PlaceHolderImages.filter(img => img.id.startsWith('banner-')).map(img => img.imageUrl);
+// Use all new custom banners for the slider
+const bannerImages = PlaceHolderImages.filter(img => img.id.endsWith('-banner')).map(img => img.imageUrl);
 
 
 const ActionCard = ({ title, description, href, icon: Icon }: { title: string, description:string, href: string, icon: React.ElementType }) => (

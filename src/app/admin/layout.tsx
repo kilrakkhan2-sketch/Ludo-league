@@ -11,6 +11,8 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarSheet,
+  SidebarNav
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -18,9 +20,7 @@ import {
   Swords,
   LayoutDashboard,
   WalletCards,
-  ShieldAlert,
   PanelLeft,
-  Home,
   Trophy,
   Users,
   ShieldCheck,
@@ -28,59 +28,19 @@ import {
   FolderKanban,
   AtSign,
   Gift,
-  Newspaper
+  Newspaper,
+  MessageSquare,
 } from "lucide-react"
 import { useState, useEffect } from "react"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger, SheetClose } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet"
 import { UserNav } from "@/components/app/user-nav"
 
-const AdminSidebarNav = () => {
-  const pathname = usePathname()
-  const [activePath, setActivePath] = useState<string | null>(null);
-
-  useEffect(() => {
-    setActivePath(pathname);
-  }, [pathname]);
-
-
-  const navItems = [
-    { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/admin/users", label: "User Management", icon: Users },
-    { href: "/admin/matches", label: "Matches", icon: Trophy },
-    { href: "/admin/tournaments", label: "Tournaments", icon: Trophy },
-    { href: "/admin/deposits", label: "Deposits", icon: WalletCards },
-    { href: "/admin/withdrawals", label: "Withdrawals", icon: Download },
-    { href: "/admin/kyc-requests", label: "KYC Requests", icon: ShieldCheck },
-    { href: "/admin/upi-management", label: "UPI Management", icon: AtSign },
-    { href: "/admin/referral-settings", label: "Referral Settings", icon: Gift },
-    { href: "/admin/news-management", label: "News Management", icon: Newspaper },
-    { href: "/admin/storage", label: "Storage", icon: FolderKanban },
-  ]
-  return (
-    <SidebarMenu>
-      {navItems.map((item) => (
-        <SidebarMenuItem key={item.href}>
-          <Link href={item.href}>
-            <SidebarMenuButton
-              isActive={activePath ? activePath.startsWith(item.href) : false}
-              className="justify-start"
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </SidebarMenuButton>
-          </Link>
-        </SidebarMenuItem>
-      ))}
-    </SidebarMenu>
-  )
-}
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-    const [isSheetOpen, setSheetOpen] = useState(false)
     const pathname = usePathname()
     
     const navItems = [
@@ -92,6 +52,7 @@ export default function AdminLayout({
         { href: "/admin/deposits", label: "Deposits", icon: WalletCards },
         { href: "/admin/withdrawals", label: "Withdrawals", icon: Download },
         { href: "/admin/kyc-requests", label: "KYC Requests", icon: ShieldCheck },
+        { href: "/admin/support", label: "Support Inbox", icon: MessageSquare },
         { href: "/admin/upi-management", label: "UPI Management", icon: AtSign },
         { href: "/admin/referral-settings", label: "Referral Settings", icon: Gift },
         { href: "/admin/news-management", label: "News Management", icon: Newspaper },
@@ -102,21 +63,23 @@ export default function AdminLayout({
   return (
     <SidebarProvider>
       <div className="min-h-screen md:flex bg-muted/30">
-        <Sidebar className="border-r bg-background hidden md:flex">
-            <SidebarHeader className="p-4">
+        <aside className="hidden md:block md:w-64 border-r border-border">
+          <Sidebar>
+            <SidebarHeader>
                 <Link href="/dashboard" className="flex items-center gap-2">
                     <Swords className="h-6 w-6 text-primary" />
                     <span className="font-bold text-lg">Ludo League</span>
                 </Link>
             </SidebarHeader>
-            <SidebarContent className="p-2">
-                <AdminSidebarNav />
+            <SidebarContent>
+                <SidebarNav isAdminPage={true}/>
             </SidebarContent>
         </Sidebar>
+        </aside>
 
         <div className="flex flex-col flex-1">
             <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-primary text-primary-foreground px-4 sm:h-16">
-                 <Sheet open={isSheetOpen} onOpenChange={setSheetOpen}>
+                 <Sheet>
                     <SheetTrigger asChild>
                         <Button size="icon" variant="ghost" className="md:hidden hover:bg-primary-foreground/10 hover:text-primary-foreground">
                             <PanelLeft className="h-5 w-5" />
@@ -166,5 +129,3 @@ export default function AdminLayout({
     </SidebarProvider>
   )
 }
-
-    

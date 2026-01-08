@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A flow to distribute winnings for a completed match.
@@ -10,8 +9,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { doc, runTransaction, collection, serverTimestamp, getFirestore, getDoc, writeBatch } from 'firebase/firestore';
-import { getFirebaseApp } from '@/firebase/server'; // Can use this to get firestore instance on server
+import { doc, getFirestore, getDoc, updateDoc, setDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { getFirebaseApp } from '@/firebase/server';
 import { calculateWinRate } from './calculate-win-rate';
 
 const DistributeWinningsInputSchema = z.object({
@@ -36,9 +35,7 @@ const distributeWinningsFlow = ai.defineFlow(
     outputSchema: DistributeWinningsOutputSchema,
   },
   async ({ matchId }) => {
-    // Initialize Firestore on the server-side.
     const firestore = getFirestore(getFirebaseApp());
-    const batch = writeBatch(firestore);
     
     try {
       const matchRef = doc(firestore, 'matches', matchId);
@@ -66,11 +63,11 @@ const distributeWinningsFlow = ai.defineFlow(
       const amountToCredit = prizePool - commission;
       
       // Mark match as prize distributed
-      batch.update(matchRef, { prizeDistributed: true });
+      await updateDoc(matchRef, { prizeDistributed: true });
       
       // Log the winnings transaction. The onTransactionCreate cloud function will handle the balance update.
       const transactionRef = doc(collection(firestore, 'transactions'));
-      batch.set(transactionRef, {
+      await setDoc(transactionRef, {
         userId: winnerId,
         type: 'winnings',
         amount: amountToCredit,
@@ -79,8 +76,6 @@ const distributeWinningsFlow = ai.defineFlow(
         relatedMatchId: matchId,
         description: `Winnings for match ${matchId}`,
       });
-
-      await batch.commit();
 
       // After winnings transaction is created, update stats for all players in the match
       const playerIds = matchData.playerIds || [];

@@ -1,6 +1,7 @@
+
 'use client';
 import Image from 'next/image';
-import { SubmitResultForm } from '@/app/(app)/match/[id]/submit-result-form';
+import { SubmitResultForm } from '@/components/app/submit-result-form';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Card,
@@ -25,7 +26,7 @@ import {
   Gamepad2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { useFirestore, useUser } from '@/firebase';
 import {
   doc,
@@ -35,8 +36,6 @@ import {
   Timestamp,
   arrayRemove,
   updateDoc,
-  getDoc,
-  type DocumentReference,
 } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import type { Match } from '@/lib/types';
@@ -95,10 +94,6 @@ const RoomCodeManager = ({ match, isCreator }: { match: Match, isCreator: boolea
       toast({ title: 'Room code copied!' });
     }
   };
-  
-  const handleOpenLudoKing = () => {
-    window.location.href = 'ludoking://';
-  }
 
   // Creator's view to ENTER room code when match is full but code not set yet
   if (isCreator && !match.roomCode && match.playerIds.length === match.maxPlayers && match.status === 'waiting') {
@@ -118,7 +113,7 @@ const RoomCodeManager = ({ match, isCreator }: { match: Match, isCreator: boolea
             value={roomCode} 
             onChange={handleRoomCodeChange} 
             placeholder="8-digit code"
-            type="number"
+            type="text"
             inputMode="numeric"
             maxLength={8}
             pattern="\d{8}"
@@ -169,9 +164,9 @@ const RoomCodeManager = ({ match, isCreator }: { match: Match, isCreator: boolea
                         </Button>
                     </div>
                 </div>
-                 <Button onClick={handleOpenLudoKing} className="w-full" variant="accent">
+                 <a href="ludoking://" className={cn(buttonVariants({ variant: "accent" }), "w-full")}>
                     Open Ludo King
-                 </Button>
+                 </a>
             </CardContent>
         </Card>
     )
@@ -185,7 +180,7 @@ export default function MatchPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
-  const { user } = useUser();
+  const { user, userProfile } = useUser();
   const firestore = useFirestore();
   const [match, setMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(true);
@@ -200,7 +195,8 @@ export default function MatchPage() {
         if (doc.exists()) {
           setMatch({ id: doc.id, ...doc.data() } as Match);
         } else {
-          console.error('Match not found!');
+          toast({ title: "Match not found", description: "This match may have been deleted or never existed.", variant: "destructive" });
+          router.push('/lobby');
           setMatch(null);
         }
         setLoading(false);
@@ -212,67 +208,83 @@ export default function MatchPage() {
     );
 
     return () => unsubscribe();
-  }, [firestore, id]);
+  }, [firestore, id, router, toast]);
 
-  const handleDeleteMatch = async () => {
-    if (!firestore ||!user || !match || user.uid !== match.creatorId || match.status !== 'waiting') return;
+  useEffect(() => {
+    // When a match is cancelled or deleted, remove the activeMatchId from the user's profile
+    if (user && userProfile && match && ['cancelled', 'completed', 'disputed'].includes(match.status)) {
+      if (userProfile.activeMatchId === match.id) {
+        const userRef = doc(firestore, 'users', user.uid);
+        updateDoc(userRef, { activeMatchId: null });
+      }
+    }
+  }, [match, user, userProfile, firestore]);
+
+  const handleLeaveOrDeleteMatch = async () => {
+    if (!firestore ||!user || !match || match.status !== 'waiting') return;
+    
     setIsActionLoading(true);
+    
+    const isCreator = user.uid === match.creatorId;
+    const isJoiner = !isCreator;
   
     try {
-      await runTransaction(firestore, async (transaction) => {
         const matchRef = doc(firestore, 'matches', match.id);
-        const currentMatchData = (await transaction.get(matchRef)).data();
-        
-        if (!currentMatchData) {
-          throw new Error('Match does not exist anymore.');
+        const userRef = doc(firestore, 'users', user.uid);
+
+        if (isCreator && match.playerIds.length > 1) {
+            toast({ title: "Cannot delete", description: "Another player has joined. You cannot delete this match.", variant: "destructive"});
+            setIsActionLoading(false);
+            return;
         }
 
-        const playersToRefund = currentMatchData.players || [];
-        const refundAmount = currentMatchData.entryFee;
-  
-        // Step 1: READ all player documents first.
-        const playerDocsPromises = playersToRefund.map((player: any) =>
-          transaction.get(doc(firestore, 'users', player.id))
-        );
-        const playerDocs = await Promise.all(playerDocsPromises);
-  
-        // Step 2: Perform all WRITE operations.
-        playerDocs.forEach((playerDoc, index) => {
-          if (playerDoc.exists()) {
-            const playerData = playerDoc.data();
-            const playerRef = playerDoc.ref;
-            const newBalance = (playerData.walletBalance || 0) + refundAmount;
-  
-            // Write 1: Update player balance
-            transaction.update(playerRef, { walletBalance: newBalance });
-  
-            // Write 2: Create refund transaction log
-            const refundTransactionRef = doc(collection(firestore, 'transactions'));
-            transaction.set(refundTransactionRef, {
-              userId: playersToRefund[index].id,
-              type: 'refund',
-              amount: refundAmount,
-              status: 'completed',
-              createdAt: Timestamp.now(),
-              relatedMatchId: match.id,
-              description: `Refund for deleted match ${match.id}`,
+        // Refund all players and delete match if creator is the only one
+        if (isCreator && match.playerIds.length === 1) {
+            await runTransaction(firestore, async (transaction) => {
+                const refundTransactionRef = doc(collection(firestore, 'transactions'));
+                transaction.set(refundTransactionRef, {
+                    userId: user.uid,
+                    type: 'refund',
+                    amount: match.entryFee,
+                    status: 'completed',
+                    createdAt: Timestamp.now(),
+                    relatedMatchId: match.id,
+                    description: `Refund for deleted match ${match.id}`,
+                });
+                transaction.update(userRef, { activeMatchId: null });
+                transaction.delete(matchRef);
             });
-          }
-        });
-  
-        // Final Write: Delete the match document
-        transaction.delete(matchRef);
-      });
-  
-      toast({
-        title: 'Match Deleted',
-        description: 'All players have been refunded.',
-      });
-      router.push('/lobby');
+            toast({ title: 'Match Deleted', description: 'Your entry fee has been refunded.' });
+            router.push('/lobby');
+        } 
+        // If a joiner leaves
+        else if (isJoiner) {
+            await runTransaction(firestore, async (transaction) => {
+                const refundTransactionRef = doc(collection(firestore, 'transactions'));
+                transaction.set(refundTransactionRef, {
+                    userId: user.uid,
+                    type: 'refund',
+                    amount: match.entryFee,
+                    status: 'completed',
+                    createdAt: Timestamp.now(),
+                    relatedMatchId: match.id,
+                    description: `Refund for leaving match ${match.id}`,
+                });
+
+                const playerToRemove = match.players.find((p: any) => p.id === user.uid);
+                transaction.update(matchRef, {
+                    playerIds: arrayRemove(user.uid),
+                    players: arrayRemove(playerToRemove),
+                });
+                transaction.update(userRef, { activeMatchId: null });
+            });
+            toast({ title: 'You have left the match', description: 'Your entry fee has been refunded.' });
+            router.push('/lobby');
+        }
     } catch (error: any) {
-      console.error('Error deleting match:', error);
+      console.error('Error leaving/deleting match:', error);
       toast({
-        title: 'Error deleting match',
+        title: 'Error performing action',
         description: error.message,
         variant: 'destructive',
       });
@@ -280,57 +292,6 @@ export default function MatchPage() {
     }
   };
 
-  const handleLeaveMatch = async () => {
-    if (!firestore || !user || !match || user.uid === match.creatorId || match.status !== 'waiting') return;
-    setIsActionLoading(true);
-
-    try {
-      const matchRef = doc(firestore, 'matches', match.id);
-      const userRef = doc(firestore, 'users', user.uid);
-
-      await runTransaction(firestore, async (transaction) => {
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists()) throw new Error('User not found');
-
-        const newBalance = (userDoc.data().walletBalance || 0) + match.entryFee;
-        transaction.update(userRef, { walletBalance: newBalance });
-
-        const matchDoc = await transaction.get(matchRef);
-        if (!matchDoc.exists()) throw new Error('Match not found');
-        const matchData = matchDoc.data();
-
-        const playerToRemove = matchData.players.find((p: any) => p.id === user.uid);
-
-        transaction.update(matchRef, {
-          playerIds: arrayRemove(user.uid),
-          players: arrayRemove(playerToRemove),
-        });
-
-        const transactionRef = doc(collection(firestore, 'transactions'));
-        transaction.set(transactionRef, {
-          userId: user.uid,
-          type: 'refund',
-          amount: match.entryFee,
-          status: 'completed',
-          createdAt: Timestamp.now(),
-          relatedMatchId: match.id,
-          description: `Left match ${match.id}`,
-        });
-      });
-      toast({
-        title: 'You have left the match',
-        description: 'Your entry fee has been refunded.',
-      });
-      router.push('/lobby');
-    } catch (error: any) {
-      toast({
-        title: 'Error leaving match',
-        description: error.message,
-        variant: 'destructive',
-      });
-      setIsActionLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -353,7 +314,7 @@ export default function MatchPage() {
   }
   
   const isCreator = user?.uid === match.creatorId;
-  const isJoiner = user && match.playerIds.includes(user.uid) && !isCreator;
+  const isPlayer = user && match.playerIds.includes(user.uid);
   const isMatchFull = match.playerIds.length === match.maxPlayers;
   
   // Define visibility for each stage
@@ -393,13 +354,10 @@ export default function MatchPage() {
             </Card>
            )}
 
-          {showRoomCodeStage && <RoomCodeManager match={match} isCreator={isCreator} />}
+          {(showRoomCodeStage || (match.status === 'in-progress' && isPlayer)) && <RoomCodeManager match={match} isCreator={isCreator} />}
           
-          {showPlayAndSubmitStage && (
-            <>
-              <RoomCodeManager match={match} isCreator={isCreator} />
-              <SubmitResultForm matchId={match.id} />
-            </>
+          {showPlayAndSubmitStage && isPlayer && (
+            <SubmitResultForm matchId={match.id} />
           )}
 
           {showMatchConcluded && (
@@ -411,6 +369,7 @@ export default function MatchPage() {
                 <p className="text-muted-foreground">
                   This match has been completed and winnings have been distributed, or it is under review. No further actions can be taken.
                 </p>
+                 <Button className='mt-4' onClick={() => router.push('/lobby')}>Back to Lobby</Button>
               </CardContent>
             </Card>
           )}
@@ -443,31 +402,18 @@ export default function MatchPage() {
                 </span>
               </div>
             </CardContent>
-            {match.status === 'waiting' && (
-              <CardContent>
-                {isCreator && (
+            {match.status === 'waiting' && isPlayer && (
+              <CardFooter>
                   <Button
                     variant="destructive"
                     className="w-full"
-                    onClick={handleDeleteMatch}
+                    onClick={handleLeaveOrDeleteMatch}
                     disabled={isActionLoading}
                   >
-                    {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                    Delete Match
+                    {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isCreator ? <Trash2 className="mr-2 h-4 w-4" /> : <LogOut className="mr-2 h-4 w-4" />)}
+                    {isCreator ? 'Delete Match' : 'Leave Match'}
                   </Button>
-                )}
-                {isJoiner && (
-                  <Button
-                    variant="destructive"
-                    className="w-full"
-                    onClick={handleLeaveMatch}
-                    disabled={isActionLoading}
-                  >
-                    {isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
-                    Leave Match
-                  </Button>
-                )}
-              </CardContent>
+              </CardFooter>
             )}
           </Card>
 
@@ -490,10 +436,7 @@ export default function MatchPage() {
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline">
-                    <ShieldCheck className="h-3 w-3 mr-1 text-green-500" />{' '}
-                    Verified
-                  </Badge>
+                  {match.creatorId === player.id && <Badge variant="outline">Creator</Badge>}
                 </div>
               ))}
             </CardContent>

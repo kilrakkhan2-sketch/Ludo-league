@@ -25,15 +25,16 @@ import { ArrowDownLeft, ArrowUpRight, UploadCloud, DownloadCloud, Landmark, Wall
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { useUser, useFirestore } from "@/firebase"
 import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp, doc } from "firebase/firestore"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import type { Transaction, UpiConfiguration, DepositRequest, WithdrawalRequest } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
-import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage"
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import imageCompression from 'browser-image-compression';
 
-const bannerImage = PlaceHolderImages.find(img => img.id === 'banner-wallet');
+const bannerImage = PlaceHolderImages.find(img => img.id === 'wallet-banner');
 
 const DynamicQrCode = ({ upiId, amount }: { upiId: string | null, amount: number }) => {
   if (!upiId) {
@@ -71,6 +72,7 @@ export default function WalletPage() {
   
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [depositHistory, setDepositHistory] = useState<DepositRequest[]>([]);
+  const [withdrawalHistory, setWithdrawalHistory] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [depositAmount, setDepositAmount] = useState(100);
@@ -128,29 +130,50 @@ export default function WalletPage() {
         operation: 'list',
       }));
     });
+    
+    const withdrawalRef = collection(firestore, 'withdrawalRequests');
+    const qWithdrawals = query(withdrawalRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    
+    const unsubscribeWithdrawals = onSnapshot(qWithdrawals, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WithdrawalRequest));
+        setWithdrawalHistory(data);
+    }, (error) => {
+         errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: `withdrawalRequests where userId == ${user.uid}`,
+            operation: 'list',
+        }));
+    });
+
 
     return () => {
         unsubscribeTrans();
         unsubscribeDeposits();
+        unsubscribeWithdrawals();
     };
   }, [firestore, user]);
 
-  const getFileAsDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          resolve(event.target.result as string);
-        } else {
-          reject(new Error("Failed to read file."));
-        }
-      };
-      reader.onerror = (error) => {
-        reject(error);
-      };
-      reader.readAsDataURL(file);
-    });
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+        setDepositScreenshot(e.target.files[0]);
+    }
   };
+
+  const compressImage = useCallback(async (file: File) => {
+      const options = {
+          maxSizeMB: 1, // Max file size in MB
+          maxWidthOrHeight: 1920, // Max width or height
+          useWebWorker: true,
+      };
+      try {
+          toast({ title: 'Compressing image...', description: 'Please wait a moment.' });
+          const compressedFile = await imageCompression(file, options);
+          return compressedFile;
+      } catch (error) {
+          console.error('Image compression error:', error);
+          toast({ title: 'Compression Failed', description: 'Could not compress image. Uploading original file.', variant: 'destructive' });
+          return file; // Fallback to original file
+      }
+  }, [toast]);
 
   const handleDepositSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -174,12 +197,13 @@ export default function WalletPage() {
     
     setIsSubmitting(true);
     try {
-        const dataUrl = await getFileAsDataUrl(depositScreenshot);
+        const compressedFile = await compressImage(depositScreenshot);
+        
         const storage = getStorage();
-        const storageRef = ref(storage, `deposits/${user.uid}/${Date.now()}`);
+        const storageRef = ref(storage, `deposits/${user.uid}/${Date.now()}-${compressedFile.name}`);
 
-        await uploadString(storageRef, dataUrl, 'data_url');
-        const screenshotUrl = await getDownloadURL(storageRef);
+        const uploadResult = await uploadBytes(storageRef, compressedFile);
+        const screenshotUrl = await getDownloadURL(uploadResult.ref);
 
         await addDoc(collection(firestore, 'depositRequests'), {
             userId: user.uid,
@@ -206,7 +230,7 @@ export default function WalletPage() {
 
   const handleWithdrawalSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-     if (!user || !firestore) {
+     if (!user || !firestore || !userProfile) {
         toast({ title: "Please login first", variant: "destructive" });
         return;
     }
@@ -235,8 +259,8 @@ export default function WalletPage() {
             amount,
             status: 'pending',
             createdAt: serverTimestamp(),
-            upiId: userProfile?.upiId || '',
-            bankDetails: userProfile?.bankDetails || '',
+            upiId: userProfile.upiId || '',
+            bankDetails: userProfile.bankDetails || '',
             userName: user.displayName, // For admin panel
         } as Omit<WithdrawalRequest, 'id'>);
         toast({ title: "Withdrawal request submitted successfully." });
@@ -251,13 +275,8 @@ export default function WalletPage() {
   return (
     <div className="space-y-6">
         {bannerImage && (
-            <div className="relative w-full h-40 md:h-56 rounded-lg overflow-hidden shadow-lg">
-                <Image src={bannerImage.imageUrl} alt="Wallet Banner" fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
-                        <WalletIcon className="h-8 w-8" /> My Wallet
-                    </h2>
-                </div>
+            <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-lg">
+                <Image src={bannerImage.imageUrl} alt={bannerImage.description} fill className="object-cover" data-ai-hint={bannerImage.imageHint} />
             </div>
         )}
         <Card className="shadow-md">
@@ -305,7 +324,7 @@ export default function WalletPage() {
                                     </div>
                                      <div className="grid gap-2">
                                         <Label htmlFor="screenshot">Payment Screenshot</Label>
-                                        <Input name="screenshot" id="screenshot" type="file" required onChange={(e) => setDepositScreenshot(e.target.files?.[0] || null)} className="file:text-primary"/>
+                                        <Input name="screenshot" id="screenshot" type="file" required onChange={handleFileChange} className="file:text-primary" accept="image/*"/>
                                     </div>
                                 </div>
                                 
@@ -371,7 +390,8 @@ export default function WalletPage() {
                         </CardHeader>
                         <CardContent className="flex flex-col gap-3">
                            {loading && <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin mx-auto"/></div>}
-                            {!loading && depositHistory.length === 0 && <p className="text-center text-muted-foreground py-8">No deposit history found.</p>}
+                            {!loading && depositHistory.length === 0 && withdrawalHistory.length === 0 && <p className="text-center text-muted-foreground py-8">No requests found.</p>}
+                            
                             {!loading && depositHistory.map((req) => (
                                 <Card key={req.id} className="p-3">
                                     <div className="flex justify-between items-center">
@@ -392,6 +412,28 @@ export default function WalletPage() {
                                         </div>
                                     </div>
                                     {req.rejectionReason && <p className="text-xs text-destructive mt-2 pt-2 border-t">Reason: {req.rejectionReason}</p>}
+                                </Card>
+                            ))}
+                            {!loading && withdrawalHistory.map((req) => (
+                                <Card key={req.id} className="p-3">
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-3">
+                                            <div className="bg-red-100 p-2 rounded-full">
+                                                <ArrowDownLeft className="h-4 w-4 text-red-600"/>
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold">Withdrawal Request</p>
+                                                <p className="text-xs text-muted-foreground">{req.createdAt?.toDate().toLocaleString()}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-lg text-red-600">₹{req.amount.toFixed(2)}</p>
+                                            <Badge variant={req.status === 'approved' ? 'default' : req.status === 'pending' ? 'secondary' : 'destructive'} className={cn('mt-1', {'bg-green-100 text-green-800': req.status === 'approved'})}>
+                                                {req.status}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                     {req.rejectionReason && <p className="text-xs text-destructive mt-2 pt-2 border-t">Reason: {req.rejectionReason}</p>}
                                 </Card>
                             ))}
                         </CardContent>
@@ -423,7 +465,7 @@ export default function WalletPage() {
                                             </p>
                                              <Badge variant={t.status === 'completed' ? 'default' : t.status === 'pending' ? 'secondary' : 'destructive'} className={cn('mt-1', {'bg-green-100 text-green-800': t.status === 'completed'})}>
                                                 {t.status}
-                                            </Badge>
+                                             </Badge>
                                         </div>
                                     </div>
                                 </Card>
